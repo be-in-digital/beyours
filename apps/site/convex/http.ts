@@ -167,6 +167,9 @@ type WebhookCtx = Pick<
  * signature of the other scope would never verify. Hence two routes sharing one
  * body, each reading the secret of the endpoint that feeds it.
  */
+// @guarded-inline: Stripe's own HMAC over the raw body, verified with the
+//   endpoint's `whsec_` before a single field is read out of it; a request
+//   with no `stripe-signature` header is refused 400
 const stripeWebhookHandler = (secretEnvVar: string) =>
   httpAction(async (ctx, req) => {
     const body = await req.text();
@@ -1210,6 +1213,10 @@ export const recordSubscriptionOutcome = internalMutation({
    The refusal has to arrive as a body the script can read.
    ═══════════════════════════════════════════════ */
 
+// @public-by-design: the licence sentinel a delivered client site polls before
+//   it will serve. It has no session to check — the caller is a deployment,
+//   not a person — and it answers only about the key in the query string:
+//   whether that one is known and what its contract says.
 http.route({
   path: "/maintenance/status",
   method: "GET",

@@ -187,6 +187,17 @@ jobs:
       # It needs the `fetch-depth: 0` above: the version bump it diffs from is
       # older than a depth-1 clone's single commit, and a check that cannot see
       # the bump reports `unknown` rather than guessing.
+      #
+      # What it does NOT gate on is a package whose changeset is waiting — that
+      # is the workflow above's business and blocking it would stop the mirror.
+      # It used to print that state as `covered` beside `clean` and exit 0 in
+      # silence, which read as "released" and was not: `changeset version`
+      # deletes a changeset when it cuts a release, so one that still exists is
+      # proof the release has not happened, and the registry is still serving
+      # the build made before those files moved. That is the state
+      # `publish-mirror --check` exits 1 on while this exits 0. It now emits a
+      # `::notice::` naming the packages and a step summary, so the two agree
+      # about the facts even though only one of them blocks.
       - name: Check engine source has a release to travel in
         run: pnpm check:source-drift
 

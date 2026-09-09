@@ -7,6 +7,7 @@ import {
   isValidSigningCertUrl,
   mayConfirmSubscription,
   parseAllowedTopicArns,
+  topicPolicy,
 } from "../snsSignature"
 
 const NOTIFICATION = {
@@ -179,13 +180,53 @@ describe("which topic a message is from", () => {
       expect(isAllowedTopic(OURS.slice(0, -1), [OURS])).toBe(false)
     })
 
-    it("accepts anything when nothing is configured", () => {
-      // Deliberate: refusing here would silently stop every bounce and
-      // complaint on a deployment that has not set the variable yet, which
-      // trades a hardening for an outage. SNS only delivers on a CONFIRMED
-      // subscription, and that is where the list bites.
-      expect(isAllowedTopic(THEIRS, [])).toBe(true)
-      expect(isAllowedTopic(undefined, [])).toBe(true)
+    it("refuses everything when nothing is configured", () => {
+      // This answered `true`, and the argument for it was that SNS delivers
+      // only on a CONFIRMED subscription while `mayConfirmSubscription`
+      // refuses to create one. The argument has a hole in it and the hole is
+      // the attack: nothing requires a subscription at all. `/webhooks/ses` is
+      // an HTTPS URL that takes a POST from anyone, so an attacker publishes
+      // on their own topic, keeps the JSON Amazon signed for them, and replays
+      // it here. Signature genuine, certificate on an allowed host, topic
+      // check waved through — and the handler behind it marks whichever
+      // subscribers the body names bounced and complained.
+      expect(isAllowedTopic(THEIRS, [])).toBe(false)
+      expect(isAllowedTopic(undefined, [])).toBe(false)
+    })
+
+    it("re-opens only for an operator who says so, in as many words", () => {
+      // The hatch keeps an already-confirmed subscription recording bounces
+      // while a deployment is being configured. It is a separate variable so
+      // that restoring a fail-open is an act somebody performed.
+      expect(isAllowedTopic(THEIRS, [], true)).toBe(true)
+      // And it re-opens nothing once a list exists: a configured deployment
+      // that also sets the hatch still refuses a topic it does not name.
+      expect(isAllowedTopic(THEIRS, [OURS], true)).toBe(false)
+    })
+  })
+
+  describe("topicPolicy", () => {
+    it("reads the list, and names the refusal an unconfigured deployment earns", () => {
+      expect(topicPolicy({})).toEqual({
+        allowed: [],
+        allowAnyTopic: false,
+        reason: "topic_not_configured",
+      })
+      expect(topicPolicy({ SES_SNS_TOPIC_ARN: `${OURS}, ${THEIRS}` })).toEqual({
+        allowed: [OURS, THEIRS],
+        allowAnyTopic: false,
+        reason: "topic_not_allowed",
+      })
+    })
+
+    it("opens the hatch for `true` and for nothing else", () => {
+      // A truthiness test on `process.env` reads "false" and "0" as on, which
+      // is how an operator turning something off turns it on.
+      expect(topicPolicy({ SES_SNS_ALLOW_ANY_TOPIC: "true" }).allowAnyTopic).toBe(true)
+      expect(topicPolicy({ SES_SNS_ALLOW_ANY_TOPIC: " TRUE " }).allowAnyTopic).toBe(true)
+      for (const value of ["false", "0", "", "yes", "1"]) {
+        expect(topicPolicy({ SES_SNS_ALLOW_ANY_TOPIC: value }).allowAnyTopic).toBe(false)
+      }
     })
   })
 

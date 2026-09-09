@@ -338,6 +338,8 @@ export const cancelReferral = internalMutation({
 
 /* ── Public queries ── */
 
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const getMyReferrals = query({
   args: {},
   handler: async (ctx) => {
@@ -358,6 +360,8 @@ export const getMyReferrals = query({
   },
 });
 
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const getMyStats = query({
   args: {},
   handler: async (ctx) => {
@@ -396,6 +400,8 @@ export const getMyStats = query({
  * the same profile its sibling does and spends a quota to do it. Files that are
  * minted and never attached are swept by ./storageSweep.ts.
  */
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const generateInvoiceUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
@@ -431,6 +437,8 @@ export const generateInvoiceUploadUrl = mutation({
 });
 
 /** Attaches the uploaded invoice to a commission of the signed-in affiliate. */
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const attachReferralInvoice = mutation({
   args: {
     referralId: v.id("referrals"),
@@ -470,6 +478,8 @@ export const attachReferralInvoice = mutation({
 });
 
 /** Read URL for the invoice — available to its owner or to an admin. */
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const getReferralInvoiceUrl = query({
   args: { referralId: v.id("referrals") },
   handler: async (ctx, args) => {

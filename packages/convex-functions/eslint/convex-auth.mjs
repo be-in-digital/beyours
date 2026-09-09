@@ -143,7 +143,15 @@ const GUARD_SIGNALS = [
   // `requireAuthUser`. Matching the bare name alone missed `getCurrentUser`,
   // which resolves the caller through `authComponent.safeGetAuthUser` and is
   // as session-derived as a function gets.
-  /AuthUser\b/,
+  //
+  // No trailing `\b`, and the boundary is what made this rule unusable on a
+  // third app. `apps/site` runs Convex Auth rather than Better Auth, where the
+  // session lookup is `getAuthUserId` — "AuthUser" followed by a word
+  // character, which `AuthUser\b` does not match. Every one of its 40-odd
+  // session-scoped queries therefore read as a `@guarded-inline` claiming
+  // something the rule could not see, which is the failure mode that makes a
+  // guard get switched off rather than obeyed.
+  /AuthUser/,
   /\bctx\s*\.\s*run(Query|Mutation|Action)\s*\(/,
   /\b_?(require|assert|check)[A-Z_]\w*/,
   /\brequireStaff\b/,

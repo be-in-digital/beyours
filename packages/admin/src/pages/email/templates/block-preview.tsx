@@ -106,7 +106,7 @@ export function BlockPreview({ block, isSelected, onClick }: BlockPreviewProps) 
             style={{ height: block.height ?? 24 }}
             className="flex items-center justify-center"
           >
-            <span className="text-xs text-muted-foreground/50">
+            <span className="text-xs text-muted-foreground">
               Espace ({block.height ?? 24}px)
             </span>
           </div>
@@ -445,7 +445,7 @@ export function BlockPreview({ block, isSelected, onClick }: BlockPreviewProps) 
   return (
     <div className={wrapperClass} onClick={onClick}>
       <div className="absolute -top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-        <span className="rounded bg-muted-foreground/70 px-1 py-px text-[9px] font-medium text-white">
+        <span className="rounded bg-muted-foreground px-1 py-px text-[9px] font-medium text-background">
           {BLOCK_TYPE_LABELS[block.type] ?? block.type}
         </span>
       </div>

@@ -129,6 +129,8 @@ function stripeTaxEnabled(): boolean {
   return process.env.STRIPE_TAX_ENABLED === "true";
 }
 
+// @guarded-inline: an action, so no ctx.db: it resolves the caller through
+//   ctx.runQuery(internal.…) and refuses when that answers nothing
 export const createCheckoutSession = action({
   args: {
     plan: v.union(v.literal("essentielle"), v.literal("premium")),

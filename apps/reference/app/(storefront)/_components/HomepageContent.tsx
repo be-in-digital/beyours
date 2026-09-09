@@ -155,10 +155,28 @@ export default function LandingPage() {
                                 />
                             )}
 
-                            {/* Floating badge 1 */}
+                            {/* Floating badge 1.
+
+                                It floated forever. WCAG 2.2.2 (Pause, Stop,
+                                Hide, Level A) covers moving content that
+                                starts on its own, runs for more than five
+                                seconds and sits beside other content, and it
+                                wants a way to stop it. There is no pause
+                                control on a restaurant hero and adding one
+                                would be chrome nobody wants, so the motion
+                                settles instead: one four-second float and the
+                                badge comes to rest, which is inside the five
+                                seconds the criterion allows and removes the
+                                obligation rather than papering over it.
+
+                                `prefers-reduced-motion` is a different
+                                promise, kept separately by `MotionConfig` in
+                                `app/providers.tsx` — that one suppresses the
+                                float altogether. This one is for everybody
+                                else. */}
                             <motion.div
                                 animate={{ y: [0, -20, 0] }}
-                                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                                transition={{ duration: 4, ease: "easeInOut" }}
                                 className="absolute top-10 -left-10 z-30 bg-white/20 backdrop-blur-md p-4 rounded-3xl border border-white/20 shadow-2xl"
                             >
                                 <div className="flex items-center gap-3">
@@ -176,10 +194,13 @@ export default function LandingPage() {
                                 </div>
                             </motion.div>
 
-                            {/* Floating badge 2 */}
+                            {/* Floating badge 2 — see badge 1. Four seconds
+                                here too: it was five, and "more than five
+                                seconds" is the line the criterion draws, so
+                                sitting exactly on it is not a place to be. */}
                             <motion.div
                                 animate={{ y: [0, 20, 0] }}
-                                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                                transition={{ duration: 4, ease: "easeInOut", delay: 1 }}
                                 className="absolute bottom-1/4 -right-10 z-30 bg-white/20 backdrop-blur-md p-4 rounded-3xl border border-white/20 shadow-2xl"
                             >
                                 <div className="flex items-center gap-3">

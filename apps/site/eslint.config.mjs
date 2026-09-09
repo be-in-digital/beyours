@@ -1,6 +1,19 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+/*
+  By RELATIVE PATH, not by package specifier, and the difference is the point.
+
+  `apps/themes` imports this rule as `@be-in-digital/convex-functions/eslint/
+  convex-auth` because it is cloned into a standalone repository per client,
+  where a path out of the workspace resolves to nothing. `apps/site` is never
+  cloned — it is the commercial site, it lives only here, and it deliberately
+  depends on NONE of the engine packages (see CLAUDE.md). A devDependency on
+  one of them to reach a lint rule would put the private registry between this
+  app and `pnpm lint`, and would make that statement false for the sake of a
+  file with no imports in it.
+*/
+import convexAuth from "../../packages/convex-functions/eslint/convex-auth.mjs";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -31,6 +44,27 @@ const eslintConfig = defineConfig([
     "tests/convex/**",
     "tests/e2e/**",
   ]),
+  {
+    /*
+      The authorisation seam, on the app it was never applied to.
+
+      This config imported the two Next presets and nothing else, so the rule
+      that makes a Convex wrapper say how it is protected — `query`, `mutation`,
+      `action`, `httpAction` — never looked at `apps/site/convex/` at all: 68
+      publicly callable functions, unlinted, on the backend that holds the
+      affiliate ledger, the contract signatures, the founders' offer and the
+      internal ops console.
+
+      `convex/*.ts` only: `convex/lib/` holds the guards themselves, `email/`
+      and `fonts/` hold no wrappers, and `_generated/` is machine-written.
+    */
+    files: ["convex/*.ts"],
+    plugins: { convex: convexAuth },
+    rules: {
+      "convex/no-unguarded-convex-function": "error",
+      "convex/require-convex-permission": "error",
+    },
+  },
 ]);
 
 export default eslintConfig;

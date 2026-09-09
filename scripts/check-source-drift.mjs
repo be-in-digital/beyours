@@ -6,7 +6,8 @@
  * Usage:
  *   node scripts/check-source-drift.mjs [--warn-only]
  *
- *   --warn-only   report as ::warning:: and exit 0
+ *   --warn-only        report drift as ::warning:: and exit 0
+ *   --fail-waiting     also fail on a package whose release has not been cut
  *
  * WHY IT GATES, where `check:pending-release` only reports. A changeset that
  * exists and is waiting is the intended workflow — batching a few fixes into
@@ -26,6 +27,22 @@
  * and that nobody owed a release note, which is a different statement from
  * silence.
  *
+ * "COVERED" WAS NOT "RELEASED", and the table said the first while everyone
+ * read the second. A package with a waiting changeset was printed as `covered`
+ * beside `clean`, closed with "Every package with source changes since its last
+ * release carries a changeset.", and exited 0 — while `publish-mirror --check`
+ * exited 1 on that same package, because the registry was still serving the
+ * build made before those files moved. Both were right about their own
+ * question. Only one of them was being read as an answer to the other.
+ *
+ * So the state is `waiting` now, its row says what the registry is serving, and
+ * the run emits a `::notice::` naming the packages. It still does not GATE:
+ * batching a few fixes into one release is the intended workflow, and
+ * `lib/pending-release.mjs` sets out at length why failing the Release run
+ * would stop the mirror this is reporting on. `--fail-waiting` makes it
+ * blocking for whoever decides otherwise; nothing passes it today, which is the
+ * same escape hatch `check-pending-release.mjs` keeps in `--fail`.
+ *
  * SHALLOW CLONES. `actions/checkout` fetches depth 1, where a bump older than
  * the tip has no commit to find. The check then reports `unknown` rather than
  * guessing in either direction, and says so loudly enough that a job which
@@ -40,12 +57,20 @@ import { join } from "node:path"
 
 import { CHANGESET_DIR, isChangesetFile, parseChangeset } from "./lib/pending-release.mjs"
 import { publishablePackages, REPO_ROOT } from "./lib/registry.mjs"
-import { describeDrift, formatSummary, formatTable, summariseDrift } from "./lib/source-drift.mjs"
+import {
+  describeDrift,
+  describeWaiting,
+  formatSummary,
+  formatTable,
+  formatWaitingSummary,
+  summariseDrift,
+} from "./lib/source-drift.mjs"
 
 const warnOnly = process.argv.includes("--warn-only")
+const failWaiting = process.argv.includes("--fail-waiting")
 
 for (const arg of process.argv.slice(2)) {
-  if (arg !== "--warn-only") {
+  if (arg !== "--warn-only" && arg !== "--fail-waiting") {
     console.error(`::error::Unknown argument "${arg}".`)
     process.exit(2)
   }
@@ -115,7 +140,7 @@ const entries = publishablePackages().map((pkg) => {
   return { ...pkg, since, changed: since === null ? [] : changedSince(since, pkg.dir) }
 })
 
-const { rows, drifted, unknown } = summariseDrift(entries, covered)
+const { rows, drifted, waiting, unknown } = summariseDrift(entries, covered)
 
 console.log(formatTable(rows))
 console.log("")
@@ -129,9 +154,25 @@ if (unknown.length > 0) {
   )
 }
 
+const summaryFile = process.env.GITHUB_STEP_SUMMARY
+
+if (waiting.length > 0) {
+  // Reported at every run, including the green ones — this IS the green one's
+  // finding. Exit 0 used to be the whole message, and "has a changeset" was
+  // read as "a client has the code".
+  console.log(`::${failWaiting ? "error" : "notice"}::${describeWaiting(waiting)}`)
+  if (summaryFile) appendFileSync(summaryFile, `${formatWaitingSummary(waiting)}\n\n`)
+}
+
 if (drifted.length === 0) {
-  console.log("Every package with source changes since its last release carries a changeset.")
-  process.exit(0)
+  console.log(
+    waiting.length === 0
+      ? "Every package with source changes since its last release carries a changeset, and every " +
+          "changeset has been released."
+      : `Every package with source changes carries a changeset — but ${waiting.length} of them are ` +
+          "still waiting for a release, so no client site has that code yet.",
+  )
+  process.exit(failWaiting && waiting.length > 0 ? 1 : 0)
 }
 
 const level = warnOnly ? "warning" : "error"
@@ -139,7 +180,6 @@ for (const row of drifted) {
   console.log(`::${level} file=${row.dir}/package.json::${describeDrift(row)}`)
 }
 
-const summaryFile = process.env.GITHUB_STEP_SUMMARY
 if (summaryFile) appendFileSync(summaryFile, `${formatSummary(drifted)}\n\n`)
 
 console.log("")
@@ -148,4 +188,4 @@ console.log(
     "Run `pnpm changeset` (or `pnpm changeset --empty` if nothing is owed a release note)."
 )
 
-process.exit(warnOnly ? 0 : 1)
+process.exit(warnOnly && !(failWaiting && waiting.length > 0) ? 0 : 1)

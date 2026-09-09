@@ -120,7 +120,13 @@
      * At 60% it was 3.45:1 on `--muted` and its own white label was 3.78:1;
      * 47% clears both (4.60:1 and 6.29:1).
      */
-    --destructive: 0 84% 47%;
+    /*
+     * 44%, not 47%, and for the same reason as `--success` above: the status
+     * chip `bg-destructive/10 text-destructive` measured 4.18:1 at 47%. Every
+     * other pairing improves — a white label on the fill goes from 5.4:1 to
+     * 6.0:1, and the fill's own separation from the page rises with it.
+     */
+    --destructive: 0 84% 44%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 93%;
     /*
@@ -151,7 +157,15 @@
      * 5.18:1 on white and 4.72:1 on `--muted`, the two surfaces it lands on.
      * See #168.
      */
-    --success: 142 76% 28%;
+    /*
+     * 27%, not 28%. One more point, for the same reason the last one was
+     * taken: `bg-success/10 text-success` is how this codebase paints a status
+     * chip — a tint of the ink under the ink — and at 28% that pair measured
+     * 4.43:1 on the light admin. A tint of a colour is the surface least
+     * forgiving of it, so clearing 4.5 there clears everything else the token
+     * lands on.
+     */
+    --success: 142 76% 27%;
     --success-foreground: 0 0% 100%;
     /*
      * 30%, and the label inverts with it. At 50% this amber measured 2.09:1 on
@@ -536,10 +550,37 @@ body:has(.pac-container:not(:empty)) [data-slot="dialog-overlay"] {
   pointer-events: none;
 }
 
-/* Respect user motion preferences */
+/* Respect user motion preferences.
+
+   This block used to name `.animate-in` and nothing else — one occurrence in
+   the whole app, in `app/(storefront)/account/page.tsx`. Everything else that
+   moves went untouched: `animate-pulse` and `animate-spin` on the loading
+   states, the `live-dot` pulse on the kitchen display, every CSS transition,
+   and the smooth scrolling. A preference honoured for one element is not a
+   preference honoured.
+
+   The universal selector is the right instrument here: the rule is not "this
+   animation is unwanted", it is "this person asked for no motion", and any
+   animation the product grows afterwards is covered without anyone
+   remembering to add it. `0.01ms` rather than `none` so an `animationend`
+   listener still fires — a handler that never runs is a component stuck
+   half-rendered.
+
+   It cannot reach framer-motion, which writes inline `style` per frame and is
+   beyond any stylesheet. `<MotionConfig reducedMotion="user">` in
+   `app/providers.tsx` is that half. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-in {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }

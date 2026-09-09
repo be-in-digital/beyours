@@ -161,10 +161,25 @@ new `whsec_…`; the old value will not verify. Both Stripe flows, both secrets.
 >    subscribe itself, after which their forged bounces carried a genuine
 >    signature.
 >
->    With the variable unset the endpoint **confirms no subscription** and logs
->    the ARN it refused; paste that value in and re-send the confirmation from
->    the SNS console. Notifications on an already-confirmed subscription keep
->    working either way, so this is a hardening step and not a migration.
+>    With the variable unset the endpoint **refuses everything** — it confirms
+>    no subscription and it accepts no notification — logging
+>    `topic_not_configured` and the ARN it saw; paste that value in and re-send
+>    the confirmation from the SNS console.
+>
+>    That second half is new, and it is a migration step rather than a
+>    hardening one. Notifications on an already-confirmed subscription used to
+>    keep working with the variable unset, on the grounds that SNS delivers
+>    only where a subscription was confirmed. **Nothing requires a subscription
+>    to reach an HTTPS endpoint.** An attacker publishes on a topic in their own
+>    AWS account, keeps the signed JSON Amazon hands them, and POSTs it here:
+>    the signature is genuine, the certificate is on an allowed host, and with
+>    no list configured the topic check waved it through — after which
+>    `emailHttpHandlers.ts` marks whichever subscribers the body names bounced
+>    and complained. Set the ARN before the subscription is confirmed, which
+>    this checklist already required, and there is nothing to migrate.
+>    `SES_SNS_ALLOW_ANY_TOPIC=true` restores the old behaviour for a deployment
+>    caught mid-configuration; it never lets the endpoint confirm a
+>    subscription, which is the half that made a forged topic self-service.
 
 ## 3. Links already in the wild
 

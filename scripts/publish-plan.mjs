@@ -28,6 +28,16 @@
  * than wave through, and it matches what `changeset publish` will then attempt
  * on the same broken token.
  *
+ * FAILING SAFE IS NOT FAILING SILENTLY, and it used to be. Every non-answer was
+ * printed as `registry has nothing` — a claim about the registry, made when the
+ * registry had refused to answer. Measured with no `NODE_AUTH_TOKEN`: `npm view`
+ * returned `E401` ten times and the table asserted the registry held nothing for
+ * nine packages it serves. The rows now say `registry did not answer — npm
+ * E401`, and a run where any lookup failed says so once more at the bottom,
+ * because in that state every other line of the plan is a guess: `owedBump`
+ * reads "this push publishes something" from the same nulls and therefore
+ * reports no owed bump, whatever is waiting in `.changeset/`.
+ *
  * AND THE QUESTION UNDERNEATH IT. "Nothing to publish" has two causes that
  * `changeset publish` reports identically — ten lines of `already published`,
  * exit 0. Either no fix is waiting, which is the ordinary push, or fixes are
@@ -55,21 +65,42 @@ import {
   owedBump,
   parseChangeset,
 } from "./lib/pending-release.mjs"
-import { publishablePackages, REGISTRY, unpublishedPackages } from "./lib/registry.mjs"
+import {
+  anyUnreachable,
+  publishablePackages,
+  REGISTRY,
+  UNREACHABLE,
+  unpublishedPackages,
+} from "./lib/registry.mjs"
+
+/**
+ * What the registry said about one package, in the words it actually used.
+ *
+ * `registry has nothing` is a claim about the REGISTRY and it was printed
+ * whenever the lookup returned null — including when npm had answered `E401`
+ * and said nothing about the package at all. Run without a token, the table
+ * asserted "registry has nothing" for nine packages the registry serves. A 401
+ * read as a 404, and the one line anybody reads before believing the plan was
+ * the line that was wrong.
+ */
+function describeRegistry(pkg) {
+  if (pkg.publishedState === UNREACHABLE) {
+    return `registry did not answer${pkg.lookupCode ? ` — npm ${pkg.lookupCode}` : ""}`
+  }
+  return `registry has ${pkg.published ?? "nothing"}`
+}
 
 /** The plain-text block for a CI log. */
 function formatTable(packages, pending) {
   if (packages.length === 0) return "No publishable packages under `packages/`."
 
   const width = Math.max(...packages.map((pkg) => pkg.name.length))
-  const missing = new Set(pending.map((pkg) => pkg.name))
+  const byName = new Map(pending.map((pkg) => [pkg.name, pkg]))
   const lines = [`Versions in the workspace against ${REGISTRY}:`, ""]
 
   for (const pkg of packages) {
-    const published = pending.find((p) => p.name === pkg.name)?.published
-    const state = missing.has(pkg.name)
-      ? `WILL PUBLISH (registry has ${published ?? "nothing"})`
-      : "already published"
+    const row = byName.get(pkg.name)
+    const state = row ? `WILL PUBLISH (${describeRegistry(row)})` : "already published"
     lines.push(`  ${pkg.name.padEnd(width)}  ${pkg.version.padEnd(8)}  ${state}`)
   }
 
@@ -83,10 +114,12 @@ function formatSummary(pending) {
     "",
     "The E2E suite gates the publish below — see `release.yml`.",
     "",
-    "| Package | Version | Registry has |",
+    "| Package | Version | Registry said |",
     "| --- | --- | --- |",
     ...pending.map((pkg) => {
-      return `| \`${pkg.name}\` | ${pkg.version} | ${pkg.published ?? "_nothing_"} |`
+      const said =
+        pkg.publishedState === UNREACHABLE ? "_did not answer_" : (pkg.published ?? "_nothing_")
+      return `| \`${pkg.name}\` | ${pkg.version} | ${said} |`
     }),
   ].join("\n")
 }
@@ -101,6 +134,22 @@ console.log(
     ? "Nothing to publish — the E2E gate is skipped."
     : `${pending.length} package(s) to publish — the E2E suite gates them.`
 )
+
+// A plan built on lookups that failed is a plan about nothing. It still gates
+// the E2E suite, which is the safe direction; what it cannot do is be read as
+// a statement about what the registry holds — and `owedBump` below is computed
+// from the same nulls, so it will report nothing owed however many changesets
+// are waiting. Said out loud rather than left for the reader to notice.
+const unreachable = pending.filter((pkg) => pkg.publishedState === UNREACHABLE)
+if (unreachable.length > 0) {
+  console.log("")
+  console.log(
+    `::warning::${unreachable.length} of ${packages.length} registry lookups did not answer ` +
+      `(${[...new Set(unreachable.map((pkg) => pkg.lookupCode ?? "no code"))].join(", ")}). ` +
+      "This plan gates the E2E suite, which is the safe direction, but it says nothing about what " +
+      `${REGISTRY} holds — check NODE_AUTH_TOKEN has \`read:packages\`.`,
+  )
+}
 
 /**
  * Every changeset waiting in `.changeset/`, parsed where possible.

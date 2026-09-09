@@ -29,6 +29,9 @@ function firstNameOf(name: string): string {
   return name.trim().split(/\s+/)[0] || name.trim();
 }
 
+// @public-by-design: the contact form on beyours.fr, which a visitor fills
+//   in before any account exists; a honeypot, field-length caps and two rate
+//   limits stand in for a session
 export const submit = mutation({
   args: {
     name: v.string(),
@@ -133,6 +136,8 @@ export const submit = mutation({
 });
 
 /** Admin: contact-form leads, most recent first. */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const list = query({
   args: {},
   handler: async (ctx) => {

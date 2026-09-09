@@ -4,6 +4,8 @@ import type { Doc } from "./_generated/dataModel";
 import { requireAdmin } from "./admin";
 
 /** Clients derived from REAL orders (grouped by email). */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const list = query({
   args: { search: v.optional(v.string()) },
   handler: async (ctx, args) => {
@@ -79,6 +81,8 @@ export const list = query({
  * contract — the very fault the link exists to remove. So the console shows
  * them, with the deployment each is already linked to, and a human chooses.
  */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const paidOrders = query({
   args: { customerEmail: v.string() },
   handler: async (ctx, args) => {
@@ -111,6 +115,8 @@ export const paidOrders = query({
 });
 
 /** Prospects (liste d'attente / whitelist). */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const prospects = query({
   args: {},
   handler: async (ctx) => {
@@ -120,6 +126,8 @@ export const prospects = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const stats = query({
   args: {},
   handler: async (ctx) => {

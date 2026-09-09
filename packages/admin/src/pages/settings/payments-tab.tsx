@@ -173,7 +173,7 @@ export function PaymentsTab({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 px-2 h-7"
+                      className="text-destructive hover:text-destructive hover:bg-muted px-2 h-7"
                       onClick={() => handleDisconnect("stripe")}
                     >
                       Déconnecter
@@ -236,7 +236,7 @@ export function PaymentsTab({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 px-2 h-7"
+                      className="text-destructive hover:text-destructive hover:bg-muted px-2 h-7"
                       onClick={() => handleDisconnect("sumup")}
                     >
                       Déconnecter

@@ -2,8 +2,10 @@ import { describe, expect, test } from "vitest"
 
 import {
   describeDrift,
+  describeWaiting,
   formatSummary,
   formatTable,
+  formatWaitingSummary,
   isReleasableSource,
   summariseDrift,
 } from "../../../scripts/lib/source-drift.mjs"
@@ -15,7 +17,7 @@ interface Row {
   dir: string
   since: string | null
   changed: string[]
-  state: "drifted" | "unknown" | "covered" | "clean"
+  state: "drifted" | "unknown" | "waiting" | "clean"
 }
 
 /**
@@ -70,14 +72,21 @@ describe("summariseDrift", () => {
     expect(drifted.map((row: Row) => row.name)).toEqual(["@be-in-digital/ui"])
   })
 
-  test("a changeset naming it covers it", () => {
-    const { drifted, rows } = summariseDrift(
+  test("a changeset naming it stops it drifting, and does not make it released", () => {
+    // The distinction this state exists for. `covered` sat here beside
+    // `clean` and read as "shipped", while `publish-mirror --check` exited 1
+    // on the same package: a changeset that still EXISTS is proof the release
+    // has not been cut, because `changeset version` deletes the file when it
+    // cuts one. So the registry is still serving the build made before these
+    // files moved, under the version number the workspace already carries.
+    const { drifted, waiting, rows } = summariseDrift(
       [pkg("@be-in-digital/ui", ["packages/ui/src/button.tsx"])],
       new Set(["@be-in-digital/ui"]),
     )
 
     expect(drifted).toEqual([])
-    expect(rows[0].state).toBe("covered")
+    expect(rows[0].state).toBe("waiting")
+    expect(waiting.map((row: Row) => row.name)).toEqual(["@be-in-digital/ui"])
   })
 
   test("a changeset naming a DIFFERENT package does not", () => {
@@ -124,7 +133,7 @@ describe("summariseDrift", () => {
       new Set(["@be-in-digital/d"]),
     )
 
-    expect(rows.map((row: Row) => row.state)).toEqual(["drifted", "unknown", "covered", "clean"])
+    expect(rows.map((row: Row) => row.state)).toEqual(["drifted", "unknown", "waiting", "clean"])
   })
 })
 
@@ -159,5 +168,46 @@ describe("what it tells the reader", () => {
 
   test("no packages at all is a sentence, not a crash on Math.max", () => {
     expect(formatTable([])).toContain("No publishable packages")
+  })
+})
+
+/**
+ * The half of the report that used to be a single reassuring word.
+ *
+ * `covered` was printed in the same column as `clean`, under "Every package
+ * with source changes since its last release carries a changeset." — and the
+ * run exited 0 with no annotation of any kind, while `publish-mirror --check`
+ * exited 1 on the same package. Nothing here gates: batching fixes into one
+ * release is the intended workflow. What is asserted is that the run SAYS it.
+ */
+describe("a release that has not been cut", () => {
+  const { rows, waiting } = summariseDrift(
+    [pkg("@be-in-digital/ui", ["packages/ui/src/a.ts", "packages/ui/src/b.ts"])],
+    new Set(["@be-in-digital/ui"]),
+  )
+
+  test("the row says what the registry is serving, not that all is well", () => {
+    const table = formatTable(rows)
+
+    expect(table).toContain("waiting")
+    expect(table).toContain("registry still serves the 1.0.0 built before them")
+    // The word that made a reader stop reading.
+    expect(table).not.toContain("covered")
+  })
+
+  test("the annotation names the packages and what a client installs", () => {
+    const line = describeWaiting(waiting)
+
+    expect(line).toContain("@be-in-digital/ui@1.0.0")
+    expect(line).toContain("2 file(s)")
+    expect(line).toContain("a client site installs that one")
+  })
+
+  test("the summary says the release has not happened, not that it has", () => {
+    const summary = formatWaitingSummary(waiting)
+
+    expect(summary).toContain("waiting on a release")
+    expect(summary).toContain("BEFORE")
+    expect(summary).toContain("pnpm version-packages")
   })
 })

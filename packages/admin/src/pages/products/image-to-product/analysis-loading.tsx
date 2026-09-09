@@ -74,7 +74,7 @@ export function AnalysisLoading({ className, onCancel }: AnalysisLoadingProps) {
                         </div>
                       ) : (
                         <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-muted-foreground/30">
-                          <span className="text-xs text-muted-foreground/50">
+                          <span className="text-xs text-muted-foreground">
                             {index + 1}
                           </span>
                         </div>
@@ -88,7 +88,7 @@ export function AnalysisLoading({ className, onCancel }: AnalysisLoadingProps) {
                           ? "font-medium text-primary"
                           : isActive
                             ? "font-medium text-foreground"
-                            : "text-muted-foreground/50"
+                            : "text-muted-foreground"
                       }`}
                     >
                       {state.text}

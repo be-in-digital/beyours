@@ -61,7 +61,7 @@ function DonutChart({
   if (isEmpty) {
     return (
       <div className="flex h-[180px] flex-col items-center justify-center gap-2 text-muted-foreground">
-        <PieChartIcon className="h-8 w-8 text-muted-foreground/30" />
+        <PieChartIcon className="h-8 w-8 text-muted-foreground" />
         <p className="text-xs">Aucune donnée</p>
       </div>
     )

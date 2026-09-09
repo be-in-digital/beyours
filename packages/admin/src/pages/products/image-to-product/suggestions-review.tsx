@@ -97,7 +97,7 @@ export function SuggestionsReview({
             <p className="font-medium text-amber-700 dark:text-amber-500">
               {newCategories.length} categorie(s) sera/seront creee(s) :
             </p>
-            <ul className="mt-1 space-y-0.5 text-amber-600 dark:text-amber-400">
+            <ul className="mt-1 space-y-0.5 text-warning">
               {newCategories.map((name) => (
                 <li key={name}>• {name}</li>
               ))}

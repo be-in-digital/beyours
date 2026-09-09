@@ -8,7 +8,16 @@ import {
   formatOwedBumpSummary,
   owedBump,
 } from "../../../scripts/lib/pending-release.mjs"
-import { publishablePackages, REGISTRY, unpublishedPackages } from "../../../scripts/lib/registry.mjs"
+import {
+  ABSENT,
+  anyUnreachable,
+  classifyLookupError,
+  FOUND,
+  publishablePackages,
+  REGISTRY,
+  UNREACHABLE,
+  unpublishedPackages,
+} from "../../../scripts/lib/registry.mjs"
 
 /** What the lib returns. It is `.mjs`, so nothing here is inferred for us. */
 interface Pkg {
@@ -16,7 +25,11 @@ interface Pkg {
   version: string
   dir: string
 }
-type Resolved = Pkg & { published: string | null }
+type Resolved = Pkg & {
+  published: string | null
+  publishedState: "found" | "absent" | "unreachable"
+  lookupCode: string | null
+}
 
 /**
  * Whether a push to `main` will publish anything.
@@ -81,7 +94,7 @@ describe("unpublishedPackages", () => {
     const pending = unpublishedPackages(workspace, (name) => registry[name] ?? null)
 
     expect(pending.map((pkg: Resolved) => pkg.name)).toEqual(["@x/moved"])
-    expect(pending[0].published).toBe("1.9.0")
+    expect(pending[0]!.published).toBe("1.9.0")
   })
 
   test("a package the registry has never heard of will publish", () => {
@@ -95,10 +108,46 @@ describe("unpublishedPackages", () => {
     // package as one that would publish. The gate then runs the suite on a
     // push that may publish nothing — the harmless direction. The other
     // direction publishes over a red suite, which is #308 itself.
-    const pending = unpublishedPackages(workspace, () => null)
+    const pending = unpublishedPackages(workspace, () => ({
+      version: null,
+      state: UNREACHABLE,
+      code: "E401",
+    }))
 
     expect(pending.length).toBe(workspace.length)
     expect(pending.every((pkg: Resolved) => pkg.published === null)).toBe(true)
+  })
+
+  test("a lookup that FAILED is not a registry that answered nothing", () => {
+    // The defect this pair of states exists for. Without a token `npm view`
+    // answers `E401` for every package; `publishedVersion` returned null for
+    // every package; and the plan printed `WILL PUBLISH (registry has
+    // nothing)` for nine packages the registry serves. Same null, two facts,
+    // and the one anybody reads before believing the plan was the false one.
+    const refused = unpublishedPackages(workspace, () => ({
+      version: null,
+      state: UNREACHABLE,
+      code: "E401",
+    }))
+    const missing = unpublishedPackages(workspace, () => ({ version: null, state: ABSENT, code: "E404" }))
+
+    expect(refused.every((pkg: Resolved) => pkg.publishedState === UNREACHABLE)).toBe(true)
+    expect(refused[0]!.lookupCode).toBe("E401")
+    expect(missing.every((pkg: Resolved) => pkg.publishedState === ABSENT)).toBe(true)
+    expect(anyUnreachable(refused)).toBe(true)
+    expect(anyUnreachable(missing)).toBe(false)
+  })
+
+  test("a plain `name => version` lookup still works, and is never `unreachable`", () => {
+    // A stub in a test has no network to fail on, so a null from one means
+    // "not published". Keeping that shape working is what lets the arithmetic
+    // above be tested without a registry at all.
+    const registry: Record<string, string> = { "@x/moved": "1.9.0" }
+    const pending = unpublishedPackages(workspace, (name: string) => registry[name] ?? null)
+
+    expect(pending.map((pkg: Resolved) => pkg.name)).toEqual(["@x/moved", "@x/still"])
+    expect(pending[0]!.publishedState).toBe(FOUND)
+    expect(pending[1]!.publishedState).toBe(ABSENT)
   })
 
   test("nothing pending is an empty list, which is the 96% case", () => {
@@ -111,6 +160,33 @@ describe("unpublishedPackages", () => {
 describe("where it looks", () => {
   test("GitHub Packages, the registry a client installs from", () => {
     expect(REGISTRY).toBe("https://npm.pkg.github.com")
+  })
+})
+
+/**
+ * Which npm failures mean "the registry has no such package".
+ *
+ * Exactly one of them. GitHub Packages is private, so a missing or expired
+ * `NODE_AUTH_TOKEN` produces `E401` — measured: ten of ten packages, on a
+ * token with no `read:packages` scope — and reading that as "never published"
+ * is how the plan came to assert something about a registry that had refused
+ * to answer it.
+ */
+describe("classifyLookupError", () => {
+  test("E404 is the registry answering: no such package", () => {
+    expect(classifyLookupError("E404")).toBe(ABSENT)
+  })
+
+  test("every authentication failure is a non-answer", () => {
+    for (const code of ["E401", "E403", "ENEEDAUTH"]) {
+      expect(classifyLookupError(code)).toBe(UNREACHABLE)
+    }
+  })
+
+  test("so is a network fault, and so is a code nobody has read", () => {
+    for (const code of ["ENOTFOUND", "ETIMEDOUT", "EAI_AGAIN", "E500", null]) {
+      expect(classifyLookupError(code)).toBe(UNREACHABLE)
+    }
   })
 })
 
