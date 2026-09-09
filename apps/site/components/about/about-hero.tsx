@@ -65,7 +65,7 @@ export function AboutHero() {
           <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.08] tracking-[-0.02em] text-balance text-foreground sm:text-5xl lg:text-6xl">
             Une équipe au service
             <br className="hidden sm:block" />
-            de la <span className="text-primary">restauration digitale</span>
+            de la <span className="text-primary-ink">restauration digitale</span>
           </h1>
         </FadeIn>
 
@@ -88,7 +88,7 @@ export function AboutHero() {
             </button>
             <a
               href="#story"
-              className="inline-flex items-center gap-2 text-base text-secondary-foreground transition-colors duration-200 hover:text-primary"
+              className="inline-flex items-center gap-2 text-base text-secondary-foreground transition-colors duration-200 hover:text-primary-ink"
             >
               Découvrir notre histoire
               <ArrowDown className="h-4 w-4" strokeWidth={1.8} />
@@ -115,7 +115,7 @@ export function AboutHero() {
                       : ""
                   }`}
                 >
-                  <span className="mb-4 inline-grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <span className="mb-4 inline-grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary-ink">
                     <Icon className="h-5 w-5" strokeWidth={1.8} />
                   </span>
                   <h3 className="mb-1 font-display text-lg font-semibold text-foreground">

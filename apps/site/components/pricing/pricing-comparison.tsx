@@ -9,7 +9,7 @@ import { SectionBadge } from "@/components/ui/section-badge";
 function Check() {
   return (
     <svg
-      className="w-5 h-5 text-primary"
+      className="w-5 h-5 text-primary-ink"
       viewBox="0 0 20 20"
       fill="none"
     >
@@ -94,7 +94,7 @@ export function PricingComparison() {
               <div className="text-sm font-medium text-muted-foreground text-center">
                 Essentielle
               </div>
-              <div className="text-sm font-medium text-primary text-center">
+              <div className="text-sm font-medium text-primary-ink text-center">
                 Premium
               </div>
             </div>
@@ -108,7 +108,7 @@ export function PricingComparison() {
                     <div
                       className={`px-4 sm:px-6 py-3 bg-primary/[0.06] ${catIndex > 0 ? "border-t border-[color:var(--border)]" : ""}`}
                     >
-                      <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+                      <span className="text-xs font-semibold text-primary-ink uppercase tracking-wider">
                         {category.name}
                       </span>
                     </div>

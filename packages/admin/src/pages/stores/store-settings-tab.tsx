@@ -106,7 +106,7 @@ export function StoreSettingsTab({
             <div className="flex items-center gap-3 min-w-0">
               <CardTitle className="text-base">Services disponibles</CardTitle>
               {customizeServices && (
-                <Badge variant="outline" className="text-xs border-primary/30 text-primary shrink-0">
+                <Badge variant="outline" className="text-xs border-primary/30 text-primary-ink shrink-0">
                   Personnalisé
                 </Badge>
               )}
@@ -180,7 +180,7 @@ export function StoreSettingsTab({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {customizeMinOrder && (
-                  <Badge variant="outline" className="text-xs border-primary/30 text-primary">Personnalisé</Badge>
+                  <Badge variant="outline" className="text-xs border-primary/30 text-primary-ink">Personnalisé</Badge>
                 )}
                 <Switch checked={customizeMinOrder} onCheckedChange={setCustomizeMinOrder} />
               </div>
@@ -211,7 +211,7 @@ export function StoreSettingsTab({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {customizeDeliveryRadius && (
-                  <Badge variant="outline" className="text-xs border-primary/30 text-primary">Personnalisé</Badge>
+                  <Badge variant="outline" className="text-xs border-primary/30 text-primary-ink">Personnalisé</Badge>
                 )}
                 <Switch checked={customizeDeliveryRadius} onCheckedChange={setCustomizeDeliveryRadius} />
               </div>
@@ -242,7 +242,7 @@ export function StoreSettingsTab({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {customizeDeliveryFee && (
-                  <Badge variant="outline" className="text-xs border-primary/30 text-primary">Personnalisé</Badge>
+                  <Badge variant="outline" className="text-xs border-primary/30 text-primary-ink">Personnalisé</Badge>
                 )}
                 <Switch checked={customizeDeliveryFee} onCheckedChange={setCustomizeDeliveryFee} />
               </div>
@@ -273,7 +273,7 @@ export function StoreSettingsTab({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {customizeDeliveryFree && (
-                  <Badge variant="outline" className="text-xs border-primary/30 text-primary">Personnalisé</Badge>
+                  <Badge variant="outline" className="text-xs border-primary/30 text-primary-ink">Personnalisé</Badge>
                 )}
                 <Switch checked={customizeDeliveryFree} onCheckedChange={setCustomizeDeliveryFree} />
               </div>

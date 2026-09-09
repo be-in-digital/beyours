@@ -142,7 +142,7 @@ export function ScratchCard({
               ))}
             </div>
             <p
-              className={`mt-3 font-display text-lg font-bold ${won ? "text-primary" : "text-muted-foreground"}`}
+              className={`mt-3 font-display text-lg font-bold ${won ? "text-primary-ink" : "text-muted-foreground"}`}
             >
               {won ? prizeLabel : "Pas cette fois…"}
             </p>

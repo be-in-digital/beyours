@@ -38,7 +38,7 @@ export function StorySection() {
           <div className="mx-auto mt-6 mb-16 max-w-3xl text-center lg:mb-20">
             <h2 className="font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-balance text-foreground sm:text-4xl lg:text-5xl">
               Né d&apos;un constat.{" "}
-              <span className="text-primary">Construit avec conviction.</span>
+              <span className="text-primary-ink">Construit avec conviction.</span>
             </h2>
           </div>
         </FadeIn>
@@ -65,7 +65,7 @@ export function StorySection() {
                   {/* Content */}
                   <div className="flex-1 pl-12 sm:pl-0">
                     <div className="rounded-2xl border border-[color:var(--border)] bg-surface-1 p-6 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] transition-transform duration-300 hover:-translate-y-1">
-                      <span className="text-xs font-semibold uppercase tracking-widest text-primary">
+                      <span className="text-xs font-semibold uppercase tracking-widest text-primary-ink">
                         {milestone.year}
                       </span>
                       <h3 className="mb-3 mt-2 font-display text-xl font-semibold text-foreground sm:text-2xl">

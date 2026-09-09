@@ -45,7 +45,7 @@ export function CommissionCalculator() {
         <FadeIn>
           <div className="rounded-2xl border border-[color:var(--border)] bg-surface-1 p-6 sm:p-10 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
             <div className="max-w-2xl">
-              <p className="text-sm font-semibold text-primary">
+              <p className="text-sm font-semibold text-primary-ink">
                 Faites le calcul
               </p>
               <h2 className="font-display text-2xl sm:text-3xl font-semibold tracking-[-0.02em] leading-[1.15] mt-2">
@@ -94,7 +94,7 @@ export function CommissionCalculator() {
                     Commissions reversées aux plateformes
                   </span>
                   <span className="text-right">
-                    <span className="block font-display text-2xl font-semibold text-primary">
+                    <span className="block font-display text-2xl font-semibold text-primary-ink">
                       {formatPrice(yearlyCommission)}&nbsp;€/an
                     </span>
                     <span className="block text-xs text-muted-foreground">
@@ -121,7 +121,7 @@ export function CommissionCalculator() {
                   <p className="text-sm text-foreground leading-relaxed">
                     En basculant ces commandes sur votre site, l&apos;offre
                     Essentielle est{" "}
-                    <span className="font-semibold text-primary">
+                    <span className="font-semibold text-primary-ink">
                       rentabilisée en{" "}
                       {paybackMonths === 1
                         ? "1 mois"

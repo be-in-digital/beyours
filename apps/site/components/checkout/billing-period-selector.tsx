@@ -40,7 +40,7 @@ export function BillingPeriodSelector({
           Annuel
         </span>
         {value === "yearly" && (
-          <span className="text-xs text-primary font-medium bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full">
+          <span className="text-xs text-primary-ink font-medium bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full">
             -2 mois offerts
           </span>
         )}

@@ -95,6 +95,24 @@ export interface ScanOptions {
   /** Extra scope selectors to read out of `globals.css`. */
   scopes?: string[]
   /**
+   * Stylesheets layered over `globals.css`, in cascade order.
+   *
+   * WHY THIS EXISTS. `app/layout.tsx` imports `./globals.css` and then
+   * `@/site/theme.css`, and `pnpm template:apply <slug>` overwrites that second
+   * file from one of the 51 verticals under `templates/` — 45 to 53 token
+   * overrides, chosen at clone time. A sweep of `globals.css` alone measures
+   * the engine default, which is the ONE palette no delivered site runs.
+   *
+   * `loadTokens` has taken overlays since the token matrix was written. This
+   * one did not pass them, so the CLASS sweep — the half that resolves
+   * `text-primary on bg-muted` and every other utility pair — went on reading
+   * the default 51 times over. Measured across the catalogue with the argument
+   * wired through: 49 of 51 templates carried at least one guardable failing
+   * pair, 272 pairs in all, none of them visible to the guard written to catch
+   * exactly that.
+   */
+  overlays?: string[]
+  /**
    * Report every pair below this ratio instead of below the WCAG floor.
    *
    * For a liveness check, not for grading: a scanner that has stopped
@@ -545,7 +563,9 @@ export function scanContrast(options: ScanOptions): ContrastFailure[] {
     ...scopes,
     ...scopes.map((scope) => `.dark ${scope}`),
   ]
-  const tokens = loadTokens(appDir, selectors)
+  // The real cascade: globals first, then whatever `layout.tsx` layers on top.
+  // Defaulting to `[]` keeps the engine-default sweep exactly as it was.
+  const tokens = loadTokens(appDir, selectors, options.overlays ?? [])
   const resolver = new Resolver(loadTailwindPalette(appDir), tokens)
 
   const failures: ContrastFailure[] = []

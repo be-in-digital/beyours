@@ -279,6 +279,48 @@ describe("orders.create — the weekly schedule", () => {
     expect(code).toBe("outside_opening_hours")
   })
 
+  test("follows the global week when the store row was never saved", async () => {
+    // THE 4 A.M. CASE, reproduced. `useGlobalHours` is `v.optional(v.boolean())`
+    // and a store nobody has opened in the dashboard since the column landed
+    // carries NO value — which the resolver read as "keep your own hours" while
+    // the Horaires tab showed the switch ON and the sentence « Cet
+    // établissement utilise les horaires globaux » above the global week.
+    //
+    // So the owner set the global week to 02:00–03:00, saw the store screen
+    // agree, and the storefront went on serving its seeded 09:00–22:00: no
+    // closed banner, every add-to-cart button live, and an order landing in a
+    // kitchen with nobody in it. Absent now means "follow global", as every
+    // other layer already said it did.
+    const t = newHarness()
+    await seedGlobalSettings(t, { hours: week("02:00", "03:00") })
+    const storeId = await seedStore(t, week("09:00", "22:00"))
+    const productId = await seedProduct(t, storeId)
+
+    // 18:29 Paris, far outside 02:00–03:00 and squarely inside 09:00–22:00.
+    vi.setSystemTime(Date.UTC(2029, 6, 3, 16, 29, 0))
+    const { accepted, code } = await attempt(t, storeId, productId)
+
+    expect(accepted).toBe(false)
+    expect(code).toBe("outside_opening_hours")
+  })
+
+  test("keeps the location's own week when the flag is explicitly off", async () => {
+    // The other direction, so the fix above cannot be read as "global always
+    // wins". An owner who turns the switch OFF has said so, and that store
+    // keeps serving on its own hours whatever the deployment-wide week says.
+    const t = newHarness()
+    await seedGlobalSettings(t, { hours: week("02:00", "03:00") })
+    const storeId = await seedStore(t, week("09:00", "22:00"), {
+      useGlobalHours: false,
+    })
+    const productId = await seedProduct(t, storeId)
+
+    vi.setSystemTime(Date.UTC(2029, 6, 3, 16, 29, 0))
+    const { accepted } = await attempt(t, storeId, productId)
+
+    expect(accepted).toBe(true)
+  })
+
   test("does not refuse a location that has declared no week at all", async () => {
     // `hours` is required by the schema and `stores.create` seeds a full week,
     // so an empty array means nobody declared anything — and there is nothing

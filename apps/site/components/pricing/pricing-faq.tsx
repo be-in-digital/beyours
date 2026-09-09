@@ -29,7 +29,7 @@ function FaqItem({
         className="w-full flex items-center justify-between gap-4 px-5 sm:px-6 py-4 sm:py-5 text-left cursor-pointer group"
         aria-expanded={isOpen}
       >
-        <span className="text-sm sm:text-base font-medium text-foreground group-hover:text-primary transition-colors">
+        <span className="text-sm sm:text-base font-medium text-foreground group-hover:text-primary-ink transition-colors">
           {question}
         </span>
         <div
@@ -40,7 +40,7 @@ function FaqItem({
           }`}
         >
           <svg
-            className={`w-3 h-3 transition-colors ${isOpen ? "text-primary" : "text-muted-foreground/60"}`}
+            className={`w-3 h-3 transition-colors ${isOpen ? "text-primary-ink" : "text-muted-foreground/60"}`}
             viewBox="0 0 12 12"
             fill="none"
             stroke="currentColor"

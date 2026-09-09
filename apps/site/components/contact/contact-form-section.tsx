@@ -168,7 +168,7 @@ export function ContactFormSection() {
 
               {formState === "sent" ? (
                 <div className="py-12 text-center">
-                  <span className="mx-auto mb-4 inline-grid h-16 w-16 place-items-center rounded-full bg-primary/10 text-primary">
+                  <span className="mx-auto mb-4 inline-grid h-16 w-16 place-items-center rounded-full bg-primary/10 text-primary-ink">
                     <CheckCircle2 className="h-8 w-8" strokeWidth={1.8} />
                   </span>
                   <h3 className="mb-2 font-display text-xl font-semibold text-foreground">
@@ -179,7 +179,7 @@ export function ContactFormSection() {
                   </p>
                   <button
                     onClick={() => setFormState("idle")}
-                    className="cursor-pointer text-sm font-medium text-primary transition-colors hover:text-primary/80"
+                    className="cursor-pointer text-sm font-medium text-primary-ink transition-colors hover:text-primary-ink/80"
                   >
                     Envoyer un autre message
                   </button>
@@ -340,7 +340,7 @@ export function ContactFormSection() {
                   </button>
 
                   {formState === "error" && (
-                    <p className="text-center text-sm text-primary" role="alert">
+                    <p className="text-center text-sm text-primary-ink" role="alert">
                       L&apos;envoi a échoué. Réessayez, ou écrivez-nous directement
                       à {SITE_EMAIL}.
                     </p>
@@ -355,7 +355,7 @@ export function ContactFormSection() {
             <div className="flex flex-1 flex-col gap-6">
               {/* Booking CTA card */}
               <div className="rounded-2xl border border-[color:var(--border-accent)] bg-surface-1 p-8 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] sm:p-10">
-                <span className="mb-5 inline-grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                <span className="mb-5 inline-grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary-ink">
                   <CalendarDays className="h-5 w-5" strokeWidth={1.8} />
                 </span>
                 <h3 className="mb-2 font-display text-xl font-semibold text-foreground">
@@ -377,7 +377,7 @@ export function ContactFormSection() {
               {/* Quick contact cards */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-[color:var(--border)] bg-surface-1 p-5 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
-                  <span className="mb-3 inline-grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <span className="mb-3 inline-grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary-ink">
                     <Mail className="h-[18px] w-[18px]" strokeWidth={1.8} />
                   </span>
                   <h4 className="mb-1 text-sm font-semibold text-foreground">
@@ -385,14 +385,14 @@ export function ContactFormSection() {
                   </h4>
                   <a
                     href={`mailto:${SITE_EMAIL}`}
-                    className="text-sm text-primary transition-colors hover:text-primary/80"
+                    className="text-sm text-primary-ink transition-colors hover:text-primary-ink/80"
                   >
                     {SITE_EMAIL}
                   </a>
                 </div>
 
                 <div className="rounded-2xl border border-[color:var(--border)] bg-surface-1 p-5 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
-                  <span className="mb-3 inline-grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <span className="mb-3 inline-grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary-ink">
                     <Clock className="h-[18px] w-[18px]" strokeWidth={1.8} />
                   </span>
                   <h4 className="mb-1 text-sm font-semibold text-foreground">
@@ -416,7 +416,7 @@ export function ContactFormSection() {
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={social.label}
-                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-[color:var(--border)] bg-surface-2 text-secondary-foreground transition-all duration-200 hover:border-[color:var(--border-accent)] hover:bg-primary/10 hover:text-primary"
+                        className="flex h-10 w-10 items-center justify-center rounded-lg border border-[color:var(--border)] bg-surface-2 text-secondary-foreground transition-all duration-200 hover:border-[color:var(--border-accent)] hover:bg-primary/10 hover:text-primary-ink"
                       >
                         {social.icon}
                       </a>

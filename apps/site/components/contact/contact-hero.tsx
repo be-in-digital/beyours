@@ -20,7 +20,7 @@ export function ContactHero() {
 
         <FadeIn delay={0.2}>
           <h1 className="mt-6 font-display text-4xl font-semibold leading-[1.08] tracking-[-0.02em] text-balance text-foreground sm:text-5xl lg:text-6xl">
-            Parlons de votre <span className="text-primary">projet digital</span>
+            Parlons de votre <span className="text-primary-ink">projet digital</span>
           </h1>
         </FadeIn>
 

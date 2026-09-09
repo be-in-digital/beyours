@@ -53,13 +53,13 @@ export function FeaturesCompactBlock() {
                   className="flex-1 rounded-2xl border border-[color:var(--border)] bg-surface-1 p-6 scroll-mt-24 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]"
                 >
                   {/* Pillar badge */}
-                  <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border-accent)] bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                  <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border-accent)] bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-ink">
                     <span className="h-1 w-1 rounded-full bg-primary" />
                     {pillars[feature.pillar].label}
                   </span>
 
                   {/* Icon */}
-                  <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary-ink">
                     <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
                   </div>
 
@@ -75,7 +75,7 @@ export function FeaturesCompactBlock() {
                     {feature.benefits.map((b) => (
                       <li key={b} className="flex items-start gap-2">
                         <Check
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary"
+                          className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary-ink"
                           strokeWidth={2.4}
                         />
                         <span className="text-xs text-secondary-foreground">

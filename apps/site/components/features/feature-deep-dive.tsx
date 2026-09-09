@@ -49,7 +49,7 @@ export function FeatureDeepDives() {
               {/* Watermark number */}
               <div
                 aria-hidden="true"
-                className={`pointer-events-none absolute top-0 select-none font-display text-[120px] font-bold leading-none text-primary/[0.06] sm:text-[180px] lg:text-[220px] ${
+                className={`pointer-events-none absolute top-0 select-none font-display text-[120px] font-bold leading-none text-primary-ink/[0.06] sm:text-[180px] lg:text-[220px] ${
                   reverse ? "right-0 sm:right-4" : "left-0 sm:left-4"
                 }`}
               >
@@ -65,7 +65,7 @@ export function FeatureDeepDives() {
                 <div className={reverse ? "lg:[direction:ltr]" : ""}>
                   <FadeIn direction={reverse ? "right" : "left"}>
                     {/* Pillar label */}
-                    <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border-accent)] bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                    <span className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border-accent)] bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-ink">
                       <span className="h-1 w-1 rounded-full bg-primary" />
                       {pillars[feature.pillar].label}
                     </span>
@@ -83,7 +83,7 @@ export function FeatureDeepDives() {
                       {feature.title}
                     </h3>
 
-                    <p className="mt-2 text-sm font-semibold text-primary">
+                    <p className="mt-2 text-sm font-semibold text-primary-ink">
                       {feature.subtitle}
                     </p>
 
@@ -95,7 +95,7 @@ export function FeatureDeepDives() {
                     <ul className="mt-6 space-y-3">
                       {feature.benefits.map((benefit) => (
                         <li key={benefit} className="flex items-start gap-3">
-                          <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                          <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary-ink">
                             <Check className="h-3 w-3" strokeWidth={2.8} />
                           </span>
                           <span className="text-sm text-secondary-foreground">

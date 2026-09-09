@@ -206,7 +206,7 @@ function SignUpForm() {
                   <Input
                     id="name"
                     type="text"
-                    className="h-14 pl-12 pr-4 rounded-2xl border-border bg-muted focus:bg-card transition-all text-card-foreground font-bold placeholder:text-muted-foreground focus:ring-4 focus:ring-primary/10"
+                    className="h-14 pl-12 pr-4 rounded-2xl border-border bg-muted focus:bg-card transition-all text-card-foreground font-bold placeholder:text-muted-foreground focus:ring-4 focus-visible:ring-ring"
                     placeholder="Jean Dupont"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -228,7 +228,7 @@ function SignUpForm() {
                   <Input
                     id="email"
                     type="email"
-                    className="h-14 pl-12 pr-4 rounded-2xl border-border bg-muted focus:bg-card transition-all text-card-foreground font-bold placeholder:text-muted-foreground focus:ring-4 focus:ring-primary/10"
+                    className="h-14 pl-12 pr-4 rounded-2xl border-border bg-muted focus:bg-card transition-all text-card-foreground font-bold placeholder:text-muted-foreground focus:ring-4 focus-visible:ring-ring"
                     placeholder="jean@exemple.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}

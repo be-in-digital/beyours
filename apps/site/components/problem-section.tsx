@@ -32,7 +32,7 @@ export function ProblemSection() {
     <section id="problem" className="relative py-20 sm:py-28">
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         <FadeIn>
-          <p className="text-sm font-semibold text-primary">Le constat</p>
+          <p className="text-sm font-semibold text-primary-ink">Le constat</p>
           <h2 className="mt-3 max-w-2xl font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-balance sm:text-4xl lg:text-[2.75rem]">
             La plupart des restaurants subissent le digital.
           </h2>

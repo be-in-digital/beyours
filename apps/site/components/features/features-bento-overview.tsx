@@ -37,7 +37,7 @@ const featureIcons: Record<string, LucideIcon> = {
 
 function PillarBadge({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border-accent)] bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border-accent)] bg-primary/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-ink">
       <span className="h-1 w-1 rounded-full bg-primary" />
       {label}
     </span>
@@ -72,7 +72,7 @@ function BentoCard({
       </div>
 
       {/* Icon */}
-      <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+      <div className="mb-4 grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary-ink transition-colors group-hover:bg-primary/15">
         <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
       </div>
 
@@ -94,7 +94,7 @@ function BentoCard({
 
       {/* Arrow indicator for deep-dive features */}
       {feature.deepDive && (
-        <div className="mt-4 flex items-center gap-1.5 text-primary/70 transition-colors group-hover:text-primary">
+        <div className="mt-4 flex items-center gap-1.5 text-primary-ink/70 transition-colors group-hover:text-primary-ink">
           <span className="text-[10px] font-semibold uppercase tracking-wider">
             En savoir plus
           </span>
@@ -122,7 +122,7 @@ export function FeaturesBentoOverview() {
           <div className="mb-12 text-center">
             <h2 className="font-display text-2xl font-semibold tracking-[-0.02em] sm:text-3xl lg:text-4xl">
               10 fonctionnalités,{" "}
-              <span className="text-primary">une seule plateforme</span>
+              <span className="text-primary-ink">une seule plateforme</span>
             </h2>
             <p className="mx-auto mt-4 max-w-xl text-sm text-muted-foreground sm:text-base">
               Explorez chaque brique de votre écosystème digital.

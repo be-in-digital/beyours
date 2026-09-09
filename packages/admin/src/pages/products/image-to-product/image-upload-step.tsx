@@ -66,7 +66,7 @@ export function ImageUploadStep({
                   : "border-border hover:border-primary/30"
               }`}
             >
-              <Camera className="h-5 w-5 shrink-0 text-primary" />
+              <Camera className="h-5 w-5 shrink-0 text-primary-ink" />
               <div>
                 <p className="text-sm font-medium">Plat unique</p>
                 <p className="text-xs text-muted-foreground">
@@ -84,7 +84,7 @@ export function ImageUploadStep({
                   : "border-border hover:border-primary/30"
               }`}
             >
-              <FileText className="h-5 w-5 shrink-0 text-primary" />
+              <FileText className="h-5 w-5 shrink-0 text-primary-ink" />
               <div>
                 <p className="text-sm font-medium">Menu / Carte</p>
                 <p className="text-xs text-muted-foreground">

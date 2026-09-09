@@ -126,7 +126,7 @@ export default function InscriptionPage() {
             required
             autoComplete="email"
             placeholder="votre@email.com"
-            className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+            className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
           />
         </div>
 
@@ -146,13 +146,13 @@ export default function InscriptionPage() {
               autoComplete="new-password"
               minLength={8}
               placeholder="8 caractères minimum"
-              className="w-full h-11 px-4 pr-11 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+              className="w-full h-11 px-4 pr-11 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {showPassword ? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -189,7 +189,7 @@ export default function InscriptionPage() {
         Déjà un compte ?{" "}
         <Link
           href="/parrainage/connexion"
-          className="text-primary hover:text-primary/80 transition-colors"
+          className="text-primary-ink hover:text-primary-ink/80 transition-colors"
         >
           Se connecter
         </Link>

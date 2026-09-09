@@ -65,7 +65,7 @@ export function StorefrontPreview({ className = "" }: { className?: string }) {
             <span className="h-2.5 w-2.5 rounded-full bg-surface-4" />
           </div>
           <div className="mx-auto flex items-center gap-1.5 rounded-full bg-background/70 px-3 py-1 text-[10px] font-medium text-muted-foreground">
-            <MapPin className="h-3 w-3 text-primary" strokeWidth={2.2} />
+            <MapPin className="h-3 w-3 text-primary-ink" strokeWidth={2.2} />
             trattoria-nonna.fr
           </div>
         </div>
@@ -89,7 +89,7 @@ export function StorefrontPreview({ className = "" }: { className?: string }) {
                 Trattoria Nonna
               </p>
               <p className="mt-1 flex items-center gap-1.5 text-[11px] text-white/80">
-                <Star className="h-3 w-3 fill-primary text-primary" />
+                <Star className="h-3 w-3 fill-primary text-primary-ink" />
                 4,9 · Cuisine italienne · Bordeaux
               </p>
             </div>
@@ -129,7 +129,7 @@ export function StorefrontPreview({ className = "" }: { className?: string }) {
                 <p className="truncate text-[11px] text-muted-foreground">
                   {dish.desc}
                 </p>
-                <p className="mt-0.5 text-xs font-semibold tabular-nums text-primary">
+                <p className="mt-0.5 text-xs font-semibold tabular-nums text-primary-ink">
                   {eur(dish.price)}
                 </p>
               </div>

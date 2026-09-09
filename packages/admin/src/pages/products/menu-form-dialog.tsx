@@ -523,7 +523,7 @@ function SectionCard({
               onClick={() => onTypeChange(type)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-medium border transition-colors ${
                 isSelected
-                  ? "border-primary bg-primary/5 text-primary"
+                  ? "border-primary bg-primary/5 text-primary-ink"
                   : "border-transparent bg-muted/50 text-muted-foreground hover:bg-muted"
               }`}
             >

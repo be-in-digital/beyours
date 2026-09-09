@@ -219,7 +219,7 @@ export function CampaignWizardDialog({ open, onOpenChange }: CampaignWizardDialo
                   i < step
                     ? "bg-primary text-primary-foreground"
                     : i === step
-                    ? "border-2 border-primary text-primary"
+                    ? "border-2 border-primary text-primary-ink"
                     : "border border-border text-muted-foreground"
                 }`}
               >

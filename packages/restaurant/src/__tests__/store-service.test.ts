@@ -333,11 +333,16 @@ describe('Store Service', () => {
       ).toEqual(storeHours)
     })
 
-    it('treats a store without the flag as having its own hours', () => {
-      // Rows written before the flag existed. Absent is not "follow global".
+    it('treats a store without the flag as following the global hours', () => {
+      // Rows written before the flag existed, and rows nobody has saved since.
+      // Absent IS "follow global" — `validators.ts` defaults the field to
+      // `true`, `stores.create` seeds `true`, and the dashboard switch opens on
+      // with `?? true`. This assertion used to say the opposite, and so did the
+      // resolver: the storefront served 09:00–22:00 while the store screen
+      // stated the global 02:00–03:00 the owner had just saved.
       expect(
         resolveStoreHours({ hours: storeHours }, { hours: globalHours })
-      ).toEqual(storeHours)
+      ).toEqual(globalHours)
     })
 
     it('returns nothing for no store', () => {

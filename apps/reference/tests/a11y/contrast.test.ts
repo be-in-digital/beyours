@@ -239,18 +239,38 @@ describe("the token matrix itself", () => {
    * the two have not drifted apart again. Reach for a `/NN` on a focus ring and
    * the arithmetic above stops describing the product.
    *
-   * SCOPE, STATED. This holds the DESIGN SYSTEM — the primitives every admin
-   * and storefront screen composes from. It does not reach the bespoke
-   * `<input className="… focus:ring-primary/20">` written by hand in the
-   * storefront checkout, the auth pages and the affiliate portal: 91 of those
-   * exist, most pair the faded ring with a border or background change that
-   * has to be judged one at a time, and sweeping them blind would be a visual
-   * change nobody measured. They are a separate population and a separate job.
+   * SCOPE, AND WHY IT IS NOW THE WHOLE PRODUCT. This used to hold the DESIGN
+   * SYSTEM only, and said so: the bespoke `<input className="…
+   * focus:ring-primary/20">` written by hand in the checkout, the auth pages
+   * and the affiliate portal were called "a separate population and a separate
+   * job". They were 88 of them, and they measured 1.10–1.70:1 — worse than the
+   * primitives this test was written to fix, on every field a diner types a
+   * card into:
+   *
+   *   1.318:1  admin, light      ring-primary/20 on bg-muted
+   *   1.149:1  admin, light      ring-primary/10 on bg-background
+   *   1.505:1  storefront, dark  ring-primary/20 on bg-card
+   *   1.696:1  apps/site, light  ring-primary/40 on --background
+   *
+   * And the guard could not see any of them, because its regex named ONE token
+   * literal — `ring-ring/(\d+)`. Swapping `focus-visible:ring-ring` for
+   * `focus-visible:ring-primary/20` on `Button.tsx` took the indicator to
+   * 1.318:1 and this file stayed green. The pattern below now matches a faded
+   * ring in ANY token, which is the property that was actually being asserted.
+   *
+   * `ring-destructive/NN` is the one exclusion, and it is the same one the
+   * original carried: `aria-invalid:ring-destructive/20` is emphasis layered
+   * over a full-opacity `border-destructive`, not the thing that says where the
+   * keyboard is.
    */
   it("renders the focus ring at the opacity measured above", () => {
     const roots = [
       "node_modules/@be-in-digital/ui/src/components",
       "node_modules/@be-in-digital/admin/src",
+      // The app's own trees. The primitives were never where the worst of it
+      // was — these hand-written fields were.
+      "app",
+      "components",
     ]
     const faded: string[] = []
     const walk = (dir: string): void => {
@@ -268,11 +288,14 @@ describe("the token matrix itself", () => {
           readFileSync(path, "utf8")
             .split("\n")
             .forEach((line, index) => {
-              // The focus states only. `aria-invalid:ring-destructive/20` is
-              // emphasis layered over a full-opacity `border-destructive`, not
-              // the thing that says where the keyboard is.
-              const match = line.match(/(?:focus-visible|focus)\]?:ring-ring\/(\d+)/)
-              if (match) faded.push(`${path}:${index + 1} — ring-ring/${match[1]}`)
+              // The focus states only, and ANY token rather than one literal.
+              // `aria-invalid:ring-destructive/20` is emphasis layered over a
+              // full-opacity `border-destructive`, not the thing that says
+              // where the keyboard is, so it stays out.
+              const match = line.match(
+                /(?:focus-visible|focus)\]?:ring-(?!destructive\/)([a-z-]+)\/(\d+)/
+              )
+              if (match) faded.push(`${path}:${index + 1} — ring-${match[1]}/${match[2]}`)
             })
         }
       }

@@ -130,7 +130,7 @@ export function TemplatePreview({
                   key={item}
                   className="flex items-center gap-2.5 text-sm text-foreground"
                 >
-                  <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary/12 text-primary">
+                  <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary/12 text-primary-ink">
                     <Check className="h-3 w-3" strokeWidth={2.5} />
                   </span>
                   {item}

@@ -75,7 +75,7 @@ export function PricingMaintenance() {
           {maintenanceIncluded.map((item) => (
             <StaggerItem key={item.title}>
               <div className="rounded-xl border border-[color:var(--border)] bg-surface-1 p-5 h-full shadow-[0_8px_24px_-18px_rgba(112,60,34,0.3)]">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary mb-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary-ink mb-3">
                   {iconMap[item.icon]}
                 </div>
                 <h3 className="text-sm font-semibold text-foreground mb-1.5">

@@ -253,7 +253,7 @@ function ModuleCard({
       <div
         className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 transition-all duration-300 ${
           isHovered
-            ? "bg-primary/15 text-primary border border-primary/25 shadow-[0_0_12px_rgba(82,207,175,0.15)]"
+            ? "bg-primary/15 text-primary-ink border border-primary/25 shadow-[0_0_12px_rgba(82,207,175,0.15)]"
             : "bg-white/[0.04] text-white/40 border border-white/[0.06]"
         }`}
       >
@@ -327,7 +327,7 @@ function CenterHub({ activeModule }: { activeModule: string | null }) {
                 <div
                   className={`text-xs font-bold mt-0.5 transition-colors duration-300 ${
                     activeModule === stat.area
-                      ? "text-primary/80"
+                      ? "text-primary-ink/80"
                       : "text-white/50"
                   }`}
                 >

@@ -154,7 +154,7 @@ export function WhitelistModal() {
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="text-primary"
+                  className="text-primary-ink"
                 >
                   <path d="M5 12l5 5L20 7" />
                 </svg>
@@ -189,7 +189,7 @@ export function WhitelistModal() {
               {/* Selected plan indicator */}
               <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary/[0.06] border border-primary/15 mb-6">
                 <div className="w-2 h-2 rounded-full bg-primary/60" />
-                <span className="text-sm text-primary/80 font-medium">
+                <span className="text-sm text-primary-ink/80 font-medium">
                   {planLabels[selectedPlan]}
                 </span>
               </div>
@@ -264,7 +264,7 @@ export function WhitelistModal() {
                     onChange={handleChange}
                     rows={3}
                     placeholder="Parlez-nous de votre projet..."
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/30 focus:ring-1 focus:ring-primary/20 transition-all resize-none"
+                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/30 focus:ring-1 focus-visible:ring-ring transition-all resize-none"
                   />
                 </div>
 
@@ -366,7 +366,7 @@ function FieldInput({
     <div>
       <label className="block text-sm text-muted-foreground mb-1.5">
         {label}
-        {required && <span className="text-primary/60 ml-0.5">*</span>}
+        {required && <span className="text-primary-ink/60 ml-0.5">*</span>}
       </label>
       <input
         type={type}
@@ -375,7 +375,7 @@ function FieldInput({
         onChange={onChange}
         required={required}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/30 focus:ring-1 focus:ring-primary/20 transition-all"
+        className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/30 focus:ring-1 focus-visible:ring-ring transition-all"
       />
     </div>
   );

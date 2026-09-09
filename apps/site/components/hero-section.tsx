@@ -64,7 +64,7 @@ export function HeroSection() {
                 delay={0.12}
                 className="block"
               />
-              <span className="mt-1 block text-primary">
+              <span className="mt-1 block text-primary-ink">
                 <RevealText
                   as="span"
                   text="sans commission."
@@ -161,7 +161,7 @@ export function HeroSection() {
               key={t}
               className="inline-flex items-center gap-2 text-sm text-muted-foreground"
             >
-              <Check className="h-4 w-4 text-primary" strokeWidth={2.5} />
+              <Check className="h-4 w-4 text-primary-ink" strokeWidth={2.5} />
               {t}
             </span>
           ))}

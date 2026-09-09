@@ -108,7 +108,7 @@ export default function DashboardPage() {
           {isAdmin && (
             <Link
               href="/admin/apporteurs"
-              className="inline-flex items-center h-9 px-4 rounded-lg bg-warning-soft border border-warning-border text-warning-strong text-sm font-medium hover:bg-warning/15 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="inline-flex items-center h-9 px-4 rounded-lg bg-warning-soft border border-warning-border text-warning-strong text-sm font-medium hover:bg-warning/15 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Console admin
             </Link>
@@ -242,14 +242,14 @@ export default function DashboardPage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div className="flex-1">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
-                <span className="text-lg font-mono font-bold text-primary">
+                <span className="text-lg font-mono font-bold text-primary-ink">
                   {referralCode.code}
                 </span>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(referralCode.code);
                   }}
-                  className="text-primary/60 hover:text-primary transition-colors"
+                  className="text-primary-ink/60 hover:text-primary-ink transition-colors"
                   title="Copier le code"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

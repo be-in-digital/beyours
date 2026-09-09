@@ -220,7 +220,7 @@ export function OrderSummary({
                   onChange={(e) => setPromoInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleApplyPromo()}
                   placeholder="Entrez votre code"
-                  className="h-12 flex-1 rounded-xl border-border bg-muted px-4 text-sm font-bold uppercase tracking-widest transition-all focus:bg-card focus:ring-primary/20"
+                  className="h-12 flex-1 rounded-xl border-border bg-muted px-4 text-sm font-bold uppercase tracking-widest transition-all focus:bg-card focus-visible:ring-ring"
                 />
                 <button
                   type="button"

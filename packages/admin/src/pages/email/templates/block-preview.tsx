@@ -349,7 +349,7 @@ export function BlockPreview({ block, isSelected, onClick }: BlockPreviewProps) 
               {block.city && <p className="text-xs text-muted-foreground">{block.city}</p>}
               {block.phone && <p className="text-xs text-muted-foreground">{block.phone}</p>}
               {block.email && <p className="text-xs text-muted-foreground">{block.email}</p>}
-              {block.mapUrl && <p className="text-xs text-primary">Voir sur la carte</p>}
+              {block.mapUrl && <p className="text-xs text-primary-ink">Voir sur la carte</p>}
             </div>
           </div>
         )

@@ -29,10 +29,41 @@ describe("resolveStoreHours", () => {
   const globalWeek = week("08:00", "16:00")
   const storeWeek = week("11:00", "23:00")
 
-  it("takes the establishment's own week by default", () => {
+  it("follows the global week when the flag was never written", () => {
+    // THIS ASSERTION USED TO SAY THE OPPOSITE, and the product shipped the
+    // opposite. `useGlobalHours` is `v.optional(v.boolean())`, so a store
+    // nobody has saved since the column landed carries no value — and every
+    // other layer already calls that `true`: `validators.ts` defaults it,
+    // `stores.create` seeds it, and the Horaires switch opens ON with
+    // `store.useGlobalHours ?? true`. Only the resolver read absent as `false`.
+    //
+    // What that cost, reproduced end to end: the owner sets the global week to
+    // 02:00–03:00, the store screen says « Cet établissement utilise les
+    // horaires globaux », and at 18:29 the storefront showed no closed banner
+    // and every add-to-cart button enabled. Open when the owner believed they
+    // had closed. An establishment that wants its own week says so with an
+    // explicit `false`, which is what the switch writes when it is turned off.
     expect(
       resolveStoreHours({ hours: storeWeek }, { hours: globalWeek })
+    ).toEqual(globalWeek)
+  })
+
+  it("keeps the establishment's own week when the flag is explicitly off", () => {
+    expect(
+      resolveStoreHours(
+        { hours: storeWeek, useGlobalHours: false },
+        { hours: globalWeek }
+      )
     ).toEqual(storeWeek)
+  })
+
+  it("falls back to the location's own week when the flag is absent and no global week exists", () => {
+    // The conservative half of the same choice. An empty result reads as "no
+    // schedule declared" to `isWithinBusinessHoursAt`, which is permission to
+    // serve at any hour — so an unsaved store with no global week keeps its own
+    // rather than becoming a restaurant that is never shut.
+    expect(resolveStoreHours({ hours: storeWeek }, { hours: [] })).toEqual(storeWeek)
+    expect(resolveStoreHours({ hours: storeWeek }, null)).toEqual(storeWeek)
   })
 
   it("takes the global week when the location follows it", () => {

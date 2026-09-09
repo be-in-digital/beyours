@@ -60,7 +60,7 @@ export function ValuesSection() {
           <div className="mx-auto mt-6 mb-16 max-w-3xl text-center lg:mb-20">
             <h2 className="font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-balance text-foreground sm:text-4xl lg:text-5xl">
               Ce qui nous{" "}
-              <span className="text-primary">guide au quotidien</span>
+              <span className="text-primary-ink">guide au quotidien</span>
             </h2>
           </div>
         </FadeIn>
@@ -73,7 +73,7 @@ export function ValuesSection() {
             <StaggerItem key={value.title}>
               <div className="group h-full rounded-2xl border border-[color:var(--border)] bg-surface-1 p-6 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] transition-transform duration-300 hover:-translate-y-1">
                 <div className="flex items-start gap-4">
-                  <span className="mt-0.5 font-display text-2xl font-bold leading-none text-primary/30 transition-colors duration-300 group-hover:text-primary">
+                  <span className="mt-0.5 font-display text-2xl font-bold leading-none text-primary-ink/30 transition-colors duration-300 group-hover:text-primary-ink">
                     {value.keyword}
                   </span>
                   <div className="flex-1">

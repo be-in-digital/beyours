@@ -230,7 +230,7 @@ export function StoreKitchenTab({
                 >
                   <span className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium">{mode.label}</span>
-                    {selected && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                    {selected && <Check className="h-4 w-4 shrink-0 text-primary-ink" />}
                   </span>
                   <span className="mt-1 block text-sm text-muted-foreground">
                     {mode.description}

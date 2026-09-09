@@ -268,7 +268,7 @@ export function AddressManager() {
                 value={addressLabel}
                 onChange={(e) => setAddressLabel(e.target.value)}
                 placeholder="ex: Maison, Bureau"
-                className="h-14 rounded-2xl border-transparent bg-muted px-6 text-sm font-medium transition-all focus:bg-card focus:ring-primary/20"
+                className="h-14 rounded-2xl border-input bg-muted px-6 text-sm font-medium transition-all focus:bg-card focus-visible:ring-ring"
               />
             </div>
 
@@ -283,7 +283,7 @@ export function AddressManager() {
                   ref={addressInputRef}
                   type="text"
                   placeholder="Ex : 12 rue de la Paix, Paris..."
-                  className="storefront-pac-input h-14 w-full rounded-2xl border-2 border-border bg-muted pl-12 pr-6 text-sm font-medium transition-all placeholder:text-muted-foreground focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  className="storefront-pac-input h-14 w-full rounded-2xl border-2 border-border bg-muted pl-12 pr-6 text-sm font-medium transition-all placeholder:text-muted-foreground focus:border-primary focus:bg-card focus:outline-none focus:ring-2 focus-visible:ring-ring"
                 />
               </div>
             </div>
@@ -350,7 +350,7 @@ export function AddressManager() {
                     onChange={(e) => editLocationField("street", e.target.value)}
                     placeholder="123 rue de la Paix"
                     readOnly={addressMode === "selected"}
-                    className="h-14 rounded-2xl border-transparent bg-card px-6 text-sm font-medium transition-all focus:ring-primary/20"
+                    className="h-14 rounded-2xl border-input bg-card px-6 text-sm font-medium transition-all focus-visible:ring-ring"
                   />
                 </div>
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -363,7 +363,7 @@ export function AddressManager() {
                       onChange={(e) => editLocationField("city", e.target.value)}
                       placeholder="Paris"
                       readOnly={addressMode === "selected"}
-                      className="h-14 rounded-2xl border-transparent bg-card px-6 text-sm font-medium transition-all focus:ring-primary/20"
+                      className="h-14 rounded-2xl border-input bg-card px-6 text-sm font-medium transition-all focus-visible:ring-ring"
                     />
                   </div>
                   <div className="space-y-2">
@@ -375,7 +375,7 @@ export function AddressManager() {
                       onChange={(e) => editLocationField("postalCode", e.target.value)}
                       placeholder="75001"
                       readOnly={addressMode === "selected"}
-                      className="h-14 rounded-2xl border-transparent bg-card px-6 text-sm font-medium transition-all focus:ring-primary/20"
+                      className="h-14 rounded-2xl border-input bg-card px-6 text-sm font-medium transition-all focus-visible:ring-ring"
                     />
                   </div>
                 </div>
@@ -387,7 +387,7 @@ export function AddressManager() {
                     value={manualAddress.country}
                     onChange={(e) => setManualAddress((p) => ({ ...p, country: e.target.value }))}
                     readOnly={addressMode === "selected"}
-                    className="h-14 rounded-2xl border-transparent bg-card px-6 text-sm font-medium transition-all focus:ring-primary/20"
+                    className="h-14 rounded-2xl border-input bg-card px-6 text-sm font-medium transition-all focus-visible:ring-ring"
                   />
                 </div>
               </div>

@@ -176,7 +176,7 @@ function ResetPasswordContent() {
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
-                      className="h-16 pl-12 pr-12 rounded-2xl border-border bg-muted focus:bg-card transition-all text-card-foreground font-bold placeholder:text-muted-foreground focus:ring-4 focus:ring-primary/10 focus:border-primary/20"
+                      className="h-16 pl-12 pr-12 rounded-2xl border-border bg-muted focus:bg-card transition-all text-card-foreground font-bold placeholder:text-muted-foreground focus:ring-4 focus-visible:ring-ring focus:border-primary/20"
                       placeholder="Min. 12 caractères"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -210,7 +210,7 @@ function ResetPasswordContent() {
                     <Input
                       id="confirm"
                       type={showPassword ? "text" : "password"}
-                      className="h-16 pl-12 pr-4 rounded-2xl border-border bg-muted focus:bg-card transition-all text-card-foreground font-bold placeholder:text-muted-foreground focus:ring-4 focus:ring-primary/10 focus:border-primary/20"
+                      className="h-16 pl-12 pr-4 rounded-2xl border-border bg-muted focus:bg-card transition-all text-card-foreground font-bold placeholder:text-muted-foreground focus:ring-4 focus-visible:ring-ring focus:border-primary/20"
                       placeholder="••••••••"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}

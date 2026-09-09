@@ -87,7 +87,7 @@ export function InvoiceUpload({
       <label
         htmlFor={`inv-${referralId}`}
         aria-busy={busy}
-        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary-ink transition-colors hover:bg-primary/10"
       >
         <svg
           width="13"

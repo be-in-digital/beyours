@@ -47,7 +47,7 @@ export function PaymentMethodSelector({
           >
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
+                <div className="text-sm font-medium text-foreground transition-colors group-hover:text-primary-ink">
                   {option.label}
                 </div>
                 <div className="mt-0.5 text-xs text-muted-foreground">
@@ -74,7 +74,7 @@ export function PaymentMethodSelector({
         ))}
       </div>
       <div className="flex items-center justify-center gap-2 pt-1 text-xs text-muted-foreground">
-        <ShieldCheck className="h-3.5 w-3.5 text-primary" strokeWidth={1.8} />
+        <ShieldCheck className="h-3.5 w-3.5 text-primary-ink" strokeWidth={1.8} />
         Paiement sécurisé, vos données ne sont jamais stockées sur ce site.
       </div>
     </div>

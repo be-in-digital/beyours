@@ -75,7 +75,7 @@ export function GameWalkthrough() {
     <div className="mt-20">
       {/* Storyboard */}
       <FadeIn>
-        <p className="text-center text-sm font-semibold uppercase tracking-widest text-primary">
+        <p className="text-center text-sm font-semibold uppercase tracking-widest text-primary-ink">
           La boucle qui fait revenir vos clients
         </p>
       </FadeIn>
@@ -85,10 +85,10 @@ export function GameWalkthrough() {
           return (
             <StaggerItem key={s.title}>
               <div className="relative h-full rounded-2xl border border-[color:var(--border)] bg-surface-1 p-4">
-                <span className="absolute right-3 top-3 font-display text-xs font-bold text-primary/40">
+                <span className="absolute right-3 top-3 font-display text-xs font-bold text-primary-ink/40">
                   {i + 1}
                 </span>
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary-ink">
                   <Icon className="h-5 w-5" />
                 </span>
                 <p className="mt-3 text-sm font-semibold text-foreground">

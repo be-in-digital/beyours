@@ -93,7 +93,7 @@ export function SignInDialog({ trigger }: SignInDialogProps) {
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="jean@exemple.fr"
-              className="h-14 rounded-2xl border-transparent bg-muted px-6 text-sm font-medium transition-all focus:bg-card focus:ring-primary/20"
+              className="h-14 rounded-2xl border-input bg-muted px-6 text-sm font-medium transition-all focus:bg-card focus-visible:ring-ring"
             />
           </div>
 
@@ -108,7 +108,7 @@ export function SignInDialog({ trigger }: SignInDialogProps) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="Votre mot de passe"
-                className="h-14 rounded-2xl border-transparent bg-muted px-6 pr-14 text-sm font-medium transition-all focus:bg-card focus:ring-primary/20"
+                className="h-14 rounded-2xl border-input bg-muted px-6 pr-14 text-sm font-medium transition-all focus:bg-card focus-visible:ring-ring"
               />
               <button
                 type="button"

@@ -118,7 +118,7 @@ export function TemplatesCategories() {
                   }}
                   className={`group inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all duration-300 ${
                     isActive
-                      ? "border border-[color:var(--border-accent)] bg-primary/10 text-primary shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]"
+                      ? "border border-[color:var(--border-accent)] bg-primary/10 text-primary-ink shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]"
                       : "border border-[color:var(--border)] bg-surface-1 text-muted-foreground hover:border-[color:var(--border-contrast)] hover:bg-surface-2 hover:text-foreground"
                   }`}
                 >
@@ -129,7 +129,7 @@ export function TemplatesCategories() {
                   {tab.label}
                   <span
                     className={`text-xs tabular-nums ${
-                      isActive ? "text-primary/70" : "text-muted-foreground/60"
+                      isActive ? "text-primary-ink/70" : "text-muted-foreground/60"
                     }`}
                   >
                     {tab.count}
@@ -202,7 +202,7 @@ export function TemplatesCategories() {
                     </p>
                   </div>
                   <ArrowUpRight
-                    className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
+                    className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary-ink"
                     strokeWidth={2}
                   />
                 </Link>

@@ -287,7 +287,7 @@ export default function FacturesPage() {
                         href={inv.hostedInvoiceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-primary-ink hover:underline"
                       >
                         Voir
                         <ExternalLink className="size-3" />

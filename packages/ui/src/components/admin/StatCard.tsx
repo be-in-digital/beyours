@@ -41,7 +41,7 @@ const StatCard = React.forwardRef<HTMLDivElement, StatCardProps>(
             )}
           </div>
           {icon && (
-            <div className="rounded-lg bg-primary/10 p-3 text-primary">
+            <div className="rounded-lg bg-primary/10 p-3 text-primary-ink">
               {icon}
             </div>
           )}
