@@ -230,39 +230,66 @@ if (subpathUnknown.length > 0) {
   )
 }
 
-// Reported even when a changeset covers the package, unlike source drift.
-// A waiting changeset is the normal case for drift and an emergency for this:
-// until `changeset version` runs and the release publishes, the mirror refuses
-// EVERY sync, so an unrelated storefront fix is queued behind it too. The
-// message says which half is missing.
-if (subpathProblems.length > 0) {
-  const level = warnOnly ? "warning" : "error"
-  console.log("")
-  for (const row of subpathProblems) {
-    const paths = row.missing.map((p) => `\`${p}\``).join(", ")
-    const half = covered.has(row.name)
-      ? "A changeset is waiting; the version bump is what is missing — cut the release."
-      : "Run `pnpm changeset` on this pull request."
-    console.log(
-      `::${level} file=${row.dir}/package.json::${row.name} declares ${paths}, which ` +
-        `${row.version} (the version a client installs) does not have. The mirror will refuse ` +
-        `to sync anything until a release carries it. ${half}`
-    )
-  }
+/**
+ * WHICH OF THESE FAILS, and why it is not all of them.
+ *
+ * A subpath a released version does not carry is a hard stop for the mirror:
+ * it refuses every sync until a release carries it, so an unrelated storefront
+ * fix queues behind it too. That makes it tempting to fail on sight. Failing on
+ * sight is wrong, and the first draft of this gate did it — which would have
+ * turned the pull request ADDING a subpath red, every time, for a state that
+ * is unavoidable: the release comes after the merge, so a new subpath is
+ * absent from the published version by definition on the pull request that
+ * writes it.
+ *
+ * The rule is the one this file already applies to drift, for the reason
+ * stated in its header: "A changeset that exists and is waiting is the
+ * intended workflow… A changeset that does NOT exist is never intended and
+ * never resolves itself." So:
+ *
+ *   covered by a changeset  → a warning. The release that will carry it is
+ *                             already written down; `check:pending-release`
+ *                             reports how long it has been waiting.
+ *   not covered             → an error. Nothing will ever carry this subpath,
+ *                             the mirror is deadlocked the moment it merges,
+ *                             and the fix is one command on this pull request.
+ */
+const blocking = subpathProblems.filter((row) => !covered.has(row.name))
+const announced = subpathProblems.filter((row) => covered.has(row.name))
 
-  const summaryFile = process.env.GITHUB_STEP_SUMMARY
-  if (summaryFile) {
-    const lines = subpathProblems.map(
-      (row) => `- \`${row.name}\` declares ${row.missing.join(", ")}, absent from ${row.version}`
-    )
-    appendFileSync(
-      summaryFile,
-      `### Subpaths not in the published version\n\n${lines.join("\n")}\n\n`
-    )
-  }
+for (const row of announced) {
+  const paths = row.missing.map((p) => `\`${p}\``).join(", ")
+  console.log(
+    `::warning file=${row.dir}/package.json::${row.name} declares ${paths}, which ` +
+      `${row.version} (the version a client installs) does not have. A changeset is ` +
+      `waiting, so a release will carry it — until that release publishes, the mirror ` +
+      `cannot sync.`
+  )
 }
 
-if (drifted.length === 0 && subpathProblems.length === 0) {
+for (const row of blocking) {
+  const paths = row.missing.map((p) => `\`${p}\``).join(", ")
+  console.log(
+    `::${warnOnly ? "warning" : "error"} file=${row.dir}/package.json::${row.name} declares ` +
+      `${paths}, which ${row.version} (the version a client installs) does not have, and no ` +
+      `changeset will move its version. The mirror will refuse to sync anything — every ` +
+      `client, including changes unrelated to this one — until a release carries it. Run ` +
+      `\`pnpm changeset\` on this pull request.`
+  )
+}
+
+const subpathSummary = process.env.GITHUB_STEP_SUMMARY
+if (subpathSummary && subpathProblems.length > 0) {
+  const line = (row) =>
+    `- \`${row.name}\` declares ${row.missing.join(", ")}, absent from ${row.version}` +
+    (covered.has(row.name) ? " (a changeset is waiting)" : " — **no changeset**")
+  appendFileSync(
+    subpathSummary,
+    `### Subpaths not in the published version\n\n${subpathProblems.map(line).join("\n")}\n\n`
+  )
+}
+
+if (drifted.length === 0 && blocking.length === 0) {
   console.log("Every package with source changes since its last release carries a changeset.")
   // Only claimed for the packages actually compared. Saying "every declared
   // subpath exists" after reading nine tarballs of ten and failing on all nine
@@ -281,6 +308,7 @@ if (drifted.length === 0 && subpathProblems.length === 0) {
 }
 
 if (drifted.length === 0) process.exit(warnOnly ? 0 : 1)
+
 
 const level = warnOnly ? "warning" : "error"
 for (const row of drifted) {
