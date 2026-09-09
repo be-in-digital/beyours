@@ -248,7 +248,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                                   <AlertDialogTrigger asChild>
                                     <button
                             type="button"
-                            aria-label={`Retirer ${item.productName} du panier`}
+                            aria-label={`Retirer ${item.name} du panier`}
                             className="p-1 text-muted-foreground transition-colors hover:text-destructive"
                           >
                                       <X className="h-4 w-4" />

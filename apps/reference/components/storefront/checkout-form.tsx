@@ -200,11 +200,44 @@ export function CheckoutForm({
     city?: string
     postalCode?: string
   }>({})
-  const addressFieldRefs = {
-    street: useRef<HTMLInputElement>(null),
-    city: useRef<HTMLInputElement>(null),
-    postalCode: useRef<HTMLInputElement>(null),
-  }
+  // Three separate refs rather than one object holding them. The object form
+  // reads fine and `react-hooks/refs` refuses it: reaching into it for a `ref=`
+  // prop is an access during render as far as the rule can tell, and it cannot
+  // distinguish that from a real one. Named individually, each `ref=` is a
+  // plain identifier.
+  const streetRef = useRef<HTMLInputElement>(null)
+  const cityRef = useRef<HTMLInputElement>(null)
+  const postalCodeRef = useRef<HTMLInputElement>(null)
+
+  /**
+   * Which field to put the cursor in, and which attempt asked for it.
+   *
+   * The submit handler used to focus the field itself. That reads a ref inside
+   * a function handed to `handleSubmit` during render, which `react-hooks/refs`
+   * refuses — it cannot see that the function is only ever CALLED on submit.
+   * Naming the target as state and moving the focus into an effect is the
+   * honest fix rather than a suppression: a ref is read where React says refs
+   * are read, after the render that produced the error message.
+   *
+   * `attempt` is what makes a SECOND submission with the same empty field move
+   * the cursor again — without it the state would be unchanged and the effect
+   * would not re-run.
+   */
+  const [focusRequest, setFocusRequest] = useState<{
+    field: "street" | "city" | "postalCode"
+    attempt: number
+  } | null>(null)
+
+  useEffect(() => {
+    if (!focusRequest) return
+    const target =
+      focusRequest.field === "street"
+        ? streetRef
+        : focusRequest.field === "city"
+          ? cityRef
+          : postalCodeRef
+    target.current?.focus()
+  }, [focusRequest])
 
   const globalSettings = useQuery(api.globalSettings.get)
   const payments = globalSettings?.payments
@@ -393,7 +426,12 @@ export function CheckoutForm({
           const first = (["street", "city", "postalCode"] as const).find(
             (field) => missing[field]
           )
-          if (first) addressFieldRefs[first].current?.focus()
+          if (first) {
+            setFocusRequest((previous) => ({
+              field: first,
+              attempt: (previous?.attempt ?? 0) + 1,
+            }))
+          }
           return
         }
         setAddressErrors({})
@@ -773,7 +811,7 @@ export function CheckoutForm({
                       </Label>
                       <Input
                         id="delivery-street"
-                        ref={addressFieldRefs.street}
+                        ref={streetRef}
                         value={manualAddress.street}
                         onChange={(e) => {
                           setManualAddress((p) => ({ ...p, street: e.target.value }))
@@ -809,7 +847,7 @@ export function CheckoutForm({
                         </Label>
                         <Input
                           id="delivery-city"
-                          ref={addressFieldRefs.city}
+                          ref={cityRef}
                           value={manualAddress.city}
                           onChange={(e) => {
                             setManualAddress((p) => ({ ...p, city: e.target.value }))
@@ -844,7 +882,7 @@ export function CheckoutForm({
                         </Label>
                         <Input
                           id="delivery-postal-code"
-                          ref={addressFieldRefs.postalCode}
+                          ref={postalCodeRef}
                           value={manualAddress.postalCode}
                           onChange={(e) => {
                             setManualAddress((p) => ({ ...p, postalCode: e.target.value }))

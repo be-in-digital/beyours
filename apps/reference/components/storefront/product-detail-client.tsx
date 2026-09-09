@@ -178,11 +178,11 @@ export function ProductDetailClient({
           <button
             type="button"
             aria-label={
-              isFavorite(product._id)
+              isFavorite(product._id, storeId)
                 ? `Retirer ${product.name} des favoris`
                 : `Ajouter ${product.name} aux favoris`
             }
-            aria-pressed={isFavorite(product._id)}
+            aria-pressed={isFavorite(product._id, storeId)}
             onClick={() => toggleFavorite(product._id, storeId)}
             className="flex h-12 w-12 items-center justify-center rounded-full bg-card/90 shadow-md backdrop-blur-sm transition-all hover:bg-card hover:scale-110"
           >
