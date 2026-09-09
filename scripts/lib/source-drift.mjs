@@ -187,3 +187,39 @@ export function describeDrift(row) {
     rest > 0 ? ` and ${rest} more` : "",
   ].join("")
 }
+
+/**
+ * Is a package's version in the working tree already ahead of the registry's?
+ *
+ * The third answer `check-source-drift` needs about an unpublished subpath, and
+ * without it two of this repository's guards demand opposite things.
+ *
+ * The subpath half asks whether a CHANGESET is waiting to move the version.
+ * That is right for the normal path and wrong for the one `publish-mirror.mjs`
+ * prints in its own failure text — "run `pnpm version-packages`, commit the
+ * bumped package.json and CHANGELOG.md, and merge". Doing that CONSUMES the
+ * changesets, which is what versioning is, so `.changeset/` empties and the
+ * check calls a finished release "no changeset will move its version".
+ * Measured on #445: `convex-functions` at 6.2.0 against a published 6.0.0, and
+ * `ui` at 4.2.0 against 4.0.0, both reported as deadlocking the mirror by the
+ * very commit that unblocks it.
+ *
+ * A bump already in the tree is stronger evidence than a pending changeset:
+ * `changeset publish` compares each version against the registry and pushes
+ * whatever is missing, so the release is written rather than promised.
+ *
+ * Numeric per segment, so 1.10.0 beats 1.9.0 — a lexical compare gets that
+ * backwards. Anything it cannot parse, and any prerelease of the same version,
+ * answers `false`: the failure direction that reports rather than waves through.
+ */
+export function bumpedAhead(workspaceVersion, publishedVersion) {
+  const parse = (v) => String(v ?? "").split("-")[0].split(".").map(Number)
+  const tree = parse(workspaceVersion)
+  const published = parse(publishedVersion)
+  if (tree.length !== 3 || published.length !== 3) return false
+  if (tree.some(Number.isNaN) || published.some(Number.isNaN)) return false
+  for (let i = 0; i < 3; i++) {
+    if (tree[i] !== published[i]) return tree[i] > published[i]
+  }
+  return false
+}

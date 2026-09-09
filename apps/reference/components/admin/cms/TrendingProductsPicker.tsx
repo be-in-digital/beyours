@@ -38,6 +38,9 @@ export function TrendingProductsPicker() {
     api.stores.getById,
     storeId ? { id: storeId } : "skip"
   )
+  // `listAll`, not `list`: this is the admin choosing which dishes to feature,
+  // so it has to see the ones not currently on sale. `list` is now the diner's
+  // view and stops at `isActive` (#443).
   const allProducts = useQuery(
     api.products.listAll,
     storeId ? { storeId } : "skip"

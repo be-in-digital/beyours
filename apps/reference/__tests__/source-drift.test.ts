@@ -1,6 +1,7 @@
-import { describe, expect, test } from "vitest"
+import { describe, expect, it, test } from "vitest"
 
 import {
+  bumpedAhead,
   describeDrift,
   describeWaiting,
   formatSummary,
@@ -209,5 +210,53 @@ describe("a release that has not been cut", () => {
     expect(summary).toContain("waiting on a release")
     expect(summary).toContain("BEFORE")
     expect(summary).toContain("pnpm version-packages")
+  })
+})
+
+/**
+ * A release already cut is not "no changeset".
+ *
+ * The SUBPATH half of `check:source-drift` asks whether a changeset is waiting
+ * to move a package's version — the right question for the normal path and the
+ * wrong one for the path `publish-mirror.mjs` prints in its own failure text:
+ * run `pnpm version-packages`, commit the bumped manifests, merge.
+ *
+ * Doing that CONSUMES the changesets — versioning is what consumes them — so
+ * `.changeset/` empties and the check reported a finished release as "no
+ * changeset will move its version". Measured on #445: `convex-functions` at
+ * 6.2.0 against a published 6.0.0 and `ui` at 4.2.0 against 4.0.0, both called
+ * deadlocks by the very commit that unblocks them. Two guards, each demanding
+ * what the other forbids, and following either made the other red.
+ *
+ * Distinct from `waiting` above, which is the DRIFT half's answer to the
+ * neighbouring question — a changeset that exists and has not shipped yet.
+ */
+describe("bumpedAhead", () => {
+  it("accepts a version already bumped past the registry's", () => {
+    expect(bumpedAhead("6.2.0", "6.0.0")).toBe(true)
+    expect(bumpedAhead("4.2.0", "4.0.0")).toBe(true)
+    expect(bumpedAhead("1.1.2", "1.1.1")).toBe(true)
+  })
+
+  it("does not accept a version that has not moved", () => {
+    expect(bumpedAhead("6.0.0", "6.0.0")).toBe(false)
+  })
+
+  it("does not accept a version behind the registry", () => {
+    expect(bumpedAhead("6.0.0", "6.1.0")).toBe(false)
+  })
+
+  it("compares segments numerically, not lexically", () => {
+    // A string compare puts "1.10.0" below "1.9.0" and calls a real release
+    // un-cut.
+    expect(bumpedAhead("1.10.0", "1.9.0")).toBe(true)
+    expect(bumpedAhead("2.0.0", "1.9.9")).toBe(true)
+  })
+
+  it("refuses what it cannot read, rather than waving it through", () => {
+    expect(bumpedAhead("not.a.version", "1.0.0")).toBe(false)
+    expect(bumpedAhead("1.0.0", "")).toBe(false)
+    expect(bumpedAhead(undefined as unknown as string, "1.0.0")).toBe(false)
+    expect(bumpedAhead("1.0.0-rc.1", "1.0.0")).toBe(false)
   })
 })

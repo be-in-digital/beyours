@@ -1,5 +1,440 @@
 # Changelog
 
+## 7.0.0
+
+### Major Changes
+
+- 549026f: Refuse an SNS notification from a topic this deployment was never told about
+
+  `isAllowedTopic` answered `true` on an empty list, and the argument for it was
+  that SNS delivers only to a confirmed subscription while `/webhooks/ses` refuses
+  to confirm one. The argument has a hole and the hole is the attack: **nothing
+  requires a subscription at all.** The endpoint is an HTTPS URL that takes a POST
+  from anyone. An attacker publishes on a topic in their own AWS account, keeps
+  the envelope Amazon signed for them, and replays it here — genuine signature,
+  certificate on an allowed host, topic check waved through — after which the
+  handler marks whichever subscribers the body names bounced and complained,
+  suppressing a client's mail to real customers.
+
+  So a deployment with no `SES_SNS_TOPIC_ARN` now refuses notifications as well as
+  confirmations, logging `topic_not_configured` and the ARN it saw, which is the
+  value to paste in. `tasks/webhook-migration-checklist.md` already required the
+  variable to be set before a subscription is confirmed, and the SES subscription
+  has not yet been repointed, so nothing in the fleet is currently relying on the
+  old behaviour.
+
+  `SES_SNS_ALLOW_ANY_TOPIC=true` restores it for a deployment caught
+  mid-configuration with a subscription an operator already confirmed. It is a
+  separate variable on purpose — restoring a fail-open should be an act somebody
+  performed — and it never re-opens subscription confirmation, which is the half
+  that made a forged topic self-service.
+
+### Patch Changes
+
+- 549026f: Let the Convex authorisation rule recognise Convex Auth's session lookup
+
+  `GUARD_SIGNALS` matched `/AuthUser\b/`, which is every Better Auth spelling the
+  engine uses and none of Convex Auth's: `getAuthUserId` continues into `Id`, so
+  the word boundary fails. Turning the rule on for `apps/site` — 68 publicly
+  callable functions that had never been linted — made forty-odd correctly guarded
+  queries read as `@guarded-inline` claiming something the rule could not see,
+  which is the failure mode that gets a guard switched off rather than obeyed.
+
+- Updated dependencies [549026f]
+  - @be-in-digital/core@4.1.0
+
+## 6.2.0
+
+### Minor Changes
+
+- e5394e5: Serve no draft dish, settle the hours the screen promises, and measure the targets
+
+  **The public catalogue returned everything.** `products.list` collected the
+  whole table and `products.getById` answered for any id, both to anyone with no
+  account, so a dish the owner had not published was on the carte and on its own
+  product page — and then refused at the checkout, where `orders.create` has
+  always checked. `sitemap.ts` and `structured-data.ts` had each grown an
+  `isActive` filter of their own, which is why the hole looked closed; the menu
+  page had none, and it is the page a diner opens.
+
+  The filter is in the query now, once. `products.list`, `products.getById` and
+  `categories.list` serve only what is on sale, and `products.listAll`,
+  `products.getAnyById` and `categories.listAll` — guarded by `products:read` —
+  are what the back office reads, which is exactly what those screens saw before.
+  `menus.list` had no public caller at all in the repository, so it is guarded
+  rather than filtered: a filtered public query nothing public calls is surface
+  bought for nothing.
+
+  **`useGlobalHours` had two readings.** The field is optional, so a store written
+  before it existed carries no value; the dashboard read that as `?? true` and
+  drew the switch on, `resolveStoreHours` read it as a falsy `&&` and served the
+  store's own week. An owner could edit the deployment-wide hours, watch the
+  screen agree this location follows them, and have the order path enforce
+  something else. `followsGlobalHours` is now the single reading, and it answers
+  `false` — what the order path has always enforced, so no establishment's
+  opening hours change; only the dashboard stops claiming otherwise.
+
+  **The blog title was stored as typed.** Only `content` was sanitised, while the
+  title travels further — the page `<title>`, the breadcrumb JSON-LD, the Open
+  Graph tags. `sanitizePlainText` cleans the title, excerpt and both meta fields
+  on write, keeping their words and dropping their markup.
+
+  **Two instruments were reporting green over defects they could see.**
+  `scanContrast` never passed the `overlays` argument `loadTokens` takes, so a
+  caller naming a template measured the engine palette — the one no client ships;
+  and it read `className` only, so an element painting its ink or its surface
+  inline was unmeasured. Both are fixed, with a fixture suite that fails if either
+  input stops being honoured.
+
+  **And twenty-one icon-only controls were smaller than WCAG 2.5.8 allows**, from
+  22×22 down to the 16×16 password reveal on the sign-in dialog. `scanTargetSize`
+  in `@be-in-digital/ui/target-size` measures every one of them from the markup,
+  each control is now at least 24×24, and the sweep is a test rather than a list
+  that goes stale on the next filter chip.
+
+### Patch Changes
+
+- Updated dependencies [e5394e5]
+  - @be-in-digital/convex-schema@6.1.0
+
+## 6.1.0
+
+### Minor Changes
+
+- 7713538: Let a bounce or a complaint reach the subscriber when SES sends no headers
+
+  `handleSesWebhook` correlates feedback to a subscriber through `X-Store-Id`,
+  `X-Subscriber-Id` and `X-Campaign-Id`, injected at send time and readable only
+  from `mail.headers` — and SES omits `mail.headers` from a notification unless
+  the sending identity is configured to include the original headers. Nothing in
+  this repository configured that, and nothing provisioned the notification at
+  all: `setup-aws.sh` created the configuration set with no destination and no SNS
+  topic, so `POST /webhooks/ses` was routed and never called.
+
+      grep -rniE "event-destination|EventDestination|sns create-topic|sns subscribe" \
+        --include='*.sh' --include='*.ts' --include='*.mjs' --include='*.yml' .
+      (no output)
+
+  The provisioning is the apps' half (`scripts/setup-aws.sh`, Step 2b). This is
+  the engine's: what the handler needs to act on a notification that arrives
+  without those headers, which is every notification any client provisioned before
+  today will send.
+  - `emailSubscribers` gains `.index("by_email", ["email"])` — the address alone,
+    no store.
+  - `emailSubscribers.listByEmail` reads it, capped at 32 rows.
+
+  **Across stores, and that is the conservative direction rather than the
+  convenient one.** A hard bounce says the mailbox does not exist, which is
+  equally true of every store holding it; a complaint says this person reported
+  the operator for spam. The rate AWS suspends over is per-ACCOUNT — one AWS
+  account per client, every store of theirs inside it — so suppressing the address
+  wherever it appears is what keeps the account sending. The cost is one
+  subscriber row belonging to a store that did not send the message, and that row
+  would have bounced too.
+
+  Deliveries, opens and clicks deliberately do not fall back: those are campaign
+  statistics, and attributing one to a store that did not send the message
+  corrupts the figure rather than completing it. A bounce or complaint that still
+  matches nobody is reported through `captureBackendError` instead of answering a
+  silent 200, because a 200 tells SNS the delivery succeeded and is exactly how
+  this stayed invisible.
+
+- Escape JSON-LD properly, run the guard on the path every caller takes, and serve no draft
+
+  Five defects a diner or an attacker meets, and the lint rule that was supposed
+  to catch the worst of them and could not.
+
+  **Stored XSS in the JSON-LD block, reachable by a manager.** `JsonLd` escaped
+  `</script>` with `.replace(/<\/script>/gi, …)`, and an HTML parser ends a script
+  element on `</script` followed by whitespace, `/` or `>`. `JSON.stringify`
+  escapes tab, newline and carriage return but not space or solidus, so
+  `</script >` and `</script/>` both walked straight through. Reproduced as
+  execution rather than injection:
+
+      HTML: ..."name":"</script ><script>document.title='PWNED'</script >"...
+      document.title after parse = "PWNED"
+
+  It is reachable because a blog title is sanitised nowhere — the body is
+  sanitised twice, on write and again on publish — and rides `saveDraft` →
+  `publishArticle` → `article.content.title` into the breadcrumb trail.
+  `Role.MANAGER` holds `content:write` and production CSP grants
+  `'unsafe-inline'` with no nonce. `serialiseJsonLd` now escapes `<`, `>`, `&`,
+  U+2028 and U+2029 to their `\uXXXX` forms: those characters cannot occur in
+  JSON output except inside a string, so the encoding is total in a way a pattern
+  match cannot be, and a JSON parser decodes them back unchanged. `title`,
+  `excerpt`, `metaTitle` and `metaDescription` also go through a new
+  `sanitizePlainText` on both write and publish.
+
+  The only previous test asserted
+  `read("lib/json-ld.tsx")).toContain('type="application/ld+json"')` — a
+  string-containment check against the source file, which says nothing about
+  escaping and passed throughout.
+
+  **A permission check that ran for nobody.** `validateIntegration.validate`
+  carried `@guarded-inline: checks settings:read by role` and put the check inside
+  `if (!identity) { … }` — the branch only unauthenticated callers take, and they
+  were rejected on the next line anyway. Every signed-in account, a diner's
+  included, skipped it and could drive credential probes against the
+  restaurant's own Uber Eats, Deliveroo and Uber Direct credentials, using the
+  sanitised replies as a store/brand-id oracle. `categories.reorder` had the same
+  shape with a smaller blast radius: its `requireStorePermission` sat inside
+  `if (storeId)`, and `storeId` stays null when `args.ids` is empty, so
+  `{ ids: [] }` reached the handler authorised by nothing.
+
+  **The rule that should have caught both.** A harness of twelve declarations —
+  one control that must error, one that must pass, ten known evasions — was run
+  against `eslint/convex-auth.mjs` on ESLint 9.39.4. Ten of the twelve slipped.
+  The rule read declarations as TEXT (`sourceCode.getText()` returns comments and
+  string literals), so a guard named in prose counted as a guard, a variable
+  merely named `requireX` counted as a call to it, an unknown or aliased or
+  member-expression builder was ignored entirely, and `permission: undefined`
+  satisfied the permission rule. It now walks the AST and asks the three
+  questions text cannot answer: is the signal a call, is it in code, and does
+  every caller reach it. The harness is kept as
+  `src/__tests__/convex-auth-rule.test.ts` — the rule had no test of any kind.
+  Over the real tree it reported exactly the two live defects above and, once its
+  heuristics were corrected against 56 false positives on `ctx.db.query(…)`,
+  nothing else. Its glob widens from `convex/*.ts` to `convex/**/*.ts`.
+
+  One limit is asserted rather than papered over: a marker's REASON cannot be
+  graded by a linter, so harness case K passes and will keep passing. That is now
+  the only part left to human judgement, instead of being the part everyone
+  trusted while the mechanism underneath it was decorative.
+
+  **A draft dish on the public carte.** `products.list` is public and
+  unauthenticated and returned every row, `isActive` ignored:
+
+      products.list => [{"name":"LIVE"},{"name":"SECRET-DRAFT","isActive":false}]
+
+  `categories.list`, `menus.list` and `products.getById` were the same; `menus`
+  already declared the `by_storeId_isActive` index the query did not use. #440
+  closed this in `getManyByIds` and said the fix made it behave "like every other
+  public read of that table" — measured, the other public reads did not filter.
+  `list` is what the public carte, `sitemap.ts` and the JSON-LD all call, and
+  `orderLine.ts` refuses an inactive product at order creation, so a draft
+  rendered live at full price, was indexed, and the diner who added it was
+  refused at payment. The three public reads now serve what is on sale; the
+  drafts move to `products.listAll` and `categories.listAll`, store-scoped behind
+  `products:read`, which the trending picker and the kitchen station mapping use.
+
+- 6d6df2d: Stop the delivery tiles sending a restaurant's own customers to a marketplace
+
+  The menu page carried a « Commandez aussi sur vos apps » section whose two
+  tiles were hard-coded to `https://www.ubereats.com` and
+  `https://www.deliveroo.com` — the marketplaces' HOME pages, not this
+  restaurant — under a COMMANDER button, on every menu, whether or not the store
+  had either integration. A restaurant's own site was routing its own customers
+  into a marketplace to be shown the competition, and paying commission on
+  anything they ordered there.
+
+  There was nothing to derive a correct link from: `platformStoreId` is an API
+  identifier (a UUID for Uber Eats, a site id for Deliveroo) and neither
+  platform's public URL is built from it. So the owner supplies it —
+  `storeIntegrations.storefrontUrl`, a field on the store's integration card —
+  and no tile renders without one.
+
+  `normalisePlatformStorefrontUrl` refuses what the hard-coded links were: a
+  non-https URL, a host that is not the platform's, embedded credentials, and the
+  platform's home page itself (a path of `/` is the defect, not a value). The host
+  check walks LABELS rather than matching a pattern over the string, because
+  `deliveroo.com.attacker.example` satisfies the second and is a domain somebody
+  else registers — and this value becomes an anchor on the restaurant's own site.
+
+  `storeIntegrations.publicLinks` is the storefront's read: a platform name and a
+  URL, for the integrations that are switched on and have one. Nothing else on the
+  row is a diner's business.
+
+- 6d6df2d: Withhold a payment tile the order cannot use, and record a routing refusal
+
+  `isPaymentMethodSelectable` knew whether the establishment offers cards and
+  whether it can charge one. It did not know what the order costs — and below a
+  provider's floor there is no card payment to be had however well the deployment
+  is configured, while at zero there is no payment at all. The tile was offered,
+  the diner chose it, and the refusal arrived from inside Stripe as a redacted
+  "Server Error" on an order no retry could settle.
+
+  `PaymentMethodContext` gains `amountDue` and `cardMinimum`, both optional so a
+  caller that has not priced the basket keeps today's behaviour exactly — greying
+  every tile while a delivery quote lands would be worse than the defect. Card and
+  PayPal are withheld below the floor; an order that owes nothing is a fourth
+  state (`nothingIsDue`) where the cash branch — the one that places the order
+  without calling a provider — is offered whatever the cash settings say, so a
+  free order does not become uncompletable.
+
+  Alongside it, `assertChargeableOnPlatform` now records its refusal.
+  `resolveStripeCharge` throws before any call to Stripe, so the credentials
+  verdict `createCheckoutSession` writes on a refused key is never reached —
+  correctly, since nothing has asked Stripe anything, but the consequence was that
+  a deployment turning every diner away for a routing reason left no trace
+  anywhere. It writes a `payment_collection_refused` line through
+  `recordRefusedCollection`. `paymentAvailability` already greys the tile from the
+  same rule; a new test drives both over every status the schema declares, so the
+  two cannot drift.
+
+- 6d6df2d: Count only money that arrived, and stop a settled charge sitting at `pending`
+
+  Three defects on the money path, all of them a layer answering a question next
+  to the one it was asked.
+
+  **The dashboard counted orders nobody paid for.** `computeDashboardStats`
+  filtered on `status !== "cancelled"` — a test about orders being UNMADE,
+  standing in for one about orders being PAID — and `DashboardOrderRow` did not
+  carry `paymentStatus` at all, so the distinction was not available to be got
+  wrong; it was absent. An abandoned checkout, a declined card and a table whose
+  cash has not been rung up all counted in full. Measured on a probe store: the
+  card read 1 720,00 € against 20,00 € collected.
+
+  `revenue` is now money that arrived (`COLLECTED_PAYMENT_STATUSES`: `paid`,
+  `refund_pending`, `partially_refunded` — the states in which the till is
+  holding it). `orderCount` still means orders that happened, because that is
+  what an owner is asking when they look at « Commandes », and the difference is
+  reported as `uncollected` rather than left to be inferred. « Chiffre
+  d'affaires » now carries « dont X € en attente d'encaissement » when the two
+  disagree.
+
+  **A settled charge could sit at `pending` for ever.** `settlePayment` asked
+  whether a row for this charge EXISTED, not whether it was DONE, so a
+  `payment_intent.succeeded` landing on a placeholder row returned it untouched
+  while `settleByExternalReference` marked the ORDER paid. The result was « Payé »
+  over a `pending` payment row — which `planRefund` refuses permanently, and which
+  `collectionOnOrder` does not count, so a second collection was still allowed on
+  the same order. The row is now promoted in place (provider, amount and currency
+  taken from the settlement: a refund is issued against whatever `provider` says).
+  `LEDGERED_STATUSES` names the states that mean "already on the ledger" —
+  including `refunded`, so a replayed event cannot resurrect a refunded charge.
+
+  **A 100 % coupon produced an order no card could pay.**
+  `createCheckoutSession` sent `unit_amount: order.total` and asked nothing about
+  it; Stripe's EUR floor is 0,50 €, and the session create throws an SDK error
+  that Convex redacts to "Server Error" behind the checkout's generic retry
+  toast. The layers disagreed in both directions: `assertSettlesOrder` settles a
+  0 c order and `settlePayment` refuses to write a row for one.
+  `cardChargeFloor.ts` holds the rule — per-currency minimums, and `nothing_to_pay`
+  as its own refusal, because an order that owes nothing is not a small payment —
+  and the three card actions enforce it before calling a provider.
+
+- b9e20ea: Serve no draft dish, route no menu event by guess, and make eleven guards see
+
+  **A public query served unpublished products.** `products.getManyByIds` took an
+  array of ids and returned the documents behind them with no filter of any kind:
+  no `isActive`, no ceiling on how many ids one call may look up. It is the query
+  the favourites grid calls before any sign-in, and ids are not secret — they
+  appear in order lines, in favourites and in the storefront's own DOM — so
+  anything holding one read the dish behind it whatever its state: name, cost,
+  allergens, platform overrides, for a draft or a dish taken off the menu. Every
+  other public read of that table already honoured the flag. It now does too, and
+  caps the lookup at `MAX_PRODUCT_ID_LOOKUP` so an anonymous caller does not choose
+  the read count. Deliberately still cross-store: a deployment is one client's, and
+  the favourites grid splits "here" from "your other establishments" on purpose.
+
+  **A Deliveroo menu event could land on a sibling establishment.** The menu path
+  matched `site_id` with a bare `.find()` and, when that missed, fell through to
+  the BRAND — which covers every location of a chain, so the sync status was
+  written to whichever sorted first. The event said "site 42's menu failed
+  validation"; the screen said the Boulevard branch's had. `resolveMenuStoreIntegration`
+  applies the order path's own refusal policy: a named site's verdict is final,
+  and a brand that matches more than one establishment is `ambiguous_store`, which
+  is the ordinary shape of a two-location client rather than an edge case.
+
+  **A refused SVG kept its bytes for thirty days.** `cmsMediaConfirmUpload` reads
+  an uploaded SVG back, refuses it for active content, and then deleted it with a
+  bare `DeleteObjectCommand` — which on the versioned bucket `setup-aws.sh` builds
+  writes a delete marker and retains every version. That is the defect #331 removed
+  from `cmsMediaDelete.ts` and this path reintroduced, for the one object we have
+  decided is hostile. It goes through `purgeS3Objects` now.
+
+  **CMS video uploads landed as `.bin`.** The upload route kept a private
+  six-entry MIME-to-extension map while `@be-in-digital/cms`'s `MIME_TO_EXT` —
+  which calls itself the single source of truth, and is what the presigned Convex
+  flow uses — held twelve. `ALLOWED_MIME_TYPES.cms` admits mp4, webm and three
+  Office formats; all six fell through to `"bin"`.
+
+  **The order-confirmation email printed no timing row, for any order, ever.**
+  `timingLine` reads `order.estimatedPrepTime` and `orders.create` wrote the prep
+  time it computes onto the kitchen ticket — a different document. `orders.create`
+  now stamps the longest line's preparation time on the order as well, off the
+  products its verification loop already holds, and stays silent when no dish
+  declares one rather than promising "environ 0 minutes".
+
+  **Dead code that contradicted the live product.** `packages/core`'s
+  `src/auth/config.ts` is gone, with `createAuthConfig`, `authHooks`,
+  `emailTemplates`, `authErrors`, `validatePassword`, `validateEmail`,
+  `DEFAULT_SESSION_EXPIRY`, `DEFAULT_SESSION_REFRESH` and `MIN_PASSWORD_LENGTH`:
+  zero call sites, and it declared `MIN_PASSWORD_LENGTH = 8` against the live
+  `minPasswordLength: 12`, with five lifecycle hooks whose bodies were a
+  `console.info` and a list of TODOs over names like "lock the account after N
+  attempts". `@be-in-digital/convex-schema` loses the six printer types that
+  outlived the `printerSettings` table — `PrinterType = 'network' | 'usb' |
+'bluetooth'`, the ESC/POS transports `CLAUDE.md` records as decided against.
+  Both are BREAKING on a published API and neither had a consumer.
+
+  **`@be-in-digital/admin`** gains `PAYMENT_STATUS_LABELS`, so the payments screen
+  stops declaring six operator-facing strings of its own, and the dashboard's
+  recent-orders table stops declaring eleven — `lib/vocabulary.ts` claimed "label
+  drift is now impossible" while two screens held their own copies.
+
+  **And the guards that could not see what they were written for.** The attribution
+  guard missed four shapes `CLAUDE.md` names by hand — a robot-emoji signature, a
+  bare "Claude Code" in a body line, "AI-generated", "Made with Claude" — while
+  still accepting the collisions that matter here (this product has an AI-generated
+  blog; Claude is an ordinary French given name). The swallowed-pipe rule needed
+  spaces around the pipe, so `2>&1|tee` walked through it, and never read
+  `apps/themes/.github/workflows/`, the CI every client runs. The turbo test inputs
+  still hashed `apps/themes`'s `.convex-build/` and `tsconfig.tsbuildinfo`, so a
+  local typecheck threw the monorepo's whole test cache away. The Convex manifest
+  guard's transcription of `entryPoints()` omitted `looksLikeNestedComponent`, so a
+  legal local component would have turned it red. The mirror publisher walked the
+  filesystem and shipped untracked files; it now ships what git tracks, minus the
+  exclusions, and refuses rather than guessing when git cannot answer. The
+  Infisical doc-claim checker knew one phrasing and the document used another, so
+  it reported "0 folder claim(s) checked" and exited 0.
+
+- 6d6df2d: Bound the send path's last unbounded read, count an unsubscribe, and pin the SNS topic
+
+  **`alreadySentTo` grew with how much the audience liked the campaign.** It
+  collected every event on the (campaign, subscriber) pair and looked for a `sent`
+  among them in JavaScript. That pair holds one `sent` and one `delivered` — and
+  one `opened` for every reopening, without limit. Asked once per subscriber in
+  every batch of the send, it aborted at about 410 events per subscriber per
+  campaign: Convex refuses a transaction past 16,384 documents, and past that the
+  campaign can never complete. `by_campaignId_subscriberId` becomes
+  `by_campaign_subscriber_type`, and the read is a `.first()` over three
+  equalities. It was the one send-path query absent from `queryBounds.test.ts`;
+  it is there now.
+
+  **`campaign.stats.unsubscribed` never counted an unsubscribe.** Its only writer
+  was the SES _Complaint_ branch of the webhook, so the figure labelled
+  « Désabonnements » counted spam reports and nothing else — a campaign that cost
+  a restaurant forty subscribers reported zero. Attribution has to come from the
+  link, because that is all an unsubscribe carries: the campaign now stamps its id
+  into the URL it sends, `emailSubscribers.unsubscribe` charges the removal to it
+  (refusing a campaign belonging to another store — the value arrives in a URL the
+  recipient holds) and writes the `emailEvents` row that was also missing. It is
+  idempotent, so a mail client pre-fetching the link, a provider retrying its
+  RFC 8058 one-click, and a recipient clicking twice are one person leaving.
+
+  **A valid SNS signature said Amazon sent it, not that our topic did.** Every SNS
+  topic in every AWS account is signed by the same infrastructure, with a
+  certificate on the same hosts the URL check allows — and `/webhooks/ses`
+  confirmed any subscription whose `SubscribeURL` was on such a host, so a
+  stranger pointed their own topic at the endpoint and the endpoint subscribed
+  itself. From then on their forged bounces carried a genuine signature and
+  suppressed real addresses. `SES_SNS_TOPIC_ARN` now names the topic: no
+  subscription is auto-confirmed without it, and notifications are checked against
+  it when it is set. `SignatureVersion: "1"` — SHA-1 — is refused; the sender
+  picks the version, and the "sender" of a body that has not been authenticated
+  yet is whoever POSTed it. Both are written up in
+  `tasks/webhook-migration-checklist.md`.
+
+### Patch Changes
+
+- Updated dependencies [7713538]
+- Updated dependencies [6d6df2d]
+- Updated dependencies [b9e20ea]
+- Updated dependencies [6d6df2d]
+  - @be-in-digital/convex-schema@6.0.0
+  - @be-in-digital/core@4.0.0
+
 ## 6.0.0
 
 ### Major Changes

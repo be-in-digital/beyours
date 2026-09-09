@@ -225,7 +225,12 @@ describe("an unsigned affiliate gets no code", () => {
     const code = await t
       .withIdentity({ subject: userId })
       .mutation(api.referralCodes.generateMyCode, {});
-    expect(code?.code).toMatch(/^BID-[A-Z0-9]{5}$/);
+    // 8 random characters since #445, not 5. `validateCode` is a public,
+    // unauthenticated oracle — it has to be, strangers type these codes — and
+    // 32^5 ≈ 33.5M against a few hundred live codes made a blind sweep an
+    // afternoon's work. 32^8 ≈ 1.1e12 does not. The alphabet is unchanged: no
+    // I, O, 0 or 1, because these are read aloud across a counter.
+    expect(code?.code).toMatch(/^BID-[A-Z2-9]{8}$/);
     expect(code?.isActive).toBe(true);
   });
 });

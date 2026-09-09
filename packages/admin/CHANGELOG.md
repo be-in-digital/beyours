@@ -1,5 +1,384 @@
 # @be-in-digital/admin
 
+## 14.0.0
+
+### Minor Changes
+
+- 549026f: Measure the colours the sweep was dropping, and stop the motion nobody could
+
+  The contrast sweep reported 150 failing pairs in `apps/themes` and excluded all
+  150 for an unresolved surface. The guarded count was zero: a suite that had
+  measured nothing was green, which is worse than a red one because a green check
+  is read as an answer.
+
+  `scanContrast` regions now take an optional `surface` — the colour a shell in
+  another file paints behind the tree, as a hex for a literal or as a TOKEN name
+  for a shell that paints `bg-background`, since the admin's surface differs
+  between the two colour schemes and a hex cannot say that. Declaring three of
+  them resolved 138 of the 150: the QR-game screens on `#120d1a`, the kitchen
+  display on `#0f172a`, and the admin on `SidebarInset`'s `bg-background`. The
+  twelve that remain are text over the hero photograph, which no static reading
+  can resolve and which the app suites now pin by filename, so a new unresolvable
+  surface fails instead of joining a silent pile.
+
+  That exposed 89 real failures. Two were faults in the scanner —
+  `cursor-not-allowed` is the other spelling of "inactive" beside
+  `pointer-events-none` and was not exempted under 1.4.3. The rest were four
+  habits: a raw Tailwind hue where `--success`/`--warning`/`--destructive` exists,
+  an opacity modifier on text (`text-muted-foreground/30` at 1.48:1), a chip
+  tinted with its own ink (`bg-amber-500/10 text-amber-500` at 1.95:1), and a
+  light-only palette pair read in dark mode (`text-orange-600` on
+  `bg-orange-50/50` at **1.109:1**). `SpiceLevelIndicator`'s unlit flames were
+  1.48:1, so a level of two out of five looked like two out of two.
+
+  Alongside them, `prefers-reduced-motion` reaches framer-motion for the first
+  time. The CSS block named `.animate-in` — one element in the app — and could
+  never have reached a library that writes inline `style` per frame, so the
+  preference applied to none of the ten `motion.*` elements on the buying path.
+
+### Patch Changes
+
+- Updated dependencies [549026f]
+- Updated dependencies [549026f]
+- Updated dependencies [549026f]
+  - @be-in-digital/convex-functions@7.0.0
+  - @be-in-digital/core@4.1.0
+  - @be-in-digital/ui@4.3.0
+
+## 13.0.0
+
+### Minor Changes
+
+- e5394e5: Serve no draft dish, settle the hours the screen promises, and measure the targets
+
+  **The public catalogue returned everything.** `products.list` collected the
+  whole table and `products.getById` answered for any id, both to anyone with no
+  account, so a dish the owner had not published was on the carte and on its own
+  product page — and then refused at the checkout, where `orders.create` has
+  always checked. `sitemap.ts` and `structured-data.ts` had each grown an
+  `isActive` filter of their own, which is why the hole looked closed; the menu
+  page had none, and it is the page a diner opens.
+
+  The filter is in the query now, once. `products.list`, `products.getById` and
+  `categories.list` serve only what is on sale, and `products.listAll`,
+  `products.getAnyById` and `categories.listAll` — guarded by `products:read` —
+  are what the back office reads, which is exactly what those screens saw before.
+  `menus.list` had no public caller at all in the repository, so it is guarded
+  rather than filtered: a filtered public query nothing public calls is surface
+  bought for nothing.
+
+  **`useGlobalHours` had two readings.** The field is optional, so a store written
+  before it existed carries no value; the dashboard read that as `?? true` and
+  drew the switch on, `resolveStoreHours` read it as a falsy `&&` and served the
+  store's own week. An owner could edit the deployment-wide hours, watch the
+  screen agree this location follows them, and have the order path enforce
+  something else. `followsGlobalHours` is now the single reading, and it answers
+  `false` — what the order path has always enforced, so no establishment's
+  opening hours change; only the dashboard stops claiming otherwise.
+
+  **The blog title was stored as typed.** Only `content` was sanitised, while the
+  title travels further — the page `<title>`, the breadcrumb JSON-LD, the Open
+  Graph tags. `sanitizePlainText` cleans the title, excerpt and both meta fields
+  on write, keeping their words and dropping their markup.
+
+  **Two instruments were reporting green over defects they could see.**
+  `scanContrast` never passed the `overlays` argument `loadTokens` takes, so a
+  caller naming a template measured the engine palette — the one no client ships;
+  and it read `className` only, so an element painting its ink or its surface
+  inline was unmeasured. Both are fixed, with a fixture suite that fails if either
+  input stops being honoured.
+
+  **And twenty-one icon-only controls were smaller than WCAG 2.5.8 allows**, from
+  22×22 down to the 16×16 password reveal on the sign-in dialog. `scanTargetSize`
+  in `@be-in-digital/ui/target-size` measures every one of them from the markup,
+  each control is now at least 24×24, and the sweep is a test rather than a list
+  that goes stale on the next filter chip.
+
+### Patch Changes
+
+- Updated dependencies [e5394e5]
+  - @be-in-digital/convex-functions@6.2.0
+  - @be-in-digital/convex-schema@6.1.0
+  - @be-in-digital/ui@4.2.0
+
+## 12.0.0
+
+### Minor Changes
+
+- 6d6df2d: Stop the delivery tiles sending a restaurant's own customers to a marketplace
+
+  The menu page carried a « Commandez aussi sur vos apps » section whose two
+  tiles were hard-coded to `https://www.ubereats.com` and
+  `https://www.deliveroo.com` — the marketplaces' HOME pages, not this
+  restaurant — under a COMMANDER button, on every menu, whether or not the store
+  had either integration. A restaurant's own site was routing its own customers
+  into a marketplace to be shown the competition, and paying commission on
+  anything they ordered there.
+
+  There was nothing to derive a correct link from: `platformStoreId` is an API
+  identifier (a UUID for Uber Eats, a site id for Deliveroo) and neither
+  platform's public URL is built from it. So the owner supplies it —
+  `storeIntegrations.storefrontUrl`, a field on the store's integration card —
+  and no tile renders without one.
+
+  `normalisePlatformStorefrontUrl` refuses what the hard-coded links were: a
+  non-https URL, a host that is not the platform's, embedded credentials, and the
+  platform's home page itself (a path of `/` is the defect, not a value). The host
+  check walks LABELS rather than matching a pattern over the string, because
+  `deliveroo.com.attacker.example` satisfies the second and is a domain somebody
+  else registers — and this value becomes an anchor on the restaurant's own site.
+
+  `storeIntegrations.publicLinks` is the storefront's read: a platform name and a
+  URL, for the integrations that are switched on and have one. Nothing else on the
+  row is a diner's business.
+
+- 6d6df2d: Count only money that arrived, and stop a settled charge sitting at `pending`
+
+  Three defects on the money path, all of them a layer answering a question next
+  to the one it was asked.
+
+  **The dashboard counted orders nobody paid for.** `computeDashboardStats`
+  filtered on `status !== "cancelled"` — a test about orders being UNMADE,
+  standing in for one about orders being PAID — and `DashboardOrderRow` did not
+  carry `paymentStatus` at all, so the distinction was not available to be got
+  wrong; it was absent. An abandoned checkout, a declined card and a table whose
+  cash has not been rung up all counted in full. Measured on a probe store: the
+  card read 1 720,00 € against 20,00 € collected.
+
+  `revenue` is now money that arrived (`COLLECTED_PAYMENT_STATUSES`: `paid`,
+  `refund_pending`, `partially_refunded` — the states in which the till is
+  holding it). `orderCount` still means orders that happened, because that is
+  what an owner is asking when they look at « Commandes », and the difference is
+  reported as `uncollected` rather than left to be inferred. « Chiffre
+  d'affaires » now carries « dont X € en attente d'encaissement » when the two
+  disagree.
+
+  **A settled charge could sit at `pending` for ever.** `settlePayment` asked
+  whether a row for this charge EXISTED, not whether it was DONE, so a
+  `payment_intent.succeeded` landing on a placeholder row returned it untouched
+  while `settleByExternalReference` marked the ORDER paid. The result was « Payé »
+  over a `pending` payment row — which `planRefund` refuses permanently, and which
+  `collectionOnOrder` does not count, so a second collection was still allowed on
+  the same order. The row is now promoted in place (provider, amount and currency
+  taken from the settlement: a refund is issued against whatever `provider` says).
+  `LEDGERED_STATUSES` names the states that mean "already on the ledger" —
+  including `refunded`, so a replayed event cannot resurrect a refunded charge.
+
+  **A 100 % coupon produced an order no card could pay.**
+  `createCheckoutSession` sent `unit_amount: order.total` and asked nothing about
+  it; Stripe's EUR floor is 0,50 €, and the session create throws an SDK error
+  that Convex redacts to "Server Error" behind the checkout's generic retry
+  toast. The layers disagreed in both directions: `assertSettlesOrder` settles a
+  0 c order and `settlePayment` refuses to write a row for one.
+  `cardChargeFloor.ts` holds the rule — per-currency minimums, and `nothing_to_pay`
+  as its own refusal, because an order that owes nothing is not a small payment —
+  and the three card actions enforce it before calling a provider.
+
+- b9e20ea: Serve no draft dish, route no menu event by guess, and make eleven guards see
+
+  **A public query served unpublished products.** `products.getManyByIds` took an
+  array of ids and returned the documents behind them with no filter of any kind:
+  no `isActive`, no ceiling on how many ids one call may look up. It is the query
+  the favourites grid calls before any sign-in, and ids are not secret — they
+  appear in order lines, in favourites and in the storefront's own DOM — so
+  anything holding one read the dish behind it whatever its state: name, cost,
+  allergens, platform overrides, for a draft or a dish taken off the menu. Every
+  other public read of that table already honoured the flag. It now does too, and
+  caps the lookup at `MAX_PRODUCT_ID_LOOKUP` so an anonymous caller does not choose
+  the read count. Deliberately still cross-store: a deployment is one client's, and
+  the favourites grid splits "here" from "your other establishments" on purpose.
+
+  **A Deliveroo menu event could land on a sibling establishment.** The menu path
+  matched `site_id` with a bare `.find()` and, when that missed, fell through to
+  the BRAND — which covers every location of a chain, so the sync status was
+  written to whichever sorted first. The event said "site 42's menu failed
+  validation"; the screen said the Boulevard branch's had. `resolveMenuStoreIntegration`
+  applies the order path's own refusal policy: a named site's verdict is final,
+  and a brand that matches more than one establishment is `ambiguous_store`, which
+  is the ordinary shape of a two-location client rather than an edge case.
+
+  **A refused SVG kept its bytes for thirty days.** `cmsMediaConfirmUpload` reads
+  an uploaded SVG back, refuses it for active content, and then deleted it with a
+  bare `DeleteObjectCommand` — which on the versioned bucket `setup-aws.sh` builds
+  writes a delete marker and retains every version. That is the defect #331 removed
+  from `cmsMediaDelete.ts` and this path reintroduced, for the one object we have
+  decided is hostile. It goes through `purgeS3Objects` now.
+
+  **CMS video uploads landed as `.bin`.** The upload route kept a private
+  six-entry MIME-to-extension map while `@be-in-digital/cms`'s `MIME_TO_EXT` —
+  which calls itself the single source of truth, and is what the presigned Convex
+  flow uses — held twelve. `ALLOWED_MIME_TYPES.cms` admits mp4, webm and three
+  Office formats; all six fell through to `"bin"`.
+
+  **The order-confirmation email printed no timing row, for any order, ever.**
+  `timingLine` reads `order.estimatedPrepTime` and `orders.create` wrote the prep
+  time it computes onto the kitchen ticket — a different document. `orders.create`
+  now stamps the longest line's preparation time on the order as well, off the
+  products its verification loop already holds, and stays silent when no dish
+  declares one rather than promising "environ 0 minutes".
+
+  **Dead code that contradicted the live product.** `packages/core`'s
+  `src/auth/config.ts` is gone, with `createAuthConfig`, `authHooks`,
+  `emailTemplates`, `authErrors`, `validatePassword`, `validateEmail`,
+  `DEFAULT_SESSION_EXPIRY`, `DEFAULT_SESSION_REFRESH` and `MIN_PASSWORD_LENGTH`:
+  zero call sites, and it declared `MIN_PASSWORD_LENGTH = 8` against the live
+  `minPasswordLength: 12`, with five lifecycle hooks whose bodies were a
+  `console.info` and a list of TODOs over names like "lock the account after N
+  attempts". `@be-in-digital/convex-schema` loses the six printer types that
+  outlived the `printerSettings` table — `PrinterType = 'network' | 'usb' |
+'bluetooth'`, the ESC/POS transports `CLAUDE.md` records as decided against.
+  Both are BREAKING on a published API and neither had a consumer.
+
+  **`@be-in-digital/admin`** gains `PAYMENT_STATUS_LABELS`, so the payments screen
+  stops declaring six operator-facing strings of its own, and the dashboard's
+  recent-orders table stops declaring eleven — `lib/vocabulary.ts` claimed "label
+  drift is now impossible" while two screens held their own copies.
+
+  **And the guards that could not see what they were written for.** The attribution
+  guard missed four shapes `CLAUDE.md` names by hand — a robot-emoji signature, a
+  bare "Claude Code" in a body line, "AI-generated", "Made with Claude" — while
+  still accepting the collisions that matter here (this product has an AI-generated
+  blog; Claude is an ordinary French given name). The swallowed-pipe rule needed
+  spaces around the pipe, so `2>&1|tee` walked through it, and never read
+  `apps/themes/.github/workflows/`, the CI every client runs. The turbo test inputs
+  still hashed `apps/themes`'s `.convex-build/` and `tsconfig.tsbuildinfo`, so a
+  local typecheck threw the monorepo's whole test cache away. The Convex manifest
+  guard's transcription of `entryPoints()` omitted `looksLikeNestedComponent`, so a
+  legal local component would have turned it red. The mirror publisher walked the
+  filesystem and shipped untracked files; it now ships what git tracks, minus the
+  exclusions, and refuses rather than guessing when git cannot answer. The
+  Infisical doc-claim checker knew one phrasing and the document used another, so
+  it reported "0 folder claim(s) checked" and exited 0.
+
+### Patch Changes
+
+- 0ad1a85: Render the focus ring at the opacity the guard measures, and pair the tour popover
+
+  The engine half of #436, which changed two published packages and shipped no
+  changeset with them. Without this the fixes below sit on `main` and reach no
+  client site — the templates in that PR travel by the mirror, but these do not.
+
+  **The focus indicator was below AA on every screen.** The token matrix in both
+  apps checks `--ring` at full opacity, and all twelve primitives rendered it as
+  `focus-visible:ring-ring/50` — shadcn's stylistic default, carried in
+  unexamined. Half a token is not half as visible: alpha composites toward the
+  page, so the measured ratio was not 5.03:1 but 2.13:1 in the light admin,
+  2.61:1 in the dark, 2.42:1 on the light storefront, against the 3:1 WCAG 1.4.11
+  asks of a control. Only the dark storefront cleared, at 3.09:1, and under a
+  vertical template it was worse — `pizzeria` measured 2.10:1. A keyboard user
+  could not see where they were. Accordion, Badge, Button, Checkbox, Input,
+  InputGroup, Select, Slider, Switch, Tabs and Textarea now render the token the
+  test already trusted.
+
+  This is a visible change: the ring is a solid 3px in the brand colour rather
+  than a soft wash. That is the point of it, and `--ring` is guaranteed to clear
+  3:1 against the page in all four scopes before it is drawn.
+
+  **`loadTokens` can read a cascade.** It read `app/globals.css` and stopped,
+  which measured the palette no delivered site runs — `app/layout.tsx` imports
+  `@/site/theme.css` after it. It takes an optional `overlays` argument now, so a
+  sweep can reproduce the stylesheet order a client actually gets. Additive: every
+  existing call is unchanged.
+
+  **The onboarding tour was white text on a white box.** `styles.popover` spread
+  reactour's `base` — a white background and no `color` — so the sentence
+  inherited `--foreground` from the admin above it. Fine in light mode at
+  20.147:1; near-white on white in dark, measured in Chromium at 1.045:1, over all
+  28 steps, for every owner whose machine is in dark mode. It now takes
+  `--popover`/`--popover-foreground`, so a theme moves both members together.
+
+- Escape JSON-LD properly, run the guard on the path every caller takes, and serve no draft
+
+  Five defects a diner or an attacker meets, and the lint rule that was supposed
+  to catch the worst of them and could not.
+
+  **Stored XSS in the JSON-LD block, reachable by a manager.** `JsonLd` escaped
+  `</script>` with `.replace(/<\/script>/gi, …)`, and an HTML parser ends a script
+  element on `</script` followed by whitespace, `/` or `>`. `JSON.stringify`
+  escapes tab, newline and carriage return but not space or solidus, so
+  `</script >` and `</script/>` both walked straight through. Reproduced as
+  execution rather than injection:
+
+      HTML: ..."name":"</script ><script>document.title='PWNED'</script >"...
+      document.title after parse = "PWNED"
+
+  It is reachable because a blog title is sanitised nowhere — the body is
+  sanitised twice, on write and again on publish — and rides `saveDraft` →
+  `publishArticle` → `article.content.title` into the breadcrumb trail.
+  `Role.MANAGER` holds `content:write` and production CSP grants
+  `'unsafe-inline'` with no nonce. `serialiseJsonLd` now escapes `<`, `>`, `&`,
+  U+2028 and U+2029 to their `\uXXXX` forms: those characters cannot occur in
+  JSON output except inside a string, so the encoding is total in a way a pattern
+  match cannot be, and a JSON parser decodes them back unchanged. `title`,
+  `excerpt`, `metaTitle` and `metaDescription` also go through a new
+  `sanitizePlainText` on both write and publish.
+
+  The only previous test asserted
+  `read("lib/json-ld.tsx")).toContain('type="application/ld+json"')` — a
+  string-containment check against the source file, which says nothing about
+  escaping and passed throughout.
+
+  **A permission check that ran for nobody.** `validateIntegration.validate`
+  carried `@guarded-inline: checks settings:read by role` and put the check inside
+  `if (!identity) { … }` — the branch only unauthenticated callers take, and they
+  were rejected on the next line anyway. Every signed-in account, a diner's
+  included, skipped it and could drive credential probes against the
+  restaurant's own Uber Eats, Deliveroo and Uber Direct credentials, using the
+  sanitised replies as a store/brand-id oracle. `categories.reorder` had the same
+  shape with a smaller blast radius: its `requireStorePermission` sat inside
+  `if (storeId)`, and `storeId` stays null when `args.ids` is empty, so
+  `{ ids: [] }` reached the handler authorised by nothing.
+
+  **The rule that should have caught both.** A harness of twelve declarations —
+  one control that must error, one that must pass, ten known evasions — was run
+  against `eslint/convex-auth.mjs` on ESLint 9.39.4. Ten of the twelve slipped.
+  The rule read declarations as TEXT (`sourceCode.getText()` returns comments and
+  string literals), so a guard named in prose counted as a guard, a variable
+  merely named `requireX` counted as a call to it, an unknown or aliased or
+  member-expression builder was ignored entirely, and `permission: undefined`
+  satisfied the permission rule. It now walks the AST and asks the three
+  questions text cannot answer: is the signal a call, is it in code, and does
+  every caller reach it. The harness is kept as
+  `src/__tests__/convex-auth-rule.test.ts` — the rule had no test of any kind.
+  Over the real tree it reported exactly the two live defects above and, once its
+  heuristics were corrected against 56 false positives on `ctx.db.query(…)`,
+  nothing else. Its glob widens from `convex/*.ts` to `convex/**/*.ts`.
+
+  One limit is asserted rather than papered over: a marker's REASON cannot be
+  graded by a linter, so harness case K passes and will keep passing. That is now
+  the only part left to human judgement, instead of being the part everyone
+  trusted while the mechanism underneath it was decorative.
+
+  **A draft dish on the public carte.** `products.list` is public and
+  unauthenticated and returned every row, `isActive` ignored:
+
+      products.list => [{"name":"LIVE"},{"name":"SECRET-DRAFT","isActive":false}]
+
+  `categories.list`, `menus.list` and `products.getById` were the same; `menus`
+  already declared the `by_storeId_isActive` index the query did not use. #440
+  closed this in `getManyByIds` and said the fix made it behave "like every other
+  public read of that table" — measured, the other public reads did not filter.
+  `list` is what the public carte, `sitemap.ts` and the JSON-LD all call, and
+  `orderLine.ts` refuses an inactive product at order creation, so a draft
+  rendered live at full price, was indexed, and the diner who added it was
+  refused at payment. The three public reads now serve what is on sale; the
+  drafts move to `products.listAll` and `categories.listAll`, store-scoped behind
+  `products:read`, which the trending picker and the kitchen station mapping use.
+
+- Updated dependencies [7713538]
+- Updated dependencies [0ad1a85]
+- Updated dependencies
+- Updated dependencies [6d6df2d]
+- Updated dependencies [6d6df2d]
+- Updated dependencies [6d6df2d]
+- Updated dependencies [b9e20ea]
+- Updated dependencies [6d6df2d]
+  - @be-in-digital/convex-schema@6.0.0
+  - @be-in-digital/convex-functions@6.1.0
+  - @be-in-digital/ui@4.1.0
+  - @be-in-digital/restaurant@4.1.0
+  - @be-in-digital/core@4.0.0
+
 ## 11.0.0
 
 ### Major Changes

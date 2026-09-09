@@ -1,5 +1,140 @@
 # @be-in-digital/ui
 
+## 4.3.0
+
+### Minor Changes
+
+- 549026f: Measure the colours the sweep was dropping, and stop the motion nobody could
+
+  The contrast sweep reported 150 failing pairs in `apps/themes` and excluded all
+  150 for an unresolved surface. The guarded count was zero: a suite that had
+  measured nothing was green, which is worse than a red one because a green check
+  is read as an answer.
+
+  `scanContrast` regions now take an optional `surface` — the colour a shell in
+  another file paints behind the tree, as a hex for a literal or as a TOKEN name
+  for a shell that paints `bg-background`, since the admin's surface differs
+  between the two colour schemes and a hex cannot say that. Declaring three of
+  them resolved 138 of the 150: the QR-game screens on `#120d1a`, the kitchen
+  display on `#0f172a`, and the admin on `SidebarInset`'s `bg-background`. The
+  twelve that remain are text over the hero photograph, which no static reading
+  can resolve and which the app suites now pin by filename, so a new unresolvable
+  surface fails instead of joining a silent pile.
+
+  That exposed 89 real failures. Two were faults in the scanner —
+  `cursor-not-allowed` is the other spelling of "inactive" beside
+  `pointer-events-none` and was not exempted under 1.4.3. The rest were four
+  habits: a raw Tailwind hue where `--success`/`--warning`/`--destructive` exists,
+  an opacity modifier on text (`text-muted-foreground/30` at 1.48:1), a chip
+  tinted with its own ink (`bg-amber-500/10 text-amber-500` at 1.95:1), and a
+  light-only palette pair read in dark mode (`text-orange-600` on
+  `bg-orange-50/50` at **1.109:1**). `SpiceLevelIndicator`'s unlit flames were
+  1.48:1, so a level of two out of five looked like two out of two.
+
+  Alongside them, `prefers-reduced-motion` reaches framer-motion for the first
+  time. The CSS block named `.animate-in` — one element in the app — and could
+  never have reached a library that writes inline `style` per frame, so the
+  preference applied to none of the ten `motion.*` elements on the buying path.
+
+### Patch Changes
+
+- Updated dependencies [549026f]
+  - @be-in-digital/core@4.1.0
+
+## 4.2.0
+
+### Minor Changes
+
+- e5394e5: Serve no draft dish, settle the hours the screen promises, and measure the targets
+
+  **The public catalogue returned everything.** `products.list` collected the
+  whole table and `products.getById` answered for any id, both to anyone with no
+  account, so a dish the owner had not published was on the carte and on its own
+  product page — and then refused at the checkout, where `orders.create` has
+  always checked. `sitemap.ts` and `structured-data.ts` had each grown an
+  `isActive` filter of their own, which is why the hole looked closed; the menu
+  page had none, and it is the page a diner opens.
+
+  The filter is in the query now, once. `products.list`, `products.getById` and
+  `categories.list` serve only what is on sale, and `products.listAll`,
+  `products.getAnyById` and `categories.listAll` — guarded by `products:read` —
+  are what the back office reads, which is exactly what those screens saw before.
+  `menus.list` had no public caller at all in the repository, so it is guarded
+  rather than filtered: a filtered public query nothing public calls is surface
+  bought for nothing.
+
+  **`useGlobalHours` had two readings.** The field is optional, so a store written
+  before it existed carries no value; the dashboard read that as `?? true` and
+  drew the switch on, `resolveStoreHours` read it as a falsy `&&` and served the
+  store's own week. An owner could edit the deployment-wide hours, watch the
+  screen agree this location follows them, and have the order path enforce
+  something else. `followsGlobalHours` is now the single reading, and it answers
+  `false` — what the order path has always enforced, so no establishment's
+  opening hours change; only the dashboard stops claiming otherwise.
+
+  **The blog title was stored as typed.** Only `content` was sanitised, while the
+  title travels further — the page `<title>`, the breadcrumb JSON-LD, the Open
+  Graph tags. `sanitizePlainText` cleans the title, excerpt and both meta fields
+  on write, keeping their words and dropping their markup.
+
+  **Two instruments were reporting green over defects they could see.**
+  `scanContrast` never passed the `overlays` argument `loadTokens` takes, so a
+  caller naming a template measured the engine palette — the one no client ships;
+  and it read `className` only, so an element painting its ink or its surface
+  inline was unmeasured. Both are fixed, with a fixture suite that fails if either
+  input stops being honoured.
+
+  **And twenty-one icon-only controls were smaller than WCAG 2.5.8 allows**, from
+  22×22 down to the 16×16 password reveal on the sign-in dialog. `scanTargetSize`
+  in `@be-in-digital/ui/target-size` measures every one of them from the markup,
+  each control is now at least 24×24, and the sweep is a test rather than a list
+  that goes stale on the next filter chip.
+
+## 4.1.0
+
+### Minor Changes
+
+- 0ad1a85: Render the focus ring at the opacity the guard measures, and pair the tour popover
+
+  The engine half of #436, which changed two published packages and shipped no
+  changeset with them. Without this the fixes below sit on `main` and reach no
+  client site — the templates in that PR travel by the mirror, but these do not.
+
+  **The focus indicator was below AA on every screen.** The token matrix in both
+  apps checks `--ring` at full opacity, and all twelve primitives rendered it as
+  `focus-visible:ring-ring/50` — shadcn's stylistic default, carried in
+  unexamined. Half a token is not half as visible: alpha composites toward the
+  page, so the measured ratio was not 5.03:1 but 2.13:1 in the light admin,
+  2.61:1 in the dark, 2.42:1 on the light storefront, against the 3:1 WCAG 1.4.11
+  asks of a control. Only the dark storefront cleared, at 3.09:1, and under a
+  vertical template it was worse — `pizzeria` measured 2.10:1. A keyboard user
+  could not see where they were. Accordion, Badge, Button, Checkbox, Input,
+  InputGroup, Select, Slider, Switch, Tabs and Textarea now render the token the
+  test already trusted.
+
+  This is a visible change: the ring is a solid 3px in the brand colour rather
+  than a soft wash. That is the point of it, and `--ring` is guaranteed to clear
+  3:1 against the page in all four scopes before it is drawn.
+
+  **`loadTokens` can read a cascade.** It read `app/globals.css` and stopped,
+  which measured the palette no delivered site runs — `app/layout.tsx` imports
+  `@/site/theme.css` after it. It takes an optional `overlays` argument now, so a
+  sweep can reproduce the stylesheet order a client actually gets. Additive: every
+  existing call is unchanged.
+
+  **The onboarding tour was white text on a white box.** `styles.popover` spread
+  reactour's `base` — a white background and no `color` — so the sentence
+  inherited `--foreground` from the admin above it. Fine in light mode at
+  20.147:1; near-white on white in dark, measured in Chromium at 1.045:1, over all
+  28 steps, for every owner whose machine is in dark mode. It now takes
+  `--popover`/`--popover-foreground`, so a theme moves both members together.
+
+### Patch Changes
+
+- Updated dependencies [b9e20ea]
+- Updated dependencies [6d6df2d]
+  - @be-in-digital/core@4.0.0
+
 ## 4.0.0
 
 ### Major Changes

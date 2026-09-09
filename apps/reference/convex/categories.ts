@@ -66,9 +66,17 @@ export const reorder = mutation({
         throw new Error("All categories must belong to the same store");
       }
     }
-    if (storeId) {
-      await requireStorePermission(ctx, storeId, "products:write");
+    // Unconditional, which it was not: the permission check sat inside
+    // `if (storeId)`, and `storeId` stays null when `args.ids` is empty — so a
+    // caller sending `{ ids: [] }` reached `defs.reorder.handler` having been
+    // authorised by nothing. Reordering nothing is harmless in itself; a guard
+    // with a caller-controlled off switch is not, and it is the same shape as
+    // the `validateIntegration` bypass found beside it (#445). An empty
+    // reorder is now refused rather than silently unguarded.
+    if (!storeId) {
+      throw new Error("No categories to reorder");
     }
+    await requireStorePermission(ctx, storeId, "products:write");
     return defs.reorder.handler(ctx, args);
   },
 });

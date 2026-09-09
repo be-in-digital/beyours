@@ -74,6 +74,17 @@ const CONFIG_PATTERN = /^\.env(\..+)?\.example$/
  */
 const ALLOWED = [
   { file: "convex/auth.ts", reason: "the bench trusts localhost:3000-3003; a client site must not" },
+  // The Next.js half of the same seam, and it has to be allowed for the same
+  // reason the Convex half is. Both were appending a development origin to
+  // EVERY delivered client site — `convex/auth.ts` had a four-line comment
+  // forbidding exactly that three lines above the code doing it, and
+  // `lib/convex.ts` added `http://localhost:3001` unconditionally. A trusted
+  // origin is permission for a page on it to make requests carrying the
+  // visitor's session, so this is not cosmetic. The template now trusts
+  // localhost only while `BETTER_AUTH_URL` IS localhost; the bench trusts the
+  // range outright because its workspaces fight over the ports. Held by
+  // `apps/themes/tests/security/client-site-trusted-origins.test.ts`.
+  { file: "lib/convex.ts", reason: "the bench trusts localhost:3000-3001; a client site trusts only its domain" },
   { file: "convex/http.ts", reason: "the template keeps /api/webhooks/* as 410 tombstones for integrators" },
   { file: "app/layout.tsx", reason: "metadata, fonts and theme come from the template's client zone" },
 

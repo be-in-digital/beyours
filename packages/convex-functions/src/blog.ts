@@ -38,8 +38,15 @@ const blogContentValidator = v.object({
  */
 const PLAIN_TEXT_FIELDS = ["title", "excerpt", "metaTitle", "metaDescription"] as const
 
-/** Those of the plain-text fields this payload actually carries, cleaned. */
-function plainTextFields(content: Record<string, unknown> | undefined) {
+/**
+ * Those of the plain-text fields this payload actually carries, cleaned.
+ *
+ * Exported so `blogPublish` can apply it too. Cleaning on write alone leaves a
+ * row drafted BEFORE this existed carrying an unsanitised title, and publishing
+ * is the moment that title reaches the public breadcrumb JSON-LD — the same
+ * reason the body is cleaned on both paths rather than one.
+ */
+export function plainTextFields(content: Record<string, unknown> | undefined) {
   const out: Record<string, string> = {}
   for (const field of PLAIN_TEXT_FIELDS) {
     const value = content?.[field]

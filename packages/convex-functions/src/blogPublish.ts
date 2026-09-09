@@ -7,6 +7,7 @@
 
 import { now } from "./helpers"
 import { sanitizeArticleHtml } from "./htmlSanitize"
+import { plainTextFields } from "./blog"
 
 // ============================================================================
 // Publish
@@ -113,6 +114,12 @@ export async function publishArticleCore(
       ...(typeof draft.content === "string"
         ? { content: sanitizeArticleHtml(draft.content) }
         : {}),
+      // Same reasoning for the short text fields, and the same asymmetry to
+      // correct: publishing was the second cleaning of the body and the first
+      // of nothing else. A row drafted before #445 carries an unsanitised
+      // title, and publishing is exactly the moment it reaches the public
+      // breadcrumb JSON-LD.
+      ...plainTextFields(draft),
       updatedAt: timestamp,
     },
     // Clear scheduling fields
