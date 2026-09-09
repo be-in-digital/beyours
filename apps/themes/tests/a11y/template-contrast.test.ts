@@ -225,17 +225,42 @@ const sweep = (overlays: string[]) =>
     overlays,
   })
 
+/**
+ * Hand the event loop back between templates.
+ *
+ * WHY A SWEEP HAS TO YIELD. 51 `scanContrast` calls in one test body is 29
+ * seconds of uninterrupted synchronous work on a warm laptop and upwards of
+ * three minutes on a CI runner. Vitest's worker talks to the main process over
+ * an RPC to report progress, and a body that never yields never lets that call
+ * be serviced — so the run ends
+ *
+ *     Error: [vitest-worker]: Timeout calling "onTaskUpdate"
+ *
+ * with EVERY test passing and the job red. Measured: 1711 passed, 1 unhandled
+ * error, exit 1, on a runner where the same suite takes 6.8x its local time.
+ *
+ * A macrotask between templates costs nothing measurable and is the whole fix:
+ * the worker gets to answer, and the sweep still runs to completion. Do not
+ * collapse this back into a synchronous `flatMap` — it reads tidier and it is
+ * how the job goes red without a single failing assertion.
+ */
+const yieldToLoop = () => new Promise<void>((resolve) => setImmediate(resolve))
+
 describe("every shipped template, as the app actually renders it", () => {
-  it("has no rendered pair below the floor, under any of the 51 palettes", () => {
-    const below = TEMPLATES.flatMap((slug) =>
+  it("has no rendered pair below the floor, under any of the 51 palettes", async () => {
+    const below: string[] = []
+    for (const slug of TEMPLATES) {
       // `surfaceKnown: false` is excluded here for the same reason it is in
       // `contrast.test.ts`: no static reading can say what colour an image is.
-      sweep([join("templates", slug, "theme.css")])
-        .filter((failure) => failure.surfaceKnown)
-        .map((failure) => `${slug} — ${failure.file}:${failure.line} ` +
-          `${failure.ratio.toFixed(3)}:1 (needs ${failure.floor}) ` +
-          `${failure.foreground} on ${failure.background} [${failure.scope || "admin"}/${failure.mode}]`)
-    )
+      below.push(
+        ...sweep([join("templates", slug, "theme.css")])
+          .filter((failure) => failure.surfaceKnown)
+          .map((failure) => `${slug} — ${failure.file}:${failure.line} ` +
+            `${failure.ratio.toFixed(3)}:1 (needs ${failure.floor}) ` +
+            `${failure.foreground} on ${failure.background} [${failure.scope || "admin"}/${failure.mode}]`)
+      )
+      await yieldToLoop()
+    }
     expect(below).toEqual([])
   }, CATALOGUE_BUDGET_MS)
 
