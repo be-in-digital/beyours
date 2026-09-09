@@ -271,14 +271,18 @@ Three silent order-loss paths. A restaurant connecting Deliveroo lost orders on 
 - [ ] **#172** 🔴 — **Owner action, deliberately left open.** The repo half is done: two Gitleaks
       rules now match the credential (validated over all 7,459 blobs — 3 matches, one distinct
       token, zero false positives), and the false claims in `.gitleaksignore` are corrected.
-      Rotating the secret and rewriting the history are the account owner's calls.
-      **Corrected 2026-09-09:** this entry used to end "the `Gitleaks (secret scan)` job will
-      now fail on `main`". It does not. The four findings those rules produce were
-      fingerprint-scoped in `.gitleaksignore:110-113` so that a *fifth* leak stays visible, and
-      the job is green again — verified by execution with the pinned gitleaks 8.21.2: 4
-      findings without the entry, 0 with it, 1 when a new secret is added on a new line. The
-      job is still not one of the five required checks. The history is still dirty; the
-      scanner has simply stopped shouting about the part we already know.
+      Rotating the secret and rewriting the history are the account owner's calls. **The scan
+      posture was settled in #337 (merged 4 Sep 2026)**: the four known findings are accepted
+      by fingerprint — commit, file, rule and line — so a *fifth* leak is visible rather than
+      buried in a permanently red list. The job is not one of the five required checks, so
+      neither red nor green ever blocked a merge. A green run still proves nothing about the
+      history. (This line previously said the job "will now fail on `main`", which #337
+      reversed eighteen hours after it was written. Corrected 2026-09-09.)
+      Verified by execution rather than by reading, on a synthetic repository reproducing the
+      same two paths and syntactic positions with a fabricated token, using the pinned gitleaks
+      8.21.2: **4 findings with no ignore file (exit 1), 0 with the four fingerprints (exit 0),
+      and 1 when a fifth occurrence is added (exit 1)** — which is the property the posture
+      claims and the reason the entries earn their place.
 
 > **Closed when.** An order from each platform reaches the kitchen with the right price and notes; a cancellation removes it; a failed accept is visible instead of swallowed. — **Met**, and covered by tests that stay in the repo: `uber-eats-webhook.test.ts` and `deliveroo-webhook.test.ts` in both apps, `platform-webhook-failures.test.ts`, and `platformWebhook.test.ts` in the package. Each drives the signed HTTP endpoint, and each was proven red against the unfixed code.
 

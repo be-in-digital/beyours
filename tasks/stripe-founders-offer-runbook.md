@@ -148,8 +148,8 @@ The resulting coupon id goes into `STRIPE_FOUNDERS_COUPON_ID`.
 > **What `max_redemptions` does and does not do.** Stripe counts a redemption
 > when the discount is actually applied to a completed payment, so it is the
 > backstop, not the turnstile. The front-line cap is `countFoundersSold`, which
-> holds a seat for an unpaid checkout for 24 h
-> ([`foundersOffer.ts:25`](../apps/site/convex/foundersOffer.ts)). The two are
+> holds a seat for an unpaid checkout for 30 minutes — `FOUNDERS_HOLD_MS`,
+> ([`foundersOffer.ts:43`](../apps/site/convex/foundersOffer.ts)). The two are
 > meant to be used together; neither is sufficient alone, which is exactly why
 > the guard refuses when the coupon is missing.
 
@@ -290,9 +290,9 @@ the Stripe page *without paying*:
   wrong: the discount is spreading across both lines. Fix the coupon, do not
   ship it.
 
-Abandon the session. An unpaid checkout holds a founders seat for 24 h
-([`foundersOffer.ts:19-25`](../apps/site/convex/foundersOffer.ts)) and then
-returns it — so this costs one seat for a day, and nothing permanently.
+Abandon the session. An unpaid checkout holds a founders seat for 30 minutes
+([`foundersOffer.ts:43`](../apps/site/convex/foundersOffer.ts)) and then
+returns it — so this costs one seat for half an hour, and nothing permanently.
 
 **6d — the renewal actually bills.** Not provable without a completed sale.
 `createSubscription` runs from the `checkout.session.completed` webhook, and the
@@ -333,9 +333,14 @@ as coverage:
   A Price edited in the Dashboard the day after `stripeAudit:run` came back clean
   is undetected until someone runs it again. Run it after any change to Stripe
   billing objects, and before a go-live.
-- **The coupon is not audited.** `max_redemptions`, `applies_to` and
-  `times_redeemed` are read back by hand (§6b) and proven only by §6c. A coupon
-  whose `applies_to` points at the wrong Product still costs a free build.
+- **`stripeAudit:run` does not audit the coupon** — but the wizard does, so this
+  is not work you have to do by hand. `scripts/wizards/stripe-founders-launch.sh:392-427`
+  reads `max_redemptions`, `applies_to` and `times_redeemed` back and fails with
+  "Coupon has no applies_to". What stays unproven until §6c is only that the
+  coupon *applies* to a real session: a coupon whose `applies_to` points at the
+  wrong Product still costs a free build, and only a live checkout shows it.
+  (This bullet used to say flatly "the coupon is not audited", contradicting §6's
+  own head, which says the wizard does 6a and 6b in one pass. Corrected 2026-09-09.)
 - **The renewal billing behaviour is still unproven** until one real order has
   been through it — §6d, unchanged. The audit verifies the Prices as *objects*,
   not the subscription that will be raised against them.

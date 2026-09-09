@@ -46,22 +46,30 @@
 # Also corrected: `c0f09cb` is reachable from 35 LOCAL refs and from ZERO remote
 # refs, so the claim that CI's checkout fetches it is not true today.
 #
-# Until 2026-09-04 the Deliveroo secret had no fingerprint entry in this file.
-# It was not suppressed — it was simply never detected, because no rule matched
-# a bare 52-character base36 token. Two rules now do: see `.gitleaks.toml`.
+# CORRECTED 2026-09-09. The three paragraphs above were written before #337 and
+# are kept only because the reasoning around them still holds. Two of their
+# statements no longer do:
 #
-# UPDATE (this paragraph used to end "this file will need a decision on the
-# finding"): that decision has been taken and is recorded at the bottom of this
-# file — four fingerprints, with the reasoning. Read that entry before reading
-# this one as still-open. It is a DIFFERENT kind of entry from the JWT above:
-# the credential is still live, and the silencing buys signal, not safety.
+#   - "The Deliveroo secret has never had a fingerprint entry in this file."
+#     It has four, at the bottom of this file, added by #337 on 2026-09-04.
+#     Until then it was genuinely never detected, because no rule matched a bare
+#     52-character base36 token; two rules in `.gitleaks.toml` now do.
+#   - "this file will need a decision on the finding." That decision was taken
+#     in #337 and is recorded at the entry itself: accept the four known
+#     findings by fingerprint so a FIFTH leak is visible, and remove them when
+#     Part B rewrites the history. Nothing about it makes the secret safe.
 #
-# The commit counts quoted in this header are reproduced, not re-derived. The
-# single source for them is the "Blast radius" table in
-# tasks/secret-rotation-runbook.md. If this header and that table ever disagree,
-# the table wins — and the disagreement is itself the bug. That is not
-# hypothetical: three "18 commits" claims outlived this retraction in that
-# runbook by five days, and were removed on 2026-09-09.
+#   - The blast-radius figures below (393 commits on `main`, 8 remote branches,
+#     59 of 60 tags, 0 open PRs) were measured on 2026-09-04 and have grown.
+#     Re-measured 2026-09-09 on a full clone: 472 commits on `main`, 72 remote
+#     branches, 75 tags, and 2 open draft PRs (#420, #421). The authoritative
+#     table is in `tasks/secret-rotation-runbook.md`, Part B.
+#
+#   - And the single source for every commit count is that table, not this
+#     header. If the two ever disagree, the table wins and the disagreement is
+#     itself the bug. Not hypothetical: three "18 commits" claims outlived the
+#     retraction below by five days inside that very runbook — #401 rewrote the
+#     file around them without touching them — and were removed on 2026-09-09.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Better Auth convex_jwt captured in a Playwright storageState fixture.
@@ -76,11 +84,13 @@
 #   - the repository is private, and apps/restaurant-theme/ no longer exists.
 #
 # Accepted rather than purged because Part B rewrites every SHA, which at the
-# time would have invalidated 14 open pull requests. Re-measured 2026-09-04:
-# the queue is EMPTY (0 open PRs), so that reason has expired. What a rewrite
-# now costs is 393 commits on `main`, 8 remote branches and 59 remote tags —
-# the tags being the `@be-in-digital/*` release anchors. See Part B of
-# tasks/secret-rotation-runbook.md; the decision is the account owner's.
+# time would have invalidated 14 open pull requests. That reason has expired.
+# What a rewrite costs is the Blast radius table in Part B of
+# tasks/secret-rotation-runbook.md, and is deliberately NOT restated here — the
+# figures this paragraph used to carry (393 commits, 8 branches, 59 tags, 0 open
+# PRs) were already contradicted by the correction at the top of this same file.
+# A count quoted away from the table goes stale and then gets believed. The
+# decision is the account owner's.
 # Two fingerprints for ONE secret: gitleaks fingerprints per commit, and the
 # same blob was committed twice on 2026-03-11. 7cf4d41 is reachable from main;
 # c0f09cb is reachable from 35 LOCAL refs (34 stale tags plus the local

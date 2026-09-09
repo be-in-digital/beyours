@@ -91,16 +91,18 @@ Two things follow:
    were never credentials.
 
    The consequence has to be said plainly: **Gitleaks is green while the history
-   is still dirty.** Both leaks are now *detected* and then *deliberately
-   silenced* — which is a different thing from undetected, and a strictly better
-   one, but it buys no safety at all. The Deliveroo secret is still unrotated.
-   Read this runbook, not the check.
+   is still dirty.** The Deliveroo secret above is *detected* — item 1's two
+   rules match it — and then accepted by fingerprint, and it is still unrotated.
+   Read this runbook, not the check. (This paragraph used to say the secret was
+   "undetected by the scanner", which stopped being true with #315 and is
+   contradicted by item 1 above. Corrected 2026-09-09.)
 
    Purging was deferred rather than rejected: Part B rewrites every SHA and
    would invalidate the 14 pull requests open at the time. **That blocker has
-   expired** — re-measured 2026-09-04, the queue holds **0 open PRs**. What a
-   rewrite costs now is 393 commits on `main`, 8 remote branches and 59 of 60
-   remote tags; see Blast radius below.
+   expired** — the queue is no longer what it was. What a rewrite costs is in
+   the Blast radius table below, and only there: this sentence used to restate
+   the figures, and they were five days stale the moment the table was
+   re-measured on a full clone.
 
 ---
 
@@ -336,14 +338,14 @@ execution:
 | | 2026-08-16 | **2026-09-04** |
 |---|---|---|
 | Commits across all local refs | 387 | **699** |
-| Commits reachable from origin | — | **470** |
-| Commits on `main` (all rewritten) | — | **393** |
+| Commits reachable from origin | — | **680** (was 470 on 4 Sep) |
+| Commits on `main` (all rewritten) | — | **472** (was 393 on 4 Sep) |
 | Commits containing the secret, all refs | — | **137** |
 | …of those, ancestors of `main` (published) | 18 (claimed) | **41** |
 | …local-only, never pushed | — | **96** |
-| Remote branches carrying the leak | 4 | **8 — every one** |
-| Remote tags carrying the leak | 10 of 35 | **59 of 60** |
-| Open PRs invalidated | 14 | **0** |
+| Remote branches carrying the leak | 4 | **72 — every one** (was 8 on 4 Sep) |
+| Remote tags carrying the leak | 10 of 35 | **75** (was 59 of 60); 63 are `@be-in-digital/*` release anchors |
+| Open PRs invalidated | 14 | **2** (#420, #421 — drafts, 9 Sep; a draft's SHAs die like any other) |
 
 **How to re-measure — and why you must, before you quote any of it.**
 These figures were taken on 2026-09-04 on a *full* clone with every ref fetched.
@@ -415,39 +417,38 @@ Validated over all 7,459 blobs in the object store: the two rules match 3 blobs
 and yield exactly one distinct token — the secret. No false positives at HEAD
 (2,655 tracked files) or anywhere in history.
 
-**Consequence, as first written: the `Gitleaks (secret scan)` job would FAIL on
-`main`** until the credential is rotated and Part B is executed. That job is
-**not** one of the five required status checks (Lint, Type Check, Test, Build,
-E2E Status), so the red does not block merges — it makes a real finding visible
-instead of hiding it.
+**Consequence, and how it was settled.** Those rules made the `Gitleaks (secret
+scan)` job fail on `main` itself on every run. **#337 (merged 4 Sep 2026)
+accepted the four findings by fingerprint** — commit, file, rule and line — so
+that a *fifth* leak is visible instead of arriving as one more line in a
+permanently red list. See item 1 above and the entry in `.gitleaksignore`, which
+states in the same breath that the secret remains unrotated. The job is **not**
+one of the five required status checks (Lint, Type Check, Test, Build, E2E
+Status), so neither red nor green has ever blocked a merge.
 
-**That is no longer what happens, and this paragraph used to end by forbidding
-what has since been done.** It read: *"Do not silence it in `.gitleaksignore`:
-per that file's own policy an entry records a credential accepted as no longer
-exploitable, and this one has not been rotated yet."* Meanwhile
-`.gitleaksignore:110-113` holds the four fingerprints, and `:89-93` argues for
-them. The document contradicted itself; here is the resolution, and why this
-side lost:
+The four lines come out when Part B rewrites the history. Until then: a green
+Gitleaks run is not proof this history is clean, and this runbook — not the
+check — is the source of truth for A.1.
 
-- **The premise was right, the conclusion was wrong.** The secret is indeed
-  still exploitable, and nothing about the entry changes that. But the entry was
-  never a claim of safety. `.gitleaksignore:82-87` says so in its own words:
-  *"This entry is NOT the JWT case above… Nothing here makes it safe."*
-- **What it buys is signal, not safety.** A check that is red on every commit of
-  `main` reports the same four known findings for ever, and a genuinely new leak
-  arrives as a fifth line in a list nobody reads any more. Silencing four known
-  findings is what lets the scanner speak about a fifth.
-- **Verified by execution, 2026-09-09** — see §"What the automated scan sees"
-  above for the run. Four findings without the entry; zero with it; **one** when
-  a fifth secret is added on a new line of the same file. The scoping works, so
-  the trade is real rather than hoped-for.
+*(This paragraph previously instructed "do not silence it in `.gitleaksignore`",
+which #337 reversed. Corrected 2026-09-09.)*
 
-So `.gitleaksignore` now records **two** kinds of entry, and they must not be
-confused: a credential accepted as *no longer exploitable* (the `convex_jwt`),
-and a credential *still live* whose finding is silenced only to keep the channel
-usable (this one). The second kind carries an expiry: **remove those four lines
-the moment Part B rewrites the history** — they are the scanner's memory of an
-uncleaned leak, not evidence of a clean one.
+**Verified by execution, 2026-09-09**, because "a fifth leak is still visible" is
+a claim about a tool and was worth measuring rather than trusting. On a
+synthetic repository reproducing the same two paths and the same syntactic
+positions with a fabricated token, under the pinned gitleaks 8.21.2: **4**
+findings with no ignore file (exit 1), **0** with the four fingerprints
+(exit 0), **1** when a fifth occurrence is added on a new line (exit 1). The
+scoping works, so the trade is real rather than hoped-for.
+
+So `.gitleaksignore` records **two** kinds of entry, and they must not be
+confused. One is a credential accepted as *no longer exploitable* — the
+`convex_jwt`, provably dead: expired, fifteen-minute lifetime, localhost scope.
+The other is a credential *still live* whose finding is silenced only to keep
+the channel usable, which is this one. The second kind carries an expiry, and
+it is the sentence above: those four lines come out when Part B rewrites the
+history. An entry of the second kind left behind after a rotation would be the
+first kind's claim made falsely.
 
 Then: tell the team to **re-clone** (old clones keep the leaked history), and
 rebase / close-reopen the open PRs if needed. GitHub can keep cached views for a
@@ -494,8 +495,9 @@ purge is required.
       Part B, in the same change that rewrites the history — not before (the
       finding comes back and drowns the channel) and not after (the file then
       claims a leak that no longer exists)
-- [ ] B History purge done on a fresh clone + force-push — **account owner:
-      force-push to `main`, 393 commits, 8 remote branches, 59 of 60 release tags**
+- [ ] B History purge done on a fresh clone + force-push — **account owner;
+      the size of it is the Blast radius table above, re-measured before you
+      start rather than read from here**
 - [ ] B Team told to re-clone; open PRs handled
 - [ ] B `secrets-to-redact.txt` deleted
 - [ ] Owner + rotation cadence defined (periodic rotation)
