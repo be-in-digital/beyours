@@ -9,8 +9,18 @@
 | Item | Where | Severity | Action |
 |---------|-----|---------|--------|
 | `DELIVEROO_CLIENT_ID` + `DELIVEROO_CLIENT_SECRET` (sandbox) | hardcoded in `scripts/deliveroo-menu-scenarios.sh`, present in git history | High | Regenerate + purge the history |
-| **the same** Deliveroo `client_id` + `client_secret` | `apps/restaurant-theme/e2e/deliveroo/test-config.ts`, 18 commits | High | Same rotation; covered by `--replace-text` in Part B |
+| **the same** Deliveroo `client_id` + `client_secret` | also `apps/restaurant-theme/e2e/deliveroo/test-config.ts` | High | Same rotation; covered by `--replace-text` in Part B |
 | Better Auth session token + `convex_jwt` | `apps/restaurant-theme/e2e/.auth/admin.json`, in the history | Low since 2026-02-25 (was Medium — expired, test account) | Accepted in `.gitleaksignore`; still purged by Part B |
+
+> **No per-file commit count belongs in this table**, and one used to: the
+> Deliveroo row read "18 commits" against `test-config.ts` alone. That number
+> was wrong, and wrong in the direction that matters — it counted one of the two
+> files and silently omitted `scripts/deliveroo-menu-scenarios.sh`, where the
+> secret lived **longest**. The real figures are per *commit*, span both files,
+> and live in exactly one place in this document: **Blast radius**, below. Do not
+> restate a count here — cite that table, or it drifts again. It already did:
+> the correction was measured on 2026-09-04 and recorded in `.gitleaksignore`,
+> and three "18 commits" claims survived in this file until 2026-09-09.
 
 > ⚠️ **`apps/restaurant-theme/` no longer exists** — that app was split into
 > `apps/reference` and `apps/themes`. The path above is kept **verbatim on
@@ -25,15 +35,22 @@
 ### What the automated scan sees (and misses)
 
 The `Gitleaks (secret scan)` job in `.github/workflows/security.yml` scans the
-full history on every push. Run of 2026-08-16, 270 commits, **3 findings** — and
-the overlap with the table above is only partial:
+full history on every push (`gitleaks detect --source . --redact --verbose
+--no-banner`, CLI pinned to **8.21.2**, `fetch-depth: 0`). Its verdict has
+changed twice, so date any statement about it:
+
+| Run | Scope | Findings |
+|---|---|---|
+| 2026-08-16 | 270 commits | **3** — before the two project rules existed |
+| 2026-09-04 | 466 commits | **4** — the two new rules firing on `7cf4d41` |
+| 2026-09-04 → today | same | **0 reported** — those four are fingerprint-scoped in `.gitleaksignore` |
 
 | Finding | Reported by gitleaks? | Real leak? | Covered here? |
 |---|---|---|---|
-| `convex_jwt` in `apps/restaurant-theme/e2e/.auth/admin.json:15` | **Yes** | **Yes** | A.2 + Part B |
+| `convex_jwt` in `apps/restaurant-theme/e2e/.auth/admin.json:15` | **Yes**, then silenced by fingerprint | **Yes** | A.2 + Part B |
 | `ENCRYPTION_KEY` in `packages/core/src/env/__tests__/schemas.test.ts:101` | Was, until `061436a` | No — test fixture | allowlisted in `.gitleaks.toml` |
-| Deliveroo secret in `scripts/deliveroo-menu-scenarios.sh` | **No** | **Yes** | A.1 + Part B |
-| Deliveroo secret in `apps/restaurant-theme/e2e/deliveroo/test-config.ts` (18 commits) | **No** | **Yes** | A.1 + Part B |
+| Deliveroo secret in `scripts/deliveroo-menu-scenarios.sh` | **No** until #315; **yes** since, then silenced by fingerprint | **Yes** | A.1 + Part B |
+| Deliveroo secret in `apps/restaurant-theme/e2e/deliveroo/test-config.ts` | **No** until #315; **yes** since, then silenced by fingerprint | **Yes** | A.1 + Part B |
 
 Two things follow:
 
@@ -42,8 +59,27 @@ Two things follow:
    (`deliveroo-client-secret-shape` and `-context`, in `.gitleaks.toml`). They
    fire on four historical findings, all on `7cf4d41` of 2026-03-11, and made
    `security.yml` red on `main` itself on every run. Those four are now
-   fingerprint-scoped in `.gitleaksignore` so the scanner can still report a
-   fifth; read that entry, it states plainly that the secret remains unrotated.
+   fingerprint-scoped in `.gitleaksignore` (`:110-113`) so the scanner can still
+   report a fifth; read that entry, it states plainly that the secret remains
+   unrotated.
+
+   **That silencing was verified by execution on 2026-09-09**, because a
+   fingerprint file that does not actually work would leave the scanner mute on
+   a real leak. Built a throwaway repo carrying a *fabricated* 52-character
+   base36 token in the same two paths and the same two syntactic positions as
+   the real leak (`:-` in a shell default, `|| "` in TypeScript), and ran the
+   CI command against it with gitleaks 8.21.2:
+
+   ```
+   no .gitleaksignore                     -> leaks found: 4    exit 1
+   the four fingerprints in .gitleaksignore -> no leaks found  exit 0
+   + a FIFTH secret, new line, same file   -> leaks found: 1   exit 1
+   ```
+
+   The third line is the one that justifies the entry: silencing four known
+   findings is what lets the scanner speak about a fifth, and it does — one
+   finding, not five and not zero. `.gitleaksignore`'s per-fingerprint scoping
+   (commit × path × rule × line) is doing exactly what it claims.
 
    The instruction stands unchanged: do not treat a green Gitleaks run as proof
    the history is clean — this runbook stays the source of truth for A.1.
@@ -54,13 +90,17 @@ Two things follow:
    deliberately NOT in `.gitleaks.toml`, which stays reserved for values that
    were never credentials.
 
-   The consequence has to be said plainly: **Gitleaks is now green while the
-   history is still dirty.** The Deliveroo secret above is undetected by the
-   scanner and still unrotated. Read this runbook, not the check.
+   The consequence has to be said plainly: **Gitleaks is green while the history
+   is still dirty.** Both leaks are now *detected* and then *deliberately
+   silenced* — which is a different thing from undetected, and a strictly better
+   one, but it buys no safety at all. The Deliveroo secret is still unrotated.
+   Read this runbook, not the check.
 
    Purging was deferred rather than rejected: Part B rewrites every SHA and
-   would invalidate the 14 pull requests open at the time. Do it once the queue
-   is empty.
+   would invalidate the 14 pull requests open at the time. **That blocker has
+   expired** — re-measured 2026-09-04, the queue holds **0 open PRs**. What a
+   rewrite costs now is 393 commits on `main`, 8 remote branches and 59 of 60
+   remote tags; see Blast radius below.
 
 ---
 
@@ -240,9 +280,12 @@ git show 7cf4d41:scripts/deliveroo-menu-scenarios.sh \
 grep -c '^literal:.*==>' secrets-to-redact.txt
 ```
 
-The same two values also live in `apps/restaurant-theme/e2e/deliveroo/test-config.ts`
-(18 commits). `--replace-text` scrubs every blob in history, so that file is covered
-by the same replacement file — provided the two lines above are correct.
+The same two values also live in `apps/restaurant-theme/e2e/deliveroo/test-config.ts`.
+`--replace-text` scrubs every blob in history, so that file is covered by the same
+replacement file — provided the two lines above are correct. **Do not put a commit
+count on either file here**: the count that matters is per commit across both, and
+it is in Blast radius below. This sentence used to read "(18 commits)", which was
+the single wrong number this whole document was built around.
 
 > `secrets-to-redact.txt` is already in `.gitignore` (line 49). Delete it after the purge.
 
@@ -282,6 +325,11 @@ rm -f secrets-to-redact.txt
 
 ### Blast radius (re-measured 2026-09-04)
 
+**This table is the only place in this document that carries a commit count.**
+Every other section cites it. That is deliberate: the "18 commits" figure was
+wrong for months precisely because four sections each restated it and none of
+them was the source.
+
 The 2026-08-16 figures below were stale in every direction. Re-measured by
 execution:
 
@@ -296,6 +344,41 @@ execution:
 | Remote branches carrying the leak | 4 | **8 — every one** |
 | Remote tags carrying the leak | 10 of 35 | **59 of 60** |
 | Open PRs invalidated | 14 | **0** |
+
+**How to re-measure — and why you must, before you quote any of it.**
+These figures were taken on 2026-09-04 on a *full* clone with every ref fetched.
+They are reproduced here, not re-verified: the counts depend on refs that a
+working clone may not hold. Re-run them before acting:
+
+```bash
+# 1. A FULL clone. A shallow one silently answers a different question.
+git clone https://github.com/be-in-digital/beyours.git measure && cd measure
+git fetch --tags --prune origin '+refs/heads/*:refs/remotes/origin/*'
+git rev-parse --is-shallow-repository        # must print: false
+
+# 2. Recover the secret from the commit that introduced it — never type it.
+SECRET=$(git show 7cf4d41:scripts/deliveroo-menu-scenarios.sh \
+  | sed -nE 's/.*DELIVEROO_CLIENT_SECRET:-([0-9a-z]{52})\}.*/\1/p')
+test -n "$SECRET" || echo "FAILED to recover the value — do not proceed"
+
+# 3. The three counts, in the units the table uses.
+git log --all        --format=%H -S"$SECRET" | wc -l   # all local refs   (was 137)
+git log origin/main  --format=%H -S"$SECRET" | wc -l   # published        (was  41)
+# local-only = the first minus the second                                 (was  96)
+
+git rev-list origin/main --count                       # rewritten by Part B (was 393)
+```
+
+> ⚠️ **Do not run step 3 in a shallow clone and believe the answer.** Measured
+> here on 2026-09-09: `git rev-parse --is-shallow-repository` → `true`,
+> `git rev-list --all --count` → `67`, `git tag | wc -l` → `0`, and `7cf4d41` is
+> not present at all (`git cat-file -t 7cf4d41` → `fatal: Not a valid object
+> name`). A shallow clone answers **zero** to every count above and looks clean.
+> The same trap catches the scanner: the CI command run here returned
+> `60 commits scanned … no leaks found`, exit 0 — green, on a clone that simply
+> does not contain the leaked commits. That is a third distinct way to get a
+> green Gitleaks over a dirty history, alongside "no rule matched" and
+> "fingerprint silenced".
 
 Two of these change the decision rather than just the arithmetic:
 
@@ -332,13 +415,39 @@ Validated over all 7,459 blobs in the object store: the two rules match 3 blobs
 and yield exactly one distinct token — the secret. No false positives at HEAD
 (2,655 tracked files) or anywhere in history.
 
-**Consequence: the `Gitleaks (secret scan)` job will now FAIL on `main`** until
-the credential is rotated and Part B is executed. That job is **not** one of the
-five required status checks (Lint, Type Check, Test, Build, E2E Status), so the
-red does not block merges — it makes a real finding visible instead of hiding
-it. Do not silence it in `.gitleaksignore`: per that file's own policy an entry
-records a credential accepted as *no longer exploitable*, and this one has not
-been rotated yet.
+**Consequence, as first written: the `Gitleaks (secret scan)` job would FAIL on
+`main`** until the credential is rotated and Part B is executed. That job is
+**not** one of the five required status checks (Lint, Type Check, Test, Build,
+E2E Status), so the red does not block merges — it makes a real finding visible
+instead of hiding it.
+
+**That is no longer what happens, and this paragraph used to end by forbidding
+what has since been done.** It read: *"Do not silence it in `.gitleaksignore`:
+per that file's own policy an entry records a credential accepted as no longer
+exploitable, and this one has not been rotated yet."* Meanwhile
+`.gitleaksignore:110-113` holds the four fingerprints, and `:89-93` argues for
+them. The document contradicted itself; here is the resolution, and why this
+side lost:
+
+- **The premise was right, the conclusion was wrong.** The secret is indeed
+  still exploitable, and nothing about the entry changes that. But the entry was
+  never a claim of safety. `.gitleaksignore:82-87` says so in its own words:
+  *"This entry is NOT the JWT case above… Nothing here makes it safe."*
+- **What it buys is signal, not safety.** A check that is red on every commit of
+  `main` reports the same four known findings for ever, and a genuinely new leak
+  arrives as a fifth line in a list nobody reads any more. Silencing four known
+  findings is what lets the scanner speak about a fifth.
+- **Verified by execution, 2026-09-09** — see §"What the automated scan sees"
+  above for the run. Four findings without the entry; zero with it; **one** when
+  a fifth secret is added on a new line of the same file. The scoping works, so
+  the trade is real rather than hoped-for.
+
+So `.gitleaksignore` now records **two** kinds of entry, and they must not be
+confused: a credential accepted as *no longer exploitable* (the `convex_jwt`),
+and a credential *still live* whose finding is silenced only to keep the channel
+usable (this one). The second kind carries an expiry: **remove those four lines
+the moment Part B rewrites the history** — they are the scanner's memory of an
+uncleaned leak, not evidence of a clean one.
 
 Then: tell the team to **re-clone** (old clones keep the leaked history), and
 rebase / close-reopen the open PRs if needed. GitHub can keep cached views for a
@@ -353,7 +462,16 @@ purge is required.
 
 ## Checklist
 
-- [ ] A.1 Deliveroo secret regenerated in the portal
+> **Nothing below is unblocked by repository work.** A.1 step 1 and the whole of
+> Part B are **account-owner actions** — regenerating the credential lives in the
+> Deliveroo Developer Portal, and force-pushing a rewritten `main` is a decision
+> only the owner can take. #172 is open for exactly that reason. No amount of
+> editing this file rotates anything.
+
+- [ ] A.1 Deliveroo secret regenerated in the portal — **account owner, Deliveroo
+      Developer Portal. This is the one that actually ends the exposure, and it
+      must happen BEFORE Part B, not after: a rewrite of a live credential's
+      history still leaves the credential live.**
 - [ ] A.1 Written into Infisical `/platform` FIRST (or the next provisioning
       run of any deployment silently restores the old value)
 - [ ] A.1 Propagated with `setup-convex-env.sh --infisical [--prod]` on every
@@ -370,8 +488,14 @@ purge is required.
       deleting is tidying, not remediation. The CLI cannot do it — `convex data`
       is read-only and no deployed function touches the component — so it is a
       Convex Dashboard operation: Data → component `betterAuth` → `session`.)
-- [ ] Re-check `.gitleaksignore` when the PR queue is empty: purge, then drop the entry
-- [ ] B History purge done on a fresh clone + force-push
+- [x] The PR-queue blocker has expired — **0 open PRs** (measured 2026-09-04; was
+      14). Part B is no longer waiting on the queue. It is waiting on the owner.
+- [ ] Drop the four Deliveroo fingerprints from `.gitleaksignore` **as part of**
+      Part B, in the same change that rewrites the history — not before (the
+      finding comes back and drowns the channel) and not after (the file then
+      claims a leak that no longer exists)
+- [ ] B History purge done on a fresh clone + force-push — **account owner:
+      force-push to `main`, 393 commits, 8 remote branches, 59 of 60 release tags**
 - [ ] B Team told to re-clone; open PRs handled
 - [ ] B `secrets-to-redact.txt` deleted
 - [ ] Owner + rotation cadence defined (periodic rotation)

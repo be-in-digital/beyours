@@ -21,11 +21,47 @@
  * A fiscal series and its counter belong here and nowhere else: `invoices.ts`
  * states the rule in the schema itself — *"It is never edited and never
  * deleted… `system.importBackup` must not restore them: a fiscal series that a
- * restore can rewrite is not a series"* (art. 242 nonies A CGI). Leaving them
- * out of the import is also what keeps `orders.invoiceId` correct across a
- * restore: the invoice rows are never re-inserted, so their ids never change,
- * so the reference still resolves. On a REBUILT deployment they do not exist at
- * all, and the restore says so instead of pretending.
+ * restore can rewrite is not a series"* (art. 242 nonies A CGI).
+ *
+ * ## What that costs, and what pays it back
+ *
+ * This header used to claim that leaving the invoices out of the import "keeps
+ * `orders.invoiceId` correct across a restore: the invoice rows are never
+ * re-inserted, so their ids never change, so the reference still resolves". The
+ * sentence was true of the invoice ids and wrong about everything that matters,
+ * and the topological guard in `backup-coverage.test.ts` skipped the edge on
+ * the strength of it. `orders` IS restored — deleted and re-inserted under new
+ * ids — so BOTH ends of the link move, and each breaks in its own way:
+ *
+ *  - **`invoices.orderId` breaks on every restore, this deployment included.**
+ *    The invoices sit untouched naming the ids the orders had before. That is
+ *    the authoritative half of `assertOrderHasNoInvoice` (`orderCascade.ts`),
+ *    which exists precisely for an order invoiced before `orders.invoiceId`
+ *    was populated — so after a restore such an order became deletable while
+ *    its invoice stood. `invoices.storeId` moves with it, and takes the
+ *    per-establishment invoice list (`by_storeId_issuedAt`) with it.
+ *  - **`orders.invoiceId` breaks on a REBUILT deployment**, where the invoices
+ *    are in the file and not in the database. `invoiceRefusal` tests that field
+ *    for truthiness rather than resolution, so a dangling id answered
+ *    `already_issued` for ever: no invoice could be issued for that sale again,
+ *    by the automatic path or the manual one, and the admin showed no number
+ *    and the reason "already issued".
+ *
+ * Neither is answered by the import ORDER — an export-only table has no
+ * position in it. Both are answered after the last insert, by
+ * `systemInternal.relinkArchiveReferences` and
+ * `systemInternal.reconcileOrderInvoiceLinks`, and every edge that crosses this
+ * boundary is declared in `ARCHIVE_EDGES` below with what answers it.
+ *
+ * Rewriting `invoices.orderId` is not editing the document. The number, the
+ * dates, the parties, the lines and the figures are what art. 242 nonies A
+ * fixes; `orderId` is this deployment's pointer at the sale, and re-pointing it
+ * at the row that sale came back as is what keeps the archive attached to
+ * anything at all. Clearing a dangling `orders.invoiceId` deletes nothing
+ * either: the invoices are in the backup file, which on a rebuilt deployment is
+ * then the ONLY copy of that series and has to be kept as such (art. L102 B
+ * LPF, six years) — `numberSequences` is export-only too, so the rebuilt
+ * deployment starts a fresh series rather than continuing the old one.
  *
  * `EXCLUDED_TABLES` — absent from the file, each with the reason in this file
  * rather than in someone's head. Credentials, identities, and rows that are a
@@ -54,8 +90,16 @@
  * own validators and fails when this order stops being a valid sort, which is
  * the only version of this check that cannot go stale.
  *
- * Two edges the order deliberately breaks are declared in
- * `DEFERRED_REMAP_TABLES` below.
+ * The edges the order deliberately breaks are declared in
+ * `DEFERRED_REMAP_TABLES` below — `DEFERRED_REMAP_TABLES.length === 1` today,
+ * and `backup-coverage.test.ts` holds that sentence and the array in step. It
+ * read "two edges" from the day it was written (`58f890f` introduced the
+ * sentence, the single bullet and the one-element array in the same diff), and
+ * a plural with one bullet under it reads as though a bullet was lost.
+ *
+ * Edges that cross into or out of the fiscal archive are a different problem —
+ * an export-only table has no position in this order at all — and are declared
+ * separately, in `ARCHIVE_EDGES`.
  */
 export const BACKUP_TABLES = [
   // ── Configuration ──
@@ -128,8 +172,11 @@ export const BACKUP_TABLES = [
 
   /* ── Trade ──
      Last, because everything they reference comes before them. `orders` also
-     references `invoices`, which is export-only — see this module's header for
-     why that reference survives a restore anyway. */
+     references `invoices`, which is export-only, and that edge does NOT survive
+     a restore by itself: an export-only table has no position in this order, so
+     nothing here can fix it. It is repaired after the last insert instead — see
+     `ARCHIVE_EDGES` below, and this module's header for which half of the link
+     breaks on which kind of restore. */
   "orders",
   "payments",
   "kitchenTickets",
@@ -179,8 +226,102 @@ export const EXPORTED_TABLES = [...BACKUP_TABLES, ...EXPORT_ONLY_TABLES] as cons
  *
  * `remapIds` rewrites any string the map knows, anywhere in a row, so a second
  * pass costs one patch per row and needs no per-field knowledge.
+ *
+ * One bullet per entry, and `backup-coverage.test.ts` asserts that — so a
+ * second deferred edge cannot be added without saying which it is, and the
+ * count in this file cannot drift from the array again.
  */
 export const DEFERRED_REMAP_TABLES = ["stores"] as const
+
+/**
+ * How an edge that crosses the export-only boundary is answered.
+ *
+ * `relinked` — the row stays where it is and its ids are rewritten through the
+ * full map, after the last insert. `reconciled` — the reference is re-pointed
+ * at the row that is actually there, or removed when there is none.
+ * `unrepaired` — nothing touches it, and `note` says why that is a decision
+ * rather than an oversight.
+ */
+export type ArchiveEdgeAnswer = "relinked" | "reconciled" | "unrepaired"
+
+export interface ArchiveEdge {
+  /** The table holding the reference. */
+  from: string
+  /** The table it points at. */
+  to: string
+  answer: ArchiveEdgeAnswer
+  note: string
+}
+
+/**
+ * Every foreign key that crosses the line between the restore and the archive.
+ *
+ * The import ORDER cannot answer any of them: an export-only table is never
+ * inserted, so it has no position in `BACKUP_TABLES` and no pass over it can be
+ * scheduled by ordering. `backup-coverage.test.ts` used to skip exactly these
+ * edges on the strength of a claim in this file's header that they survived a
+ * restore intact — so the one edge that breaks on EVERY restore
+ * (`invoices.orderId`) was never examined at all.
+ *
+ * The test now derives this set from the schema, in BOTH directions, and fails
+ * when a new one appears undeclared. Adding a `v.id("invoices")` somewhere is
+ * then a decision taken here, in daylight, rather than a silent dangling
+ * reference discovered during someone's restore.
+ */
+export const ARCHIVE_EDGES: readonly ArchiveEdge[] = [
+  {
+    from: "orders",
+    to: "invoices",
+    answer: "reconciled",
+    note:
+      "On a rebuilt deployment the invoices are in the file and not in the database, so a " +
+      "restored order names a row nothing here has. `invoiceRefusal` reads that field for " +
+      "truthiness, not resolution, so the sale could never be invoiced again. Re-pointed at " +
+      "the standing invoice for that order when there is one, cleared when there is not. " +
+      "Nothing fiscal is deleted — the documents are in the backup file, which is then the " +
+      "only copy of that series (art. L102 B LPF).",
+  },
+  {
+    from: "invoices",
+    to: "orders",
+    answer: "relinked",
+    note:
+      "Breaks on EVERY restore, this deployment included: `orders` is deleted and re-inserted " +
+      "under new ids while the invoices sit untouched. It is the authoritative half of " +
+      "`assertOrderHasNoInvoice`, so an order invoiced before `orders.invoiceId` existed " +
+      "became deletable with its invoice standing.",
+  },
+  {
+    from: "invoices",
+    to: "stores",
+    answer: "relinked",
+    note:
+      "Same restore, same cause: `by_storeId_issuedAt` is how an establishment's invoices are " +
+      "listed, and a dangling `storeId` empties that list.",
+  },
+  {
+    from: "systemAuditLog",
+    to: "stores",
+    answer: "unrepaired",
+    note:
+      "Left alone deliberately, and named here so it is a decision rather than an oversight. " +
+      "`targetStoreId` is what shows a non-super-admin the entries for the establishments they " +
+      "have access to, so after a restore those entries fall out of that reader's view — a " +
+      "visibility loss, not a broken link, and rewriting an audit row is the one thing this " +
+      "table is export-only to prevent. Not in scope of the restore repair; recorded rather " +
+      "than fixed.",
+  },
+]
+
+/** Export-only tables whose ids are rewritten through the map after the import. */
+export const ARCHIVE_RELINK_TABLES: readonly string[] = [
+  ...new Set(ARCHIVE_EDGES.filter((edge) => edge.answer === "relinked").map((edge) => edge.from)),
+]
+
+/** Membership test for the one pass allowed to patch a row it never inserted. */
+export function isArchiveRelinkTable(name: string): boolean {
+  return ARCHIVE_RELINK_TABLES.includes(name)
+}
 
 /**
  * Fields stripped on the way out.

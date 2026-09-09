@@ -104,19 +104,27 @@ export default function ContratPage() {
       });
 
       /* The audit trail's IP row, minted server-side and passed through
-         opaquely. This page cannot produce one and must not try: `/api/signer-ip`
-         reads the address from the proxy header and signs it, and the Convex
-         action verifies that signature before printing anything on the
-         certificate. Best-effort — a failure here costs the trail one
-         corroborating row, not the signature. */
+         opaquely. This page cannot produce one and must not try:
+         `/api/signer-ip` reads the address out of a header the platform edge
+         wrote — never `x-forwarded-for`, which this browser could set itself —
+         signs it together with the name of that header, and the Convex action
+         verifies both before printing anything on the certificate. `null` from
+         that route is an ordinary answer, not an error to work around.
+         Best-effort — a failure here costs the trail one corroborating row,
+         not the signature. */
       let signerIpAttestation:
-        | { ip: string; issuedAt: number; mac: string }
+        | { ip: string; issuedAt: number; mac: string; source: string }
         | undefined;
       try {
         const ipRes = await fetch("/api/signer-ip");
         if (ipRes.ok) {
           const ipJson = (await ipRes.json()) as {
-            attestation: { ip: string; issuedAt: number; mac: string } | null;
+            attestation: {
+              ip: string;
+              issuedAt: number;
+              mac: string;
+              source: string;
+            } | null;
           };
           signerIpAttestation = ipJson.attestation ?? undefined;
         }

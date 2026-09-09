@@ -649,7 +649,7 @@ export const packages: PackageInfo[] = [
           client: {
             type: "S3Operations",
             description:
-              "Injected AWS SDK adapter (putObject, deleteObject, headObject, getSignedUrl)",
+              "Injected AWS SDK adapter: putObject, deleteObject, headObject, getSignedUrl, plus listObjectVersions and deleteObjectVersion. The last two are optional in the type and required in practice — the bucket is versioned, so without them delete() writes a delete marker, keeps every byte and returns outcome: 'delete-marker'. Copy the adapter in packages/core/src/aws/README.md.",
           },
         },
         returnType: "S3Service",

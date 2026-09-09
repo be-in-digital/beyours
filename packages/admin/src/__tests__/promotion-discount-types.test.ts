@@ -15,14 +15,26 @@
  * markup can offer and where the list of them comes from; mounting the form
  * would answer the first and not the second, and it is the second that keeps
  * the two ends from drifting apart again.
+ *
+ * WHAT THIS FILE MISSED (#414 P5-F4). It asserted the form no longer names
+ * `bogoTriggerQuantity` or `bogoRewardQuantity` — and said nothing at all about
+ * the server. So `promotions.create` and `promotions.update` went on accepting
+ * all five withdrawn configuration fields for another five commits, and one of
+ * them was live: `products.remove` reads three of them, so a `freeProductId`
+ * set on an ordinary `percentage` promotion made a dish undeletable and named a
+ * promotion the owner could see no reference in. A test that holds one end of a
+ * contract and calls it done is how a half-cleanup passes review. The last
+ * describe block below is the other end.
  */
 
 import { describe, it, expect } from "vitest"
 import fs from "node:fs"
 import path from "node:path"
+import { create, update } from "@be-in-digital/convex-functions/promotions"
 import {
   HONOURABLE_DISCOUNT_TYPES,
   UNHONOURABLE_DISCOUNT_TYPES,
+  WITHDRAWN_PROMOTION_CONFIG_FIELDS,
 } from "@be-in-digital/convex-functions/promotionDiscount"
 
 const PROMOTIONS = path.join(__dirname, "..", "pages", "promotions")
@@ -59,12 +71,15 @@ describe("the type picker", () => {
     expect(labelled.sort()).toEqual([...HONOURABLE_DISCOUNT_TYPES].sort())
   })
 
-  it("carries no dead field for a type it cannot offer", () => {
-    // The BOGO quantity inputs collected two numbers that were stored and
-    // read by nothing. They went with the option.
-    expect(form).not.toContain("bogoTriggerQuantity")
-    expect(form).not.toContain("bogoRewardQuantity")
-  })
+  it.each(WITHDRAWN_PROMOTION_CONFIG_FIELDS)(
+    "carries no dead %s field for a type it cannot offer",
+    (field) => {
+      // The BOGO quantity inputs collected two numbers that were stored and
+      // read by nothing. They went with the option — and so did the three
+      // product pickers, which is all five, not the two this once checked.
+      expect(form).not.toContain(field)
+    }
+  )
 
   it("explains itself when an existing promotion carries a withdrawn type", () => {
     expect(form).toContain("UNHONOURABLE_DISCOUNT_TYPE_MESSAGE")
@@ -92,5 +107,47 @@ describe("the promotions list", () => {
     // And no longer prints a value that reads as a working campaign.
     expect(listPage).not.toContain('return "BOGO"')
     expect(listPage).not.toContain('return "Produit offert"')
+  })
+})
+
+describe("the server args — the half this file used to leave unchecked", () => {
+  // Not source-scanned: these are the validator objects the Convex mutations
+  // are built from, so what is asserted is the contract itself. Convex refuses
+  // an argument no validator declares — "Validator error: Unexpected field
+  // `freeProductId` in object" — which is why absence here IS the guard, and
+  // why an added key would silently re-open the hole rather than fail a type
+  // check (both handlers take `args: any` and spread it into the row).
+  const validators = { create: create.args, update: update.args }
+
+  for (const [name, args] of Object.entries(validators)) {
+    it.each(WITHDRAWN_PROMOTION_CONFIG_FIELDS)(
+      `promotions.${name} declares no ${"%s"}`,
+      (field) => {
+        expect(Object.keys(args)).not.toContain(field)
+      }
+    )
+  }
+
+  it("still declares everything the form actually sends", () => {
+    // The counterweight: this must fail if someone "fixes" the tests above by
+    // emptying the validators.
+    for (const field of ["storeId", "name", "discountType", "scope", "targetProductIds"]) {
+      expect(Object.keys(create.args)).toContain(field)
+    }
+    for (const field of ["id", "name", "discountType", "scope", "targetProductIds"]) {
+      expect(Object.keys(update.args)).toContain(field)
+    }
+  })
+
+  it("keeps all five discount-type LITERALS on the type validator", () => {
+    // Deliberate, and the opposite of the fields above. `update` reads
+    // `existing.discountType` to refuse an edit that would KEEP a withdrawn
+    // type, and that refusal is a French sentence an owner can act on. Narrow
+    // this union and the same edit becomes an untranslated validator error.
+    const literals = create.args.discountType.members.map((member) => member.value)
+
+    expect([...literals].sort()).toEqual(
+      [...HONOURABLE_DISCOUNT_TYPES, ...UNHONOURABLE_DISCOUNT_TYPES].sort()
+    )
   })
 })

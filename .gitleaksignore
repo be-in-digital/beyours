@@ -2,8 +2,20 @@
 #
 # Distinct from .gitleaks.toml on purpose. That file allowlists values that were
 # NEVER credentials: test fixtures, vendor EXAMPLE keys, documentation
-# placeholders. This file records findings that WERE real credentials and are
-# accepted as no longer exploitable, each with the evidence that makes it so.
+# placeholders. This file records findings that WERE real credentials.
+#
+# There are TWO kinds of entry here, and conflating them is how this file came
+# to contradict itself and the runbook at the same time:
+#
+#   (1) accepted as NO LONGER EXPLOITABLE, with the evidence that makes it so
+#       — the convex_jwt below. Safe, and permanent.
+#   (2) STILL EXPLOITABLE, silenced only so the scanner stays useful — the
+#       Deliveroo client_secret at the bottom. Not safe, and TEMPORARY: it is
+#       deleted by the same change that purges the history.
+#
+# For a long time this header described only (1), which is why
+# tasks/secret-rotation-runbook.md ended up instructing the reader NOT to do
+# what this file had already done. Corrected 2026-09-09, on both sides.
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # An entry here only silences the scanner. It does NOT purge the history: the
@@ -34,11 +46,22 @@
 # Also corrected: `c0f09cb` is reachable from 35 LOCAL refs and from ZERO remote
 # refs, so the claim that CI's checkout fetches it is not true today.
 #
-# The Deliveroo secret has never had a fingerprint entry in this file. It was
-# not suppressed — it was simply never detected, because no rule matched a bare
-# 52-character base36 token. Two rules now do: see `.gitleaks.toml`. Once a
-# scan runs with them, this file will need a decision on the finding rather
-# than continuing to be silent about it.
+# Until 2026-09-04 the Deliveroo secret had no fingerprint entry in this file.
+# It was not suppressed — it was simply never detected, because no rule matched
+# a bare 52-character base36 token. Two rules now do: see `.gitleaks.toml`.
+#
+# UPDATE (this paragraph used to end "this file will need a decision on the
+# finding"): that decision has been taken and is recorded at the bottom of this
+# file — four fingerprints, with the reasoning. Read that entry before reading
+# this one as still-open. It is a DIFFERENT kind of entry from the JWT above:
+# the credential is still live, and the silencing buys signal, not safety.
+#
+# The commit counts quoted in this header are reproduced, not re-derived. The
+# single source for them is the "Blast radius" table in
+# tasks/secret-rotation-runbook.md. If this header and that table ever disagree,
+# the table wins — and the disagreement is itself the bug. That is not
+# hypothetical: three "18 commits" claims outlived this retraction in that
+# runbook by five days, and were removed on 2026-09-09.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Better Auth convex_jwt captured in a Playwright storageState fixture.
@@ -104,6 +127,17 @@ c0f09cb0b61eb8b7377e0aa781232057d3274099:apps/restaurant-theme/e2e/.auth/admin.j
 # Scoped per fingerprint — commit, file, rule and line — deliberately. Not by
 # file, not by rule: a NEW secret in either file, or on another line, still
 # fails the scan.
+#
+# That last sentence was an assertion until 2026-09-09; it is now a measurement.
+# Reproduced with the CI-pinned gitleaks 8.21.2 against a throwaway repo holding
+# a FABRICATED 52-char base36 token in these same two paths and the same two
+# syntactic positions (`:-` in a shell default, `|| "` in TypeScript):
+#
+#   no .gitleaksignore                        -> leaks found: 4    exit 1
+#   these four fingerprints present           -> no leaks found    exit 0
+#   + a fifth secret, new line, same file     -> leaks found: 1    exit 1
+#
+# One, not five and not zero. The scoping does what it says.
 #
 # Remove these four lines when Part B rewrites the history. They are the
 # scanner's memory of a leak that has not been cleaned, not a sign it was.

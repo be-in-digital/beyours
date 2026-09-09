@@ -1823,13 +1823,13 @@ was proven red against the unfixed code.
 - [ ] **`apps/site` has no security headers** (`next.config.ts` is empty) while hosting
   the ops console and the affiliate portal with electronic signatures. No HSTS, no
   `X-Frame-Options`, no `nosniff`.
-- [ ] **Sentry is dead code.** `@sentry/nextjs` is in no `package.json`, `Sentry.init`
-  appears only in a comment, and there is no `error.tsx` / `global-error.tsx`. Yet
-  `NEXT_PUBLIC_SENTRY_DSN` is in the schema and both `.env.example` files, so the
-  operator configures it and believes monitoring is live. A Saturday-night checkout error
-  is seen by nobody.
-  → install and wire it, **or** delete the module and the variable. Shipping the variable
-  without the integration is worse than shipping neither.
+- [x] ~~**Sentry is dead code.**~~ **Done.** It was true when written: `@sentry/nextjs` was
+  in no `package.json` while `NEXT_PUBLIC_SENTRY_DSN` sat in the schema and both
+  `.env.example` files, so an operator configured monitoring that did not exist. It is now
+  `^10.71.0` in all three apps (`apps/reference`, `apps/themes`, `apps/site`), wired by
+  #368 — which also ruled that a `console.error` into the Convex dashboard's expiring log
+  window is not a failure record, and gave `apps/*/convex/errorReporting.ts` a backend
+  reporter. `apps/docs/deployment/sentry.md` carries the per-client project layout.
 
 ---
 ---
@@ -1858,10 +1858,18 @@ default and after `|| "` in TypeScript, neither of which the stock generic-api-k
 as an assignment. Validated across all 7,459 blobs in the object store — 3 matching blobs, one
 distinct token, zero false positives at HEAD (2,655 files) or in history.
 
-**Consequence: the `Gitleaks (secret scan)` job now fails on `main`.** It is not one of the five
-required checks (Lint, Type Check, Test, Build, E2E Status), so it does not block merges. Do
-**not** silence it in `.gitleaksignore`: that file's own policy is that an entry records a
-credential accepted as *no longer exploitable*, and this one has not been rotated.
+**Consequence: the four findings are fingerprint-scoped in `.gitleaksignore`, and the
+`Gitleaks (secret scan)` job is green.** This paragraph used to say the opposite — that the
+job now failed on `main` and that the entries must not be written — while `.gitleaksignore`
+already carried them. Measured on a synthetic repository reproducing the same two paths and
+syntactic positions: with no ignore file, 4 findings, exit 1; with the four fingerprints, 0
+findings, exit 0; and with a *fifth*, new occurrence added, 1 finding, exit 1. Silencing four
+known findings is what lets the scanner still speak about a fifth.
+
+The entry records a credential that is **still live**, not one accepted as no longer
+exploitable — `.gitleaksignore` now distinguishes the two kinds, and these four are deleted
+by Part B rather than kept. `Gitleaks` is not one of the five required checks (Lint, Type
+Check, Test, Build, E2E Status), so it never blocked merges either way.
 
 Mandatory order, unchanged: regenerate in the Deliveroo portal → propagate
 (`npx convex env set … --prod`) → re-verify → revoke the old one. Then part B of

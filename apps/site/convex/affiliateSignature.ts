@@ -328,12 +328,27 @@ export const signAffiliateContract = action({
        the browser does not hold, and it is verified below before anything is
        drawn. Removed rather than ignored: Convex refuses an unknown argument,
        so a stale bundle still sending `signerIp` fails loudly instead of
-       quietly recording nothing. See lib/security/signer-attestation.ts. */
+       quietly recording nothing. See lib/security/signer-attestation.ts.
+
+       Nor was the HMAC enough on its own. It proved nobody edited the address
+       after minting; the certificate claims nobody SUPPLIED it. `/api/signer-ip`
+       used to read plain `x-forwarded-for`, so the attacker asked the minting
+       oracle rather than forging a MAC. It now signs only what the platform
+       edge wrote, and names the header inside the signed bytes. */
     signerIpAttestation: v.optional(
       v.object({
         ip: v.string(),
         issuedAt: v.number(),
         mac: v.string(),
+        /* v2 of the payload. `v.optional` ONLY so a browser holding the v1
+           bundle across a deploy degrades to « adresse non établie » instead
+           of failing the whole signature on an unknown field — the trail
+           losing a corroborating row is the smaller harm, and it is the rule
+           this path already follows for every other refusal. It is not a way
+           in: a missing or unrecognised source is refused below
+           (`untrusted_source`), and the source is inside the MAC, so it cannot
+           be supplied without the secret either. */
+        source: v.optional(v.string()),
       }),
     ),
   },
@@ -374,6 +389,15 @@ export const signAffiliateContract = action({
     });
     if (ipVerdict.refusal) {
       console.warn(`[SIGNATURE] ${attestationRefusalMessage(ipVerdict.refusal)}`);
+    } else {
+      /* Which header the address was observed in, logged rather than stored:
+         the certificate's claim is « relevée par nos serveurs », and every
+         source that verifies satisfies it identically, so the row does not
+         need to distinguish them. The log does, on the day someone asks why a
+         deployment stopped establishing addresses. */
+      console.log(
+        `[SIGNATURE] Adresse IP constatée via ${ipVerdict.source}.`,
+      );
     }
     const signerIp = ipVerdict.ip ?? undefined;
 

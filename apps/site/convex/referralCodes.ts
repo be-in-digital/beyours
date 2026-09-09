@@ -119,12 +119,23 @@ const CODE_REFUSALS: Record<StandingRefusal, string> = {
     "Une nouvelle version du contrat est à signer avant de générer un code de parrainage.",
 };
 
+/* ── What a refused mint should do to the caller ──
+   Two callers, two right answers, and the gap between them is what let a
+   suspended affiliate keep a code. See {@link mintCodeFor}. */
+export type MintRefusalPolicy =
+  /* Somebody pressed a button. Tell them why, in French, with the fix one
+     click away. */
+  | "throw"
+  /* Nobody pressed anything: a signature is being recorded. The signature is
+     valid and must stand; the code is simply not minted. */
+  | "skip";
+
 function assertMayHoldACode(affiliate: Doc<"affiliateUsers">): void {
   const refusal = affiliateStandingRefusal(affiliate);
   if (refusal) throw new Error(CODE_REFUSALS[refusal]);
 }
 
-/* ── Minting, in one place ──
+/* ── Minting, in one place, gated in that one place ──
    Two callers: `generateMyCode` below, and `contractSignatures
    .recordInAppSignature` at the moment a signature activates an affiliate.
    The second exists BECAUSE of the refusal above. The code was minted at
@@ -134,17 +145,53 @@ function assertMayHoldACode(affiliate: Doc<"affiliateUsers">): void {
    without moving it left every new affiliate signed, activated and holding no
    code at all, with nothing in the dashboard able to create one.
 
+   And moving it is what re-opened the hole it was closing. `assertMayHoldACode`
+   sat in the CALLER, so the caller added afterwards inherited nothing: the
+   signature path's only condition was that the version signed was the one
+   required. `status` and `contractStatus` are independent — `admin
+   .updateAffiliateStatus` patches only the first — so a SUSPENDED affiliate
+   who signed came out `status: "suspended"`, `contractStatus: "active"`,
+   holding a live code. `lookupUsableCode` refuses to price it, so no money
+   moved; but a suspended apporteur was still handed a code to publish, and
+   the docstring above claims this half is closed.
+
+   The rule now lives HERE, once, evaluated against the affiliate as this
+   transaction has left them — re-read from the db rather than taken from the
+   caller, because `recordInAppSignature` patches `contractStatus: "active"`
+   immediately before calling and its own copy of the row is one write stale.
+   A pending-contract affiliate therefore still gets their code at the moment
+   they sign, and a suspended one does not.
+
+   `policy` is REQUIRED, with no default, so a third caller has to decide what
+   a refusal means to it rather than inheriting a silence — which is precisely
+   how the second caller got here.
+
    Deliberately NOT gated on `programEnabled`: `generateMyCode` is not either,
    and the two paths that mint have to agree. See ./affiliateProgram for what
    the switch does gate — pricing a code, accruing a commission, paying one.
 
    Idempotent: an affiliate already holding an active code gets that one back,
    so re-signing a superseded contract version mints no second code and does
-   not disturb a custom one they have been publishing. */
+   not disturb a custom one they have been publishing. The standing check comes
+   FIRST even so: a code an affiliate may no longer hold is not one to hand
+   back, and returning it would make suspension depend on when they signed. */
 export async function mintCodeFor(
   ctx: MutationCtx,
   affiliateUserId: Id<"affiliateUsers">,
+  policy: MintRefusalPolicy,
 ): Promise<Doc<"referralCodes"> | null> {
+  const affiliate = await ctx.db.get(affiliateUserId);
+  if (!affiliate) throw new Error("Profil apporteur introuvable");
+
+  const refusal = affiliateStandingRefusal(affiliate);
+  if (refusal) {
+    if (policy === "throw") throw new Error(CODE_REFUSALS[refusal]);
+    console.log(
+      `[REFERRAL] Aucun code émis pour l'apporteur ${affiliateUserId} : ${refusal}.`,
+    );
+    return null;
+  }
+
   const existing = await ctx.db
     .query("referralCodes")
     .withIndex("by_affiliateUserId", (q) =>
@@ -271,13 +318,16 @@ export const generateMyCode = mutation({
       .withIndex("by_userId", (q) => q.eq("userId", userId))
       .unique();
     if (!affiliate) throw new Error("Profil apporteur introuvable");
+    /* Kept, though `mintCodeFor` now applies the same rule from the same map:
+       this refuses BEFORE the mint is attempted, which is what keeps the
+       message and the behaviour of this mutation exactly what they were. */
     assertMayHoldACode(affiliate);
 
     /* Still public, and now the RECOVERY path rather than the normal one: the
        signature mints the code (./contractSignatures.ts). This is what a
        signed affiliate holding none — a mint that failed, or one that predates
        it moving — presses in the dashboard. */
-    return await mintCodeFor(ctx, affiliate._id);
+    return await mintCodeFor(ctx, affiliate._id, "throw");
   },
 });
 

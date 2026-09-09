@@ -1,0 +1,286 @@
+name: Mirror health
+
+# Is `be-in-digital/beyours-boilerplate` carrying what `apps/themes` says it
+# should — and if the last sync did not finish, does anybody know?
+#
+# WHY THIS IS A SECOND WORKFLOW. `publish-mirror.yml` cannot answer either
+# question about itself.
+#
+#   - A run that ends `cancelled` runs NOTHING. Not an `if: failure()` step, not
+#     an `if: always()` job — a cancelled run has no steps left to execute. So
+#     the one conclusion that is neither a pass nor a failure is also the one
+#     conclusion the workflow cannot report on from inside.
+#   - And `cancelled` is not rare here. `publish-mirror.yml` carries
+#     `concurrency: publish-mirror` with the default `cancel-in-progress: false`,
+#     which queues rather than cancels the RUNNING job — but GitHub still
+#     cancels a PENDING run the moment a third joins the group. It is also what
+#     a human does to a stalled job, which is the twelve-day incident recorded
+#     in that file's `timeout-minutes` comment: pnpm hit a version it could not
+#     switch to, hung, somebody cancelled it fifty minutes later, and no run
+#     ever said the mirror had stopped syncing.
+#
+# The measured cost of the same blind spot, one incident later: #402's security
+# floors reached no client for 90 minutes, and only a manual dispatch fixed it.
+# Nothing was broken — nothing was WATCHING.
+#
+# IT RETRIES, ONCE, AND THEN REPORTS. An earlier draft of this file said a
+# retry was impossible without a PAT, on the grounds that an event created with
+# `GITHUB_TOKEN` does not trigger another workflow run. That is the rule, but
+# `workflow_dispatch` and `repository_dispatch` are its two documented
+# exceptions — and a retry of `Publish mirror` is exactly a `workflow_dispatch`,
+# on THIS repository, which `GITHUB_TOKEN` may create given
+# `permissions: actions: write`. `MIRROR_PUSH_TOKEN` never came into it: the
+# dispatch happens here, not on the boilerplate.
+#
+# Once, and the bound is what makes it safe. The retry fires only for a run that
+# was NOT itself a dispatch, so a retried run that is cancelled again reports
+# rather than looping. If the dispatch is refused — an organisation policy, a
+# token GitHub has narrowed — the step is `continue-on-error` and the issue is
+# opened anyway: the fallback must never be the thing that hides the finding.
+#
+# The `--check` half is not new code: `scripts/publish-mirror.mjs --check`
+# already clones the mirror, materialises the tree that would be published and
+# exits 1 on drift. It existed and ran only when a human asked it to.
+
+on:
+  # The observer. Fires on EVERY conclusion of a Publish mirror run, including
+  # the two that workflow cannot report on itself.
+  workflow_run:
+    workflows: ["Publish mirror"]
+    types: [completed]
+
+  # The backstop. A cancelled run is one way the mirror goes stale; a sync that
+  # succeeded against the wrong tree, a push that never triggered, and a
+  # `paths:` filter that missed an input are others, and none of them produces a
+  # non-success conclusion to observe.
+  #
+  # 05:40 UTC: after the nightly security scan (03:00) and before the env-store
+  # health check (06:15), off the hour because everyone else's cron is on it.
+  schedule:
+    - cron: "40 5 * * *"
+
+  workflow_dispatch:
+
+# Serialised against nothing else: this workflow only reads. It must not join
+# `publish-mirror`'s group, or a sync in flight would cancel the very check
+# that reports cancellations.
+concurrency:
+  group: mirror-health
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # ── The observer ───────────────────────────────────────────────────────────
+  inconclusive:
+    name: Report an unfinished sync
+    if: >-
+      ${{ github.event_name == 'workflow_run'
+        && github.event.workflow_run.head_branch == 'main'
+        && (github.event.workflow_run.conclusion == 'cancelled'
+          || github.event.workflow_run.conclusion == 'failure'
+          || github.event.workflow_run.conclusion == 'timed_out') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      # The retry below. `GITHUB_TOKEN` may create a `workflow_dispatch` — one
+      # of the two documented exceptions to "events from GITHUB_TOKEN do not
+      # start workflows" — and this is what lets it.
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Retry once, before reporting, and only for a run that was not itself a
+      # dispatch — so a retried run cancelled a second time reports instead of
+      # looping. `continue-on-error` because a refused dispatch must not stop
+      # the issue below from being opened.
+      - name: Re-run the sync, once
+        id: retry
+        continue-on-error: true
+        if: github.event.workflow_run.event != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh workflow run publish-mirror.yml --ref main
+          echo "retried=true" >> "$GITHUB_OUTPUT"
+
+      # Same shape as `security.yml`'s nightly issue, and `continue-on-error`
+      # for the same reason: this organisation forbids Actions from opening pull
+      # requests, and whether that extends to issues is not something this
+      # repository can read. If it is refused, the step summary below is still
+      # written and the job is still visible in the Actions tab — the fallback
+      # must never be the thing that hides the finding.
+      - name: Say that the mirror may be stale
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: "Publish mirror: a sync did not finish"
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          RETRIED: ${{ steps.retry.outputs.retried }}
+          RETRY_OUTCOME: ${{ steps.retry.outcome }}
+        run: |
+          set -uo pipefail
+          {
+            echo "A \`Publish mirror\` run on \`main\` ended **${CONCLUSION}**, so"
+            echo "\`be-in-digital/beyours-boilerplate\` may not carry \`${RUN_SHA:0:7}\`."
+            echo
+            echo "\`cancelled\` is neither a pass nor a failure, and a cancelled run"
+            echo "executes no step of its own — which is why this report comes from"
+            echo "another workflow."
+            echo
+            if [ "${RETRIED:-}" = "true" ]; then
+              echo "**A retry has been dispatched.** Check the Actions tab: if that run"
+              echo "goes green the mirror is current again and this issue can be closed."
+              echo "It is dispatched once only — a retry that is itself cancelled is"
+              echo "reported, not retried again."
+            elif [ "${RETRY_OUTCOME:-}" = "failure" ]; then
+              echo "**The automatic retry was refused** (\`gh workflow run\` failed), so"
+              echo "nothing has re-run. **Recover by hand:** run \`Publish mirror\` from"
+              echo "the Actions tab on \`main\`. Tick *Dry run* first if you want the"
+              echo "drift listed before anything is pushed."
+            else
+              echo "**No retry was dispatched** — this run was already a manual retry."
+              echo "**Recover by hand:** run \`Publish mirror\` from the Actions tab on"
+              echo "\`main\`. Tick *Dry run* first if you want the drift listed before"
+              echo "anything is pushed."
+            fi
+            echo
+            echo "[The run that did not finish](${RUN_URL})"
+            echo
+            echo "[This report](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+          } > /tmp/mirror-health.md
+
+          cat /tmp/mirror-health.md >> "$GITHUB_STEP_SUMMARY"
+
+          # One issue, commented on rather than duplicated: a busy day on `main`
+          # can cancel several queued runs in a row, and five identical issues
+          # are read as noise and muted.
+          existing=$(gh issue list --state open --search "in:title \"$TITLE\"" \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file /tmp/mirror-health.md
+          else
+            gh issue create --title "$TITLE" --body-file /tmp/mirror-health.md
+          fi
+
+  # ── The backstop ───────────────────────────────────────────────────────────
+  stale:
+    name: Is the mirror current?
+    if: github.event_name != 'workflow_run'
+    runs-on: ubuntu-latest
+    # `--check` does the whole gate before it compares: it clones the mirror,
+    # pins the engine versions the registry serves, installs them and
+    # typechecks the staged tree. Measured warm at a few minutes; the ceiling is
+    # a stall detector, and one a healthy run cannot approach is the only kind
+    # that detects anything.
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@be-in-digital"
+          cache: "pnpm"
+
+      # `--check` pushes nothing and needs no `MIRROR_PUSH_TOKEN`: it clones the
+      # mirror over HTTPS and exits 1 on drift. The registry read is what
+      # `packages: read` is for.
+      # `shell: bash` is load-bearing, not decoration. GitHub's default `run:`
+      # shell on Linux is `bash -e {0}` — **without** `-o pipefail`, which you
+      # only get by naming the shell. So `node … | tee …` reported *tee's*
+      # exit status: the check exited 1 on drift, the step went green, the
+      # reporting step below never ran, and this whole job was a no-op in
+      # exactly the case it exists for. Measured: `bash -e` on a failing
+      # pipeline gives 0, `bash -eo pipefail` gives 1.
+      - name: Compare the mirror against apps/themes
+        id: drift
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # NO `MIRROR_PUSH_TOKEN`, deliberately, and it cost something to leave
+        # out. `publish-mirror.mjs` clones over an authenticated URL when the
+        # token is present and an anonymous one when it is not
+        # (`:327-329`) — and `publish-mirror.yml` sets the token on the step for
+        # BOTH branches of its own dry run, so the anonymous path has never
+        # actually run anywhere. This job is its first caller.
+        #
+        # Passing the token would put it on the exercised path, and
+        # `workflow-publish-gates.test.ts` correctly refuses that: its second
+        # rule is about CAPABILITY rather than spelling — a job holding
+        # `MIRROR_PUSH_TOKEN` can reach the client mirror however its commands
+        # are written, so it must be gated on CI. Gating a daily "is the mirror
+        # stale?" question behind a twelve-minute suite is a tool nobody would
+        # reach for twice, so the answer is to hold no push capability at all.
+        #
+        # Which leaves one thing genuinely unverified, and it is stated rather
+        # than assumed: the anonymous clone works only if
+        # `be-in-digital/beyours-boilerplate` is readable without credentials.
+        # If it is private this job fails at the clone. It fails LOUDLY —
+        # `set -euo pipefail` below, and the report distinguishes "could not
+        # check" from "drift" — so the first run says so instead of reporting a
+        # phantom drift or, worse, a green.
+        run: |
+          set -euo pipefail
+          node scripts/publish-mirror.mjs --check 2>&1 | tee /tmp/mirror-check.log
+
+      - name: Say what is stale
+        if: failure() && steps.drift.outcome == 'failure'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: "Publish mirror: the boilerplate is behind apps/themes"
+        run: |
+          set -uo pipefail
+          {
+            if grep -q "drift detected between apps/themes and the mirror" /tmp/mirror-check.log; then
+              echo "\`scripts/publish-mirror.mjs --check\` found drift between"
+              echo "\`apps/themes\` at \`${GITHUB_SHA:0:7}\` and"
+              echo "\`be-in-digital/beyours-boilerplate\`, which every client site is"
+              echo "cloned from and merges from with \`pnpm update:template\`."
+              echo
+              echo "A sync should have happened on its own. That it did not means the"
+              echo "run was cancelled, died, or was never triggered — the \`paths:\`"
+              echo "filter in \`publish-mirror.yml\` enumerates what triggers one."
+            else
+              echo "\`scripts/publish-mirror.mjs --check\` **did not finish**, so whether"
+              echo "the mirror is current is unknown — this is not a drift report."
+              echo
+              echo "The likeliest cause on a first run is the clone: this job carries no"
+              echo "\`MIRROR_PUSH_TOKEN\` on purpose (see the workflow comment), so it"
+              echo "clones \`be-in-digital/beyours-boilerplate\` anonymously, which works"
+              echo "only if that repository is public. The log below says which."
+            fi
+            echo
+            echo '```'
+            tail -40 /tmp/mirror-check.log
+            echo '```'
+            echo
+            echo "**To recover:** run \`Publish mirror\` from the Actions tab on \`main\`."
+            echo
+            echo "[This report](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+          } > /tmp/mirror-health.md
+
+          cat /tmp/mirror-health.md >> "$GITHUB_STEP_SUMMARY"
+
+          existing=$(gh issue list --state open --search "in:title \"$TITLE\"" \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file /tmp/mirror-health.md
+          else
+            gh issue create --title "$TITLE" --body-file /tmp/mirror-health.md
+          fi

@@ -80,8 +80,17 @@ interface S3Operations {
   deleteObject(params: DeleteObjectParams): Promise<void>
   getSignedUrl(params: GetSignedUrlParams): Promise<string>
   headObject(params: HeadObjectParams): Promise<ObjectMetadata>
+  // Optional in the type, and needed in practice: without them `delete()`
+  // writes a delete marker on a versioned bucket and keeps every byte. They
+  // are optional only so that a client provisioned before
+  // `s3:DeleteObjectVersion` reached its IAM policy keeps working.
+  listObjectVersions?(params: ListObjectVersionsParams): Promise<ListObjectVersionsResult>
+  deleteObjectVersion?(params: DeleteObjectVersionParams): Promise<void>
 }
 ```
+
+Write all six. The adapter in `README.md` is the one to copy; a four-method
+adapter compiles and then reports `outcome: 'delete-marker'` on every delete.
 
 Benefits:
 - Easy testing with mocks
