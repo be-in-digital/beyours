@@ -256,6 +256,12 @@
         // topic is refused, and a subscription is confirmed only for the topic
         // this deployment was told about.
         "SES_SNS_TOPIC_ARN",
+        // And the escape hatch that re-opens notifications to any signed topic
+        // while that one is unset. The same suite drives it: unconfigured now
+        // REFUSES a correctly-signed bounce, which is the fail-open this
+        // closes, and the hatch is what lets a deployment mid-configuration
+        // keep recording them. It never re-opens subscription confirmation.
+        "SES_SNS_ALLOW_ANY_TOPIC",
         // The rest.
         "ADMIN_BOOTSTRAP_TOKEN",
         "OPENAI_API_KEY",
@@ -446,6 +452,12 @@
         // topic is refused, and a subscription is confirmed only for the topic
         // this deployment was told about.
         "SES_SNS_TOPIC_ARN",
+        // And the escape hatch that re-opens notifications to any signed topic
+        // while that one is unset. The same suite drives it: unconfigured now
+        // REFUSES a correctly-signed bounce, which is the fail-open this
+        // closes, and the hatch is what lets a deployment mid-configuration
+        // keep recording them. It never re-opens subscription confirmation.
+        "SES_SNS_ALLOW_ANY_TOPIC",
         // The rest.
         "ADMIN_BOOTSTRAP_TOKEN",
         "OPENAI_API_KEY",

@@ -11,6 +11,8 @@ import {
 } from "./saLib";
 
 /** Aggregated GMV of the deployed restaurant fleet (the restaurants' REAL sales). */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const fleetOverview = query({
   args: { days: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -74,6 +76,8 @@ export const fleetOverview = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const forDeployment = query({
   args: { deploymentId: v.id("saDeployments"), days: v.optional(v.number()) },
   handler: async (ctx, args) => {

@@ -428,7 +428,15 @@ function guardEvidence(statement, sourceCode) {
       (/^run(Query|Mutation|Action)$/.test(name) && dispatchesToAGuard(node))
     // `AuthUser` covers getAuthUser, safeGetAuthUser, requireAuthUser and
     // `authComponent.safeGetAuthUser`; `getUserIdentity` is Convex's own.
-    const isWeak = /AuthUser$/.test(name) || name === "getUserIdentity"
+    //
+    // UNANCHORED, which is #447's finding and one this rewrite shared. `apps/site`
+    // runs Convex Auth rather than Better Auth, where the session lookup is
+    // `getAuthUserId` — "AuthUser" followed by a word character, which neither
+    // `AuthUser\b` nor the `AuthUser$` this file used to carry will match. All
+    // 40-odd of that app's session-scoped queries therefore read as claiming a
+    // guard the rule could not see, which is how a guard gets switched off
+    // rather than obeyed.
+    const isWeak = /AuthUser/.test(name) || name === "getUserIdentity"
 
     if (!isStrong && !isWeak) return
     anySignal = true

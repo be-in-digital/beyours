@@ -290,7 +290,21 @@ export const handleSesWebhook = httpAction(async (ctx, request) => {
   });
   if (!verdict.valid) {
     console.error("Rejected SES webhook:", verdict.reason);
-    return new Response("Unauthorized", { status: 403 });
+    // A SubscriptionConfirmation this deployment will not accept is answered
+    // 200, not 403, and the reason is the same one the refusal below gives:
+    // SNS retries a non-2xx, and there is nothing here to retry. The topic is
+    // not on the list and re-sending will not put it there — an operator has
+    // to set `SES_SNS_TOPIC_ARN` (the log line above names the ARN to paste)
+    // or confirm from the AWS console. Refusing is still refusing: nothing is
+    // fetched and no subscription is created.
+    //
+    // A NOTIFICATION gets the 403. Those are worth retrying — the variable may
+    // be set in the meantime — and an unauthenticated caller is owed the
+    // status code that says so.
+    const isConfirmation = snsMessage.Type === "SubscriptionConfirmation";
+    return new Response(isConfirmation ? "OK" : "Unauthorized", {
+      status: isConfirmation ? 200 : 403,
+    });
   }
 
   // Handle subscription confirmation (first-time setup)

@@ -204,5 +204,8 @@
   "accessibility.removeItem": "Retirer l'article",
   "accessibility.productImage": "Image du produit",
   "accessibility.skipToContent": "Aller au contenu principal",
-  "accessibility.openBox": "Ouvrir la Box"
+  "accessibility.openBox": "Ouvrir la Box",
+  "accessibility.cartStatus": "Box : {count} articles, total {total}",
+  "accessibility.cartEmptied": "Votre Box est vide",
+  "accessibility.openBoxWithCount": "Ouvrir la Box, {count} articles"
 }

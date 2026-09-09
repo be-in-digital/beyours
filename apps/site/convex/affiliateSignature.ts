@@ -313,6 +313,8 @@ async function generateSignedContractPdf(opts: {
  * provider. Generates the signed PDF + certificate, stores it, records the audit
  * trail, and activates the affiliate.
  */
+// @guarded-inline: an action, so no ctx.db: it resolves the caller through
+//   ctx.runQuery(internal.…) and refuses when that answers nothing
 export const signAffiliateContract = action({
   args: {
     fullName: v.string(),

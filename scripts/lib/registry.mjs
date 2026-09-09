@@ -34,13 +34,52 @@ export const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url))
 export const REGISTRY = "https://npm.pkg.github.com"
 
 /**
+ * How a registry lookup ended.
+ *
+ * `absent` and `unreachable` were one answer — `null` — and the two mean
+ * opposite things. Measured without a token: `npm view` answered `E401` for all
+ * ten packages, `publishedVersion` returned `null` for all ten, and
+ * `publish-plan` printed `WILL PUBLISH (registry has nothing)` for nine
+ * packages the registry serves. Every one of those lines was false, and the
+ * table was the only thing anyone reads before believing the plan.
+ *
+ * The DECISION is unchanged and stays fail-safe: an unanswerable question still
+ * reports the package as one that would publish, because that is what
+ * `changeset publish` will then attempt on the same broken token. What changes
+ * is that the log no longer states a fact about the registry that nobody asked
+ * it.
+ */
+export const FOUND = "found"
+/** The registry answered, and has no such package. `npm view` says `E404`. */
+export const ABSENT = "absent"
+/** The question was not answered: no token, a refused token, a network fault. */
+export const UNREACHABLE = "unreachable"
+
+/**
+ * The same answer as `lookupPublishedVersion`, named for what a LOG needs.
+ *
+ * A thin translation, deliberately not a second implementation: `classifyLookup`
+ * below is where the "did the registry answer" decision lives, and duplicating
+ * it is how the two halves of a release chain come to disagree. This adds only
+ * the vocabulary a printed table needs — `absent` and `unreachable` are one
+ * `null` to a caller that just wants the version, and opposite facts to a
+ * caller that is about to state one.
+ */
+export function lookupPublished(pkg, options) {
+  const { version, known, reason } = lookupPublishedVersion(pkg, options ?? {})
+  if (!known) return { version: null, state: UNREACHABLE, code: reason ?? null }
+  return version
+    ? { version, state: FOUND, code: null }
+    : { version: null, state: ABSENT, code: null }
+}
+
+/**
  * The version the registry serves for `pkg`, or null.
  *
- * Null means "the registry does not have this package", which for a name the
- * workspace declares is the ordinary answer for a package that has never been
- * published. A caller that needs to tell that apart from an auth failure has
- * to say so itself — `publish-mirror.mjs` does, because pinning a mirror
- * dependency to nothing is fatal there and merely informative here.
+ * Kept for callers that only need the version and treat every non-answer the
+ * same — `publish-mirror.mjs` pins a dependency or fails, and either error is
+ * fatal there. Anything that PRINTS the outcome should call `lookupPublished`
+ * instead and say which of the two it got.
  */
 export function publishedVersion(pkg) {
   return lookupPublishedVersion(pkg).version
@@ -137,6 +176,30 @@ export function publishablePackages(root = REPO_ROOT) {
 }
 
 /**
+ * One lookup answer, however the caller's `lookup` chose to phrase it.
+ *
+ * `lookupPublished` returns `{ version, state, code }`; the tests inject a
+ * plain `name => version | null`, which is the shape `publishedVersion` had
+ * and the shape anyone writing a stub reaches for. A bare `null` from such a
+ * stub means "not published" — it is a fixture, not a registry, and it has no
+ * network to fail on.
+ */
+function normaliseLookup(answer) {
+  if (answer && typeof answer === "object") {
+    // `lookupPublishedVersion`'s own shape, so either lookup can be injected
+    // here without a caller having to know which one it holds.
+    if ("known" in answer) {
+      if (!answer.known) return { version: null, state: UNREACHABLE, code: answer.reason ?? null }
+      return answer.version
+        ? { version: answer.version, state: FOUND, code: null }
+        : { version: null, state: ABSENT, code: null }
+    }
+    return { version: answer.version ?? null, state: answer.state ?? UNREACHABLE, code: answer.code ?? null }
+  }
+  return { version: answer ?? null, state: answer ? FOUND : ABSENT, code: null }
+}
+
+/**
  * Which of `packages` the registry does not already serve at that exact version.
  *
  * This is `changeset publish`'s own rule, restated: it compares each package's
@@ -148,11 +211,27 @@ export function publishablePackages(root = REPO_ROOT) {
  * token. A lookup that cannot reach the registry answers null, which is not
  * equal to any version and so reports the package as one that would publish —
  * an unanswerable question gates rather than waves through, and it is what
- * `changeset publish` will then attempt on the same broken token anyway. The
- * `published` field keeps the distinction for whoever reads the log.
+ * `changeset publish` will then attempt on the same broken token anyway.
+ *
+ * `published` keeps the version for whoever reads the log and `state` keeps
+ * WHY it is null. Those were one field, and a caller printing "registry has
+ * nothing" from `published === null` was stating the registry's answer when
+ * the registry had refused to give one.
  */
-export function unpublishedPackages(packages, lookup = publishedVersion) {
+/**
+ * @param {Array<{ name: string, version: string, dir: string }>} packages
+ * @param {(name: string) => (string | null | { version: string | null, state?: string, code?: string | null })} [lookup]
+ */
+export function unpublishedPackages(packages, lookup = lookupPublished) {
   return packages
-    .map((pkg) => ({ ...pkg, published: lookup(pkg.name) }))
+    .map((pkg) => {
+      const { version, state, code } = normaliseLookup(lookup(pkg.name))
+      return { ...pkg, published: version, publishedState: state, lookupCode: code }
+    })
     .filter((pkg) => pkg.published !== pkg.version)
+}
+
+/** True when any row's version could not be read at all. */
+export function anyUnreachable(rows) {
+  return rows.some((row) => row.publishedState === UNREACHABLE)
 }

@@ -47,6 +47,11 @@ function newHarness() {
  * for why a pending job outliving its transaction fails the run from outside
  * any assertion.
  */
+afterEach(() => {
+  delete process.env.SES_SNS_TOPIC_ARN
+  delete process.env.SES_SNS_ALLOW_ANY_TOPIC
+})
+
 afterEach(async () => {
   for (const t of harnesses) {
     // Let whatever is already RUNNING finish first.
@@ -88,7 +93,21 @@ afterEach(async () => {
 let signMessage: (stringToSign: string) => string
 let certPem: string
 
+/**
+ * The topic this deployment is configured to accept, shared by every suite.
+ *
+ * It has to be set. `SES_SNS_TOPIC_ARN` unset now refuses every notification,
+ * not just every subscription: the endpoint is an HTTPS URL anyone can POST
+ * to, so an attacker publishes on a topic in their own AWS account and replays
+ * the JSON Amazon signed for them, and "SNS only delivers to a confirmed
+ * subscription" never had anything to do with it. Configuring the variable is
+ * what `tasks/webhook-migration-checklist.md` already requires before a
+ * subscription is confirmed.
+ */
+const CONFIGURED_TOPIC = "arn:aws:sns:eu-west-3:000000000000:ses-events"
+
 beforeEach(async () => {
+  process.env.SES_SNS_TOPIC_ARN = CONFIGURED_TOPIC
   if (signMessage) return
   const { generateKeyPairSync, createSign } = await import("node:crypto")
   const { privateKey, publicKey } = generateKeyPairSync("rsa", {
@@ -625,12 +644,8 @@ describe("which SNS topic the webhook accepts", () => {
     return JSON.stringify(envelope)
   }
 
-  const OUR_TOPIC = "arn:aws:sns:eu-west-3:000000000000:ses-events"
+  const OUR_TOPIC = CONFIGURED_TOPIC
   const THEIR_TOPIC = "arn:aws:sns:eu-west-3:999999999999:ses-events"
-
-  afterEach(() => {
-    delete process.env.SES_SNS_TOPIC_ARN
-  })
 
   test("a signed bounce from another account's topic is refused", async () => {
     process.env.SES_SNS_TOPIC_ARN = OUR_TOPIC
@@ -665,6 +680,7 @@ describe("which SNS topic the webhook accepts", () => {
     // No `SES_SNS_TOPIC_ARN`: the endpoint must not fetch the `SubscribeURL`.
     // That fetch is what turned "a stranger pointed their topic at us" into "a
     // stranger can publish to us".
+    delete process.env.SES_SNS_TOPIC_ARN
     const t = newHarness()
     const fetched: string[] = []
     vi.stubGlobal("fetch", async (input: unknown) => {
@@ -678,6 +694,91 @@ describe("which SNS topic the webhook accepts", () => {
 
     // Answered 200 — SNS retries a non-2xx, and there is nothing to retry.
     expect(status).toBe(200)
+    expect(fetched).toEqual([])
+  })
+
+  test("an UNCONFIGURED deployment refuses a signed bounce from any topic", async () => {
+    /*
+      The hole the allow-list left, end to end.
+
+      `isAllowedTopic` answered `true` on an empty list, and the argument was
+      that SNS delivers only to a confirmed subscription while this endpoint
+      refuses to create one — so the fail-open could not be reached. Nothing
+      here requires a subscription. `/webhooks/ses` is an HTTPS URL that takes
+      a POST from anyone: an attacker publishes on a topic in their OWN AWS
+      account, to a subscription pointing at their own server, keeps the signed
+      envelope Amazon hands them, and replays it here. The signature is
+      genuine, the certificate is on an allowed host, the topic check waved it
+      through — and the handler marked whichever subscriber the body named
+      bounced, suppressing mail to a real customer.
+
+      The body below is signed by this suite's own key, which is exactly the
+      position that attacker is in with respect to their own topic: correctly
+      signed, and not ours.
+    */
+    delete process.env.SES_SNS_TOPIC_ARN
+    const t = newHarness()
+    const { id } = await seedSubscriber(t)
+    stubCertificateFetch()
+
+    const body = signedNotification(
+      {
+        notificationType: "Bounce",
+        bounce: {
+          bounceType: "Permanent",
+          bouncedRecipients: [{ emailAddress: "yanis@resto.example" }],
+        },
+        mail: { headers: [] },
+      },
+      "sns-unconfigured"
+    )
+
+    expect(await deliverBounce(t, body)).toBe(403)
+    expect((await readSubscriber(t, id))?.status).toBe("active")
+  })
+
+  test("and accepts it again only when an operator says so in as many words", async () => {
+    // The escape hatch, for a deployment mid-configuration with a
+    // subscription an operator already confirmed. It restores the old
+    // behaviour for NOTIFICATIONS and nothing else.
+    delete process.env.SES_SNS_TOPIC_ARN
+    process.env.SES_SNS_ALLOW_ANY_TOPIC = "true"
+    const t = newHarness()
+    const { id } = await seedSubscriber(t)
+    stubCertificateFetch()
+
+    const body = signedNotification(
+      {
+        notificationType: "Bounce",
+        bounce: {
+          bounceType: "Permanent",
+          bouncedRecipients: [{ emailAddress: "yanis@resto.example" }],
+        },
+        mail: { headers: [] },
+      },
+      "sns-hatch"
+    )
+
+    expect(await deliverBounce(t, body)).toBe(200)
+    expect((await readSubscriber(t, id))?.status).toBe("bounced")
+  })
+
+  test("the hatch still confirms no subscription — that half never re-opens", async () => {
+    // Confirming a subscription is what turns "a stranger pointed their topic
+    // at us" into "a stranger can publish to us". No environment variable may
+    // put that back.
+    delete process.env.SES_SNS_TOPIC_ARN
+    process.env.SES_SNS_ALLOW_ANY_TOPIC = "true"
+    const t = newHarness()
+    const fetched: string[] = []
+    vi.stubGlobal("fetch", async (input: unknown) => {
+      const url = String(input)
+      if (url === CERT_URL) return new Response(certPem, { status: 200 })
+      fetched.push(url)
+      return new Response("OK", { status: 200 })
+    })
+
+    expect(await deliverBounce(t, signedConfirmation(THEIR_TOPIC))).toBe(200)
     expect(fetched).toEqual([])
   })
 

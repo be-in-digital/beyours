@@ -195,13 +195,13 @@ function PaymentsLedger({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground/60">Date</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground/60">N° commande</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground/60">Montant</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground/60">Fournisseur</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground/60">Statut</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground/60">Détails</TableHead>
-                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground/60 text-right">Actions</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground">Date</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground">N° commande</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground">Montant</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground">Fournisseur</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground">Statut</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground">Détails</TableHead>
+                <TableHead className="text-[11px] uppercase tracking-widest text-muted-foreground text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -32,6 +32,8 @@ function getStripeOrTestMode(operation: string): Stripe | null {
 
 /* ── Onboarding: create an Express account + Account Link ── */
 
+// @guarded-inline: an action, so no ctx.db: it resolves the caller through
+//   ctx.runQuery(internal.…) and refuses when that answers nothing
 export const createAccountLink = action({
   args: {
     returnUrl: v.string(),
@@ -168,6 +170,8 @@ export const createAccountLink = action({
 
 /* ── Check the status of a Connect account ── */
 
+// @guarded-inline: an action, so no ctx.db: it resolves the caller through
+//   ctx.runQuery(internal.…) and refuses when that answers nothing
 export const checkAccountStatus = action({
   args: {},
   handler: async (

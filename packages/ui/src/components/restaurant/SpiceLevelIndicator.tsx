@@ -46,9 +46,16 @@ const SpiceLevelIndicator = React.forwardRef<
           aria-hidden
           className={cn(
             "h-4 w-4",
+            /* The lit flames are the meaning here, so 1.4.11 applies to them:
+               `text-orange-500` measured 2.83:1 on the light page and
+               `--warning` is the token that carries the same idea at a ratio
+               the design system holds. The unlit ones were
+               `text-muted-foreground/30` — 1.48:1, an outline nobody can see,
+               which is what made a level of 2 out of 5 look like a level of 2
+               out of 2. */
             index < level
-              ? "fill-orange-500 text-orange-500"
-              : "text-muted-foreground/30"
+              ? "fill-warning text-warning"
+              : "text-muted-foreground"
           )}
         />
       ))}

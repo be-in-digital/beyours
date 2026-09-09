@@ -292,34 +292,34 @@ export function InventoryPage() {
           <StatusCard
             label="En stock"
             count={statusCounts.in_stock}
-            icon={<Package className="h-4 w-4 text-green-600" />}
+            icon={<Package className="h-4 w-4 text-success" />}
             active={statusFilter === "in_stock"}
             onClick={() => handleFilterChange(setStatusFilter)(statusFilter === "in_stock" ? "all" : "in_stock")}
-            className="border-green-200 bg-green-50/50"
+            className="border-success/30 bg-success/10"
           />
           <StatusCard
             label="Stock faible"
             count={statusCounts.low_stock}
-            icon={<AlertTriangle className="h-4 w-4 text-orange-600" />}
+            icon={<AlertTriangle className="h-4 w-4 text-warning" />}
             active={statusFilter === "low_stock"}
             onClick={() => handleFilterChange(setStatusFilter)(statusFilter === "low_stock" ? "all" : "low_stock")}
-            className="border-orange-200 bg-orange-50/50"
+            className="border-warning/30 bg-warning/10"
           />
           <StatusCard
             label="Rupture"
             count={statusCounts.out_of_stock}
-            icon={<XCircle className="h-4 w-4 text-red-600" />}
+            icon={<XCircle className="h-4 w-4 text-destructive" />}
             active={statusFilter === "out_of_stock"}
             onClick={() => handleFilterChange(setStatusFilter)(statusFilter === "out_of_stock" ? "all" : "out_of_stock")}
-            className="border-red-200 bg-red-50/50"
+            className="border-destructive/30 bg-destructive/10"
           />
           <StatusCard
             label="Non suivi"
             count={statusCounts.untracked}
-            icon={<PackageOpen className="h-4 w-4 text-gray-500" />}
+            icon={<PackageOpen className="h-4 w-4 text-muted-foreground" />}
             active={statusFilter === "untracked"}
             onClick={() => handleFilterChange(setStatusFilter)(statusFilter === "untracked" ? "all" : "untracked")}
-            className="border-gray-200 bg-gray-50/50"
+            className="border-border bg-muted"
           />
         </div>
 

@@ -49,6 +49,8 @@ const integrationsValidator = v.array(
   }),
 );
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const list = query({
   args: {
     status: v.optional(deploymentStatus),
@@ -95,6 +97,8 @@ export const list = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const get = query({
   args: { deploymentId: v.id("saDeployments") },
   handler: async (ctx, args) => {
@@ -152,6 +156,8 @@ export const get = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const stats = query({
   args: {},
   handler: async (ctx) => {
@@ -189,6 +195,8 @@ export const stats = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const create = mutation({
   args: {
     customerEmail: v.string(),
@@ -249,6 +257,8 @@ export const create = mutation({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const updateStatus = mutation({
   args: { deploymentId: v.id("saDeployments"), status: deploymentStatus },
   handler: async (ctx, args) => {
@@ -333,6 +343,8 @@ export const updateStatus = mutation({
    invitation happens outside this backend — so this is an attestation by an
    admin, not a measurement. Its value is that an unticked deployment stays
    visibly unfinished instead of disappearing behind a status badge. */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const recordAccessRevoked = mutation({
   args: { deploymentId: v.id("saDeployments") },
   handler: async (ctx, args) => {
@@ -372,6 +384,8 @@ export const recordAccessRevoked = mutation({
    later — a worse failure than the one this replaced, because it looks like it
    worked. Health is corrected by fixing the instance, or by « Sonder
    maintenant ». */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const update = mutation({
   args: {
     deploymentId: v.id("saDeployments"),
@@ -426,6 +440,8 @@ export const update = mutation({
    This is the list the account owner works through before
    BEYOURS_LICENSE_ENFORCEMENT is ever set to "strict"; flipping it first would
    refuse exactly these sites. See tasks/license-key-registration-runbook.md. */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const unlicensed = query({
   args: {},
   handler: async (ctx) => {
@@ -473,6 +489,8 @@ export const unlicensed = query({
    provisioned before the entitlement gate existed have none and read as
    unregistered until this runs; rotating one invalidates the key held by the
    site, so it has to be written back into its .beindigital-site.json. */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const issueLicenseKey = mutation({
   args: { deploymentId: v.id("saDeployments") },
   handler: async (ctx, args) => {

@@ -12,6 +12,8 @@ import {
 } from "./saLib";
 
 /** KPI bundle for the superadmin overview (real sales + fleet + GMV). */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const overview = query({
   args: {},
   handler: async (ctx) => {

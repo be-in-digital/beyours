@@ -21,6 +21,8 @@ function paidRevenue(orders: Doc<"orders">[]): number {
 }
 
 /** « Ventes & revenus » view — REAL sales revenue (theme + maintenance). */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const revenueOverview = query({
   args: { days: v.optional(v.number()) },
   handler: async (ctx, args) => {
@@ -114,6 +116,8 @@ export const revenueOverview = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const ordersList = query({
   args: {
     status: v.optional(
@@ -143,6 +147,8 @@ export const ordersList = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const subscriptionsOverview = query({
   args: {
     status: v.optional(
@@ -206,6 +212,8 @@ export const subscriptionsOverview = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const invoicesOverview = query({
   args: {
     status: v.optional(

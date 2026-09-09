@@ -3,8 +3,10 @@ import { describe, expect, it, test } from "vitest"
 import {
   bumpedAhead,
   describeDrift,
+  describeWaiting,
   formatSummary,
   formatTable,
+  formatWaitingSummary,
   isReleasableSource,
   summariseDrift,
 } from "../../../scripts/lib/source-drift.mjs"
@@ -16,7 +18,7 @@ interface Row {
   dir: string
   since: string | null
   changed: string[]
-  state: "drifted" | "unknown" | "covered" | "clean"
+  state: "drifted" | "unknown" | "waiting" | "clean"
 }
 
 /**
@@ -71,14 +73,21 @@ describe("summariseDrift", () => {
     expect(drifted.map((row: Row) => row.name)).toEqual(["@be-in-digital/ui"])
   })
 
-  test("a changeset naming it covers it", () => {
-    const { drifted, rows } = summariseDrift(
+  test("a changeset naming it stops it drifting, and does not make it released", () => {
+    // The distinction this state exists for. `covered` sat here beside
+    // `clean` and read as "shipped", while `publish-mirror --check` exited 1
+    // on the same package: a changeset that still EXISTS is proof the release
+    // has not been cut, because `changeset version` deletes the file when it
+    // cuts one. So the registry is still serving the build made before these
+    // files moved, under the version number the workspace already carries.
+    const { drifted, waiting, rows } = summariseDrift(
       [pkg("@be-in-digital/ui", ["packages/ui/src/button.tsx"])],
       new Set(["@be-in-digital/ui"]),
     )
 
     expect(drifted).toEqual([])
-    expect(rows[0].state).toBe("covered")
+    expect(rows[0].state).toBe("waiting")
+    expect(waiting.map((row: Row) => row.name)).toEqual(["@be-in-digital/ui"])
   })
 
   test("a changeset naming a DIFFERENT package does not", () => {
@@ -125,7 +134,7 @@ describe("summariseDrift", () => {
       new Set(["@be-in-digital/d"]),
     )
 
-    expect(rows.map((row: Row) => row.state)).toEqual(["drifted", "unknown", "covered", "clean"])
+    expect(rows.map((row: Row) => row.state)).toEqual(["drifted", "unknown", "waiting", "clean"])
   })
 })
 
@@ -164,31 +173,72 @@ describe("what it tells the reader", () => {
 })
 
 /**
+ * The half of the report that used to be a single reassuring word.
+ *
+ * `covered` was printed in the same column as `clean`, under "Every package
+ * with source changes since its last release carries a changeset." — and the
+ * run exited 0 with no annotation of any kind, while `publish-mirror --check`
+ * exited 1 on the same package. Nothing here gates: batching fixes into one
+ * release is the intended workflow. What is asserted is that the run SAYS it.
+ */
+describe("a release that has not been cut", () => {
+  const { rows, waiting } = summariseDrift(
+    [pkg("@be-in-digital/ui", ["packages/ui/src/a.ts", "packages/ui/src/b.ts"])],
+    new Set(["@be-in-digital/ui"]),
+  )
+
+  test("the row says what the registry is serving, not that all is well", () => {
+    const table = formatTable(rows)
+
+    expect(table).toContain("waiting")
+    expect(table).toContain("registry still serves the 1.0.0 built before them")
+    // The word that made a reader stop reading.
+    expect(table).not.toContain("covered")
+  })
+
+  test("the annotation names the packages and what a client installs", () => {
+    const line = describeWaiting(waiting)
+
+    expect(line).toContain("@be-in-digital/ui@1.0.0")
+    expect(line).toContain("2 file(s)")
+    expect(line).toContain("a client site installs that one")
+  })
+
+  test("the summary says the release has not happened, not that it has", () => {
+    const summary = formatWaitingSummary(waiting)
+
+    expect(summary).toContain("waiting on a release")
+    expect(summary).toContain("BEFORE")
+    expect(summary).toContain("pnpm version-packages")
+  })
+})
+
+/**
  * A release already cut is not "no changeset".
  *
- * The subpath half of `check:source-drift` asks whether a changeset is waiting
- * to move a package's version. That is the right question for the normal path
- * and the wrong one for the path `publish-mirror.mjs` prints in its own failure
- * text: run `pnpm version-packages`, commit the bumped manifests, merge.
+ * The SUBPATH half of `check:source-drift` asks whether a changeset is waiting
+ * to move a package's version — the right question for the normal path and the
+ * wrong one for the path `publish-mirror.mjs` prints in its own failure text:
+ * run `pnpm version-packages`, commit the bumped manifests, merge.
  *
  * Doing that CONSUMES the changesets — versioning is what consumes them — so
- * `.changeset/` empties and the check reported a finished release as
- * "no changeset will move its version". Measured on #445: `convex-functions`
- * at 6.2.0 against a published 6.0.0 and `ui` at 4.2.0 against 4.0.0, both
- * called deadlocks by the very commit that unblocks them. Two guards, each
- * demanding what the other forbids, and following either made the other red.
+ * `.changeset/` empties and the check reported a finished release as "no
+ * changeset will move its version". Measured on #445: `convex-functions` at
+ * 6.2.0 against a published 6.0.0 and `ui` at 4.2.0 against 4.0.0, both called
+ * deadlocks by the very commit that unblocks them. Two guards, each demanding
+ * what the other forbids, and following either made the other red.
+ *
+ * Distinct from `waiting` above, which is the DRIFT half's answer to the
+ * neighbouring question — a changeset that exists and has not shipped yet.
  */
 describe("bumpedAhead", () => {
   it("accepts a version already bumped past the registry's", () => {
-    // The two real rows from #445.
     expect(bumpedAhead("6.2.0", "6.0.0")).toBe(true)
     expect(bumpedAhead("4.2.0", "4.0.0")).toBe(true)
     expect(bumpedAhead("1.1.2", "1.1.1")).toBe(true)
   })
 
   it("does not accept a version that has not moved", () => {
-    // The case the error exists for: the subpath is declared, the version is
-    // what a client already installs, and nothing will carry it.
     expect(bumpedAhead("6.0.0", "6.0.0")).toBe(false)
   })
 
@@ -197,20 +247,16 @@ describe("bumpedAhead", () => {
   })
 
   it("compares segments numerically, not lexically", () => {
-    // A string compare puts "1.10.0" below "1.9.0" and would call a real
-    // release un-cut.
+    // A string compare puts "1.10.0" below "1.9.0" and calls a real release
+    // un-cut.
     expect(bumpedAhead("1.10.0", "1.9.0")).toBe(true)
     expect(bumpedAhead("2.0.0", "1.9.9")).toBe(true)
   })
 
   it("refuses what it cannot read, rather than waving it through", () => {
-    // Every unreadable answer has to fall on the reporting side: a check that
-    // silently passes on a question it could not answer is the defect this
-    // whole file exists about.
     expect(bumpedAhead("not.a.version", "1.0.0")).toBe(false)
     expect(bumpedAhead("1.0.0", "")).toBe(false)
     expect(bumpedAhead(undefined as unknown as string, "1.0.0")).toBe(false)
-    // A prerelease of the same version is not ahead of the release.
     expect(bumpedAhead("1.0.0-rc.1", "1.0.0")).toBe(false)
   })
 })

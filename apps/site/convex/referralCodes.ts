@@ -297,6 +297,8 @@ async function settingsDiscountPercent(
 
 /* ── Public queries ── */
 
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const getMyCode = query({
   args: {},
   handler: async (ctx) => {
@@ -326,6 +328,9 @@ export const getMyCode = query({
    affiliate id or a code id from its caller; it repeats this lookup itself.
    Forging the reply here therefore changes what the page draws and nothing
    about what is charged. */
+// @public-by-design: affiliate codes are handed out to be typed in by
+//   strangers, so the price has to be shown before sign-in; the answer is a
+//   display value and createCheckoutSession repeats the lookup itself
 export const validateCode = query({
   args: { code: v.string() },
   handler: async (ctx, args) => {
@@ -366,6 +371,8 @@ export const validateCode = query({
 
 /* ── Public mutations ── */
 
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const generateMyCode = mutation({
   args: {},
   handler: async (ctx) => {
@@ -390,6 +397,8 @@ export const generateMyCode = mutation({
   },
 });
 
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const customizeMyCode = mutation({
   args: { code: v.string() },
   handler: async (ctx, args) => {

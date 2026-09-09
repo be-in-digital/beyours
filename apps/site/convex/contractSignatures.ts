@@ -12,6 +12,8 @@ import { mintCodeFor } from "./referralCodes";
 /* ── Public queries ── */
 
 /** Get the current user's pending or latest signature for a contract version */
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const getMyPendingSignature = query({
   args: {},
   handler: async (ctx) => {
@@ -42,6 +44,8 @@ export const getMyPendingSignature = query({
 });
 
 /** Get all my signatures (history) */
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const getMySignatures = query({
   args: {},
   handler: async (ctx) => {
@@ -65,6 +69,8 @@ export const getMySignatures = query({
 });
 
 /** Download URL for the current user's latest signed contract (in-app SES). */
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const getSignedContractUrl = query({
   args: {},
   handler: async (ctx) => {

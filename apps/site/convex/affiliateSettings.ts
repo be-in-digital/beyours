@@ -25,6 +25,9 @@ export async function affiliateProgramEnabled(ctx: QueryCtx): Promise<boolean> {
 
 /* ── Public queries ── */
 
+// @public-by-design: the commission rate and payout terms the affiliate
+//   landing page states before anyone signs up; no personal data and nothing
+//   writable
 export const get = query({
   args: {},
   handler: async (ctx) => await readAffiliateSettings(ctx),

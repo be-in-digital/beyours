@@ -25,6 +25,8 @@ async function sha256Hex(content: string): Promise<string> {
 /* ── Public queries ── */
 
 /** Get the currently active contract version */
+// @public-by-design: the apporteur contract an affiliate has to READ before
+//   signing it, so it has to render before they have an account
 export const getActive = query({
   args: {},
   handler: async (ctx) => {
@@ -59,6 +61,8 @@ export const getById = internalQuery({
 /* ── Admin mutations ── */
 
 /** Create a new contract version (admin only) */
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const create = mutation({
   args: {
     version: v.string(),
@@ -97,6 +101,8 @@ export const create = mutation({
 });
 
 /** Activate a contract version (admin only) — archives all others */
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const activate = mutation({
   args: { id: v.id("contractVersions") },
   handler: async (ctx, args) => {

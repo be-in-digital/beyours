@@ -134,6 +134,9 @@ export const getByStripeSessionId = internalQuery({
 
    Takes a raw string rather than v.id so a malformed id returns null instead
    of throwing: the page has to render a refusal, not a server error. */
+// @public-by-design: the order id travels in the return URL, so this is what
+//   a returning buyer is holding; it answers a boolean and a first name and
+//   never the order document
 export const getCheckoutAccess = query({
   args: { orderId: v.string() },
   handler: async (ctx, args) => {
@@ -167,6 +170,8 @@ export const getCheckoutAccess = query({
    Second layer only: what actually caps the offer is the Stripe coupon's
    max_redemptions (see convex/foundersOffer.ts). This keeps the storefront
    from advertising a slot someone else is already paying for. */
+// @public-by-design: the « X places restantes » counter on the sales page; a
+//   count of paid and in-flight orders, naming none of them
 export const countFoundersSold = query({
   args: {},
   handler: async (ctx) => {

@@ -431,7 +431,7 @@ export function EmailCampaignsPage() {
                     </TableCell>
                     <TableCell className="text-sm">
                       {openRate !== null
-                        ? <span className={openRate >= 20 ? "text-green-600 font-medium" : ""}>{openRate}%</span>
+                        ? <span className={openRate >= 20 ? "text-success font-medium" : ""}>{openRate}%</span>
                         : <span className="text-muted-foreground">-</span>}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">

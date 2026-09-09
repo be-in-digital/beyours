@@ -72,7 +72,12 @@ const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
           type="button"
           aria-label="Fermer la notification"
           onClick={onClose}
-          className="absolute right-2 top-2 rounded-md p-1 text-foreground/50 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100"
+          /* `text-muted-foreground`, not `text-foreground/50`: the modifier
+             multiplied the ratio down to 3.78:1 on the close button of every
+             toast, and the token means the same thing at a ratio the matrix
+             test holds. See the sweep's own header — never soften text with a
+             `/NN`. */
+          className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100"
         >
           <X className="h-4 w-4" aria-hidden />
         </button>

@@ -146,12 +146,25 @@ const siteOptionalShape = {
     which their messages carried a genuine signature and could mark any
     subscriber bounced or complained.
 
-    Unset means no subscription is auto-confirmed (the endpoint logs what to
-    set, and an operator can confirm from the AWS console); notifications on an
-    already-confirmed subscription keep working, so setting it is a hardening
-    step and not a migration. Convex-side: the verifier reads it there.
+    Unset, the endpoint REFUSES: it confirms no subscription and it accepts no
+    notification, logging `topic_not_configured` and the ARN it saw, which is
+    the value to paste here. It used to accept notifications in that state, on
+    the grounds that SNS delivers only to a confirmed subscription — but the
+    endpoint is an HTTPS URL anyone can POST to, so an attacker publishes on
+    their own topic and replays the JSON Amazon signed for them. Convex-side:
+    the verifier reads it there.
   */
   SES_SNS_TOPIC_ARN: opt(z.string().min(1)),
+
+  /*
+    SES_SNS_ALLOW_ANY_TOPIC — the escape hatch back to the old behaviour, for a
+    deployment that is mid-configuration and must keep recording bounces on a
+    subscription an operator already confirmed. "true" and nothing else; it
+    never lets the endpoint CONFIRM a subscription, which is the defect that
+    made a forged topic self-service. A separate variable on purpose: restoring
+    a fail-open should be something a person did, not a default nobody chose.
+  */
+  SES_SNS_ALLOW_ANY_TOPIC: opt(z.enum(['true', 'false'])),
 
   // AWS S3 media URLs. The bucket is private — see
   // apps/docs/deployment/s3-bucket-policy.md. Set this to the CDN that fronts

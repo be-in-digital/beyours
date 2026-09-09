@@ -70,7 +70,7 @@ export function SidebarUserMenu() {
                   <span className="truncate text-[10px] text-muted-foreground">{user.email}</span>
                 )}
               </div>
-              <ChevronsUpDown className="ml-auto size-3.5 text-muted-foreground/60" />
+              <ChevronsUpDown className="ml-auto size-3.5 text-muted-foreground" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-52" side="top" align="start" sideOffset={8}>
