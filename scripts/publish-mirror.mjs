@@ -65,7 +65,7 @@
  */
 
 import { execFileSync } from "node:child_process"
-import { copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { appendFileSync, copyFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -74,7 +74,7 @@ import {
   describeUnresolvable,
   engineImportsIn,
   EXPORTS_UNKNOWN,
-  tarballContents,
+  publishedTarball,
   unresolvableImports,
 } from "./lib/engine-exports.mjs"
 import {
@@ -166,7 +166,30 @@ class Stop extends Error {
     this.code = code
   }
 }
+/**
+ * What this run actually did, written where the workflow can read it.
+ *
+ * WHY IT EXISTS. Every one of this script's exits is either 0 or 1, and three
+ * different things exit 0: a push happened, the mirror was already identical,
+ * or a `--check` found no drift and pushed nothing by design. The workflow
+ * reported all three as a green "Publish mirror", so a run that synced nothing
+ * was indistinguishable from a run that synced — which is how the mirror went
+ * twelve days stale with a green history behind it.
+ *
+ * An exit code cannot carry that distinction without inventing codes a human
+ * running this by hand would have to learn. A named outcome can, and the shell
+ * still sees the same 0/1 it always did.
+ */
+let outcome = "unknown"
+const record = (value) => {
+  outcome = value
+  const file = process.env.GITHUB_OUTPUT
+  if (file) appendFileSync(file, `mirror_outcome=${value}\n`)
+  return value
+}
+
 const fail = (msg) => {
+  if (outcome === "unknown") record(check ? "drift" : "failed")
   throw new Stop(msg, 1)
 }
 const done = (msg) => {
@@ -176,52 +199,6 @@ const done = (msg) => {
 // ---------------------------------------------------------------------------
 // 1. Published versions
 // ---------------------------------------------------------------------------
-
-/**
- * What the version a client would actually install carries: its `exports` map
- * and its file list, both read from the published TARBALL.
- *
- * Not from `npm view`: GitHub Packages omits `exports` from the abbreviated
- * packument that command reads, so the lookup answered empty for every engine
- * package, the emptiness was taken for "declares no exports → legacy → any
- * path allowed", and the gate flagged nothing while `admin@8.0.0` shipped
- * without the `./game` the template imports (#380). The tarball is what a
- * client installs and the registry cannot abbreviate it, so `npm pack` it and
- * read the archive inside.
- *
- * Both halves come from the one read, and are passed on together, because a
- * subpath fails in two ways: absent from the map, or present and pointing at a
- * file the archive never carried. Reading the map without the file list would
- * answer the first question and silently drop the second.
- *
- * Three answers, kept distinct on purpose:
- *   - a map (or string) — checked subpath by subpath, target by target;
- *   - `undefined` — the manifest genuinely declares no `exports`, which Node
- *     resolves legacily: any path allowed, nothing to verify;
- *   - `EXPORTS_UNKNOWN` — the tarball could not be fetched or read. That is a
- *     question with no answer, not an answer: `unresolvableImports` flags it
- *     and the sync refuses to run, because conflating "could not read the map"
- *     with "has no map" is exactly the defect this replaces. `files` is left
- *     undefined with it: nothing was read, so nothing is known to be missing.
- *
- * Each tarball is unpacked under `work`, so it is swept by the one `finally`
- * at the bottom along with the clone — the same reason nothing here calls
- * `process.exit`. It is therefore only callable once `work` exists, which is
- * to say from inside that try.
- */
-function publishedTarball(pkg, version) {
-  const dir = mkdtempSync(join(work, "pack-"))
-  try {
-    run("npm", ["pack", `${pkg}@${version}`, `--registry=${REGISTRY}`, "--pack-destination", dir])
-    const tarball = readdirSync(dir).find((name) => name.endsWith(".tgz"))
-    if (!tarball) throw new Error(`npm pack wrote no tarball for ${pkg}@${version}`)
-    return tarballContents(join(dir, tarball))
-  } catch {
-    return { exports: EXPORTS_UNKNOWN, files: undefined }
-  } finally {
-    rmSync(dir, { recursive: true, force: true })
-  }
-}
 
 function resolveVersions(deps) {
   const engineDeps = Object.keys(deps).filter((k) => k.startsWith("@be-in-digital/"))
@@ -387,7 +364,7 @@ try {
   const published = {}
   for (const [pkg, range] of Object.entries(versions)) {
     const version = range.replace(/^\^/, "")
-    published[pkg] = { version, ...publishedTarball(pkg, version) }
+    published[pkg] = { version, ...publishedTarball(pkg, version, { dir: work }) }
   }
   const unresolvable = unresolvableImports(engineImportsIn(SOURCE), published)
   // `changesetPackages()` only changes the WORDING of the failure, never
@@ -501,7 +478,10 @@ try {
   log("   installs from the registry and typechecks")
 
   const status = run("git", ["status", "--porcelain"], { cwd: clone })
-  if (!status) done("✓ the mirror is already up to date")
+  if (!status) {
+    record("current")
+    done("✓ the mirror is already up to date")
+  }
 
   const changed = status.split("\n").length
   log(`→ ${changed} file(s) to publish`)
@@ -520,6 +500,7 @@ try {
   run("git", ["commit", "-m", `chore: sync from apps/themes (${sha})\n\n${subject}`], { cwd: clone })
   run("git", ["push", "origin", "HEAD:main"], { cwd: clone })
 
+  record("pushed")
   log(`✓ mirror published — ${MIRROR_REPO}`)
 } catch (error) {
   if (!(error instanceof Stop)) throw error

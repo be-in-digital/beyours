@@ -114,8 +114,71 @@ function testSources(): string[] {
  * `process.env.X` in prose, and a guard that demanded `X` be declared would be
  * one nobody could keep green.
  */
+/**
+ * The source with its comments removed — both kinds.
+ *
+ * It used to strip `/* … *\/` and leave `//` alone, so a line comment that
+ * NAMED a variable was counted as reading it. That is not academic: a test
+ * asserting no dev origin is used as a fallback quotes the shape it forbids,
+ * `process.env.BETTER_AUTH_URL ?? "http://localhost:3000"`, and the guard then
+ * demanded a turbo declaration for a variable the suite never touches. The
+ * reverse assertion below is the worse half — a declared variable could be
+ * justified by a mention in prose.
+ *
+ * A regex cannot do this: `"http://localhost"` is a string, not a comment, and
+ * naive stripping eats the rest of the line. So this walks the source with the
+ * three states that matter, the same way the pipeline detector in
+ * `mirror-staleness-watch.test.ts` walks a `run:` block for a bare `|`.
+ */
+function stripComments(source: string): string {
+  let out = ""
+  let i = 0
+  let quote: string | null = null
+
+  while (i < source.length) {
+    const ch = source[i]
+    const next = source[i + 1]
+
+    if (quote) {
+      out += ch
+      if (ch === "\\") {
+        out += next ?? ""
+        i += 2
+        continue
+      }
+      if (ch === quote) quote = null
+      i += 1
+      continue
+    }
+
+    if (ch === '"' || ch === "'" || ch === "`") {
+      quote = ch
+      out += ch
+      i += 1
+      continue
+    }
+
+    if (ch === "/" && next === "*") {
+      const end = source.indexOf("*/", i + 2)
+      i = end === -1 ? source.length : end + 2
+      continue
+    }
+
+    if (ch === "/" && next === "/") {
+      const end = source.indexOf("\n", i)
+      i = end === -1 ? source.length : end
+      continue
+    }
+
+    out += ch
+    i += 1
+  }
+
+  return out
+}
+
 function readsOf(source: string): string[] {
-  const code = source.replace(/\/\*[\s\S]*?\*\//g, "")
+  const code = stripComments(source)
   const matches = code.matchAll(/process\.env(?:\.([A-Z_][A-Z0-9_]*)|\[["']([A-Z_][A-Z0-9_]*)["']\])/g)
   return [...matches].flatMap((m) => {
     const name = m[1] ?? m[2]

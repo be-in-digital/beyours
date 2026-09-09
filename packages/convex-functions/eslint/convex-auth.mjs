@@ -185,10 +185,28 @@ function readAnnotation(sourceCode, node) {
   return null;
 }
 
-/** Does this declaration show any sign of authorising anything? */
+/**
+ * Does this declaration show any sign of authorising anything?
+ *
+ * TOKENS, NOT TEXT. `getText` returns the raw source of the declaration —
+ * comments included — so the signal was satisfied by a declaration that merely
+ * TALKED about a guard. `// we already called ctx.auth.getUserIdentity()
+ * upstream` above an unguarded `fetch` passed, which is precisely the shortcut
+ * the marker's own docblock says it exists to catch: "a claim nothing tests is
+ * a comment". It was one.
+ *
+ * `getTokens` excludes comments, so what is tested now is code. The signals are
+ * joined with a space and every one of them tolerates whitespace where a token
+ * boundary falls — `ctx . auth`, `ctx . runQuery (` — because the alternative,
+ * reconstructing the source minus comment ranges, is a second parser to keep
+ * right.
+ */
 function showsGuardSignal(sourceCode, node) {
-  const text = sourceCode.getText(statementOf(node));
-  return GUARD_SIGNALS.some((signal) => signal.test(text));
+  const code = sourceCode
+    .getTokens(statementOf(node))
+    .map((token) => token.value)
+    .join(" ");
+  return GUARD_SIGNALS.some((signal) => signal.test(code));
 }
 
 /** The `permission:` property of an object argument, if present. */

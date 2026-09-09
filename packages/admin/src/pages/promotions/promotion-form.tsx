@@ -116,10 +116,10 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
   const updateMutation = useMutation(api?.promotions?.update)
 
   // Query products and categories for scope pickers
-  const products = useQuery(api?.products?.list, storeId ? { storeId } : "skip") as
+  const products = useQuery(api?.products?.listAll, storeId ? { storeId } : "skip") as
     | Array<{ _id: string; name: string; price?: number; imageUrl?: string; isAvailable?: boolean }>
     | undefined
-  const categories = useQuery(api?.categories?.list, storeId ? { storeId } : "skip") as
+  const categories = useQuery(api?.categories?.listAll, storeId ? { storeId } : "skip") as
     | Array<{ _id: string; name: string; productCount?: number }>
     | undefined
 
@@ -583,7 +583,7 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                         <button
                           type="button"
                           onClick={() => handleProductToggle(id)}
-                          className="hover:bg-primary/20 rounded-full p-0.5"
+                          className="inline-flex size-6 items-center justify-center rounded-full hover:bg-primary/20"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -661,7 +661,7 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                         <button
                           type="button"
                           onClick={() => handleCategoryToggle(id)}
-                          className="hover:bg-primary/20 rounded-full p-0.5"
+                          className="inline-flex size-6 items-center justify-center rounded-full hover:bg-primary/20"
                         >
                           <X className="h-3 w-3" />
                         </button>

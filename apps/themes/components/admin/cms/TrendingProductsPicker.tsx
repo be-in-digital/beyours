@@ -39,7 +39,7 @@ export function TrendingProductsPicker() {
     storeId ? { id: storeId } : "skip"
   )
   const allProducts = useQuery(
-    api.products.list,
+    api.products.listAll,
     storeId ? { storeId } : "skip"
   )
   const manualTrending = useQuery(

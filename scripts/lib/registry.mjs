@@ -56,54 +56,21 @@ export const ABSENT = "absent"
 export const UNREACHABLE = "unreachable"
 
 /**
- * npm's own error code for a lookup that failed, or null when it printed none.
+ * The same answer as `lookupPublishedVersion`, named for what a LOG needs.
  *
- * `npm view` writes `npm error code E404` on the first line of stderr and the
- * human sentence after it. The code is the part worth reading: the sentence is
- * localised and reworded between majors, the code is not.
+ * A thin translation, deliberately not a second implementation: `classifyLookup`
+ * below is where the "did the registry answer" decision lives, and duplicating
+ * it is how the two halves of a release chain come to disagree. This adds only
+ * the vocabulary a printed table needs — `absent` and `unreachable` are one
+ * `null` to a caller that just wants the version, and opposite facts to a
+ * caller that is about to state one.
  */
-function npmErrorCode(stderr) {
-  const match = /npm (?:ERR!|error) code (\S+)/.exec(stderr ?? "")
-  return match ? match[1] : null
-}
-
-/**
- * What that code means about the registry.
- *
- * `E404` is the registry answering: it does not have this package, which for a
- * name this workspace declares is the ordinary state of one never published.
- * `E401`, `E403` and `ENEEDAUTH` are the registry refusing to say — GitHub
- * Packages is private, so a missing or expired `NODE_AUTH_TOKEN` produces
- * exactly these — and every network fault is the same class of non-answer.
- * Anything unrecognised is treated as a non-answer too: guessing `absent` from
- * a code nobody has read is how a 401 became a 404 in the first place.
- */
-export function classifyLookupError(code) {
-  return code === "E404" ? ABSENT : UNREACHABLE
-}
-
-/**
- * What the registry serves for `pkg`, and whether it answered at all.
- *
- * `{ version, state, code }` — `version` is null unless `state` is `found`,
- * and `code` carries npm's own error code so a log can name it.
- */
-export function lookupPublished(pkg) {
-  try {
-    const out = execFileSync("npm", ["view", pkg, "version", `--registry=${REGISTRY}`], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    })
-    const version = (out ?? "").trim()
-    // An empty stdout with exit 0 is not a version. It has no documented
-    // cause and is not worth inventing one for; what it is not is an answer.
-    return version
-      ? { version, state: FOUND, code: null }
-      : { version: null, state: UNREACHABLE, code: null }
-  } catch (error) {
-    const code = npmErrorCode(error?.stderr?.toString?.() ?? String(error?.stderr ?? ""))
-    return { version: null, state: classifyLookupError(code), code }
-  }
+export function lookupPublished(pkg, options) {
+  const { version, known, reason } = lookupPublishedVersion(pkg, options ?? {})
+  if (!known) return { version: null, state: UNREACHABLE, code: reason ?? null }
+  return version
+    ? { version, state: FOUND, code: null }
+    : { version: null, state: ABSENT, code: null }
 }
 
 /**
@@ -115,7 +82,61 @@ export function lookupPublished(pkg) {
  * instead and say which of the two it got.
  */
 export function publishedVersion(pkg) {
-  return lookupPublished(pkg).version
+  return lookupPublishedVersion(pkg).version
+}
+
+/**
+ * The same lookup, with the distinction `publishedVersion` throws away.
+ *
+ * `npm view` fails for two unrelated reasons and the wrapper above returns
+ * `null` for both: the registry answering "no such package", and the registry
+ * not answering at all — no token, no network, a 500. A caller that treats the
+ * second as the first reports a clean bill of health for a check it never ran,
+ * which is the failure this repository keeps having to fix (see the
+ * `EXPORTS_UNKNOWN` note in `engine-exports.mjs`, written after exactly that).
+ *
+ * `known: false` means the question got no answer. Refuse, or say so; never
+ * pass.
+ */
+export function lookupPublishedVersion(pkg, { ask = askRegistry } = {}) {
+  let answer
+  try {
+    answer = { stdout: ask(pkg) }
+  } catch (error) {
+    answer = { failure: `${error?.stderr ?? ""}\n${error?.stdout ?? ""}` }
+  }
+  return classifyLookup(answer)
+}
+
+/** The one call that touches the network. Replaced in tests. */
+function askRegistry(pkg) {
+  return execFileSync("npm", ["view", pkg, "version", `--registry=${REGISTRY}`], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  })
+}
+
+/**
+ * What npm's answer means, as a pure function of its output.
+ *
+ * Separated from the call so it can be tested without a registry. The first
+ * version of the test asked npm for a name nobody has published and asserted
+ * the 404; run alone it passed, and inside a full `pnpm test` it failed after
+ * 140 seconds because a loaded runner got a timeout rather than a 404. A guard
+ * about "did the registry answer" must not itself depend on the registry
+ * answering.
+ */
+export function classifyLookup(answer) {
+  if (answer.failure === undefined) {
+    const version = (answer.stdout ?? "").trim()
+    return { version: version || null, known: true }
+  }
+  // A 404 IS an answer: the registry has no such package. Everything else —
+  // ENEEDAUTH, E401, E403, a socket error, a timeout — is the registry
+  // declining to say, and must never read as "nothing to check".
+  if (/\bE404\b|404 Not Found/.test(answer.failure)) return { version: null, known: true }
+  const reason = answer.failure.split("\n").map((line) => line.trim()).filter(Boolean).pop()
+  return { version: null, known: false, reason: reason ?? "npm view failed" }
 }
 
 /**
@@ -165,6 +186,14 @@ export function publishablePackages(root = REPO_ROOT) {
  */
 function normaliseLookup(answer) {
   if (answer && typeof answer === "object") {
+    // `lookupPublishedVersion`'s own shape, so either lookup can be injected
+    // here without a caller having to know which one it holds.
+    if ("known" in answer) {
+      if (!answer.known) return { version: null, state: UNREACHABLE, code: answer.reason ?? null }
+      return answer.version
+        ? { version: answer.version, state: FOUND, code: null }
+        : { version: null, state: ABSENT, code: null }
+    }
     return { version: answer.version ?? null, state: answer.state ?? UNREACHABLE, code: answer.code ?? null }
   }
   return { version: answer ?? null, state: answer ? FOUND : ABSENT, code: null }

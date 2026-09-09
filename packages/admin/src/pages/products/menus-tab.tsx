@@ -83,12 +83,12 @@ export function MenusTab() {
   )
 
   const products = useQuery(
-    api?.products?.list,
+    api?.products?.listAll,
     storeId ? { storeId } : "skip"
   )
 
   const categories = useQuery(
-    api?.categories?.list,
+    api?.categories?.listAll,
     storeId ? { storeId } : "skip"
   )
 

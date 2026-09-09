@@ -114,6 +114,18 @@ const REGIONS = [
   // reason the scoped trees do: first region to claim a file wins it.
   { dir: "node_modules/@be-in-digital/admin/src/game", scope: "", surface: GAME_ARENA },
   { dir: "app/display", scope: "", surface: KITCHEN_DISPLAY },
+  // One FILE, not a directory: `block-preview.tsx` draws an EMAIL, and an
+  // email lands on its own white ground whatever the admin's colour scheme is
+  // — so it paints `bg-white` itself and every colour inside it is chosen for
+  // that. The sweep cannot see the connection, because the blocks come back
+  // from a closure rather than nested under the element that paints them; its
+  // neighbours in the same directory are ordinary admin chrome on
+  // `--background`, so the declaration has to be this narrow.
+  {
+    dir: "node_modules/@be-in-digital/admin/src/pages/email/templates/block-preview.tsx",
+    scope: "",
+    surface: "#ffffff",
+  },
   // Then everything else this app renders — the admin, the CMS preview, the
   // error boundaries.
   //

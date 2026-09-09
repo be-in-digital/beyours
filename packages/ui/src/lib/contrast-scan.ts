@@ -115,6 +115,16 @@ export interface ScanOptions {
   /** Extra scope selectors to read out of `globals.css`. */
   scopes?: string[]
   /**
+   * Stylesheets layered over `app/globals.css`, in cascade order.
+   *
+   * `loadTokens` has taken these since the template sweep was written, and
+   * this function did not pass them — so every caller that named a template
+   * got the ENGINE palette measured and reported green, which is the palette
+   * no client ships. `template-contrast.test.ts` only escaped it by calling
+   * `loadTokens` directly and re-implementing the walk.
+   */
+  overlays?: string[]
+  /**
    * Report every pair below this ratio instead of below the WCAG floor.
    *
    * For a liveness check, not for grading: a scanner that has stopped
@@ -392,6 +402,104 @@ function isGraphical(node: ts.Node, element: ts.JsxOpeningLikeElement): boolean 
   return false
 }
 
+/**
+ * The colours an element paints with `style={{ … }}` rather than a class.
+ *
+ * WHY THIS EXISTS. The sweep read `className` and nothing else, so an element
+ * that set its ink or its surface inline was invisible to it — and the guard
+ * stayed green over a pair that fails, which is worse than not running. Inline
+ * declarations are also the ones most likely to be wrong: they are written by
+ * hand, one element at a time, outside the token system that the rest of this
+ * file exists to check.
+ *
+ * ONLY LITERALS ARE READ. `style={{ color: brand }}` is a value this parse
+ * cannot know, and guessing one is how a scanner starts reporting failures the
+ * product never renders. An unreadable value is left unmeasured, exactly as an
+ * unresolvable class is.
+ */
+interface InlineStyle {
+  color?: string
+  background?: string
+}
+
+/**
+ * Every literal this expression can evaluate to; `null` for a value the parse
+ * cannot know.
+ *
+ * `style={{ backgroundColor: block.backgroundColor ?? "#000000" }}` is how
+ * this codebase writes almost all of them, and reading only bare string
+ * literals would have measured none of them — the feature would have been
+ * added and read zero elements. The fallback of a `??` is a state the product
+ * genuinely renders (the field is unset), and both arms of a ternary are, for
+ * the same reason `alternatives` takes both.
+ */
+function literalValues(node: ts.Expression): Array<string | null> {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return [node.text]
+  if (ts.isParenthesizedExpression(node)) return literalValues(node.expression)
+  if (ts.isConditionalExpression(node)) {
+    return [...literalValues(node.whenTrue), ...literalValues(node.whenFalse)]
+  }
+  if (ts.isBinaryExpression(node)) {
+    const kind = node.operatorToken.kind
+    if (kind === ts.SyntaxKind.QuestionQuestionToken || kind === ts.SyntaxKind.BarBarToken) {
+      return [...literalValues(node.left), ...literalValues(node.right)]
+    }
+  }
+  return [null]
+}
+
+/** Every inline colour pair this element can paint, as separate alternatives. */
+function styleAlternatives(element: ts.JsxOpeningLikeElement): InlineStyle[] {
+  for (const attribute of element.attributes.properties) {
+    if (!ts.isJsxAttribute(attribute)) continue
+    if (attribute.name.getText() !== "style") continue
+    const initializer = attribute.initializer
+    if (!initializer || !ts.isJsxExpression(initializer) || !initializer.expression) return []
+    const object = initializer.expression
+    if (!ts.isObjectLiteralExpression(object)) return []
+
+    let styles: InlineStyle[] = [{}]
+    for (const property of object.properties) {
+      if (!ts.isPropertyAssignment(property)) continue
+      const name = property.name
+      const key = ts.isIdentifier(name) || ts.isStringLiteral(name) ? name.text : null
+      if (!key) continue
+
+      let field: "color" | "background"
+      if (key === "color") field = "color"
+      else if (key === "backgroundColor" || key === "background") field = "background"
+      else continue
+
+      const values = literalValues(property.initializer).filter(
+        // `background` is shorthand: a gradient or an image in it names no
+        // single surface colour, so only a plain colour value is taken.
+        (value): value is string =>
+          value !== null && !(key === "background" && /\b(?:gradient|url)\(/.test(value))
+      )
+      if (!values.length) continue
+
+      const next: InlineStyle[] = []
+      for (const style of styles) {
+        for (const value of values) {
+          if (next.length >= MAX_ALTERNATIVES) break
+          next.push({ ...style, [field]: value })
+        }
+      }
+      styles = next.length ? next : styles
+    }
+
+    const seen = new Set<string>()
+    return styles.filter((style) => {
+      if (!style.color && !style.background) return false
+      const key = `${style.color ?? ""}|${style.background ?? ""}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }
+  return []
+}
+
 function classAlternatives(element: ts.JsxOpeningLikeElement): string[][] {
   for (const attribute of element.attributes.properties) {
     if (!ts.isJsxAttribute(attribute)) continue
@@ -451,8 +559,47 @@ class Resolver {
     return null
   }
 
+  /**
+   * A CSS colour value as an inline `style` writes it.
+   *
+   * The three spellings this codebase actually uses inline — a hex literal, a
+   * `var(--token)` reference, and a bare palette word. `rgb()`/`rgba()` are
+   * read too because a hand-written inline style is where they turn up.
+   * Anything else returns null and is left unmeasured rather than guessed.
+   */
+  cssColour(value: string, mode: Mode, scope: string): { rgb: Rgb; alpha: number } | null {
+    const text = value.trim()
+    if (!text || text === "transparent" || text === "currentColor" || text === "inherit") return null
+
+    const hex = parseHex(text)
+    if (hex) return { rgb: hex, alpha: 1 }
+
+    const rgbFn = text.match(
+      /^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)(?:[\s,/]+([\d.]+%?))?\s*\)$/
+    )
+    if (rgbFn) {
+      const channel = (raw: string): number => Number(raw) / 255
+      const raw = rgbFn[4]
+      const alpha = raw === undefined ? 1 : raw.endsWith("%") ? Number(raw.slice(0, -1)) / 100 : Number(raw)
+      return {
+        rgb: { r: channel(rgbFn[1]!), g: channel(rgbFn[2]!), b: channel(rgbFn[3]!) },
+        alpha: Number.isFinite(alpha) ? alpha : 1,
+      }
+    }
+
+    // `var(--primary)` — the token name is what `colour` already resolves, and
+    // resolving it through the same scope chain is the whole point: an inline
+    // `var(--foreground)` inside `.storefront-theme` is that scope's value.
+    const variable = text.match(/^var\(\s*--([a-z0-9-]+)\s*(?:,[^)]*)?\)$/i)
+    if (variable) return this.colour(variable[1]!, mode, scope)
+
+    // A bare word: `white`, `black`, or a palette entry.
+    if (/^[a-z][a-z0-9-]*$/.test(text)) return this.colour(text, mode, scope)
+    return null
+  }
+
   /** What one class list says, for one colour scheme and one state. */
-  read(classes: string[], mode: Mode, scope: string, state: string): Reading {
+  read(classes: string[], mode: Mode, scope: string, state: string, inline?: InlineStyle | null): Reading {
     const reading: Reading = { backgrounds: [], text: null, sizePx: null, weight: null, opacity: 1 }
     const opacities: number[] = []
 
@@ -531,6 +678,22 @@ class Resolver {
       }
     }
 
+    // Inline last, and unconditionally: a `style` declaration outranks every
+    // class on the element whatever variant the class carries, so it is not
+    // enough to sort it to the end of the list above — a `hover:text-…` would
+    // still have won. This is also why it ignores `state`: the same inline
+    // value paints every state of the element.
+    if (inline) {
+      if (inline.background) {
+        const paint = this.cssColour(inline.background, mode, scope)
+        if (paint) reading.backgrounds = [{ ...paint, cls: `style:background:${inline.background}` }]
+      }
+      if (inline.color) {
+        const paint = this.cssColour(inline.color, mode, scope)
+        if (paint) reading.text = { ...paint, cls: `style:color:${inline.color}` }
+      }
+    }
+
     const visible = opacities.filter((value) => value > 0)
     reading.opacity = visible.length ? Math.max(...visible) : 1
     return reading
@@ -552,6 +715,17 @@ interface Context {
 }
 
 function sources(root: string): string[] {
+  // A region may name one FILE rather than a directory, which is what lets a
+  // single component declare the surface it paints for itself: the email
+  // template preview draws a white email canvas, and the blocks that land on
+  // it are returned from a closure, so no walk of the JSX can connect the two.
+  // Directory granularity would drag its neighbours onto that canvas with it.
+  try {
+    if (statSync(root).isFile()) return extname(root) === ".tsx" ? [root] : []
+  } catch {
+    return []
+  }
+
   const out: string[] = []
   const walk = (dir: string): void => {
     let entries: string[]
@@ -585,7 +759,7 @@ export function scanContrast(options: ScanOptions): ContrastFailure[] {
     ...scopes,
     ...scopes.map((scope) => `.dark ${scope}`),
   ]
-  const tokens = loadTokens(appDir, selectors)
+  const tokens = loadTokens(appDir, selectors, options.overlays ?? [])
   const resolver = new Resolver(loadTailwindPalette(appDir), tokens)
 
   const failures: ContrastFailure[] = []
@@ -626,16 +800,27 @@ export function scanContrast(options: ScanOptions): ContrastFailure[] {
               : null
 
           if (element) {
+            // An element can paint entirely inline and carry no className at
+            // all. `classAlternatives` returns [] for it, and the loop below
+            // skips an empty list — which is how those elements went unread.
+            const styles = styleAlternatives(element)
             const lists = classAlternatives(element)
+            const combinations: Array<{ classes: string[]; style: InlineStyle | null }> = []
+            for (const classes of lists.length ? lists : [[]]) {
+              if (styles.length) {
+                for (const style of styles) combinations.push({ classes, style })
+              } else if (classes.length) {
+                combinations.push({ classes, style: null })
+              }
+            }
             const graphical = isGraphical(node, element)
             const line = source.getLineAndCharacterOfPosition(element.getStart()).line + 1
             const inherited: Context[] = []
 
-            for (const classes of lists) {
-              if (!classes.length) continue
+            for (const { classes, style } of combinations) {
               for (const state of STATES) {
                 if (state !== "base" && !classes.some((c) => splitVariants(c).variants.includes(state))) continue
-                const reading = resolver.read(classes, mode, scope, state)
+                const reading = resolver.read(classes, mode, scope, state, style)
 
                 let backdrop = context.backdrop
                 let groupAlpha = context.groupAlpha

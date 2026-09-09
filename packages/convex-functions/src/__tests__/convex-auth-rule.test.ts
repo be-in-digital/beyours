@@ -49,6 +49,18 @@ describe("no-unguarded-convex-function", () => {
         `// @guarded-inline: requireStaff applies the roster policy here
          export const all = query({ handler: async (ctx) => requireStaff(ctx) })`,
 
+        // Rebuilding the declaration from tokens puts a space at every token
+        // boundary, so a member expression the source writes tight arrives as
+        // `ctx . auth . getUserIdentity ( )`. Every signal has to survive that,
+        // and this is the case that says so.
+        `// @guarded-inline: reads the session off the request context
+         export const mine = action({ handler: async (ctx) => {
+           const who = await ctx
+             .auth
+             .getUserIdentity()
+           return who ? [] : []
+         } })`,
+
         // `safeGetAuthUser` is the session lookup under another name, and the
         // first spelling this rule failed to recognise.
         `// @guarded-inline: returns the caller's own session user
@@ -131,6 +143,27 @@ describe("no-unguarded-convex-function", () => {
           code: `// @unguarded-tracked: we should really add a state check here
                  export const cb = httpAction(async () => new Response("ok"))`,
           errors: [{ messageId: "trackedWithoutIssue" }],
+        },
+
+        // The fourth way around, and the one the marker's own docblock says it
+        // exists to stop: the guard signal was tested against the declaration's
+        // TEXT, comments included, so writing the name of a guard in a comment
+        // satisfied a check about code. Nothing here authorises anything.
+        {
+          code: `// @guarded-inline: the caller is checked before we get here
+                 export const wide = action({ handler: async () => {
+                   // the caller already went through ctx.auth.getUserIdentity()
+                   return await fetch("https://example.test")
+                 } })`,
+          errors: [{ messageId: "guardedWithoutGuard" }],
+        },
+        {
+          code: `// @guarded-inline: requireStaff is applied by the caller
+                 export const wipe = mutation({ handler: async (ctx) => {
+                   /* requireStaff(ctx) — see the admin route */
+                   await ctx.db.delete(args.id)
+                 } })`,
+          errors: [{ messageId: "guardedWithoutGuard" }],
         },
       ],
     })

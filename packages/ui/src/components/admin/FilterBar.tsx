@@ -39,7 +39,7 @@ const FilterBar = React.forwardRef<HTMLDivElement, FilterBarProps>(
               type="button"
               aria-label={`Retirer le filtre ${filter.label}`}
               onClick={() => onRemoveFilter(filter.id)}
-              className="ml-1 rounded-full p-0.5 hover:bg-muted"
+              className="ml-1 inline-flex size-6 items-center justify-center rounded-full hover:bg-muted"
             >
               <X className="h-3 w-3" aria-hidden />
             </button>

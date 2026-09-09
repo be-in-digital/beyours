@@ -7,6 +7,7 @@
  *   node scripts/check-source-drift.mjs [--warn-only]
  *
  *   --warn-only        report drift as ::warning:: and exit 0
+ *   --no-registry      skip the subpath half, which needs a token
  *   --fail-waiting     also fail on a package whose release has not been cut
  *
  * WHY IT GATES, where `check:pending-release` only reports. A changeset that
@@ -49,14 +50,35 @@
  * cannot answer the question does not look like a job that answered it. It runs
  * in ci.yml's `Lint`, which fetches full history for `check:pending-release`
  * already.
+ *
+ * THE SECOND GATE: A SUBPATH THE PUBLISHED VERSION DOES NOT HAVE.
+ *
+ * Source drift is a release that is merely late. A package that declares a
+ * subpath in its `exports` while its PUBLISHED version does not carry that
+ * subpath is a different animal: the mirror refuses to sync at all until a
+ * release lands, so every unrelated change queues behind it. That deadlock has
+ * now happened five times — most recently `@be-in-digital/ui`'s `./contrast`
+ * and `./contrast-scan` — and each time it was found AFTER the merge, by the
+ * sync failing, because the only thing checking subpaths was
+ * `publish-mirror.mjs` and that runs on `main`.
+ *
+ * It is the same question asked one step earlier, against the same tarballs, so
+ * the answer arrives on the pull request that adds the subpath — where the fix
+ * is `pnpm changeset` and it costs one command.
+ *
+ * `--no-registry` skips it, and so does a lookup that fails: the registry is a
+ * network call and this check also runs on a laptop with no `NODE_AUTH_TOKEN`.
+ * An unreadable tarball is reported as unknown, never as fine — the same rule
+ * the shallow-clone case follows, and for the same reason.
  */
 
 import { execFileSync } from "node:child_process"
 import { appendFileSync, readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
+import { EXPORTS_UNKNOWN, exportsResolve, publishedTarball } from "./lib/engine-exports.mjs"
 import { CHANGESET_DIR, isChangesetFile, parseChangeset } from "./lib/pending-release.mjs"
-import { publishablePackages, REPO_ROOT } from "./lib/registry.mjs"
+import { lookupPublishedVersion, publishablePackages, REPO_ROOT } from "./lib/registry.mjs"
 import {
   describeDrift,
   describeWaiting,
@@ -67,10 +89,11 @@ import {
 } from "./lib/source-drift.mjs"
 
 const warnOnly = process.argv.includes("--warn-only")
+const skipRegistry = process.argv.includes("--no-registry")
 const failWaiting = process.argv.includes("--fail-waiting")
 
 for (const arg of process.argv.slice(2)) {
-  if (arg !== "--warn-only" && arg !== "--fail-waiting") {
+  if (arg !== "--warn-only" && arg !== "--no-registry" && arg !== "--fail-waiting") {
     console.error(`::error::Unknown argument "${arg}".`)
     process.exit(2)
   }
@@ -154,32 +177,198 @@ if (unknown.length > 0) {
   )
 }
 
-const summaryFile = process.env.GITHUB_STEP_SUMMARY
-
 if (waiting.length > 0) {
   // Reported at every run, including the green ones — this IS the green one's
   // finding. Exit 0 used to be the whole message, and "has a changeset" was
   // read as "a client has the code".
   console.log(`::${failWaiting ? "error" : "notice"}::${describeWaiting(waiting)}`)
-  if (summaryFile) appendFileSync(summaryFile, `${formatWaitingSummary(waiting)}\n\n`)
+  const waitingSummary = process.env.GITHUB_STEP_SUMMARY
+  if (waitingSummary) appendFileSync(waitingSummary, `${formatWaitingSummary(waiting)}\n\n`)
 }
 
-if (drifted.length === 0) {
+/* -------------------------------------------------------------------------- */
+/* A subpath the published version does not have                              */
+/* -------------------------------------------------------------------------- */
+
+/** The subpaths a package's own `package.json` declares, `.` included. */
+function declaredSubpaths(dir) {
+  let manifest
+  try {
+    manifest = JSON.parse(readFileSync(join(REPO_ROOT, dir, "package.json"), "utf8"))
+  } catch {
+    return []
+  }
+  const map = manifest.exports
+  // A string `exports` is the root and nothing else; no map means legacy
+  // resolution, where every path already works and there is nothing to check.
+  if (typeof map === "string") return ["."]
+  if (!map || typeof map !== "object") return []
+  return Object.keys(map).filter((key) => key.startsWith("."))
+}
+
+/**
+ * Subpaths this package declares that a client installing it would not get.
+ *
+ * Returns `null` when the published version could not be read at all — which
+ * is a question with no answer, and is reported as unknown rather than passed.
+ */
+function unpublishedSubpaths(pkg) {
+  const declared = declaredSubpaths(pkg.dir)
+  if (declared.length === 0) return []
+
+  const lookup = lookupPublishedVersion(pkg.name)
+  // The registry declining to answer is not the registry saying "fine".
+  // `publishedVersion` collapses both into null, which is why this uses the
+  // wider call — a check that silently does nothing is the thing being fixed.
+  if (!lookup.known) return null
+  // Never published at all: the mirror's own gate reports that, and it is not
+  // this check's business — a first release is not a deadlock.
+  if (!lookup.version) return []
+  const version = lookup.version
+
+  const { exports: published } = publishedTarball(pkg.name, version)
+  if (published === EXPORTS_UNKNOWN) return null
+  // The published manifest declares no map: Node resolves it legacily and
+  // every subpath already works.
+  if (published === undefined) return []
+
+  return {
+    version,
+    missing: declared.filter((subpath) => !exportsResolve(published, subpath)),
+  }
+}
+
+const subpathProblems = []
+const subpathUnknown = []
+let subpathChecked = 0
+
+if (!skipRegistry) {
+  for (const pkg of entries) {
+    const result = unpublishedSubpaths(pkg)
+    if (result === null) {
+      subpathUnknown.push(pkg.name)
+      continue
+    }
+    // An array is "nothing to compare" — no `exports` map on either side, or a
+    // package that has never been published. Not a check that passed.
+    if (Array.isArray(result)) continue
+    subpathChecked += 1
+    if (result.missing.length > 0) subpathProblems.push({ ...pkg, ...result })
+  }
+}
+
+if (subpathUnknown.length > 0) {
+  console.log(
+    `::notice::${subpathUnknown.length} package(s) could not be checked for subpaths — the ` +
+      "published tarball could not be read. Set NODE_AUTH_TOKEN (a read:packages PAT), or pass " +
+      "--no-registry to skip this half deliberately."
+  )
+}
+
+/**
+ * WHICH OF THESE FAILS, and why it is not all of them.
+ *
+ * A subpath a released version does not carry is a hard stop for the mirror:
+ * it refuses every sync until a release carries it, so an unrelated storefront
+ * fix queues behind it too. That makes it tempting to fail on sight. Failing on
+ * sight is wrong, and the first draft of this gate did it — which would have
+ * turned the pull request ADDING a subpath red, every time, for a state that
+ * is unavoidable: the release comes after the merge, so a new subpath is
+ * absent from the published version by definition on the pull request that
+ * writes it.
+ *
+ * The rule is the one this file already applies to drift, for the reason
+ * stated in its header: "A changeset that exists and is waiting is the
+ * intended workflow… A changeset that does NOT exist is never intended and
+ * never resolves itself." So:
+ *
+ *   covered by a changeset  → a warning. The release that will carry it is
+ *                             already written down; `check:pending-release`
+ *                             reports how long it has been waiting.
+ *   not covered             → an error. Nothing will ever carry this subpath,
+ *                             the mirror is deadlocked the moment it merges,
+ *                             and the fix is one command on this pull request.
+ */
+const blocking = subpathProblems.filter((row) => !covered.has(row.name))
+const announced = subpathProblems.filter((row) => covered.has(row.name))
+
+for (const row of announced) {
+  const paths = row.missing.map((p) => `\`${p}\``).join(", ")
+  console.log(
+    `::warning file=${row.dir}/package.json::${row.name} declares ${paths}, which ` +
+      `${row.version} (the version a client installs) does not have. A changeset is ` +
+      `waiting, so a release will carry it — until that release publishes, the mirror ` +
+      `cannot sync.`
+  )
+}
+
+for (const row of blocking) {
+  const paths = row.missing.map((p) => `\`${p}\``).join(", ")
+  console.log(
+    `::${warnOnly ? "warning" : "error"} file=${row.dir}/package.json::${row.name} declares ` +
+      `${paths}, which ${row.version} (the version a client installs) does not have, and no ` +
+      `changeset will move its version. The mirror will refuse to sync anything — every ` +
+      `client, including changes unrelated to this one — until a release carries it. Run ` +
+      `\`pnpm changeset\` on this pull request.`
+  )
+}
+
+const subpathSummary = process.env.GITHUB_STEP_SUMMARY
+if (subpathSummary && subpathProblems.length > 0) {
+  const line = (row) =>
+    `- \`${row.name}\` declares ${row.missing.join(", ")}, absent from ${row.version}` +
+    (covered.has(row.name) ? " (a changeset is waiting)" : " — **no changeset**")
+  appendFileSync(
+    subpathSummary,
+    `### Subpaths not in the published version\n\n${subpathProblems.map(line).join("\n")}\n\n`
+  )
+}
+
+if (drifted.length === 0 && blocking.length === 0) {
   console.log(
     waiting.length === 0
       ? "Every package with source changes since its last release carries a changeset, and every " +
           "changeset has been released."
       : `Every package with source changes carries a changeset — but ${waiting.length} of them are ` +
-          "still waiting for a release, so no client site has that code yet.",
+          "still waiting for a release, so no client site has that code yet."
   )
+  // Only claimed for the packages actually compared. Saying "every declared
+  // subpath exists" after reading nine tarballs of ten and failing on all nine
+  // is the same lie this check was extended to stop telling.
+  if (skipRegistry) {
+    console.log("Subpaths not checked (--no-registry).")
+  } else if (subpathChecked === 0) {
+    console.log("No package's subpaths could be compared against a published version.")
+  } else if (announced.length > 0) {
+    // Never "every declared subpath exists" when two lines above said two of
+    // them do not. The run is green because a release is written down for
+    // them, which is a different sentence from a clean bill of health — and
+    // printing the clean one under its own warnings is the exact dishonesty
+    // the `unknown` branch above was added to stop.
+    const names = announced.map((row) => row.name).join(", ")
+    console.log(
+      `${subpathChecked} package(s) compared. ${announced.length} declare a subpath ` +
+        `no published version carries yet — ${names} — each with a changeset waiting. ` +
+        `The mirror cannot sync until that release publishes.`
+    )
+  } else {
+    console.log(
+      `Every declared subpath exists in the version a client installs ` +
+        `(${subpathChecked} package(s) compared).`
+    )
+  }
   process.exit(failWaiting && waiting.length > 0 ? 1 : 0)
 }
+
+if (drifted.length === 0) process.exit(warnOnly && !(failWaiting && waiting.length > 0) ? 0 : 1)
+
 
 const level = warnOnly ? "warning" : "error"
 for (const row of drifted) {
   console.log(`::${level} file=${row.dir}/package.json::${describeDrift(row)}`)
 }
 
+const summaryFile = process.env.GITHUB_STEP_SUMMARY
 if (summaryFile) appendFileSync(summaryFile, `${formatSummary(drifted)}\n\n`)
 
 console.log("")

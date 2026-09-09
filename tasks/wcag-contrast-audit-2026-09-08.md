@@ -400,3 +400,36 @@ than tokenised. A `[data-game-arena]` block in `globals.css` beside
 `.storefront-theme` remains the structural fix, and the 51 template
 stylesheets still target `:root`/`.dark` instead of `.storefront-theme` (see
 above). Neither is a contrast failure today.
+
+### What the merge with #446 found
+
+#446 landed the same day and taught the scanner to read inline `style` — "a
+component that set its ink or its surface inline was invisible to it". On its
+own that found nothing here; combined with the admin surface declared above, it
+resolved a tree neither change could reach alone: **`block-preview.tsx`, the
+email template editor's preview.**
+
+The component draws an EMAIL and painted no ground of its own, so every block
+rendered on `--background` — near-black in dark mode. That is not what a
+recipient sees, and the blocks' colours are chosen for the white canvas an email
+client actually provides: the social-link labels fall back to `#333`, 1.60:1 on
+the dark admin page and 12.6:1 on the white one they land on. The preview was
+wrong precisely where a preview must not be.
+
+It paints `bg-white` now, on its own element, with the theme tokens inside it
+converted to fixed greys — a token that inverts with the admin cannot be read on
+a surface that does not. Three defaults moved with them, and all three reach the
+delivered email, not just the preview:
+
+- the hero scrim, `rgba(0,0,0,0.4)` → `0.6`. It is the only thing between a
+  white title and whatever photograph an owner uploads; at 40 % over a light
+  image it composites to `#999` and the title reads **2.85:1**. Measured against
+  white because white is the worst case.
+- the price accent, `#FF5722` → `#C2410C` (3.10:1 → 5.18:1 on the canvas).
+- the divider glyphs, `#d4d4d8` → `#71717B` (1.45:1 → 4.83:1).
+
+Two structural changes came out of it. The hero overlay was a *sibling* of the
+text it darkens, so nothing — no reader, no sweep — could see the two belonged
+together; it wraps the text now, rendering identically. And a region may name a
+single **file**, which is what let this one component declare its canvas without
+dragging its neighbours in the same directory onto it.

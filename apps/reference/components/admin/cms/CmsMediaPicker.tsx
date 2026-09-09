@@ -270,7 +270,7 @@ export function CmsMediaPicker({
                 <button
                   type="button"
                   onClick={handleCancelUpload}
-                  className="text-muted-foreground hover:text-foreground"
+                  className="inline-flex size-6 items-center justify-center text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>

@@ -11,8 +11,8 @@ import {
 import {
   ABSENT,
   anyUnreachable,
-  classifyLookupError,
   FOUND,
+  lookupPublished,
   publishablePackages,
   REGISTRY,
   UNREACHABLE,
@@ -164,29 +164,45 @@ describe("where it looks", () => {
 })
 
 /**
- * Which npm failures mean "the registry has no such package".
+ * The vocabulary a printed table needs, over the decision `classifyLookup`
+ * already makes.
  *
- * Exactly one of them. GitHub Packages is private, so a missing or expired
- * `NODE_AUTH_TOKEN` produces `E401` — measured: ten of ten packages, on a
- * token with no `read:packages` scope — and reading that as "never published"
- * is how the plan came to assert something about a registry that had refused
- * to answer it.
+ * Deliberately a translation and not a second classifier — `registry-lookup.
+ * test.ts` is where "did the registry answer" is pinned, and two
+ * implementations of that question are how the two halves of a release chain
+ * come to disagree. What is asserted here is only the mapping: the `null` a
+ * version-only caller sees becomes `absent` or `unreachable`, which are
+ * opposite facts to a caller about to state one in a log.
  */
-describe("classifyLookupError", () => {
-  test("E404 is the registry answering: no such package", () => {
-    expect(classifyLookupError("E404")).toBe(ABSENT)
+describe("lookupPublished", () => {
+  const withAsk = (ask: () => string) => lookupPublished("@x/pkg", { ask })
+
+  test("a version is `found`", () => {
+    expect(withAsk(() => "1.2.3\n")).toEqual({ version: "1.2.3", state: FOUND, code: null })
   })
 
-  test("every authentication failure is a non-answer", () => {
-    for (const code of ["E401", "E403", "ENEEDAUTH"]) {
-      expect(classifyLookupError(code)).toBe(UNREACHABLE)
-    }
+  test("a 404 is `absent` — the registry answered, and has nothing", () => {
+    expect(
+      withAsk(() => {
+        throw Object.assign(new Error("boom"), { stderr: "npm error code E404\nnpm error 404" })
+      })
+    ).toEqual({ version: null, state: ABSENT, code: null })
   })
 
-  test("so is a network fault, and so is a code nobody has read", () => {
-    for (const code of ["ENOTFOUND", "ETIMEDOUT", "EAI_AGAIN", "E500", null]) {
-      expect(classifyLookupError(code)).toBe(UNREACHABLE)
-    }
+  test("an auth failure is `unreachable`, and keeps npm's own sentence", () => {
+    // The defect this pair of states exists for. Without a token `npm view`
+    // answers `E401` for every package; the plan printed `WILL PUBLISH
+    // (registry has nothing)` for nine packages the registry serves. Same
+    // null, two facts, and the one anybody reads was the false one.
+    const answer = withAsk(() => {
+      throw Object.assign(new Error("boom"), {
+        stderr: "npm error code E401\nnpm error 401 Unauthorized - GET …",
+      })
+    })
+
+    expect(answer.state).toBe(UNREACHABLE)
+    expect(answer.version).toBeNull()
+    expect(answer.code).toContain("401")
   })
 })
 

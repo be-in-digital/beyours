@@ -65,6 +65,11 @@ env:
 jobs:
   lint:
     name: Lint
+    permissions:
+      contents: read
+      # Reading the published tarballs, for the subpath half of
+      # `check:source-drift` — see the step below.
+      packages: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -198,7 +203,25 @@ jobs:
       # `publish-mirror --check` exits 1 on while this exits 0. It now emits a
       # `::notice::` naming the packages and a step summary, so the two agree
       # about the facts even though only one of them blocks.
+      #
+      # `packages: read` and the token are what make the SUBPATH half of this
+      # check able to run at all.
+      #
+      # It compares each package's declared `exports` against the version a
+      # client installs, and the only artefact that can answer that is the
+      # published tarball — GitHub Packages omits `exports` from the packument
+      # `npm view` serves. Without a token every lookup comes back
+      # "unauthorised", which the check reports as UNKNOWN and passes: a gate
+      # that runs nowhere, in the job it was added for.
+      #
+      # `GITHUB_TOKEN` is enough, since this repository publishes those
+      # packages; the same grant `publish-mirror.yml` uses to read them. It is
+      # scoped to the one step rather than the job so `pnpm install` keeps
+      # resolving the engine through the workspace links, exactly as it does
+      # today.
       - name: Check engine source has a release to travel in
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm check:source-drift
 
   type-check:

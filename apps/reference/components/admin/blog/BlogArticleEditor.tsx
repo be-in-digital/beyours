@@ -925,7 +925,7 @@ export function BlogArticleEditor({ articleId }: BlogArticleEditorProps) {
                   <Badge key={tagId} variant="secondary" className="text-xs">
                     {tag.name}
                     <button
-                      className="ml-1 hover:text-destructive"
+                      className="ml-1 inline-flex size-6 items-center justify-center hover:text-destructive"
                       onClick={() => handleTagToggle(tagId)}
                     >
                       <X className="h-3 w-3" />

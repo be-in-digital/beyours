@@ -201,7 +201,7 @@ export function InventoryPage() {
   const debouncedSearch = useDebounce(searchQuery, 300)
 
   const products = useQuery(
-    api?.products?.list,
+    api?.products?.listAll,
     storeId ? { storeId } : "skip"
   ) as InventoryProduct[] | undefined
 
