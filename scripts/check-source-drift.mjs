@@ -298,6 +298,18 @@ if (drifted.length === 0 && blocking.length === 0) {
     console.log("Subpaths not checked (--no-registry).")
   } else if (subpathChecked === 0) {
     console.log("No package's subpaths could be compared against a published version.")
+  } else if (announced.length > 0) {
+    // Never "every declared subpath exists" when two lines above said two of
+    // them do not. The run is green because a release is written down for
+    // them, which is a different sentence from a clean bill of health — and
+    // printing the clean one under its own warnings is the exact dishonesty
+    // the `unknown` branch above was added to stop.
+    const names = announced.map((row) => row.name).join(", ")
+    console.log(
+      `${subpathChecked} package(s) compared. ${announced.length} declare a subpath ` +
+        `no published version carries yet — ${names} — each with a changeset waiting. ` +
+        `The mirror cannot sync until that release publishes.`
+    )
   } else {
     console.log(
       `Every declared subpath exists in the version a client installs ` +
