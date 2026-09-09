@@ -233,6 +233,26 @@ export const updateSettings = mutation({
   },
 });
 
+/**
+ * Holds a commission back before it is wired.
+ *
+ * A COMMISSION ALREADY PAID CANNOT BE BLOCKED, and refusing that is the whole
+ * point of the guard below. This patched any row to `blocked` unconditionally,
+ * `paid` included — and `unblockReferralPayout` then moved it to `validated`,
+ * the `markPayable` cron moved it to `payable`, and `processPayouts` claimed it
+ * and called `transfers.create` again.
+ *
+ * The idempotency key on that transfer is what should have stopped the second
+ * wire, and it only stops it for 24 hours: Stripe remembers a key for a day,
+ * after which the same key is simply a new request. So the round trip was
+ * harmless on the same afternoon and paid the affiliate twice the following
+ * week — which is exactly the shape of an admin looking at a commission they
+ * are unsure about, blocking it, and releasing it after checking.
+ *
+ * Money that has left is not held back, it is CLAWED BACK: `cancelReferral`
+ * with a reversal of the transfer is the path for a paid commission, and the
+ * error says so rather than leaving the operator to guess.
+ */
 export const blockReferralPayout = mutation({
   args: {
     referralId: v.id("referrals"),
@@ -240,6 +260,26 @@ export const blockReferralPayout = mutation({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    const referral = await ctx.db.get(args.referralId);
+    if (!referral) {
+      throw new Error("Parrainage non trouvé");
+    }
+    // `stripeTransferId` as well as the status: a run that died between
+    // `transfers.create` and `markPaid` leaves the row holding a transfer id
+    // without reaching `paid`, and that money has still left.
+    if (referral.status === "paid" || referral.stripeTransferId) {
+      throw new Error(
+        "Cette commission a déjà été virée : elle ne peut plus être bloquée. " +
+          "Pour la récupérer, annulez-la et contre-passez le virement Stripe."
+      );
+    }
+    // `paying` is a payout run holding the row right now. Blocking it would
+    // race the transfer that run is about to make.
+    if (referral.status === "paying") {
+      throw new Error(
+        "Un virement est en cours pour cette commission : réessayez dans quelques minutes."
+      );
+    }
     await ctx.db.patch(args.referralId, {
       status: "blocked" as const,
       blockedAt: Date.now(),

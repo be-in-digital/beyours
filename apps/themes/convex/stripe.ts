@@ -21,6 +21,7 @@ import {
   OrderAlreadyPaidError,
 } from "@be-in-digital/convex-functions/refusal";
 import { assertCardChargeable } from "@be-in-digital/convex-functions/cardChargeFloor";
+import { settleOrRecordRefusal } from "./settlementReturn";
 
 interface OrderData {
   total: number;
@@ -542,6 +543,42 @@ export const verifyCheckoutSession = action({
         }
       );
 
+      // THE LEDGER FIRST, THEN THE ORDER — the same order `stripeWebhook.ts`
+      // states, and the reason is the same on a return page.
+      //
+      // These are two mutations and therefore two transactions. Marking the
+      // order paid first COMMITS that, and `internalSettle` can still refuse
+      // afterwards. The order was then left reading « Payé » with no payment
+      // row against it: the money is not on the ledger, the invoice is minted
+      // against a total nothing backs, and the diner's confirmation is on its
+      // way. Probed: 2 400 c taken, 1 200 c recorded, `FA-2026-000001` issued.
+      //
+      // Settling first is safe in the other direction: `internalSettle` reads
+      // nothing about the order's status, and a settlement that succeeds is
+      // exactly the case in which the status write is wanted.
+      //
+      // One mutation, one transaction. The webhook settles this same charge
+      // from a DIFFERENT event, and the two used to race: each read
+      // `paymentStatus !== "paid"` and then wrote, so the loser still inserted
+      // a second `succeeded` row for one charge — and each row was
+      // independently refundable. `internalSettle` keys on the payment intent
+      // and makes the second caller a no-op.
+      //
+      // Unconditional: the row records that the money moved, which stays true
+      // whether the order ends up paid or awaiting a refund.
+      await settleOrRecordRefusal(ctx, {
+        orderId,
+        storeId: storeId ?? (order.storeId as Id<"stores">),
+        // The order total, not the provider's number. After the assert the two
+        // are equal by construction, and this closes the last path by which a
+        // provider-reported amount reached the ledger unchecked.
+        // Matches sumup.ts and paypal.ts.
+        amount: order.total,
+        currency: settlement.currency ?? "EUR",
+        provider: "stripe",
+        externalId: String(settlement.paymentIntentId ?? rawSession.id),
+      });
+
       // What this settlement should do to the ORDER — which is not always
       // "mark it paid". `refund_pending` (paid, then cancelled, money owed
       // back) is not "paid", so the old `if (order.paymentStatus !== "paid")`
@@ -555,28 +592,6 @@ export const verifyCheckoutSession = action({
           paymentStatus: nextPaymentStatus,
         });
       }
-
-      // One mutation, one transaction. The webhook settles this same charge
-      // from a DIFFERENT event, and the two used to race: each read
-      // `paymentStatus !== "paid"` and then wrote, so the loser still inserted
-      // a second `succeeded` row for one charge — and each row was
-      // independently refundable. `internalSettle` keys on the payment intent
-      // and makes the second caller a no-op.
-      //
-      // Unconditional now: the row records that the money moved, which stays
-      // true whether the order ends up paid or awaiting a refund.
-      await ctx.runMutation(internal.payments.internalSettle, {
-        orderId,
-        storeId: storeId ?? (order.storeId as Id<"stores">),
-        // The order total, not the provider's number. After the assert the two
-        // are equal by construction, and this closes the last path by which a
-        // provider-reported amount reached the ledger unchecked.
-        // Matches sumup.ts and paypal.ts.
-        amount: order.total,
-        currency: settlement.currency ?? "EUR",
-        provider: "stripe",
-        externalId: String(settlement.paymentIntentId ?? rawSession.id),
-      });
 
       return {
         status: "paid" as const,
@@ -609,6 +624,12 @@ export const internalRefund = internalAction({
     /** Amount in cents. */
     amount: v.number(),
     reason: v.optional(v.string()),
+    /**
+     * Stable across retries of ONE reserved refund, different for the next.
+     * Built by `payments.refundPayment` from the payment id and the refund's
+     * ordinal — see the comment there for why a reservation is not enough.
+     */
+    idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ refundId: string }> => {
     // The same gate as `createCheckoutSession`, on purpose. A refund that
@@ -629,11 +650,17 @@ export const internalRefund = internalAction({
 
     // Stripe's own `reason` field is a closed enum, so the operator's free-text
     // motive goes to metadata where it survives without being rejected.
-    const refund = await stripe.refunds.create({
-      payment_intent: args.externalId,
-      amount: args.amount,
-      metadata: args.reason ? { motif: args.reason.slice(0, 500) } : undefined,
-    });
+    // The key goes in the REQUEST OPTIONS, not the body: Stripe replays the
+    // original response for 24 hours rather than creating a second refund. Same
+    // call shape `apps/site` already uses for its own Stripe requests.
+    const refund = await stripe.refunds.create(
+      {
+        payment_intent: args.externalId,
+        amount: args.amount,
+        metadata: args.reason ? { motif: args.reason.slice(0, 500) } : undefined,
+      },
+      args.idempotencyKey ? { idempotencyKey: args.idempotencyKey } : undefined
+    );
 
     // `pending` is legitimate for some payment methods; `failed` and `canceled`
     // are not refunds and must not be recorded as such.
@@ -754,14 +781,12 @@ export const reconcilePendingCheckouts = internalAction({
           }
         );
 
-        const nextPaymentStatus = paymentStatusAfterSettlement(order);
-        if (nextPaymentStatus) {
-          await ctx.runMutation(internal.orders.internalUpdatePaymentStatus, {
-            id: orderId,
-            paymentStatus: nextPaymentStatus,
-          });
-        }
-
+        // THE LEDGER FIRST, THEN THE ORDER, as everywhere else that settles.
+        // Two mutations are two transactions: marking the order paid first
+        // commits it, and `internalSettle` can still refuse — leaving an order
+        // reading « Payé » with nothing on the ledger behind it, on a sweep
+        // that runs unattended at 3am. The refusal is caught below and recorded
+        // where an operator reads it.
         await ctx.runMutation(internal.payments.internalSettle, {
           orderId,
           storeId: candidate.storeId as Id<"stores">,
@@ -770,6 +795,14 @@ export const reconcilePendingCheckouts = internalAction({
           provider: "stripe",
           externalId: String(settlement.paymentIntentId ?? rawSession.id),
         });
+
+        const nextPaymentStatus = paymentStatusAfterSettlement(order);
+        if (nextPaymentStatus) {
+          await ctx.runMutation(internal.orders.internalUpdatePaymentStatus, {
+            id: orderId,
+            paymentStatus: nextPaymentStatus,
+          });
+        }
 
         settled += 1;
       } catch (error) {
