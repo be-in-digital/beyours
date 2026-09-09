@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 
 /**
  * Every referral state the schema can store must be readable in the console.
@@ -32,17 +31,34 @@ import { REFERRAL_STATUS_VALIDATOR } from "../convex/admin";
 import { REFERRAL_STATUS } from "../components/admin/status";
 import { AFFILIATE_REFERRAL_STATUS } from "../lib/referral-status";
 
+/**
+ * The shape of a `v.union(v.literal(...))` as this test reaches into it.
+ *
+ * Named rather than cast to `any` at four call sites: the repository forbids
+ * `any`, and this file was invisible to both `tsc` and ESLint until the two
+ * gates were narrowed to skip only `tests/convex` and `tests/e2e`. Reading the
+ * validator is still the point — the test must read the schema itself, not a
+ * copy of it — but the reach can be described instead of silenced.
+ */
+interface LiteralUnion {
+  members: Array<{ value: string }>;
+}
+
+interface TableWithValidator {
+  validator: { fields: { status: LiteralUnion } };
+}
+
 /** The `status` literals the `referrals` table actually allows. */
 function schemaStatuses(): string[] {
-  // Reaching into the validator is the point: the test has to read the schema
-  // itself, not a copy of it, or it proves nothing.
-  const validator = (schema.tables.referrals as any).validator;
-  return validator.fields.status.members.map((member: any) => member.value);
+  const table = schema.tables.referrals as unknown as TableWithValidator;
+  return table.validator.fields.status.members.map((member) => member.value);
 }
 
 /** The literals `admin.listReferrals` will accept as a filter. */
 function filterableStatuses(): string[] {
-  return (REFERRAL_STATUS_VALIDATOR as any).members.map((m: any) => m.value);
+  return (REFERRAL_STATUS_VALIDATOR as unknown as LiteralUnion).members.map(
+    (member) => member.value,
+  );
 }
 
 describe("referral status vocabulary", () => {

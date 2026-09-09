@@ -139,6 +139,16 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
   const [uberEatsEnabled, setUberEatsEnabled] = useState(true)
   const [uberEatsStoreStatus, setUberEatsStoreStatus] = useState<"ONLINE" | "PAUSED" | "OFFLINE">("OFFLINE")
   const [uberEatsPrepTime, setUberEatsPrepTime] = useState("")
+  /**
+   * The restaurant's OWN page on the platform.
+   *
+   * The storefront's « Commandez aussi sur vos apps » tiles were hard-coded to
+   * ubereats.com and deliveroo.com — the marketplaces' home pages — and shown
+   * on every menu whether or not the store was listed at all. There is nothing
+   * to derive them from: `platformStoreId` is an API identifier, not a public
+   * URL. So the owner supplies it, and no tile renders without one.
+   */
+  const [uberEatsPublicUrl, setUberEatsPublicUrl] = useState("")
 
   const [deliverooStoreId, setDeliverooStoreId] = useState("")
   const [deliverooBrandId, setDeliverooBrandId] = useState("")
@@ -147,6 +157,8 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
   const [deliverooEnabled, setDeliverooEnabled] = useState(true)
   const [deliverooStoreStatus, setDeliverooStoreStatus] = useState<"ONLINE" | "PAUSED" | "OFFLINE">("OFFLINE")
   const [deliverooPrepTime, setDeliverooPrepTime] = useState("")
+  /** As above — this restaurant's own Deliveroo page. */
+  const [deliverooPublicUrl, setDeliverooPublicUrl] = useState("")
 
   // Validation state (separate per platform)
   const [isValidatingUberEats, setIsValidatingUberEats] = useState(false)
@@ -269,6 +281,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
       setUberEatsEnabled(uberEats.enabled)
       setUberEatsStoreStatus(uberEats.storeStatus ?? "OFFLINE")
       setUberEatsPrepTime(uberEats.prepTime?.toString() ?? "")
+      setUberEatsPublicUrl(uberEats.storefrontUrl ?? "")
     }
 
     const deliveroo = storeIntegrations.find((i: StoreIntegration) => i.platform === "deliveroo")
@@ -280,6 +293,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
       setDeliverooEnabled(deliveroo.enabled)
       setDeliverooStoreStatus(deliveroo.storeStatus ?? "OFFLINE")
       setDeliverooPrepTime(deliveroo.prepTime?.toString() ?? "")
+      setDeliverooPublicUrl(deliveroo.storefrontUrl ?? "")
     }
   }, [storeIntegrations])
 
@@ -600,6 +614,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
         enabled: uberEatsEnabled,
         storeStatus: uberEatsStoreStatus,
         prepTime: parsedPrepTime,
+        storefrontUrl: uberEatsPublicUrl.trim() || undefined,
       })
 
       toast.success("Intégration Uber Eats vérifiée et enregistrée")
@@ -652,6 +667,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
         storeStatus: deliverooStoreStatus,
         prepTime: parsedDlPrepTime,
         brandId: deliverooBrandId || undefined,
+        storefrontUrl: deliverooPublicUrl.trim() || undefined,
       })
 
       toast.success("Intégration Deliveroo vérifiée et enregistrée")
@@ -895,6 +911,8 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
     setUberEatsStoreStatus,
     uberEatsPrepTime,
     setUberEatsPrepTime,
+    uberEatsPublicUrl,
+    setUberEatsPublicUrl,
     deliverooStoreId,
     setDeliverooStoreId,
     deliverooBrandId,
@@ -909,6 +927,8 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
     setDeliverooStoreStatus,
     deliverooPrepTime,
     setDeliverooPrepTime,
+    deliverooPublicUrl,
+    setDeliverooPublicUrl,
     isValidatingUberEats,
     isValidatingDeliveroo,
     isSyncingUberEats,

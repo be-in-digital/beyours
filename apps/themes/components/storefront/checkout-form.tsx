@@ -28,6 +28,9 @@ import {
   Textarea,
 } from "@be-in-digital/ui"
 import {
+  formatPrice,
+  isPaymentMethodSelectable,
+  nothingIsDue,
   resolvePaymentMethod,
   useCartStore,
   type OrderType,
@@ -42,6 +45,9 @@ import {
 // accepts more than `orders.create` stores turns a diner's allergy warning
 // into a refused order at the moment of payment.
 import { FIELD_LIMITS } from "@be-in-digital/convex-functions/rateLimit"
+// The floor the three card money paths enforce, read from the same module
+// they enforce it with, so the tile and the refusal cannot drift apart.
+import { cardMinimumFor } from "@be-in-digital/convex-functions/cardChargeFloor"
 import { useGooglePlacesAutocomplete } from "@/hooks/useGooglePlacesAutocomplete"
 import type { AddressValue } from "@/lib/address"
 import type { SavedAddress } from "@/lib/stores/addresses-store"
@@ -103,6 +109,15 @@ interface CheckoutFormProps {
   isSubmitting: boolean
   addresses: SavedAddress[]
   isAuthenticated: boolean
+  /**
+   * What the basket currently owes, in cents, as the summary prices it.
+   *
+   * Needed because a payment tile is not only a question of configuration: a
+   * card provider has a floor (0,50 € at Stripe, in EUR) and a 100 % coupon
+   * takes an order below it, to zero. `undefined` while the basket is still
+   * being priced.
+   */
+  amountDue?: number
   user?: UserInfo
   /**
    * Reports the delivery address as it changes. Coordinates are included when
@@ -152,6 +167,7 @@ export function CheckoutForm({
   isSubmitting,
   addresses,
   isAuthenticated,
+  amountDue,
   user,
   onAddressChange,
   services,
@@ -220,6 +236,7 @@ export function CheckoutForm({
   // disables submit instead of sending a doomed attempt. One rule for the
   // default and every fallback; the old inline "reset to card" resolved to a
   // tile no card provider could honour (#374).
+  const cardMinimum = cardMinimumFor(globalSettings?.currency)
   const paymentContext: PaymentMethodContext = {
     cardAvailable: cardAvailability?.card,
     cardOffered,
@@ -227,12 +244,29 @@ export function CheckoutForm({
     cashEnabled: payments?.cash === true,
     isDelivery,
     isAuthenticated,
+    amountDue,
+    cardMinimum,
   }
+  // Nothing to pay at all — a 100 % coupon. Not a payment method question:
+  // there is no charge to route anywhere, so the tiles say so rather than
+  // offering a card the provider would refuse and PayPal an order of zero.
+  const nothingDue = nothingIsDue(paymentContext)
+  // Something IS owed and no card provider will take that little.
+  const belowCardFloor =
+    !nothingDue && amountDue !== undefined && amountDue < cardMinimum
   const effectivePaymentMethod: PaymentMethod | null = resolvePaymentMethod(
     paymentMethod,
     paymentContext
   )
-  const cardUnavailable = cardAvailability?.card === false
+  // Three reasons a rendered card tile cannot be chosen, and the diner is owed
+  // a different sentence for each: the deployment cannot charge one, the order
+  // is under the provider's floor, or there is nothing to charge.
+  const cardUnavailable = !isPaymentMethodSelectable("card", paymentContext)
+  const cardUnavailableReason = nothingDue
+    ? "Rien à payer sur cette commande"
+    : belowCardFloor
+      ? `Minimum ${formatPrice(cardMinimum, globalSettings?.currency)} par carte`
+      : "Indisponible pour le moment"
   // The one blocked state that has a way out the diner can take right now:
   // cash is offered on this order type and only an account is missing.
   const cashNeedsAccount =
@@ -845,7 +879,7 @@ export function CheckoutForm({
                   <p className={`font-bold ${cardUnavailable ? "text-muted-foreground" : "text-foreground"}`}>Carte bancaire</p>
                   <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
                     {cardUnavailable
-                      ? "Indisponible pour le moment"
+                      ? cardUnavailableReason
                       : payments?.cardProvider === "sumup" ? "SumUp" : "Visa, Master, Amex"}
                   </p>
                 </div>
@@ -855,8 +889,9 @@ export function CheckoutForm({
               </button>
             )}
 
-            {/* PayPal — if enabled */}
-            {payments?.paypal && (
+            {/* PayPal — if enabled, and only for an amount it can take. Under a
+                provider floor, and at zero, there is no PayPal order to open. */}
+            {payments?.paypal && isPaymentMethodSelectable("paypal", paymentContext) && (
               <button
                 type="button"
                 onClick={() => setPaymentMethod("paypal")}
@@ -881,30 +916,43 @@ export function CheckoutForm({
               </button>
             )}
 
-            {/* Cash — if enabled AND order is not delivery */}
-            {payments?.cash && !isDelivery && (
+            {/* Cash — if enabled AND order is not delivery.
+                An order that owes nothing is the fourth state, and it is not a
+                payment: the cash branch is simply the one that places the
+                order without calling a provider, so it is offered whatever the
+                cash settings say. Its own gates are about who may hand over
+                money and where, and nobody is handing over any. */}
+            {(nothingDue || (payments?.cash && !isDelivery)) && (
               <button
                 type="button"
-                onClick={() => isAuthenticated && setPaymentMethod("cash")}
-                disabled={!isAuthenticated}
+                onClick={() =>
+                  (isAuthenticated || nothingDue) && setPaymentMethod("cash")
+                }
+                disabled={!isAuthenticated && !nothingDue}
                 className={`flex items-center gap-4 rounded-2xl border-2 p-4 text-left transition-all ${
-                  !isAuthenticated
+                  !isAuthenticated && !nothingDue
                     ? "border-border bg-muted disabled:opacity-60 cursor-not-allowed"
                     : effectivePaymentMethod === "cash"
                       ? "border-primary bg-accent/30"
                       : "border-border hover:border-border"
                 }`}
               >
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isAuthenticated ? "bg-accent" : "bg-muted"}`}>
-                  <Banknote className={`h-6 w-6 ${isAuthenticated ? "text-accent-foreground" : "text-muted-foreground"}`} />
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isAuthenticated || nothingDue ? "bg-accent" : "bg-muted"}`}>
+                  <Banknote className={`h-6 w-6 ${isAuthenticated || nothingDue ? "text-accent-foreground" : "text-muted-foreground"}`} />
                 </div>
                 <div>
-                  <p className={`font-bold ${isAuthenticated ? "text-foreground" : "text-muted-foreground"}`}>Espèces</p>
+                  <p className={`font-bold ${isAuthenticated || nothingDue ? "text-foreground" : "text-muted-foreground"}`}>
+                    {nothingDue ? "Rien à payer" : "Espèces"}
+                  </p>
                   <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                    {isAuthenticated ? "Paiement au retrait" : "Connectez-vous pour payer en espèces"}
+                    {nothingDue
+                      ? "Cette commande est offerte"
+                      : isAuthenticated
+                        ? "Paiement au retrait"
+                        : "Connectez-vous pour payer en espèces"}
                   </p>
                 </div>
-                {effectivePaymentMethod === "cash" && isAuthenticated && (
+                {effectivePaymentMethod === "cash" && (isAuthenticated || nothingDue) && (
                   <CheckCircle2 className="ml-auto h-5 w-5 text-success" />
                 )}
               </button>

@@ -44,6 +44,7 @@
     "./paymentEvents": "./src/paymentEvents.ts",
     "./paymentSettlement": "./src/paymentSettlement.ts",
     "./stripeChargeRouting": "./src/stripeChargeRouting.ts",
+    "./cardChargeFloor": "./src/cardChargeFloor.ts",
     "./refundPolicy": "./src/refundPolicy.ts",
     "./invoices": "./src/invoices.ts",
     "./numbering": "./src/numbering.ts",

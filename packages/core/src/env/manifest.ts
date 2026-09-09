@@ -135,6 +135,15 @@ export const UNGROUPED_OPTIONAL_VARS: readonly string[] = [
   // Declared so an operator can discover they exist; both default sensibly.
   'CONTACT_EMAIL',
   'NEXT_PUBLIC_BID_SUPPORT_EMAIL',
+  /*
+    The SNS topic `/webhooks/ses` accepts, as a full ARN. Not asked for by the
+    wizard because the topic does not exist yet when a deployment is set up: it
+    is created alongside the SES configuration set, and its ARN is copied in
+    afterwards. Until then the endpoint confirms no subscription and logs the
+    ARN it saw, which is the value to paste here.
+    See tasks/webhook-migration-checklist.md.
+  */
+  'SES_SNS_TOPIC_ARN',
 ]
 
 const GROUP_DECLARATIONS: readonly Omit<EnvManifestGroup, 'requiredTogether'>[] = [
@@ -283,6 +292,9 @@ const CONVEX_KEYS: readonly string[] = [
   'AWS_SES_FROM_NAME',
   'AWS_SES_REPLY_TO_EMAIL',
   'AWS_SES_CONFIGURATION_SET',
+  // Read by `convex/sesWebhookVerify.ts`: which SNS topic the SES webhook
+  // accepts, checked after the signature has made `TopicArn` trustworthy.
+  'SES_SNS_TOPIC_ARN',
   // Which transport carries the mail. The Convex actions send directly, so
   // setting this on the web side alone would change nothing about where a
   // confirmation, an invitation or a campaign actually goes.

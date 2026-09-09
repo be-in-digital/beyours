@@ -538,14 +538,81 @@ export const confirmDoubleOptIn = {
   },
 }
 
+/**
+ * Take someone off the list, and record that it happened.
+ *
+ * WHAT WAS MISSING. This patched the subscriber and stopped. Nothing wrote an
+ * `emailEvents` row for the unsubscribe, and nothing moved
+ * `campaign.stats.unsubscribed` — whose only writer was the SES *Complaint*
+ * branch of the webhook. So the figure on the campaign report labelled
+ * « Désabonnements » counted spam reports and nothing else: a campaign that
+ * cost a restaurant forty subscribers reported zero, and the one number that
+ * tells an owner a campaign was badly received was structurally incapable of
+ * moving.
+ *
+ * ATTRIBUTION COMES FROM THE LINK. An unsubscribe knows which subscriber it is
+ * about and, on its own, nothing else — the recipient clicks a link in an
+ * email, and the mail is long gone by then. So the campaign send stamps its id
+ * into the unsubscribe URL and it arrives back here. `campaignId` is optional
+ * because it legitimately is: an automation's mail, an old link sent before
+ * this existed, and a subscriber removing themselves from the preferences page
+ * all have no campaign to charge it to, and the removal must still work.
+ *
+ * IDEMPOTENT, and that is what makes the counter trustworthy. Mail clients
+ * pre-fetch links, RFC 8058 one-click can be retried by the provider, and the
+ * recipient may well click twice. A second call finds the subscriber already
+ * `unsubscribed`, changes nothing and reports `false`, so the campaign is not
+ * charged twice for one person leaving.
+ */
 export const unsubscribe = {
-  args: { id: v.id("emailSubscribers") },
-  handler: async (ctx: any, args: any) => {
+  args: {
+    id: v.id("emailSubscribers"),
+    /** The campaign whose mail carried the link, when it carried one. */
+    campaignId: v.optional(v.id("emailCampaigns")),
+  },
+  handler: async (
+    ctx: any,
+    args: { id: string; campaignId?: string }
+  ): Promise<{ changed: boolean }> => {
+    const subscriber = await ctx.db.get(args.id)
+    if (!subscriber) throw new Error("Abonné introuvable")
+
+    // Already gone: a repeat click, a mail client pre-fetching the link, or a
+    // provider retrying its one-click POST. The recipient's wish is honoured
+    // either way; what must not happen twice is the accounting.
+    if (subscriber.status === "unsubscribed") return { changed: false }
+
+    const now = Date.now()
     await ctx.db.patch(args.id, {
       status: "unsubscribed",
-      unsubscribedAt: Date.now(),
-      updatedAt: Date.now(),
+      unsubscribedAt: now,
+      updatedAt: now,
     })
+
+    await ctx.db.insert("emailEvents", {
+      storeId: subscriber.storeId,
+      ...(args.campaignId ? { campaignId: args.campaignId } : {}),
+      subscriberId: args.id,
+      type: "unsubscribed" as const,
+      occurredAt: now,
+    })
+
+    if (args.campaignId) {
+      const campaign = await ctx.db.get(args.campaignId)
+      // Only a campaign of this store's. The id arrives in a URL the recipient
+      // holds, so it is not a value to trust with a write.
+      if (campaign && campaign.storeId === subscriber.storeId) {
+        await ctx.db.patch(args.campaignId, {
+          stats: {
+            ...campaign.stats,
+            unsubscribed: (campaign.stats?.unsubscribed ?? 0) + 1,
+          },
+          updatedAt: now,
+        })
+      }
+    }
+
+    return { changed: true }
   },
 }
 

@@ -43,9 +43,26 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
+  /*
+    `tests` used to be excluded WHOLESALE, and `eslint.config.mjs` ignored
+    `tests/**` to match — so 52 files and 799 tests were checked by neither
+    gate. Confirmed by injecting `const auditProbe: number = "this is a
+    string"` into a suite: `tsc` exited 0, `eslint` reported 0 errors, and
+    `vitest` passed 57.
+
+    Only the two directories that genuinely cannot be checked are excluded now.
+    `tests/convex` holds convex-test suites that rely on Vite's
+    `import.meta.glob` and on the harness's own generics, neither of which
+    `tsc` can model — the same exclusion `apps/reference` and `apps/themes`
+    carry, with the same reason written beside it. `tests/e2e` is Playwright's,
+    with its own runner and its own config.
+
+    Keep this list and the one in `eslint.config.mjs` identical.
+  */
   "exclude": [
     "node_modules",
     ".claude/skills",
-    "tests"
+    "tests/convex",
+    "tests/e2e"
   ]
 }

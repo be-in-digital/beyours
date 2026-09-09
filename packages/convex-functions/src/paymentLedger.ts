@@ -17,6 +17,26 @@
  * definition, read by all three, is what makes the claim true.
  */
 
+/**
+ * The payment states in which the charge has been RECORDED as settled.
+ *
+ * Wider than "is money on this order right now" by exactly one member:
+ * `refunded`. The money went back, so nothing is held — but the charge was
+ * settled, and a replayed provider event must not resurrect it.
+ *
+ * Used by `payments.settlePayment` to tell "this charge is already on the
+ * ledger" from "a placeholder row exists for it". Those were the same test,
+ * and a `pending` placeholder therefore survived a settlement untouched: the
+ * order went to `paid`, the row stayed `pending`, `planRefund` refused it for
+ * ever, and `collectionOnOrder` — which does not count `pending` — reported
+ * the order as holding no money, so a second collection was still allowed.
+ */
+export const LEDGERED_STATUSES = new Set([
+  "succeeded",
+  "partially_refunded",
+  "refunded",
+])
+
 /** A payment row, as much of one as this question needs. */
 export interface LedgerCollection {
   _id: string

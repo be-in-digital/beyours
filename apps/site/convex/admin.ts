@@ -8,6 +8,18 @@ import {
   MutationCtx,
 } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import {
+  REFERRAL_SCAN_LIMIT,
+  summariseReferrals,
+} from "./referralTotals";
+
+/**
+ * The most affiliate rows the console reads in one transaction.
+ *
+ * Its own constant rather than the referral one: they bound different tables
+ * and there is no reason for a change to one to move the other.
+ */
+const AFFILIATE_SCAN_LIMIT = 200;
 
 /* ── Helper: check that the user is an admin ── */
 
@@ -47,41 +59,40 @@ export const getStats = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const affiliates = await ctx.db.query("affiliateUsers").take(200);
-    const referrals = await ctx.db.query("referrals").take(500);
+    const affiliates = await ctx.db
+      .query("affiliateUsers")
+      .take(AFFILIATE_SCAN_LIMIT + 1);
+    /* The same bound and the same sums the affiliate's own portal uses — see
+       convex/referralTotals.ts. This read stopped at 500 while theirs stopped
+       at 200, and the status sets were retyped in both, so one set of
+       commissions produced two totals and the smaller was shown to the person
+       owed the money. */
+    const referrals = await ctx.db
+      .query("referrals")
+      .take(REFERRAL_SCAN_LIMIT + 1);
+
+    const totals = summariseReferrals(referrals);
+    const affiliatesTruncated = affiliates.length > AFFILIATE_SCAN_LIMIT;
+    const countedAffiliates = affiliatesTruncated
+      ? affiliates.slice(0, AFFILIATE_SCAN_LIMIT)
+      : affiliates;
 
     return {
-      totalAffiliates: affiliates.length,
-      activeAffiliates: affiliates.filter((a) => a.status === "active").length,
-      totalReferrals: referrals.length,
-      pendingReferrals: referrals.filter((r) => r.status === "pending").length,
-      /* `paying` counts here for the same reason it counts in the affiliate's
-         own totals (convex/referrals.ts): a commission claimed by a payout run
-         is owed, not paid, and a failed run puts it back to `payable`. Left
-         out of both sets — which is what happened when #384 added the state
-         and told none of the reading surfaces — a commission in flight was in
-         none of the three counters on this dashboard, while
-         `pendingCommissions` below (which excludes rather than includes) DID
-         count it. Two numbers on one screen disagreeing about the same money
-         (#411). */
-      validatedReferrals: referrals.filter(
-        (r) =>
-          r.status === "validated" ||
-          r.status === "payable" ||
-          r.status === "paying",
-      ).length,
-      paidReferrals: referrals.filter((r) => r.status === "paid").length,
-      totalCommissions: referrals
-        .filter((r) => r.status === "paid")
-        .reduce((sum, r) => sum + r.commissionCents, 0),
-      pendingCommissions: referrals
-        .filter(
-          (r) =>
-            r.status !== "cancelled" &&
-            r.status !== "blocked" &&
-            r.status !== "paid",
-        )
-        .reduce((sum, r) => sum + r.commissionCents, 0),
+      totalAffiliates: countedAffiliates.length,
+      activeAffiliates: countedAffiliates.filter((a) => a.status === "active")
+        .length,
+      totalReferrals: totals.totalReferrals,
+      pendingReferrals: totals.pendingCount,
+      /* Counted WITHOUT `paid`, unlike the affiliate portal's `validatedCount`
+         — this dashboard shows the four states as a partition, and the paid
+         ones have their own counter beside it. */
+      validatedReferrals: totals.validatedCount - totals.paidCount,
+      paidReferrals: totals.paidCount,
+      totalCommissions: totals.totalEarned,
+      pendingCommissions: totals.totalPending,
+      /* Either read hit its cap, so every figure above is a floor. The console
+         renders it; a silently short money total is the whole of #P2-16. */
+      truncated: totals.truncated || affiliatesTruncated,
     };
   },
 });
@@ -91,39 +102,33 @@ export const listAffiliates = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const affiliates = await ctx.db.query("affiliateUsers").take(200);
+    const affiliates = await ctx.db
+      .query("affiliateUsers")
+      .take(AFFILIATE_SCAN_LIMIT);
 
     const result = [];
     for (const affiliate of affiliates) {
       const user = await ctx.db.get(affiliate.userId);
+      /* One affiliate's rows, on the shared bound and through the shared sums,
+         so this row and that same affiliate's own portal cannot report two
+         different earnings for the same commissions. */
       const referrals = await ctx.db
         .query("referrals")
         .withIndex("by_referrerId", (q) =>
           q.eq("referrerId", affiliate._id),
         )
-        .take(200);
+        .take(REFERRAL_SCAN_LIMIT + 1);
+
+      const totals = summariseReferrals(referrals);
 
       result.push({
         ...affiliate,
         email: user?.email ?? null,
-        referralCount: referrals.length,
-        totalEarned: referrals
-          .filter((r) => r.status === "paid")
-          .reduce((sum, r) => sum + r.commissionCents, 0),
-        /* `paying` is owed, not paid: it belongs with the pending set, and a
-           failed payout run puts the row back to `payable`. Omitted, a
-           commission in flight appeared in NEITHER bucket on this row, so an
-           affiliate's earnings silently dropped by one commission for as long
-           as a transfer was moving (#411). */
-        pendingEarnings: referrals
-          .filter(
-            (r) =>
-              r.status === "pending" ||
-              r.status === "validated" ||
-              r.status === "payable" ||
-              r.status === "paying",
-          )
-          .reduce((sum, r) => sum + r.commissionCents, 0),
+        referralCount: totals.totalReferrals,
+        totalEarned: totals.totalEarned,
+        pendingEarnings: totals.totalPending,
+        /** This affiliate has more commissions than one read returns. */
+        truncated: totals.truncated,
       });
     }
 

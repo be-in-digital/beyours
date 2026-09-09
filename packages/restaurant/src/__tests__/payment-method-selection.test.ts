@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   isPaymentMethodSelectable,
+  nothingIsDue,
   resolvePaymentMethod,
   type PaymentMethodContext,
 } from "../services/payment-method-selection"
@@ -86,5 +87,94 @@ describe("resolvePaymentMethod", () => {
       paypalEnabled: true,
     })
     expect(resolvePaymentMethod("cash", cardDead)).toBe("paypal")
+  })
+})
+
+/**
+ * What the order costs is a fact about the tiles, and none of them asked it.
+ *
+ * Stripe will not take less than 0,50 € in EUR, and a 100 % coupon takes an
+ * order to zero. The tile was offered anyway, the diner chose it, and the
+ * session create threw an SDK error Convex redacts to "Server Error" — on an
+ * order no number of retries could ever settle.
+ */
+describe("what the order actually owes", () => {
+  const EUR_FLOOR = 50
+
+  it("withholds card and PayPal below the provider's floor", () => {
+    const tiny = context({
+      paypalEnabled: true,
+      amountDue: 30,
+      cardMinimum: EUR_FLOOR,
+    })
+    expect(isPaymentMethodSelectable("card", tiny)).toBe(false)
+    expect(isPaymentMethodSelectable("paypal", tiny)).toBe(false)
+  })
+
+  it("offers them again exactly at the floor", () => {
+    const atFloor = context({
+      paypalEnabled: true,
+      amountDue: EUR_FLOOR,
+      cardMinimum: EUR_FLOOR,
+    })
+    expect(isPaymentMethodSelectable("card", atFloor)).toBe(true)
+    expect(isPaymentMethodSelectable("paypal", atFloor)).toBe(true)
+  })
+
+  it("leaves an order that owes nothing with a way to be placed", () => {
+    // The regression this rule has to avoid introducing: refusing card and
+    // PayPal for a free order and stopping there would leave a guest, on a
+    // deployment with cash off, unable to complete a checkout at all.
+    const free = context({
+      amountDue: 0,
+      cardMinimum: EUR_FLOOR,
+      cashEnabled: false,
+      isAuthenticated: false,
+      isDelivery: true,
+    })
+    expect(isPaymentMethodSelectable("card", free)).toBe(false)
+    expect(isPaymentMethodSelectable("paypal", free)).toBe(false)
+    expect(isPaymentMethodSelectable("cash", free)).toBe(true)
+    expect(resolvePaymentMethod(null, free)).toBe("cash")
+  })
+
+  it("changes nothing for a caller that has not priced the basket", () => {
+    // `undefined` is "still loading", and greying every tile while a delivery
+    // quote lands would be worse than the defect being guarded.
+    const unknown = context({ paypalEnabled: true, cardMinimum: EUR_FLOOR })
+    expect(isPaymentMethodSelectable("card", unknown)).toBe(true)
+    expect(isPaymentMethodSelectable("paypal", unknown)).toBe(true)
+    expect(resolvePaymentMethod(null, unknown)).toBe("card")
+  })
+
+  it("applies no floor when the caller has not supplied one", () => {
+    const noFloor = context({ amountDue: 1 })
+    expect(isPaymentMethodSelectable("card", noFloor)).toBe(true)
+  })
+
+  it("still refuses card for the reasons it always did", () => {
+    // A total that clears the floor does not rescue a deployment that cannot
+    // charge, or an owner who does not take cards.
+    expect(
+      isPaymentMethodSelectable(
+        "card",
+        context({ amountDue: 1_000, cardMinimum: EUR_FLOOR, cardAvailable: false })
+      )
+    ).toBe(false)
+    expect(
+      isPaymentMethodSelectable(
+        "card",
+        context({ amountDue: 1_000, cardMinimum: EUR_FLOOR, cardOffered: false })
+      )
+    ).toBe(false)
+  })
+})
+
+describe("nothingIsDue", () => {
+  it("is about zero, not about a missing figure", () => {
+    expect(nothingIsDue(context({ amountDue: 0 }))).toBe(true)
+    expect(nothingIsDue(context({ amountDue: 1 }))).toBe(false)
+    // Not priced yet is not free.
+    expect(nothingIsDue(context())).toBe(false)
   })
 })

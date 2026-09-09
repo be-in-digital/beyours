@@ -71,13 +71,13 @@ describe("validateSiteEnv — required", () => {
       NEXT_PUBLIC_CONVEX_URL: "https://placeholder.convex.cloud",
     });
     expect(ok).toBe(false);
-    expect(problems[0].message).toContain("placeholder");
+    expect(problems[0]!.message).toContain("placeholder");
   });
 
   it("rejects a non-absolute URL", () => {
     const { ok, problems } = validateSiteEnv({ ...VALID, NEXT_PUBLIC_SITE_URL: "beyours.fr" });
     expect(ok).toBe(false);
-    expect(problems[0].message).toContain("URL absolue");
+    expect(problems[0]!.message).toContain("URL absolue");
   });
 });
 
@@ -456,7 +456,7 @@ describe("validateSiteEnv — one variable, one problem", () => {
       STRIPE_FOUNDERS_COUPON_ID: "FONDATEURS10",
       STRIPE_PRODUCT_CREATION_PREMIUM: "prod_premium",
     });
-    expect(problems[0].message).toContain("Offre fondateurs");
+    expect(problems[0]!.message).toContain("Offre fondateurs");
   });
 });
 
@@ -494,7 +494,7 @@ describe("validateSiteEnv guards the signer-IP secret", () => {
     });
     expect(ok).toBe(false);
     expect(problems.map((p) => p.name)).toEqual([SIGNER_IP_SECRET_ENV]);
-    expect(problems[0].tier).toBe("format");
+    expect(problems[0]!.tier).toBe("format");
   });
 
   it("accepts one long enough to be a secret", () => {

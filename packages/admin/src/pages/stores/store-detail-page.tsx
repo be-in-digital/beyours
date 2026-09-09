@@ -83,6 +83,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
     uberEatsStoreStatus,
     setUberEatsStoreStatus,
     uberEatsPrepTime,
+    uberEatsPublicUrl,
+    setUberEatsPublicUrl,
     setUberEatsPrepTime,
     deliverooStoreId,
     setDeliverooStoreId,
@@ -97,6 +99,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
     deliverooStoreStatus,
     setDeliverooStoreStatus,
     deliverooPrepTime,
+    deliverooPublicUrl,
+    setDeliverooPublicUrl,
     setDeliverooPrepTime,
     isValidatingUberEats,
     isValidatingDeliveroo,
@@ -318,6 +322,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
             uberEatsStoreStatus={uberEatsStoreStatus}
             setUberEatsStoreStatus={setUberEatsStoreStatus}
             uberEatsPrepTime={uberEatsPrepTime}
+            uberEatsPublicUrl={uberEatsPublicUrl}
+            setUberEatsPublicUrl={setUberEatsPublicUrl}
             setUberEatsPrepTime={setUberEatsPrepTime}
             deliverooStoreId={deliverooStoreId}
             setDeliverooStoreId={setDeliverooStoreId}
@@ -332,6 +338,8 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
             deliverooStoreStatus={deliverooStoreStatus}
             setDeliverooStoreStatus={setDeliverooStoreStatus}
             deliverooPrepTime={deliverooPrepTime}
+            deliverooPublicUrl={deliverooPublicUrl}
+            setDeliverooPublicUrl={setDeliverooPublicUrl}
             setDeliverooPrepTime={setDeliverooPrepTime}
             isSyncingUberEats={isSyncingUberEats}
             isImportingUberEats={isImportingUberEats}

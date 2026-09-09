@@ -43,9 +43,25 @@ export interface DashboardOrder {
   items: Array<{ productName: string; quantity: number; unitPrice: number; subtotal: number }>
 }
 
+/**
+ * One window's figures, as the server computes them.
+ *
+ * `revenue` is money COLLECTED, not money ordered, and `orderCount` is orders
+ * placed — so the two are counted over different sets on purpose and
+ * `uncollected` is the difference. See `dashboardStats.ts` in
+ * `@be-in-digital/convex-functions` for the rule.
+ */
+export interface DashboardTotals {
+  revenue: number
+  orderCount: number
+  averageBasket: number
+  collectedOrderCount: number
+  uncollected: number
+}
+
 export interface DashboardStats {
-  today: { revenue: number; orderCount: number; averageBasket: number; activeOrders: number }
-  yesterday: { revenue: number; orderCount: number; averageBasket: number }
+  today: DashboardTotals & { activeOrders: number }
+  yesterday: DashboardTotals
   last7Days: Array<{ day: string; revenue: number; orders: number }>
   byType: Array<{ name: string; value: number; label: string }>
   bySource: Array<{ name: string; value: number; label: string }>
@@ -55,8 +71,8 @@ export interface DashboardStats {
 
 /** What `orders.dashboardStats` answers, before the labels are attached. */
 interface ServerDashboardStats {
-  today: { revenue: number; orderCount: number; averageBasket: number; activeOrders: number }
-  yesterday: { revenue: number; orderCount: number; averageBasket: number }
+  today: DashboardTotals & { activeOrders: number }
+  yesterday: DashboardTotals
   last7Days: Array<{ dayStart: number; revenue: number; orders: number }>
   byType: Array<{ name: string; value: number }>
   bySource: Array<{ name: string; value: number }>

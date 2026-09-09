@@ -45,6 +45,8 @@ interface StoreDeliverooCardProps {
   deliverooStoreStatus: "ONLINE" | "PAUSED" | "OFFLINE"
   setDeliverooStoreStatus: Dispatch<SetStateAction<"ONLINE" | "PAUSED" | "OFFLINE">>
   deliverooPrepTime: string
+  deliverooPublicUrl: string
+  setDeliverooPublicUrl: Dispatch<SetStateAction<string>>
   setDeliverooPrepTime: Dispatch<SetStateAction<string>>
   isSyncingDeliveroo: boolean
   isImportingDeliveroo: boolean
@@ -71,6 +73,8 @@ export function StoreDeliverooCard({
   deliverooStoreStatus,
   setDeliverooStoreStatus,
   deliverooPrepTime,
+  deliverooPublicUrl,
+  setDeliverooPublicUrl,
   setDeliverooPrepTime,
   isSyncingDeliveroo,
   isImportingDeliveroo,
@@ -272,6 +276,28 @@ export function StoreDeliverooCard({
                   placeholder="15"
                 />
               </div>
+            </div>
+
+            {/* The link the storefront's « Commandez aussi sur vos apps »
+                tile points at. It has to be typed because there is nothing to
+                derive it from — `platformStoreId` is an API identifier, not a
+                public URL — and the tile was hard-coded to Deliveroo's HOME
+                page in its absence, on every menu page, listed or not. No
+                URL, no tile. */}
+            <div className="space-y-2">
+              <Label htmlFor="deliverooPublicUrl">Lien public Deliveroo</Label>
+              <Input
+                id="deliverooPublicUrl"
+                type="url"
+                value={deliverooPublicUrl}
+                onChange={(e) => setDeliverooPublicUrl(e.target.value)}
+                placeholder="https://deliveroo.fr/fr/menu/paris/quartier/mon-restaurant"
+              />
+              <p className="text-muted-foreground text-xs">
+                L&apos;adresse de VOTRE page sur Deliveroo. Elle s&apos;affiche
+                sur votre site ; sans elle, aucun bouton Deliveroo n&apos;est
+                montré à vos clients.
+              </p>
             </div>
 
             <div className="flex items-center justify-between">

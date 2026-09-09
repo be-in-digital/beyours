@@ -181,6 +181,23 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/*
+        A total that stopped at the read cap is a FLOOR, and saying so is the
+        whole point: this figure and the admin console's were computed over two
+        different caps with neither screen admitting it, so one set of
+        commissions produced two euro totals and the affiliate was shown the
+        smaller one.
+      */}
+      {stats?.truncated && (
+        <div
+          role="status"
+          className="mb-4 rounded-xl border border-warning-border bg-warning-soft p-4 text-sm text-warning-strong"
+        >
+          Vous avez plus de filleuls que cette page n&apos;en affiche : les
+          montants ci-dessous sont donc des minimums. Contactez-nous pour le
+          détail complet de vos commissions.
+        </div>
+      )}
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[

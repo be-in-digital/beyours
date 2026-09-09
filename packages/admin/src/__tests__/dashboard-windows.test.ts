@@ -96,8 +96,24 @@ describe("dashboardBreakdownSince", () => {
 
 describe("labelDashboardStats", () => {
   const server = {
-    today: { revenue: 3_000, orderCount: 2, averageBasket: 1_500, activeOrders: 1 },
-    yesterday: { revenue: 1_000, orderCount: 1, averageBasket: 1_000 },
+    // `revenue` is money COLLECTED and `orderCount` is orders PLACED, so the
+    // two are over different sets and `uncollected` is the difference: three
+    // orders today, two of them paid for.
+    today: {
+      revenue: 3_000,
+      orderCount: 3,
+      averageBasket: 1_500,
+      collectedOrderCount: 2,
+      uncollected: 900,
+      activeOrders: 1,
+    },
+    yesterday: {
+      revenue: 1_000,
+      orderCount: 1,
+      averageBasket: 1_000,
+      collectedOrderCount: 1,
+      uncollected: 0,
+    },
     last7Days: [
       // A Monday and the Tuesday after it, as local midnights.
       { dayStart: new Date("2026-03-16T00:00:00").getTime(), revenue: 100, orders: 1 },

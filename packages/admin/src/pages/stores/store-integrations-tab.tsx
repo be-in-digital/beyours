@@ -20,6 +20,8 @@ interface StoreIntegrationsTabProps {
   uberEatsStoreStatus: "ONLINE" | "PAUSED" | "OFFLINE"
   setUberEatsStoreStatus: Dispatch<SetStateAction<"ONLINE" | "PAUSED" | "OFFLINE">>
   uberEatsPrepTime: string
+  uberEatsPublicUrl: string
+  setUberEatsPublicUrl: Dispatch<SetStateAction<string>>
   setUberEatsPrepTime: Dispatch<SetStateAction<string>>
   deliverooStoreId: string
   setDeliverooStoreId: Dispatch<SetStateAction<string>>
@@ -34,6 +36,8 @@ interface StoreIntegrationsTabProps {
   deliverooStoreStatus: "ONLINE" | "PAUSED" | "OFFLINE"
   setDeliverooStoreStatus: Dispatch<SetStateAction<"ONLINE" | "PAUSED" | "OFFLINE">>
   deliverooPrepTime: string
+  deliverooPublicUrl: string
+  setDeliverooPublicUrl: Dispatch<SetStateAction<string>>
   setDeliverooPrepTime: Dispatch<SetStateAction<string>>
   isSyncingUberEats: boolean
   isImportingUberEats: boolean
@@ -65,6 +69,8 @@ export function StoreIntegrationsTab({
   uberEatsStoreStatus,
   setUberEatsStoreStatus,
   uberEatsPrepTime,
+  uberEatsPublicUrl,
+  setUberEatsPublicUrl,
   setUberEatsPrepTime,
   deliverooStoreId,
   setDeliverooStoreId,
@@ -79,6 +85,8 @@ export function StoreIntegrationsTab({
   deliverooStoreStatus,
   setDeliverooStoreStatus,
   deliverooPrepTime,
+  deliverooPublicUrl,
+  setDeliverooPublicUrl,
   setDeliverooPrepTime,
   isSyncingUberEats,
   isImportingUberEats,
@@ -110,6 +118,8 @@ export function StoreIntegrationsTab({
         uberEatsStoreStatus={uberEatsStoreStatus}
         setUberEatsStoreStatus={setUberEatsStoreStatus}
         uberEatsPrepTime={uberEatsPrepTime}
+        uberEatsPublicUrl={uberEatsPublicUrl}
+        setUberEatsPublicUrl={setUberEatsPublicUrl}
         setUberEatsPrepTime={setUberEatsPrepTime}
         isSyncingUberEats={isSyncingUberEats}
         isImportingUberEats={isImportingUberEats}
@@ -136,6 +146,8 @@ export function StoreIntegrationsTab({
         deliverooStoreStatus={deliverooStoreStatus}
         setDeliverooStoreStatus={setDeliverooStoreStatus}
         deliverooPrepTime={deliverooPrepTime}
+        deliverooPublicUrl={deliverooPublicUrl}
+        setDeliverooPublicUrl={setDeliverooPublicUrl}
         setDeliverooPrepTime={setDeliverooPrepTime}
         isSyncingDeliveroo={isSyncingDeliveroo}
         isImportingDeliveroo={isImportingDeliveroo}

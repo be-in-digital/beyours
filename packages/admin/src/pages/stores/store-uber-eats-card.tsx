@@ -43,6 +43,8 @@ interface StoreUberEatsCardProps {
   uberEatsStoreStatus: "ONLINE" | "PAUSED" | "OFFLINE"
   setUberEatsStoreStatus: Dispatch<SetStateAction<"ONLINE" | "PAUSED" | "OFFLINE">>
   uberEatsPrepTime: string
+  uberEatsPublicUrl: string
+  setUberEatsPublicUrl: Dispatch<SetStateAction<string>>
   setUberEatsPrepTime: Dispatch<SetStateAction<string>>
   isSyncingUberEats: boolean
   isImportingUberEats: boolean
@@ -67,6 +69,8 @@ export function StoreUberEatsCard({
   uberEatsStoreStatus,
   setUberEatsStoreStatus,
   uberEatsPrepTime,
+  uberEatsPublicUrl,
+  setUberEatsPublicUrl,
   setUberEatsPrepTime,
   isSyncingUberEats,
   isImportingUberEats,
@@ -249,6 +253,28 @@ export function StoreUberEatsCard({
                   placeholder="15"
                 />
               </div>
+            </div>
+
+            {/* The link the storefront's « Commandez aussi sur vos apps »
+                tile points at. It has to be typed because there is nothing to
+                derive it from — `platformStoreId` is an API identifier, not a
+                public URL — and the tile was hard-coded to Uber Eats's HOME
+                page in its absence, on every menu page, listed or not. No
+                URL, no tile. */}
+            <div className="space-y-2">
+              <Label htmlFor="uberEatsPublicUrl">Lien public Uber Eats</Label>
+              <Input
+                id="uberEatsPublicUrl"
+                type="url"
+                value={uberEatsPublicUrl}
+                onChange={(e) => setUberEatsPublicUrl(e.target.value)}
+                placeholder="https://www.ubereats.com/fr/store/mon-restaurant/abc123"
+              />
+              <p className="text-muted-foreground text-xs">
+                L&apos;adresse de VOTRE page sur Uber Eats. Elle s&apos;affiche
+                sur votre site ; sans elle, aucun bouton Uber Eats n&apos;est
+                montré à vos clients.
+              </p>
             </div>
 
             <div className="flex items-center justify-between">

@@ -20,6 +20,7 @@ import {
   CardPaymentUnavailableError,
   OrderAlreadyPaidError,
 } from "@be-in-digital/convex-functions/refusal";
+import { assertCardChargeable } from "@be-in-digital/convex-functions/cardChargeFloor";
 
 interface OrderData {
   total: number;
@@ -66,13 +67,48 @@ interface OrderData {
  *
  * See `tasks/stripe-connect-runbook.md` for the half deliberately not done here.
  */
-async function assertChargeableOnPlatform(ctx: ActionCtx): Promise<void> {
+async function assertChargeableOnPlatform(
+  ctx: ActionCtx,
+  /** Which money path is being refused — it goes into the audit line. */
+  moment: "checkout" | "refund",
+  orderId?: string
+): Promise<void> {
   const connection = await ctx.runQuery(
     internal.paymentConnections.internalGetByProvider,
     { provider: "stripe" as const }
   );
 
-  resolveStripeCharge(connection);
+  try {
+    resolveStripeCharge(connection);
+  } catch (error) {
+    // A refusal nobody can see is a refusal nobody can fix.
+    //
+    // This gate throws BEFORE any call to Stripe, so the credentials verdict
+    // that `createCheckoutSession` records on a refused key is never reached
+    // — correctly, since nothing has asked Stripe anything. The consequence
+    // was that a deployment turning every diner away for a routing reason
+    // left no trace at all: `cardProviderHealth` empty (right), the ledger
+    // empty (right, no money moved), and nowhere at all saying why the
+    // checkout was refusing. `paymentAvailability` already greys the tile
+    // from the same rule, so the diner is told; this is the half that tells
+    // whoever has to put it right.
+    //
+    // Recorded, never rethrown from the recording: the refusal is the
+    // outcome, and a failure to write it down must not replace it.
+    if (error instanceof StripeChargeRouteError) {
+      await ctx
+        .runMutation(internal.payments.internalRecordRefusedCollection, {
+          provider: "stripe" as const,
+          code: error.reason,
+          message: error.message,
+          eventType: `stripe.${moment}`,
+          ...(orderId ? { orderId } : {}),
+          ...(error.merchantId ? { externalId: error.merchantId } : {}),
+        })
+        .catch(() => undefined);
+    }
+    throw error;
+  }
 }
 
 /**
@@ -152,7 +188,7 @@ export const createCheckoutSession = action({
     // so the French sentence survives the wire; the routing detail stays in
     // the log via the admin surfaces that read the connection row.
     try {
-      await assertChargeableOnPlatform(ctx);
+      await assertChargeableOnPlatform(ctx, "checkout", args.orderId);
     } catch (error) {
       if (error instanceof StripeChargeRouteError) {
         throw new CardPaymentUnavailableError();
@@ -182,6 +218,17 @@ export const createCheckoutSession = action({
     if (await orderAlreadyPaid(ctx, args.orderId, order.paymentStatus)) {
       throw new OrderAlreadyPaidError();
     }
+
+    // A total no card provider will take. Stripe's EUR floor is 0,50 € and the
+    // session create is what would otherwise discover that — as a plain SDK
+    // error, redacted to "Server Error" behind the checkout's retry toast, on
+    // an order that can never be paid however many times the diner tries. A
+    // 100 % coupon is the ordinary way to reach it.
+    //
+    // `"EUR"` rather than `globalSettings.currency` on purpose: EUR is what
+    // this request actually sends below, so the floor has to be the one that
+    // applies to it.
+    assertCardChargeable({ amountMinor: order.total, currency: "EUR" });
 
     const stripe = new Stripe(secretKey, {
       httpClient: Stripe.createFetchHttpClient(),
@@ -568,7 +615,7 @@ export const internalRefund = internalAction({
     // ignored the rule while checkout honoured it is the same split this
     // repository keeps hitting: the two halves of one charge would disagree
     // about which account they belong to.
-    await assertChargeableOnPlatform(ctx);
+    await assertChargeableOnPlatform(ctx, "refund");
 
     const Stripe = (await import("stripe")).default;
     const { getSiteEnv } = await import("@be-in-digital/core/env");

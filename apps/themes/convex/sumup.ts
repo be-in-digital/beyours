@@ -13,6 +13,7 @@ import {
   CardPaymentUnavailableError,
   OrderAlreadyPaidError,
 } from "@be-in-digital/convex-functions/refusal";
+import { assertCardChargeable } from "@be-in-digital/convex-functions/cardChargeFloor";
 
 // ---------------------------------------------------------------------------
 // Inline AES-256-GCM decryption (same pattern as oauthConnect.ts)
@@ -98,6 +99,17 @@ export const createCheckout = action({
     ) {
       throw new OrderAlreadyPaidError();
     }
+
+    // A total no card provider will take. Stripe's EUR floor is 0,50 € and the
+    // session create is what would otherwise discover that — as a plain SDK
+    // error, redacted to "Server Error" behind the checkout's retry toast, on
+    // an order that can never be paid however many times the diner tries. A
+    // 100 % coupon is the ordinary way to reach it.
+    //
+    // `"EUR"` rather than `globalSettings.currency` on purpose: EUR is what
+    // this request actually sends below, so the floor has to be the one that
+    // applies to it.
+    assertCardChargeable({ amountMinor: order.total, currency: "EUR" });
 
     // The diner-facing path says WHY a card cannot be taken instead of letting
     // `getSumUpAccessToken`'s plain `Error` reach the browser as a redacted

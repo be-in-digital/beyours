@@ -626,11 +626,32 @@ export const emailEventsTable = defineTable({
   .index("by_campaignId", ["campaignId"])
   .index("by_subscriberId", ["subscriberId"])
   .index("by_storeId_type", ["storeId", "type"])
-  // "Has this campaign already reached this subscriber?" — the question that
-  // makes a resumed send idempotent. Answering it from `by_campaignId` would
-  // read every event the campaign has produced, once per subscriber, which is
-  // quadratic on the exact campaigns that need resuming.
-  .index("by_campaignId_subscriberId", ["campaignId", "subscriberId"])
+  /**
+   * "Has this campaign already reached this subscriber?" — the question that
+   * makes a resumed send idempotent. Answering it from `by_campaignId` would
+   * read every event the campaign has produced, once per subscriber, which is
+   * quadratic on the exact campaigns that need resuming.
+   *
+   * `type` is the third column and it is what makes the answer a POINT LOOKUP.
+   * Without it the index narrowed to the pair and `alreadySentTo` collected
+   * every row it found — sent, delivered, opened, clicked, and one more for
+   * every time that subscriber reopened the newsletter — then looked for a
+   * `sent` among them in JavaScript. An engaged subscriber accumulates those
+   * without limit, and this runs once per subscriber in every batch of the
+   * send: measured abort at about 410 events per subscriber per campaign,
+   * which is Convex's 16,384-document ceiling reached by the campaign's own
+   * success. Exactly the shape the paragraph above warns about, on the third
+   * axis.
+   *
+   * A two-column query still uses this index — a prefix is a prefix — so the
+   * old `by_campaignId_subscriberId` is gone rather than kept beside it. An
+   * index nothing reads is still a write on every insert.
+   */
+  .index("by_campaign_subscriber_type", [
+    "campaignId",
+    "subscriberId",
+    "type",
+  ])
   /**
    * "How many campaign emails has this subscriber had since <date>?" — the
    * weekly cap's question, narrowed to the week rather than to the subscriber.

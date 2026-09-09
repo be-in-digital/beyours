@@ -170,7 +170,7 @@ export const RELAUNCHABLE_STATUSES: ReadonlyArray<string> = ["paused", "failed"]
  *
  * What that prefix is recorded in is `emailEvents` — one `sent` row per
  * (campaign, subscriber), which `alreadySentTo` reads through
- * `by_campaignId_subscriberId` to make « Relancer » resume rather than restart.
+ * `by_campaign_subscriber_type` to make « Relancer » resume rather than restart.
  * The rows survive a delete; the KEY does not. Nothing can address them once
  * the campaign is gone, so the only route left to finish the send is to build
  * the campaign again — and the copy, with a new `_id`, asks the same question

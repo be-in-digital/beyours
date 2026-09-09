@@ -3,6 +3,10 @@ import { convexTest } from "convex-test";
 import { expect, test, describe } from "vitest";
 import { internal } from "../../convex/_generated/api";
 import schema from "../../convex/schema";
+import {
+  REFERRAL_SCAN_LIMIT,
+  summariseReferrals,
+} from "../../convex/referralTotals";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
 
@@ -239,18 +243,22 @@ describe("admin.getStats", () => {
     const orderId = await data.setupOrder(t);
     await data.createReferral(t, affiliateUserId, referralCodeId, orderId, "paid");
 
-    // Use internal query to bypass auth
+    /* Bypasses auth by reading directly, but through the SAME summariser the
+       query uses — retyping the filters here is how this test went on passing
+       while the console and the affiliate portal disagreed about the same
+       commissions by 2 500 €. */
     const stats = await t.run(async (ctx) => {
       const affiliates = await ctx.db.query("affiliateUsers").take(200);
-      const referrals = await ctx.db.query("referrals").take(500);
+      const referrals = await ctx.db
+        .query("referrals")
+        .take(REFERRAL_SCAN_LIMIT + 1);
+      const totals = summariseReferrals(referrals);
       return {
         totalAffiliates: affiliates.length,
         activeAffiliates: affiliates.filter((a) => a.status === "active").length,
-        totalReferrals: referrals.length,
-        paidReferrals: referrals.filter((r) => r.status === "paid").length,
-        totalCommissions: referrals
-          .filter((r) => r.status === "paid")
-          .reduce((sum, r) => sum + r.commissionCents, 0),
+        totalReferrals: totals.totalReferrals,
+        paidReferrals: totals.paidCount,
+        totalCommissions: totals.totalEarned,
       };
     });
 

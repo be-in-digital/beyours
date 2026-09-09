@@ -38,7 +38,7 @@ import {
 import { getByStore as paymentsGetByStore } from "../payments"
 import { getStats, GAME_STATS_SCAN_LIMIT, REDEMPTION_SCAN_LIMIT } from "../gamePlay"
 import { stepsSentTo, record as recordRun } from "../emailAutomationRuns"
-import { sentCountsSince } from "../emailEvents"
+import { alreadySentTo, sentCountsSince } from "../emailEvents"
 import { getByLanguage } from "../translations"
 import { remove as removePromotion, purgeUsages, PROMOTION_USAGE_BATCH } from "../promotions"
 import {
@@ -187,18 +187,24 @@ describe("orders.dashboardStats", () => {
 
     const ctx = createCountingDb({
       orders: [
-        { _id: "orders:1", storeId: STORE, status: "completed", type: "delivery", source: "website", total: 2_000, createdAt: now - 60_000 },
-        { _id: "orders:2", storeId: STORE, status: "pending", type: "pickup", source: "website", total: 1_000, createdAt: now - 120_000 },
+        { _id: "orders:1", storeId: STORE, status: "completed", paymentStatus: "paid", type: "delivery", source: "website", total: 2_000, createdAt: now - 60_000 },
+        // On the pass and paid for — the card cleared before the kitchen saw it.
+        { _id: "orders:2", storeId: STORE, status: "pending", paymentStatus: "paid", type: "pickup", source: "website", total: 1_000, createdAt: now - 120_000 },
         // Cancelled: an order that happened for nobody is not takings.
-        { _id: "orders:3", storeId: STORE, status: "cancelled", type: "delivery", source: "website", total: 9_999, createdAt: now - 180_000 },
+        { _id: "orders:3", storeId: STORE, status: "cancelled", paymentStatus: "pending", type: "delivery", source: "website", total: 9_999, createdAt: now - 180_000 },
+        // Placed and never paid for. It is an order that happened, so it counts
+        // on the "Commandes" card; it is not money, so it is not revenue.
+        { _id: "orders:5", storeId: STORE, status: "completed", paymentStatus: "failed", type: "pickup", source: "website", total: 4_500, createdAt: now - 200_000 },
         // Yesterday.
-        { _id: "orders:4", storeId: STORE, status: "completed", type: "dine_in", source: "pos", total: 3_000, createdAt: todayStart - 60_000 },
+        { _id: "orders:4", storeId: STORE, status: "completed", paymentStatus: "paid", type: "dine_in", source: "pos", total: 3_000, createdAt: todayStart - 60_000 },
       ],
     })
 
     const stats = await dashboardStats.handler(ctx, { storeId: STORE, ...windows() })
     expect(stats.today.revenue).toBe(3_000)
-    expect(stats.today.orderCount).toBe(2)
+    expect(stats.today.orderCount).toBe(3)
+    expect(stats.today.collectedOrderCount).toBe(2)
+    expect(stats.today.uncollected).toBe(4_500)
     expect(stats.today.averageBasket).toBe(1_500)
     expect(stats.today.activeOrders).toBe(1)
     expect(stats.yesterday.revenue).toBe(3_000)
@@ -419,6 +425,116 @@ describe("emailAutomationRuns.stepsSentTo", () => {
     // The row already exists, so no second one is written.
     expect(existing).toBe("emailAutomationRuns:3-offer")
     expect(ctx.store.emailAutomationRuns).toHaveLength(500 * STEPS.length)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The idempotency check on the send path
+// ---------------------------------------------------------------------------
+
+/**
+ * "Has this campaign already reached this subscriber?"
+ *
+ * The other send-path query, and the one that was missing from this file. It
+ * collected every event on the (campaign, subscriber) pair and looked for a
+ * `sent` among them in JavaScript. That pair holds one `sent` and one
+ * `delivered` — and one `opened` for every time the subscriber reopened the
+ * newsletter, without limit. So the cost of the idempotency check grew with
+ * how much the audience LIKED the campaign, and it is asked once per
+ * subscriber in every batch: measured abort at about 410 events per subscriber
+ * per campaign.
+ */
+describe("emailEvents.alreadySentTo", () => {
+  const CAMPAIGN = "emailCampaigns:1"
+  const BATCH = 40
+
+  /** Everyone was mailed once and has been opening it ever since. */
+  function engagedAudience(opensEach: number) {
+    const rows = []
+    for (let s = 0; s < BATCH; s++) {
+      rows.push({
+        _id: `emailEvents:${s}-sent`,
+        storeId: STORE,
+        campaignId: CAMPAIGN,
+        subscriberId: `emailSubscribers:${s}`,
+        type: "sent",
+        occurredAt: 1,
+      })
+      for (let e = 0; e < opensEach; e++) {
+        rows.push({
+          _id: `emailEvents:${s}-open-${e}`,
+          storeId: STORE,
+          campaignId: CAMPAIGN,
+          subscriberId: `emailSubscribers:${s}`,
+          type: "opened",
+          occurredAt: 2 + e,
+        })
+      }
+    }
+    return rows
+  }
+
+  const subscriberIds = Array.from({ length: BATCH }, (_, s) => `emailSubscribers:${s}`)
+
+  it("reads one document per subscriber, however engaged they are", async () => {
+    // 40 × 500 opens is 20,000 documents, past Convex's 16,384-document
+    // ceiling: the old shape did not merely run slowly here, it made the
+    // campaign impossible to resume at all.
+    const ctx = createCountingDb({ emailEvents: engagedAudience(500) })
+    const reached = await alreadySentTo.handler(ctx, {
+      campaignId: CAMPAIGN,
+      subscriberIds,
+    })
+
+    expect(reached).toHaveLength(BATCH)
+    expect(ctx.reads()).toBe(BATCH)
+  })
+
+  it("still answers correctly for someone the campaign has not reached", async () => {
+    const ctx = createCountingDb({
+      emailEvents: [
+        {
+          _id: "emailEvents:opened-only",
+          storeId: STORE,
+          campaignId: CAMPAIGN,
+          subscriberId: "emailSubscribers:0",
+          // An event on the pair that is NOT a send. The old JavaScript filter
+          // is what this replaces, so the narrowing has to be at least as
+          // precise.
+          type: "opened",
+          occurredAt: 1,
+        },
+      ],
+    })
+
+    expect(
+      await alreadySentTo.handler(ctx, {
+        campaignId: CAMPAIGN,
+        subscriberIds: ["emailSubscribers:0"],
+      })
+    ).toEqual([])
+  })
+
+  it("does not confuse one campaign's sends with another's", async () => {
+    const ctx = createCountingDb({
+      emailEvents: [
+        {
+          _id: "emailEvents:other-campaign",
+          storeId: STORE,
+          campaignId: "emailCampaigns:2",
+          subscriberId: "emailSubscribers:0",
+          type: "sent",
+          occurredAt: 1,
+        },
+      ],
+    })
+
+    expect(
+      await alreadySentTo.handler(ctx, {
+        campaignId: CAMPAIGN,
+        subscriberIds: ["emailSubscribers:0"],
+      })
+    ).toEqual([])
   })
 })
 

@@ -1,5 +1,3 @@
-/// <reference types="vite/client" />
-
 /**
  * The signer's IP, as evidence rather than as a claim.
  *
@@ -53,6 +51,7 @@ import {
   readSignerIpSecret,
   verifySignerIpAttestation,
   type SignerIpSource,
+  type UnverifiedSignerIpAttestation,
 } from "../lib/security/signer-attestation";
 
 const SECRET = "a".repeat(SIGNER_IP_SECRET_MIN_LENGTH);
@@ -65,8 +64,18 @@ const EDGE: SignerIpSource = "x-vercel-forwarded-for";
 const mint = (ip: string, now = NOW, source: SignerIpSource = EDGE) =>
   mintSignerIpAttestation({ ip, source }, { secret: SECRET, now });
 
+/**
+ * Typed as the production function is, not as `mint` returns.
+ *
+ * `verifySignerIpAttestation` deliberately accepts the LOOSE shape — `source`
+ * a bare optional string, and the whole thing absent — because that is what
+ * arrives over a public Convex argument from a browser that may be holding a
+ * previous bundle. Narrowing this helper to `mint`'s return type made the
+ * cases that matter most unwritable: a v1 attestation with no `source`, a
+ * forged one naming an untrusted header, and no attestation at all.
+ */
 const verify = (
-  attestation: Awaited<ReturnType<typeof mint>>,
+  attestation: UnverifiedSignerIpAttestation | null | undefined,
   opts: { secret?: string | null; now?: number } = {},
 ) =>
   verifySignerIpAttestation(attestation, {
