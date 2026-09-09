@@ -48,15 +48,32 @@ const DELIVERY_PLATFORMS = {
     name: "Uber Eats",
     headline: "Livraison rapide",
     blurb: "Recevez vos plats préférés directement chez vous",
-    background: "bg-[#06C167]",
   },
   deliveroo: {
     name: "Deliveroo",
     headline: "À votre porte",
     blurb: "Commandez et faites-vous livrer en quelques minutes",
-    background: "bg-[#00CCBC]",
   },
 } as const
+
+/**
+ * The platforms' own brand colours, spelled where the scanner can read them.
+ *
+ * Deliberately NOT a field on `DELIVERY_PLATFORMS` above, and this is the one
+ * place in this file where a lint-shaped concern decides the shape of the
+ * code. `tests/a11y/contrast.test.ts` resolves a foreground against the
+ * nearest surface painted in the SAME tree: a `bg-` class reached through a
+ * variable is invisible to it, so the black tile copy read as black on the
+ * page background — 1.14:1, a failure the rendered pixels never produce
+ * (black on #06C167 measures about 11:1).
+ *
+ * A ternary in the class list is a shape the scanner does resolve — it reads
+ * each branch as its own state — so the colours stay data-driven for a reader
+ * and stay measurable for the guard. Brand hexes rather than tokens because
+ * they are Uber Eats' and Deliveroo's identity, not this establishment's
+ * palette; the design system has no opinion about them and must not repaint
+ * them.
+ */
 
 const ITEMS_PER_PAGE = 12
 
@@ -417,7 +434,9 @@ function MenuContent() {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`group relative overflow-hidden rounded-[3rem] p-12 flex flex-col items-center text-center transition-all shadow-2xl shadow-primary/10 ${platform.background} hover:-translate-y-2 duration-300`}
+                className={`group relative overflow-hidden rounded-[3rem] p-12 flex flex-col items-center text-center transition-all shadow-2xl shadow-primary/10 ${
+                  link.platform === "uberEats" ? "bg-[#06C167]" : "bg-[#00CCBC]"
+                } hover:-translate-y-2 duration-300`}
               >
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:scale-150 transition-transform duration-700" />
                 <div className="h-24 w-full relative mb-8 flex items-center justify-center">

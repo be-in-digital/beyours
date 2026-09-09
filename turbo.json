@@ -231,6 +231,11 @@
         "AWS_SECRET_ACCESS_KEY",
         "AWS_S3_BUCKET_NAME",
         "AWS_SES_CONFIGURATION_SET",
+        // Which SNS topic `/webhooks/ses` accepts. The bounce suite sets it to
+        // drive both answers: a signed notification from another account's
+        // topic is refused, and a subscription is confirmed only for the topic
+        // this deployment was told about.
+        "SES_SNS_TOPIC_ARN",
         // The rest.
         "ADMIN_BOOTSTRAP_TOKEN",
         "OPENAI_API_KEY",
@@ -396,6 +401,11 @@
         "AWS_SECRET_ACCESS_KEY",
         "AWS_S3_BUCKET_NAME",
         "AWS_SES_CONFIGURATION_SET",
+        // Which SNS topic `/webhooks/ses` accepts. The bounce suite sets it to
+        // drive both answers: a signed notification from another account's
+        // topic is refused, and a subscription is confirmed only for the topic
+        // this deployment was told about.
+        "SES_SNS_TOPIC_ARN",
         // The rest.
         "ADMIN_BOOTSTRAP_TOKEN",
         "OPENAI_API_KEY",
