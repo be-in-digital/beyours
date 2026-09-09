@@ -209,7 +209,7 @@ The domain groupings, as registered:
 | Establishments | `stores`, `storeIntegrations` |
 | Catalogue | `categories`, `products`, `menus` |
 | Orders & money | `orders`, `payments`, `paymentConnections`, `paymentEvents`, `promotions`, `promotionUsages` |
-| Kitchen | `kitchenTickets`, `printerSettings` |
+| Kitchen | `kitchenTickets` |
 | Delivery platforms | `uberEatsConnections`, `oauthStates`, `deliveryQuotes`, `externalProductMappings`, `orphanProducts` |
 | i18n | `languages`, `translations`, `translationJobs` |
 | Gamification | `gameQRCodes`, `requiredActions`, `games`, `prizes`, `gamePlays`, `prizeRedemptions`, `gameReferrals` |
@@ -241,11 +241,6 @@ feature exists.
   file states plainly that **nothing writes them now**. In particular there is no
   `stores.integrations.uberEats` or `.deliveroo` in live data: platform connections
   live in the `storeIntegrations` table and in `uberEatsConnections`.
-- `printerSettings` is registered (`schema.ts:101`) and has **zero readers and zero
-  writers**. Its only non-schema reference is a delete-cascade entry
-  (`packages/convex-functions/src/storeCascade.ts:39`) for rows nothing creates. It
-  belongs to an ESC/POS path that was never built — see
-  [`FEATURES.md`](FEATURES.md#kitchen-and-printing).
 - `stores.themeId` (`tables/stores.ts:70`) is declared in five places and has **no
   reader and no writer**. Theme choice happens at clone time, through
   `pnpm template:apply`, not at runtime.

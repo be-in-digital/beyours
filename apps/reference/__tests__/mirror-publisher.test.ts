@@ -3,11 +3,14 @@ import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 
+import { execFileSync } from "node:child_process"
+
 import {
   isExcluded,
   isMirrorOwned,
   isNotShipped,
   materializeMirror,
+  trackedFiles,
 } from "../../../scripts/lib/mirror-tree.mjs"
 
 /**
@@ -203,6 +206,117 @@ describe("materialising the mirror", () => {
   })
 })
 
+describe("only what git tracks crosses to the mirror", () => {
+  /**
+   * The rule the exclusion lists were standing in for.
+   *
+   * `NOT_SHIPPED_*` is a NAME allow-list, and the walk reads the filesystem
+   * with no gitignore, so the question it answered was "is this file called
+   * something we banned" rather than "is this file part of the product".
+   * Everything a developer leaves in `apps/themes` fell through: a scratch
+   * test, a `page.old.tsx`, a screenshot, a stray `.log`. Measured on a working
+   * tree carrying one untracked test file, which the publisher duly
+   * materialised into the tree it was about to push — and this script documents
+   * being run BY HAND, with no CI gate in front of it.
+   *
+   * A real git repository, not a stub: the claim is about what `git ls-files`
+   * answers, and a fake would be asserting on my own idea of that.
+   */
+  function gitTree(): string {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "mirror-git-"))
+    const git = (...args: string[]) =>
+      execFileSync("git", ["-C", root, ...args], { stdio: ["ignore", "pipe", "ignore"] })
+
+    const write = (rel: string, body = rel) => {
+      fs.mkdirSync(path.join(root, path.dirname(rel)), { recursive: true })
+      fs.writeFileSync(path.join(root, rel), body)
+    }
+
+    git("init", "--quiet")
+    git("config", "user.email", "bench@example.com")
+    git("config", "user.name", "Bench")
+
+    write("package.json", "{}")
+    write("app/globals.css")
+    write("vercel.json", "the turbo-ignore, monorepo-only")
+    write(".gitignore", "*.log\n")
+    git("add", "-A")
+    git("commit", "--quiet", "-m", "tracked")
+
+    // Left behind after the commit: exactly what a working tree accumulates.
+    write("app/page.old.tsx", "an experiment somebody kept")
+    write("tests/scratch.test.ts", "a probe written while debugging")
+    write("debug.log", "gitignored, and not shippable either")
+    return root
+  }
+
+  const source = gitTree()
+  const dest = fs.mkdtempSync(path.join(os.tmpdir(), "mirror-git-dst-"))
+  const tracked = trackedFiles(source)
+  const { copied } = materializeMirror(source, dest, { tracked })
+
+  test("trackedFiles answers with the committed set", () => {
+    expect([...(tracked ?? [])].sort()).toEqual([
+      ".gitignore",
+      "app/globals.css",
+      "package.json",
+      "vercel.json",
+    ])
+  })
+
+  test("an untracked file does not reach the mirror", () => {
+    expect(copied).not.toContain("app/page.old.tsx")
+    expect(copied).not.toContain("tests/scratch.test.ts")
+    expect(fs.existsSync(path.join(dest, "app/page.old.tsx"))).toBe(false)
+  })
+
+  test("a gitignored file does not either", () => {
+    // It never could reach a commit; it could always reach the mirror.
+    expect(copied).not.toContain("debug.log")
+  })
+
+  test("the exclusions still apply on top — this narrows, it does not widen", () => {
+    // `vercel.json` is tracked and must still not ship: it carries a
+    // `turbo-ignore` and there is no turbo workspace on the client side.
+    expect(tracked?.has("vercel.json")).toBe(true)
+    expect(copied).not.toContain("vercel.json")
+  })
+
+  test("everything tracked and not excluded still ships", () => {
+    // The direction that matters more: a rule that shipped nothing would pass
+    // every assertion above and publish an empty repository over every
+    // client's template.
+    expect(copied.sort()).toEqual([".gitignore", "app/globals.css", "package.json"])
+  })
+
+  test("outside a work tree it answers null rather than an empty set", () => {
+    // So a caller can tell "nothing is tracked" from "I could not ask". The
+    // publisher refuses on null; treating it as an empty set would publish
+    // nothing at all.
+    expect(trackedFiles(fs.mkdtempSync(path.join(os.tmpdir(), "not-a-repo-")))).toBe(null)
+  })
+
+  test("the publisher refuses rather than shipping everything when git cannot answer", () => {
+    const publisher = fs.readFileSync(
+      path.join(REPO_ROOT, "scripts/publish-mirror.mjs"),
+      "utf8",
+    )
+    expect(publisher).toContain("trackedFiles(SOURCE)")
+    expect(publisher).toMatch(/if \(!tracked\) \{\s*\n\s*fail\(/)
+  })
+
+  test("the sandbox it typechecks is the same tree it pushes", () => {
+    // A sandbox compiled from a different file set proves nothing about the
+    // push. Both calls take the same `tracked`.
+    const publisher = fs.readFileSync(
+      path.join(REPO_ROOT, "scripts/publish-mirror.mjs"),
+      "utf8",
+    )
+    expect(publisher).toContain("materializeMirror(SOURCE, clone, { tracked })")
+    expect(publisher).toContain("materializeMirror(SOURCE, sandbox, { prune: false, tracked })")
+  })
+})
+
 describe("the publisher and the checker cannot drift apart", () => {
   const read = (rel: string): string => fs.readFileSync(path.join(REPO_ROOT, rel), "utf8")
 
@@ -219,6 +333,16 @@ describe("the publisher and the checker cannot drift apart", () => {
       expect(read(script)).toContain('from "./lib/mirror-tree.mjs"')
     },
   )
+
+  test.each([
+    "scripts/check-mirror-css.mjs",
+    "scripts/check-mirror-build.mjs",
+  ])("%s asks git the same question the publisher does", (script) => {
+    // Both build the published tree to prove something about what a client
+    // receives. A checker materialising a wider set than the publisher ships is
+    // proving it about a tree nobody has.
+    expect(read(script)).toContain("trackedFiles(")
+  })
 
   test("nothing shells out to rsync any more", () => {
     // It was absent from the container this repo is usually edited in, which

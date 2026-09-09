@@ -167,20 +167,16 @@ pnpm add better-auth @better-auth/convex @better-auth/two-factor
 ```
 
 ### 2. Configure Better Auth
-Create `apps/reference/lib/auth.ts`:
-```ts
-import { betterAuth } from 'better-auth'
-import { convexAdapter } from '@better-auth/convex'
-import { createAuthConfig } from '@be-in-digital/core'
 
-export const auth = betterAuth(
-  createAuthConfig({
-    baseUrl: process.env.NEXT_PUBLIC_APP_URL!,
-    secret: process.env.AUTH_SECRET!,
-    convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
-  })
-)
-```
+Not from this package. `createAuthConfig` used to live here and was deleted: it
+had no call site, and what it declared contradicted the auth that runs
+(`MIN_PASSWORD_LENGTH = 8` against the live `minPasswordLength: 12`).
+
+The real configuration is `apps/*/convex/auth.ts`, through
+`@convex-dev/better-auth` — the component owns the `user`, `session`, `account`,
+`verification` and `jwks` tables, which is why none of them is declared in
+`packages/convex-schema`. Read that file rather than a snippet here; a second
+copy of an auth configuration is the defect this section used to be.
 
 ### 3. Create the React client
 Create `apps/reference/lib/auth-client.ts`:

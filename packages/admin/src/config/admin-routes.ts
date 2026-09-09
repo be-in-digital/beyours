@@ -22,11 +22,18 @@ export const adminRoutes = {
   messages: "/dashboard/messages",
 
   /**
-   * Transactions and refunds. `PaymentsPage` carries the only working refund
-   * dialog in the admin, and until this route existed nothing rendered it —
-   * the page was exported from the package and mounted by neither app, so a
-   * refund could not be issued from anywhere. The Settings > Paiements tab is
-   * provider *configuration* and is a different screen.
+   * Transactions and refunds. Until this route existed nothing rendered
+   * `PaymentsPage` — it was exported from the package and mounted by neither
+   * app. The Settings > Paiements tab is provider *configuration* and is a
+   * different screen.
+   *
+   * NOT "the only working refund dialog in the admin", which this note claimed
+   * and which was already untrue: `pages/orders/order-detail-page.tsx` has its
+   * own `OrderRefundDialog` on the same live action, `payments.refundPayment`.
+   * Two dialogs, one mutation. They are deliberately different screens — one
+   * refunds a payment found in the transactions list, the other refunds the
+   * payment attached to an order somebody is looking at — but a comment that
+   * says there is one is how the second gets missed when the first is changed.
    */
   payments: "/dashboard/payments",
 

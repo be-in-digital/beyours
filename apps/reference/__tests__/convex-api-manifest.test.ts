@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest"
 import fs from "node:fs"
+import os from "node:os"
 import path from "node:path"
 
 /**
@@ -94,9 +95,43 @@ function convexDir(app: string): string {
   return path.join(REPO_ROOT, "apps", app, "convex")
 }
 
+/**
+ * The clause the transcription above was missing, and the last one in
+ * `entryPoints()` that is not about a single file.
+ *
+ * Codegen does not walk into a directory holding a `convex.config.ts`: that is
+ * a nested COMPONENT definition, with its own `api`, and `walkDir` is handed
+ * `looksLikeNestedComponent` as its `shouldSkipDir` so the whole subtree is
+ * skipped — `Skipping component directory …` in verbose output
+ * (`convex@1.44.0`, `dist/esm/bundler/index.js:281-289` and `:18-32`).
+ *
+ * Without it this guard demanded `api.d.ts` entries for every module of a local
+ * component, which codegen would never emit — so defining one, which is a
+ * perfectly ordinary thing to do, turned the guard red and pointed the
+ * developer at hand-editing a generated file. That is the same failure the
+ * hardcoded-names draft had, and the docblock above already records why it is
+ * the worse kind: a guard that pushes toward a wrong `api.d.ts`.
+ *
+ * The root `convex/` itself is never subject to this. `walkDir` tests the
+ * CHILD directories it descends into, not the directory it was given, and both
+ * apps have `convex/convex.config.ts` — the deployment's own component
+ * registration. Testing the root would skip everything and leave this file
+ * comparing two empty lists, green over anything.
+ */
+function looksLikeNestedComponent(dirPath: string): boolean {
+  return fs.existsSync(path.join(dirPath, "convex.config.ts"))
+}
+
 /** Every module in `convex/`, as codegen names it: POSIX, extension stripped. */
 function modulesOnDisk(app: string): string[] {
-  const root = convexDir(app)
+  return modulesUnder(convexDir(app))
+}
+
+/**
+ * The same walk, against any directory — so the rules above can be exercised on
+ * a fixture instead of only on the two real trees.
+ */
+function modulesUnder(root: string): string[] {
   const found: string[] = []
 
   const walk = (dir: string) => {
@@ -104,6 +139,9 @@ function modulesOnDisk(app: string): string[] {
       if (entry.name === "_generated" || entry.name === "_deps") continue
       const full = path.join(dir, entry.name)
       if (entry.isDirectory()) {
+        // `walkDir`'s `shouldSkipDir`: a nested component definition and
+        // everything under it is not part of this deployment's `api`.
+        if (looksLikeNestedComponent(full)) continue
         walk(full)
         continue
       }
@@ -133,9 +171,11 @@ function modulesInFullApi(app: string): string[] {
   // `-` is in the character class because `moduleIdentifier` maps it to `_` for
   // the IMPORT alias but leaves it in the quoted `fullApi` key: a module at
   // `convex/lib/menu-sync.ts` survived the import scan and vanished here.
-  // `,` as well as `;` because codegen's native output uses a trailing comma
-  // and this repository's prettier rewrites it to a semicolon — a guard that
-  // only knew the formatted shape would fail on a freshly generated file.
+  // `,` as well as `;` because the two are one formatting pass apart: the
+  // codegen TEMPLATE emits `"name": typeof name,` and codegen then runs
+  // prettier over its own output, which unquotes the key and turns the comma
+  // into a semicolon. A guard that knew only one of the two shapes would fail
+  // on a file somebody had reformatted, which is not a fact about the tree.
   return [...(block?.[1] ?? "").matchAll(/^\s*"?([\w./-]+)"?: typeof \w+[;,]$/gm)].flatMap(
     (match) => (match[1] === undefined ? [] : [match[1]]),
   )
@@ -176,5 +216,121 @@ test("both twins declare the same convex modules", () => {
   // diverge — `apps/reference` refers to the betterAuth component type by import
   // while `apps/themes` inlines it — but the module list is the same tree twice
   // and must not drift.
-  expect(modulesImported("themes")).toEqual(modulesImported("reference"))
+  //
+  // Sorted, because the claim is "the same modules" and not "in the same
+  // order". `modulesImported` reads the file in import order, and codegen's
+  // order is its own business: regenerating ONE app is enough to transpose two
+  // entries, and this then failed with a diff showing two identical-looking
+  // lists in different orders — a red guard that says nothing about the tree,
+  // over the very act it exists to encourage. Order within `api.d.ts` is
+  // already checked per-app by "puts every imported module in fullApi".
+  expect([...modulesImported("themes")].sort()).toEqual(
+    [...modulesImported("reference")].sort(),
+  )
+})
+
+describe.each(APPS)("apps/%s api.d.ts is what codegen writes", (app) => {
+  test("is formatted the way codegen formats it, not the way this repo does", async () => {
+    /**
+     * The other half of "must be what codegen writes", and the half a module
+     * list cannot see.
+     *
+     * `npx convex dev` formats its own output with NO config resolution —
+     * `prettier.format(contents, { parser, pluginSearchDirs: false })`,
+     * `convex/dist/esm/cli/lib/codegen.js:613` — so a generated file always
+     * lands in prettier's DEFAULTS: double quotes, semicolons, unquoted keys.
+     * This repository's `.prettierrc` is the opposite on two of those three
+     * (`semi: false`, `singleQuote: true`), and `_generated` was not ignored,
+     * so `pnpm format` rewrote all 40 000 lines of this file and the next
+     * codegen run rewrote them back. Neither diff meant anything, and a
+     * generated file nobody can regenerate cleanly is one people hand-edit.
+     *
+     * Asserting the FORMATTING rather than the whole content is deliberate:
+     * codegen resolves component definitions against a live deployment, so its
+     * output cannot be reproduced offline. This is the part that can.
+     */
+    const prettier = await import("prettier")
+    const file = path.join(convexDir(app), "_generated/api.d.ts")
+    const source = fs.readFileSync(file, "utf8")
+
+    const asCodegenWouldWriteIt = await prettier.format(source, {
+      parser: "typescript",
+      pluginSearchDirs: false,
+    })
+
+    expect(asCodegenWouldWriteIt).toBe(source)
+  })
+})
+
+describe("the entry-point rules, on a fixture", () => {
+  /**
+   * A `convex/` tree built in a temp directory, so the rules can be exercised
+   * on shapes neither real app has.
+   *
+   * A fixture and not the real tree, deliberately: a probe file written into
+   * either app's own `convex/` while the rest of the suite runs is visible to
+   * every Vitest suite that globs that directory to build a convex-test
+   * harness.
+   */
+  function fixture(files: Record<string, string>): string {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "convex-entrypoints-"))
+    for (const [relPath, contents] of Object.entries(files)) {
+      const full = path.join(root, relPath)
+      fs.mkdirSync(path.dirname(full), { recursive: true })
+      fs.writeFileSync(full, contents)
+    }
+    return root
+  }
+
+  const MODULE = 'export const noop = () => {}\n'
+
+  test("skips a nested component definition and everything under it", () => {
+    // `walkDir` is handed `looksLikeNestedComponent` as its `shouldSkipDir`, so
+    // a directory holding a `convex.config.ts` is a component with its own
+    // `api` and codegen never descends into it (`convex@1.44.0`,
+    // `dist/esm/bundler/index.js:281-289`).
+    //
+    // The transcription here omitted that clause, so defining a local
+    // component — an ordinary thing to do — made this guard demand `api.d.ts`
+    // entries codegen would never write, and tell the developer to hand-edit a
+    // generated file to get them.
+    const root = fixture({
+      "orders.ts": MODULE,
+      "rateLimiter/convex.config.ts": MODULE,
+      "rateLimiter/index.ts": MODULE,
+      "rateLimiter/nested/deep.ts": MODULE,
+    })
+
+    try {
+      expect(modulesUnder(root)).toEqual(["orders"])
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("does not skip the root just because the deployment registers components", () => {
+    // Both real apps have `convex/convex.config.ts`. `walkDir` tests the CHILD
+    // directories it descends into, never the directory it was given — so
+    // applying the rule to the root would skip everything and leave this file
+    // comparing two empty lists, green over anything.
+    const root = fixture({ "convex.config.ts": MODULE, "orders.ts": MODULE })
+
+    try {
+      expect(modulesUnder(root)).toEqual(["orders"])
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test("keeps an ordinary subdirectory", () => {
+    // The other direction: `looksLikeNestedComponent` must not become "skip
+    // every subdirectory". `convex/lib/` is real in both apps.
+    const root = fixture({ "lib/storeFunctions.ts": MODULE, "orders.ts": MODULE })
+
+    try {
+      expect(modulesUnder(root)).toEqual(["lib/storeFunctions", "orders"])
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
+  })
 })

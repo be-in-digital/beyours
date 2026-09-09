@@ -36,15 +36,31 @@ import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import { refundControlState } from "../../lib/refund-eligibility"
 import { RefundControl } from "./refund-control"
 import { useAdminAuthStore } from "../../stores/admin-auth-store"
+import { PAYMENT_STATUS_LABELS } from "../../lib/vocabulary"
 
-const STATUS_CONFIG: Record<PaymentStatus, { label: string; variant: BadgeVariant }> = {
-  pending: { label: "En attente", variant: "secondary" },
-  processing: { label: "En cours", variant: "outline" },
-  succeeded: { label: "Réussi", variant: "default" },
-  failed: { label: "Échoué", variant: "destructive" },
-  refunded: { label: "Remboursé", variant: "secondary" },
-  partially_refunded: { label: "Partiellement remboursé", variant: "outline" },
+/* The badge VARIANT is this table's, the label is not.
+ *
+ * `lib/vocabulary.ts` owns every status word an operator reads, and this file
+ * spelled six of them out again — four of which it shares with the order
+ * payment statuses declared there. They agreed; a copy that agrees is the one
+ * that drifts on the next status added. A shadcn variant is a styling decision
+ * about this table and stays here. */
+const STATUS_VARIANT: Record<PaymentStatus, BadgeVariant> = {
+  pending: "secondary",
+  processing: "outline",
+  succeeded: "default",
+  failed: "destructive",
+  refunded: "secondary",
+  partially_refunded: "outline",
 }
+
+const STATUS_CONFIG: Record<PaymentStatus, { label: string; variant: BadgeVariant }> =
+  Object.fromEntries(
+    (Object.keys(STATUS_VARIANT) as PaymentStatus[]).map((status) => [
+      status,
+      { label: PAYMENT_STATUS_LABELS[status]!, variant: STATUS_VARIANT[status] },
+    ]),
+  ) as Record<PaymentStatus, { label: string; variant: BadgeVariant }>
 
 const PROVIDER_CONFIG: Record<PaymentProvider, { label: string; color: string }> = {
   stripe: { label: "Stripe", color: "bg-purple-100 text-purple-800" },
@@ -135,12 +151,11 @@ function PaymentsLedger({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Tous les statuts</SelectItem>
-              <SelectItem value="pending">En attente</SelectItem>
-              <SelectItem value="processing">En cours</SelectItem>
-              <SelectItem value="succeeded">Réussi</SelectItem>
-              <SelectItem value="failed">Échoué</SelectItem>
-              <SelectItem value="refunded">Remboursé</SelectItem>
-              <SelectItem value="partially_refunded">Partiellement remboursé</SelectItem>
+              {(Object.keys(STATUS_VARIANT) as PaymentStatus[]).map((status) => (
+                <SelectItem key={status} value={status}>
+                  {STATUS_CONFIG[status].label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

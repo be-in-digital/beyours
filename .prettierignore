@@ -12,3 +12,20 @@ apps/web-restaurant
 packages/web-config
 packages/web-tokens
 packages/web-webgl-utils
+
+# Convex codegen owns these, and it formats them itself.
+#
+# `npx convex dev` runs prettier over its own output with NO config resolution
+# — `prettier.format(contents, { parser, pluginSearchDirs: false })` in
+# `convex/dist/esm/cli/lib/codegen.js:613` — so a generated file always comes
+# out in prettier's DEFAULTS: double quotes, semicolons, unquoted keys. This
+# repository's own config is the opposite on two of those three (`semi: false`,
+# `singleQuote: true`).
+#
+# So `pnpm format` rewrote all 40 000 lines of each `api.d.ts` and the next
+# codegen run rewrote them back, forever, and neither diff meant anything. The
+# committed file must be what codegen writes — `convex-api-manifest.test.ts`
+# reads it as the source of truth for which modules exist, and a file the
+# formatter and the generator disagree about is one nobody can regenerate
+# cleanly.
+apps/*/convex/_generated

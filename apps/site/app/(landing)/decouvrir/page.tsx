@@ -10,6 +10,7 @@ import { CompetitorComparison } from "@/components/decouvrir/competitor-comparis
 import { DecouvrirCta } from "@/components/decouvrir/decouvrir-cta";
 import { DiscoveryCallButton } from "@/components/decouvrir/discovery-call-button";
 import { FoundersBanner } from "@/components/decouvrir/founders-banner";
+import { formatPrice, plans } from "@/components/pricing/pricing-data";
 import { SITE_URL } from "@/lib/site-config";
 
 export const metadata: Metadata = {
@@ -51,6 +52,15 @@ function SectionIntro({
 }
 
 export default function DecouvrirPage() {
+  /* The Essentielle offer's own figures, not a transcription of them.
+     `convex/planPrices.ts` calls itself the single source of truth and is what
+     the Stripe checkout charges; this page restated the creation and
+     maintenance amounts as literals in the markup and imported it zero times,
+     so a price change here would have been a page quoting one number while the
+     checkout took another. `pricing-data` is the same derivation `/tarifs`
+     already uses, and `tests/public-prices.test.ts` now refuses a literal. */
+  const essentielle = plans.find((plan) => plan.slug === "essentielle")!;
+
   return (
     <div className="paper-grain relative">
       <DecouvrirHero />
@@ -155,7 +165,7 @@ export default function DecouvrirPage() {
               <div className="flex flex-col justify-center rounded-2xl border border-[color:var(--border)] bg-background p-8">
                 <p className="text-sm text-muted-foreground">Création</p>
                 <p className="font-display text-4xl font-semibold tracking-tight">
-                  3 500 €{" "}
+                  {formatPrice(essentielle.creation)}&nbsp;€{" "}
                   <span className="text-lg font-normal text-muted-foreground">
                     HT
                   </span>
@@ -165,7 +175,7 @@ export default function DecouvrirPage() {
                   Puis maintenance
                 </p>
                 <p className="font-display text-3xl font-semibold tracking-tight">
-                  1 000 €{" "}
+                  {formatPrice(essentielle.maintenanceYearly)}&nbsp;€{" "}
                   <span className="text-base font-normal text-muted-foreground">
                     HT / an
                   </span>

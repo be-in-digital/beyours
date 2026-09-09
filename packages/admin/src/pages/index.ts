@@ -2,9 +2,15 @@
  * Every admin screen, at the subpath `package.json` has always advertised.
  *
  * `"./pages": "./src/pages/index.ts"` was declared and the file did not exist
- * — the only broken subpath of the twenty this package publishes. Ten entries
- * in `packages/mcp-server`'s registry point client builds at
- * `@be-in-digital/admin/pages`, and every one of them failed to resolve.
+ * — the only broken one of the eight subpaths this package publishes (`.`,
+ * `./components`, `./stores`, `./stores/api`, `./pages`, `./lib`, `./hooks`,
+ * `./game`). Ten entries in `packages/mcp-server`'s registry point client
+ * builds at `@be-in-digital/admin/pages`, and every one of them failed to
+ * resolve.
+ *
+ * This note said twenty, which was never the count of anything: `exports` in
+ * `package.json` is the list, and it is eight. Count it there before quoting a
+ * number here.
  *
  * It re-exports the per-screen barrels rather than restating them, so a screen
  * added to `pages/<x>/index.ts` arrives here on its own.

@@ -81,7 +81,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { materializeMirror } from "./lib/mirror-tree.mjs"
+import { materializeMirror, trackedFiles } from "./lib/mirror-tree.mjs"
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
 const SOURCE = join(ROOT, "apps/themes")
@@ -130,7 +130,8 @@ try {
   }
 
   log("→ materialising the mirror tree")
-  const { copied } = materializeMirror(SOURCE, tree)
+  // Same tree as the publisher's, `tracked` included.
+  const { copied } = materializeMirror(SOURCE, tree, { tracked: trackedFiles(SOURCE) })
   log(`   ${copied.length} file(s)`)
 
   log("→ pinning every engine dependency to its tarball")

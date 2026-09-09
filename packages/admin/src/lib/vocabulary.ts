@@ -4,8 +4,20 @@
  *
  * Every page used to redeclare these maps locally, and they drifted (two
  * `statusConfig` twins for orders; a StoreStatus map missing "draft" that
- * shipped a raw english status to the UI). One module, imported everywhere:
- * label drift is now impossible.
+ * shipped a raw english status to the UI). One module, imported everywhere.
+ *
+ * This header used to end "label drift is now impossible", which was a claim
+ * about a property nothing enforced — and it was already false when it was
+ * written: `pages/dashboard/recent-orders-table.tsx` carried its own
+ * `statusLabels` and `typeLabels`, eleven strings duplicating the two maps
+ * below. They agreed, which is why nobody noticed; a map that agrees today is
+ * exactly what drifts tomorrow. It reads from here now, and
+ * `__tests__/status-vocabulary.test.ts` refuses a new local copy rather than
+ * asking anyone to remember.
+ *
+ * A page may still keep something that is NOT a label — a dot colour, a layout
+ * class keyed by status. What may not live outside this file is the French the
+ * operator reads.
  */
 
 import type {
@@ -65,6 +77,28 @@ export const ORDER_PAYMENT_STATUS_CONFIG: Record<OrderPaymentStatus, StatusBadge
  * order cancelled after settlement, whose payment stays "paid" — so every
  * member of the union needs its sentence.
  */
+/**
+ * Status of a *payment record*, which is not the same enum as an order's
+ * payment status above.
+ *
+ * `payments.status` is the provider's view — `processing` and `succeeded`
+ * exist here and nowhere else — while `orders.paymentStatus` is the order's,
+ * with `paid`, `refund_pending` and no `processing`. Four of the French words
+ * coincide, which is why the payments screen's own copy read as harmless.
+ *
+ * Labels only. The payments screen keeps its `variant` mapping locally,
+ * because a shadcn Badge variant is a styling decision about that table and
+ * not vocabulary; what this module owns is the sentence the operator reads.
+ */
+export const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  pending: "En attente",
+  processing: "En cours",
+  succeeded: "Réussi",
+  failed: "Échoué",
+  refunded: "Remboursé",
+  partially_refunded: "Partiellement remboursé",
+}
+
 export const INVOICE_REFUSAL_LABELS: Record<InvoiceRefusalReason, string> = {
   seller_incomplete:
     "Identité vendeur incomplète : la raison sociale de l'établissement n'est pas renseignée. Chaque commande encaissée reste sans facture tant qu'elle manque.",

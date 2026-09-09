@@ -12,7 +12,7 @@ import { v } from "convex/values"
  * who chose it reached the redacted "Server Error" that #374 was written to
  * remove (#411). Only the provider can say whether a key works, and a Convex
  * query cannot ask it, so the answer is recorded when something that CAN ask
- * learns it: the nightly `stripe.verifyStripeKey`, and every checkout attempt.
+ * learns it: the hourly `stripe.verifyStripeKey`, and every checkout attempt.
  *
  * WHY ITS OWN TABLE, AND NOT A FIELD ON `globalSettings`. That was the first
  * shape and it was wrong twice over.

@@ -102,6 +102,23 @@ log_section() { echo -e "\n${BLUE}═══════════════�
 
 log_section "Preflight Checks"
 
+# Say the legacy default out loud. The header comment above has always
+# described it, and a comment is read by whoever edits the script rather than
+# by whoever runs it: an operator who omits SITE_SLUG gets the fleet-wide IAM
+# user and the shared bucket with no signal at all, which is how existing
+# deployments came to hold credentials to other clients' data (#199,
+# apps/docs/deployment/aws-ownership.md). It is still allowed — those resources
+# exist and a legacy site has to be able to re-run this — so it warns rather
+# than refusing.
+if [ -z "$SITE_SLUG" ]; then
+  log_warn "No SITE_SLUG: provisioning into the SHARED fleet account."
+  log_warn "  bucket   $BUCKET_NAME"
+  log_warn "  IAM user $IAM_USER"
+  log_warn "  These are the fleet-wide resources every legacy site already uses,"
+  log_warn "  so the credentials this writes can read every other client's media."
+  log_warn "  A new client wants its own: SITE_SLUG=<slug> DOMAIN=<domain> $0"
+fi
+
 if ! command -v aws &>/dev/null; then
   log_error "AWS CLI not found. Install with: brew install awscli"
   exit 1
@@ -290,7 +307,14 @@ log_success "CORS configured (PUT only)"
 # ceiling. Issue #331.
 #
 # The app now purges versions itself: convex/cmsMediaDelete.ts, which is the
-# only media-deletion path the delivered app runs. (packages/core's
+# only media-deletion path the delivered app runs — and that is true because it
+# is enforced rather than observed. convex/cmsMediaConfirmUpload.ts deletes
+# too, when it reads an uploaded SVG back and refuses it for active content,
+# and it shipped its own bare DeleteObjectCommand: a marker over the key, every
+# version retained, for the one object on that path we have decided is hostile.
+# It now calls purgeS3Objects like everything else, and
+# tests/convex/cms-media-upload.test.ts asserts the version ids go with it.
+# (packages/core's
 # S3Service.delete does the same for a consumer of that package, and only when
 # the injected S3Operations adapter implements listObjectVersions and
 # deleteObjectVersion — they are optional on the interface. Nothing in apps/*

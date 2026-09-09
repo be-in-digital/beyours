@@ -910,6 +910,17 @@ export const create = {
         ordered: number
       }
     >()
+    // How long this basket takes to cook — the longest line, not the sum,
+    // because a kitchen cooks in parallel. Same rule as `summariseOrderLines`,
+    // accumulated here because this loop already has every product in hand and
+    // a second pass would be one `db.get` per line for a number we can add up
+    // as we go.
+    //
+    // It goes on the ORDER, not only on the kitchen ticket. The confirmation
+    // email reads `order.estimatedPrepTime` and the ticket is a different
+    // document, so « Prête dans environ 20 minutes » had never once printed —
+    // for any order, since the line was written (#413).
+    let longestPrepTime = 0
     for (const item of args.items) {
       if (!item.productId) {
         throw new OrderRefusedError(
@@ -967,6 +978,10 @@ export const create = {
           product,
           ordered: alreadySold + line.quantity,
         })
+      }
+
+      if (typeof product.preparationTime === "number") {
+        longestPrepTime = Math.max(longestPrepTime, product.preparationTime)
       }
 
       verifiedItems.push({
@@ -1236,6 +1251,9 @@ export const create = {
       paymentMethod: args.paymentMethod,
       paymentStatus: "pending",
       source: "website",
+      // Undefined when no product in the basket declares one: the email then
+      // prints no timing row, which is honest, rather than "environ 0 minutes".
+      estimatedPrepTime: longestPrepTime > 0 ? longestPrepTime : undefined,
       notes: args.notes,
       viewToken,
       idempotencyKey: args.idempotencyKey,

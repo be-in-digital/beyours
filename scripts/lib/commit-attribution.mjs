@@ -44,15 +44,23 @@
  *   - `claude` never counts when it is `CLAUDE.md`, which commit subjects here
  *     name routinely.
  *
- * What that narrowing costs, stated rather than discovered later: the rule these
- * enforce is "no Anthropic address and no model name", which is not the same as
- * `CLAUDE.md`'s "no reference to the assistant at all". A trailer reading
- * `Co-authored-by: Claude <claude@example.com>` passes, because nothing in it
- * distinguishes the assistant from a colleague. Nor is any of this a defence
- * against deliberate evasion — a Cyrillic `С` or a zero-width space walks
- * through it, and both were measured doing so. This guards against a harness
- * appending its footer and against an honest mistake, which is what put 17
- * commits on `main`; an author who wants the credit in can have it.
+ * What that narrowing costs, stated rather than discovered later. A trailer
+ * reading `Co-authored-by: Claude <claude@example.com>` passes, because nothing
+ * in it distinguishes the assistant from a colleague. Nor is any of this a
+ * defence against deliberate evasion — a Cyrillic `С` or a zero-width space
+ * walks through it, and both were measured doing so. This guards against a
+ * harness appending its footer and against an honest mistake, which is what put
+ * 17 commits on `main`; an author who wants the credit in can have it.
+ *
+ * The first four rules enforced "no Anthropic address and no model name", which
+ * is narrower than `CLAUDE.md`'s "no reference to the assistant at all" — and
+ * an audit measured the gap rather than arguing about it: a robot emoji used as
+ * a signature, a bare `Claude Code` in a body line, `AI-generated`, and
+ * `Made with Claude` all passed. `assistant-name`, `ai-credit` and
+ * `robot-signature` close those, and the verb list of `generated-with` closes
+ * the fourth. Each is deliberately whole-line or subject-qualified, because
+ * this product has an AI-generated blog and a GPT translation pipeline: those
+ * are things a commit here legitimately talks about.
  *
  * `why` is printed to whoever tripped the rule, so it is written for them and
  * not for us. Adding an assistant means adding a row here and a case to
@@ -84,11 +92,74 @@ export const ATTRIBUTION_RULES = [
   {
     id: "generated-with",
     why: 'a "generated with" credit',
-    match: /generated\s+(?:with|by)\b[^\n]{0,40}\bclaude(?!\.md)/i,
+    // The verb list is the widening #438's audit asked for: the rule read
+    // `generated` alone, so "Made with Claude" and "Built with Claude Code" —
+    // the two credits a person types by hand rather than a harness appending
+    // its footer — walked straight through it.
+    //
+    // `\bclaude` within 40 characters is what keeps it honest, and it is not
+    // decoration: this repository's own history carries "missed the 200 exports
+    // built with `storeQuery`", and a verb list without the subject would refuse
+    // that commit. A guard that refuses a commit somebody had every right to
+    // write gets deleted rather than fixed.
+    match:
+      /\b(?:generated|made|built|written|created|authored|produced|crafted)\s+(?:with|by)\b[^\n]{0,40}\bclaude(?!\.md)/i,
     // The harness footer is its own line, emoji and markdown link included —
     // and it is a footer, so it is short. A paragraph that opens with the same
     // words is prose and goes back to its author.
-    removable: /^[ \t]*(?:[^\p{L}\p{N}\s]{1,3}[ \t]*)?generated\s+(?:with|by)\b[^\n]{0,80}$/iu,
+    removable:
+      /^[ \t]*(?:[^\p{L}\p{N}\s]{1,3}[ \t]*)?(?:generated|made|built|written|created|authored|produced|crafted)\s+(?:with|by)\b[^\n]{0,80}$/iu,
+  },
+  {
+    id: "assistant-name",
+    why: "a bare mention of the assistant by product name",
+    // `CLAUDE.md` rule 10 is "no reference to Claude at all", and the four
+    // rules above enforced something narrower — no Anthropic address, no
+    // trailer, no link, no "generated with". So "Refactored by Claude Code."
+    // in a body line, which is the plainest possible violation of the written
+    // rule, passed.
+    //
+    // Narrow on purpose, and each exclusion is a commit somebody may write:
+    //   - `CLAUDE.md` is named routinely here, and the separator class does not
+    //     admit `.`, so the filename cannot match.
+    //   - `Claude Dupont` is a colleague. The second word has to be one of the
+    //     product names.
+    //   - `claude.ai/code` is already `session-link`'s, whose reason is sharper.
+    match: /\bclaude[ \t-]+(?:code|ai|opus|sonnet|haiku)\b/i,
+    // Only a line that is nothing BUT the credit — a footer, optionally behind
+    // an emoji. "Refactored by Claude Code." is a sentence, and deleting the
+    // sentence to enforce a naming rule is not the hook's business: it is
+    // handed back to its author.
+    removable:
+      /^[ \t]*(?:[^\p{L}\p{N}\s]{1,3}[ \t]*)?claude[ \t-]+(?:code|ai|opus|sonnet|haiku)[ \t.!]*$/iu,
+  },
+  {
+    id: "ai-credit",
+    why: 'an "AI-generated" credit on the commit itself',
+    // Whole-line, and that is the whole design. This product HAS an
+    // AI-generated blog (`blogAutoQueue`, `blogAutoConfig`, the GPT translation
+    // pipeline), so "AI-generated" is ordinary vocabulary in a subject here:
+    // `feat(blog-auto): schedule AI-generated articles for the week` is a
+    // commit about a feature, not a credit, and refusing it would get this
+    // guard deleted. A line that is NOTHING but the credit is not describing a
+    // feature — nobody writes `AI-generated.` on its own line about a blog.
+    match:
+      /^[ \t]*(?:[^\p{L}\p{N}\s]{1,3}[ \t]*)?(?:this\s+(?:commit|change|patch|code|pull\s+request)\s+(?:was|is)\s+)?ai[ \t-]*(?:generated|assisted|authored|written)(?:\s+(?:with|by)\s[^\n]{0,40})?[ \t.!]*$/iu,
+    // It matched the whole line, so removing the line removes exactly it.
+    removable:
+      /^[ \t]*(?:[^\p{L}\p{N}\s]{1,3}[ \t]*)?(?:this\s+(?:commit|change|patch|code|pull\s+request)\s+(?:was|is)\s+)?ai[ \t-]*(?:generated|assisted|authored|written)(?:\s+(?:with|by)\s[^\n]{0,40})?[ \t.!]*$/iu,
+  },
+  {
+    id: "robot-signature",
+    why: "a robot emoji used as a signature",
+    // A line whose entire content is 🤖, punctuation and space. The harness
+    // footer opens with one and the four rules above catch that footer by its
+    // words; strip the words and the emoji alone was a signature nothing read.
+    //
+    // Whole-line and emoji-only, so it cannot fire on a commit that puts a
+    // robot in a sentence — a CHANGELOG entry about the KDS, say.
+    match: /^[ \t]*[\p{P}\p{S}\s]*🤖[\p{P}\p{S}\s]*$/u,
+    removable: /^[ \t]*[\p{P}\p{S}\s]*🤖[\p{P}\p{S}\s]*$/u,
   },
   {
     id: "session-link",
@@ -314,6 +385,36 @@ export const SELF_TEST_CASES = [
     expect: "reject",
   },
   {
+    name: "a robot emoji alone is a signature",
+    message: "feat: a change\n\n🤖\n",
+    expect: "reject",
+  },
+  {
+    name: "a bare Claude Code mention in the body is refused",
+    message: "feat: a change\n\nRefactored by Claude Code.\n",
+    expect: "reject",
+  },
+  {
+    name: 'a "Made with Claude" credit is refused',
+    message: "feat: a change\n\nMade with Claude\n",
+    expect: "reject",
+  },
+  {
+    name: 'a "Built with Claude Code" credit is refused',
+    message: "feat: a change\n\nBuilt with Claude Code\n",
+    expect: "reject",
+  },
+  {
+    name: "an AI-generated credit on its own line is refused",
+    message: "feat: a change\n\nAI-generated\n",
+    expect: "reject",
+  },
+  {
+    name: "a self-referential AI-assisted sentence is refused",
+    message: "feat: a change\n\nThis commit was AI-assisted.\n",
+    expect: "reject",
+  },
+  {
     name: "naming CLAUDE.md is not attribution",
     message: "docs: pin CLAUDE.md's feature count to the commit it was measured at\n",
     expect: "accept",
@@ -331,6 +432,30 @@ export const SELF_TEST_CASES = [
   {
     name: "a domain in a commit subject is not an address",
     message: "feat(csp): allow anthropic.com in the connect-src allowlist\n",
+    expect: "accept",
+  },
+  {
+    // The product's own vocabulary. `blogAutoQueue` writes AI-generated
+    // articles, and a commit about that feature is not a credit.
+    name: "an AI-generated FEATURE in a subject is not a credit",
+    message: "feat(blog-auto): schedule AI-generated articles for the week\n",
+    expect: "accept",
+  },
+  {
+    name: "describing the AI translation pipeline is not a credit",
+    message: "docs: explain how the AI-assisted translation queue drains\n",
+    expect: "accept",
+  },
+  {
+    // This repository's own history: `built with` followed by a code
+    // identifier, not by an assistant.
+    name: "a credit verb without the assistant is prose",
+    message: "fix: count the 200 exports built with storeQuery as public\n",
+    expect: "accept",
+  },
+  {
+    name: "an emoji in a sentence is not a signature",
+    message: "feat(kds): show a 🤖 badge on tickets an automation created\n",
     expect: "accept",
   },
 ]

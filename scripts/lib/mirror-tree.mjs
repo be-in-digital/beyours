@@ -28,6 +28,7 @@ import {
   unlinkSync,
 } from "node:fs"
 import { dirname, join, posix } from "node:path"
+import { execFileSync } from "node:child_process"
 
 /**
  * Never sent to the mirror, matched at the root of `apps/themes` only.
@@ -77,6 +78,55 @@ function isLocalDotenv(name) {
 /** Never overwritten and never deleted on the mirror: its own, or regenerated. */
 export const MIRROR_OWNED = [".git", "node_modules", ".next", "pnpm-lock.yaml", "next-env.d.ts"]
 
+/**
+ * Every path git tracks under `source`, POSIX and source-relative — or `null`
+ * when git cannot answer.
+ *
+ * WHY THIS EXISTS. The lists above are a NAME allow-list, and the question they
+ * were standing in for is "is this file part of the product". Those are not the
+ * same question, and the gap is everything a developer leaves lying in
+ * `apps/themes`: a scratch test, a `page.old.tsx`, a screenshot, a `.log` from a
+ * run that went wrong, a directory of experiments. The walk reads the
+ * FILESYSTEM and consults no gitignore, so none of it was excluded — measured on
+ * a working tree carrying one untracked test file, which was duly materialised
+ * into the tree the publisher pushes.
+ *
+ * That path takes no CI gate: `README.md` and `publish-mirror.mjs` both document
+ * running the publisher by hand, which is how a local `.env.local` once reached
+ * the mirror. Naming a file cannot anticipate what someone will leave next to
+ * it. "Tracked by git" can, and it is the same question the repository already
+ * answers for every other purpose.
+ *
+ * It NARROWS, never widens: `vercel.json` is tracked and still must not ship, so
+ * the exclusions above still apply on top. And it is not a replacement for
+ * `NOT_SHIPPED_LOCAL_STATE` — `.infisical.json` is gitignored today, which makes
+ * this a second lock on the same door rather than the only one.
+ *
+ * `null` rather than an empty set when git is unavailable, so a caller can tell
+ * "nothing is tracked" from "I could not ask" and refuse rather than ship
+ * everything. `-z` because a filename may contain a newline, and git quotes such
+ * paths in its default output.
+ *
+ * @param {string} source
+ * @returns {Set<string> | null}
+ */
+export function trackedFiles(source) {
+  try {
+    const raw = execFileSync("git", ["-C", source, "ls-files", "-z"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+      maxBuffer: 64 * 1024 * 1024,
+    })
+    const files = raw.split("\0").filter(Boolean)
+    // An empty answer inside a real work tree would mean `apps/themes` holds no
+    // tracked file at all, which cannot be true and would silently publish an
+    // empty repository over every client's template. Treated as "could not ask".
+    return files.length > 0 ? new Set(files) : null
+  } catch {
+    return null
+  }
+}
+
 /** True for a path the mirror must not receive. `rel` is POSIX, from the source root. */
 export function isNotShipped(rel) {
   const segments = rel.split("/")
@@ -103,9 +153,17 @@ export const isExcluded = (rel) => isNotShipped(rel) || isMirrorOwned(rel)
  * `dest` that the source no longer has is removed, except what the mirror owns.
  * Without it (what the checker wants) `dest` is simply filled.
  *
+ * `tracked` is the set from `trackedFiles`, and passing it is what makes the
+ * shipped set "what git tracks, minus the exclusions" rather than "whatever is
+ * on disk, minus some names". `null` — the default, and what a test fixture
+ * outside a work tree gets — falls back to the name lists alone.
+ *
+ * @param {string} source
+ * @param {string} dest
+ * @param {{ prune?: boolean, tracked?: Set<string> | null }} [options]
  * @returns {{ copied: string[], deleted: string[] }} POSIX paths, source-relative.
  */
-export function materializeMirror(source, dest, { prune = true } = {}) {
+export function materializeMirror(source, dest, { prune = true, tracked = null } = {}) {
   const copied = []
   const deleted = []
 
@@ -135,6 +193,10 @@ export function materializeMirror(source, dest, { prune = true } = {}) {
         walkSource(childRel)
         continue
       }
+      // Not a directory, so `tracked` can answer for it. A file git does not
+      // know about is not part of the product, whatever it is called.
+      if (tracked && !tracked.has(childRel)) continue
+
       mkdirSync(dirname(dst), { recursive: true })
       if (entry.isSymbolicLink()) {
         // rsync -a copies a symlink as a symlink. None exist under

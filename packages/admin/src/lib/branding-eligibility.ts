@@ -3,8 +3,10 @@
  * on the Design screen.
  *
  * WHY IT EXISTS: the sidebar lets anyone holding `stores:read` onto this screen,
- * and `manager` holds exactly that and not `stores:write`. The four save buttons
- * were drawn live for them, and `stores.updateBranding` — a `storeMutation` with
+ * and `manager` holds exactly that and not `stores:write`. The save buttons —
+ * two of them, « Enregistrer les couleurs » and « Enregistrer la typographie »,
+ * each wrapped in a `BrandingControl` in `pages/design/design-page.tsx` — were
+ * drawn live for them, and `stores.updateBranding` — a `storeMutation` with
  * `permission: "stores:write"` in both apps' `convex/stores.ts` — would have
  * thrown on the click. That is the same defect the refund button had, and
  * `lib/refund-eligibility.ts` is the shape of its cure; this module is its twin
@@ -13,6 +15,10 @@
  * The one difference from the refund case: nothing about a store makes its
  * branding un-editable, so there is no `visible` here. The control is always
  * drawn; only the role decides whether it works.
+ *
+ * (This note said four buttons. There are two, and there were two when it was
+ * written — `design-page.tsx` renders exactly two `BrandingControl` wrappers.
+ * Count them there rather than here if the number matters to you.)
  */
 
 import { hasPermission, type Permission, type Role } from "@be-in-digital/core"

@@ -169,9 +169,11 @@ codebase emits. The admin says so itself:
 disponible aujourd'hui".
 
 **Not built:** ESC/POS byte generation, network (port 9100) or USB transport, printer
-status polling. The `printerSettings` table is registered and has **zero readers and
-zero writers**; its only non-schema reference is a delete cascade for rows nothing
-creates. The three cloud-printing providers in `kitchen-print.ts:151,157,163` are
+status polling. There is no `printerSettings` table: it was declared for that path,
+never gained a reader or a writer, and has been removed from the schema — along with
+the six unconsumed types (`PrinterType = 'network' | 'usb' | 'bluetooth'` among them)
+that outlived it on `@be-in-digital/convex-schema`'s public API. What ships is
+`stores.printConfig`. The three cloud-printing providers in `kitchen-print.ts:151,157,163` are
 declared `available: false`. The decided path is cloud printing (Star CloudPRNT /
 Epson Server Direct Print, where the printer polls an HTTP endpoint) rather than a
 local agent, because a browser cannot open a raw socket and Convex cannot reach a

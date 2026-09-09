@@ -159,11 +159,26 @@ describe.each([...hashedInputs.keys()].sort())("%s", (taskId) => {
     // green; an input that is not a function of the source tree destroys the
     // cache outright, and does it silently.
     const artefacts = [...files].filter((file) =>
-      /(^|\/)(node_modules|\.next|\.turbo|\.vite|coverage|test-results|playwright-report)\//.test(
+      /(^|\/)(node_modules|\.next|\.turbo|\.vite|\.convex-build|coverage|test-results|playwright-report)\//.test(
         file,
       ),
     )
     expect(artefacts).toEqual([])
+  })
+
+  test("hashes no incremental-compiler state either", () => {
+    // `tsconfig.tsbuildinfo` is not inside a directory, so the pattern above
+    // could never have seen it — and it survived the first sweep for exactly
+    // that reason. Every `pnpm typecheck` rewrites it, and `apps/themes/**`
+    // was hashing the one in that app: appending a single space to it moved
+    // all thirteen `#test` hashes (`bbaeceabd8549872` → `ff9e92c128b8dfad`),
+    // so a local typecheck in the template threw the monorepo's whole test
+    // cache away.
+    //
+    // The sibling `.convex-build/` — 135 files, written by `npx convex dev` —
+    // is covered by the directory pattern above, now that it is named there.
+    const buildInfo = [...files].filter((file) => file.endsWith(".tsbuildinfo"))
+    expect(buildInfo).toEqual([])
   })
 
   test("still hashes its own source", () => {
@@ -177,6 +192,66 @@ describe.each([...hashedInputs.keys()].sort())("%s", (taskId) => {
     )
     expect(own.length).toBeGreaterThan(0)
   })
+})
+
+/**
+ * The artefacts that are not on disk during a CI run.
+ *
+ * The two tests above filter what turbo hashed, so they can only see an
+ * artefact that EXISTS while they run — and `.convex-build/` and
+ * `tsconfig.tsbuildinfo` are written by `npx convex dev` and `pnpm typecheck`
+ * in a developer's checkout, not by anything CI does before `Test`. Both were
+ * therefore invisible to a guard that had already been written to catch exactly
+ * their class, and both survived #424's sweep for that reason.
+ *
+ * So this one CREATES them, asks turbo what it would hash, and removes them
+ * again. It is the only assertion here that can fail on a clean runner, which
+ * is the only kind of runner this repository has.
+ */
+test("a local typecheck or convex build does not move a single test hash", () => {
+  const probes = [
+    path.join(REPO_ROOT, "apps/themes/.convex-build"),
+    path.join(REPO_ROOT, "apps/themes/tsconfig.tsbuildinfo"),
+  ]
+  // Never clobber a real one: a developer running this suite has both, and
+  // deleting their incremental state to prove a point is not this test's
+  // business. Their presence is not a reason to skip — turbo is asked the same
+  // question either way, and the answer must be the same.
+  const preexisting = probes.filter((probe) => fs.existsSync(probe))
+
+  const hashes = () => {
+    const raw = execFileSync("npx", ["turbo", "run", "test", "--dry=json"], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "ignore"],
+    })
+    const plan = JSON.parse(raw) as { tasks: { taskId: string; hash: string }[] }
+    return plan.tasks
+      .filter((task) => task.taskId.endsWith("#test"))
+      .map((task) => `${task.taskId}=${task.hash}`)
+      .sort()
+  }
+
+  const before = hashes()
+  expect(before.length).toBeGreaterThan(0)
+
+  try {
+    if (!preexisting.includes(probes[0]!)) {
+      fs.mkdirSync(probes[0]!, { recursive: true })
+      fs.writeFileSync(path.join(probes[0]!, "modules.json"), '{"probe":true}')
+    }
+    if (!preexisting.includes(probes[1]!)) {
+      fs.writeFileSync(probes[1]!, '{"program":{"fileNames":[]}}')
+    }
+
+    expect(hashes()).toEqual(before)
+  } finally {
+    for (const probe of probes) {
+      if (preexisting.includes(probe)) continue
+      fs.rmSync(probe, { recursive: true, force: true })
+    }
+  }
 })
 
 test("`test:coverage` declares the same inputs as `test`", () => {

@@ -540,7 +540,12 @@ describe("the publisher runs the guard", () => {
    */
   test("it installs into a sandbox, not into the clone it is about to push", () => {
     expect(publisher).toContain("const sandbox = join(work, \"typecheck\")")
-    expect(publisher).toContain("materializeMirror(SOURCE, sandbox, { prune: false })")
+    // `tracked` too: the sandbox has to be the same FILE SET as the push, not
+    // just the same source directory. `mirror-publisher.test.ts` asserts both
+    // calls take it.
+    expect(publisher).toContain(
+      "materializeMirror(SOURCE, sandbox, { prune: false, tracked })",
+    )
     expect(publisher).toContain("checkPinnedTree(sandbox)")
     expect(publisher).not.toContain("checkPinnedTree(clone)")
   })

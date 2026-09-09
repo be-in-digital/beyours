@@ -213,7 +213,7 @@ describe("cardProvider: none", () => {
  *
  * Only Stripe can answer whether a key works, and a query cannot ask Stripe.
  * So the answer is recorded when something that CAN ask learns it — the
- * nightly `stripe.verifyStripeKey`, and every checkout attempt — and read back
+ * hourly `stripe.verifyStripeKey`, and every checkout attempt — and read back
  * here.
  */
 describe("what the provider said about our credentials", () => {

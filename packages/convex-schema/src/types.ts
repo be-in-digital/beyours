@@ -16,8 +16,6 @@ import {
   updateOrderStatusSchema,
   createKitchenTicketSchema,
   updateKitchenTicketStatusSchema,
-  createPrinterSettingsSchema,
-  updatePrinterSettingsSchema,
   createPaymentSchema,
   refundPaymentSchema,
   createLanguageSchema,
@@ -288,22 +286,19 @@ export type KitchenTicketItem = {
 }
 
 // ============================================================================
-// PRINTER TYPES
+// PRINTER TYPES — none, deliberately
 // ============================================================================
-
-export type CreatePrinterSettingsInput = z.infer<typeof createPrinterSettingsSchema>
-export type UpdatePrinterSettingsInput = z.infer<typeof updatePrinterSettingsSchema>
-
-export type PrinterType = 'network' | 'usb' | 'bluetooth'
-
-export type PrinterConnectionInfo = {
-  ipAddress?: string
-  port?: number
-  usbVendorId?: string
-  usbProductId?: string
-}
-
-export type PaperWidth = 58 | 80
+//
+// Six types lived here with zero consumers, `PrinterType = 'network' | 'usb' |
+// 'bluetooth'` among them: the three transports of the ESC/POS path that
+// `CLAUDE.md` records as decided against. They survived the removal of the
+// `printerSettings` table because they are exported from a published package
+// rather than declared in a schema file, and a type nothing imports is invisible
+// to a schema sweep.
+//
+// The print configuration that exists is `stores.printConfig`, and the three
+// cloud providers a thermal path would use are in
+// `packages/admin/src/lib/kitchen-print.ts`, all `available: false`.
 
 // ============================================================================
 // PAYMENT TYPES
@@ -540,11 +535,7 @@ export type KitchenTicketDoc = BaseEntity & CreateKitchenTicketInput & {
   printCount: number
 }
 
-export type PrinterSettingsDoc = BaseEntity & CreatePrinterSettingsInput & {
-  isDefault: boolean
-  isOnline: boolean
-  lastSeenAt?: number
-}
+
 
 export type PaymentDoc = BaseEntity & CreatePaymentInput & {
   status: PaymentProviderStatus

@@ -50,8 +50,9 @@
 
 ### Integrations
 - **Payments**: Stripe, SumUp, PayPal, Cash — Square is announced, not built.
-  `payments.cardProvider` also admits `none`, which is how a cash-only
-  establishment removes the card tile from the checkout rather than greying it.
+  `globalSettings.payments.cardProvider` also admits `none`, which is how a
+  cash-only establishment removes the card tile from the checkout rather than
+  greying it.
 - **Delivery**: Uber Direct
 - **Platforms**: Uber Eats, Deliveroo
 - **Translation**: GPT-3.5-turbo
@@ -199,8 +200,13 @@ Stripe, SumUp, PayPal, Cash, tracking, refunds. **Square is not
 implemented** — `refundPolicy.ts` refuses it by name. It is presented as
 forthcoming in the admin and in the guided tour; do not describe it as available.
 
-`payments.cardProvider` is `stripe | sumup | none`. `none` is the owner saying
-"we do not take cards" and the checkout removes the tile entirely;
+`cardProvider` is `stripe | sumup | none`, and it lives on
+**`globalSettings.payments`** — one row for the deployment, not a field on
+`stores`. This file called it `payments.cardProvider` twice with nothing to say
+which document that was, and there is no `payments` field on `stores` at all;
+`packages/convex-schema/src/tables/globalSettings.ts:118` is the declaration.
+`none` is the owner saying "we do not take cards" and the checkout removes the
+tile entirely;
 `paymentAvailability.get` answers `card` (can one be taken right now — greys the
 tile) and `cardOffered` (does this establishment take cards at all — removes it)
 as two separate questions, because a misconfigured provider and a deliberate
@@ -275,7 +281,10 @@ deliberately not `customers:read`, which a waiter holds. Operator guide and the
 ### Design
 Design system in `packages/ui`. A site's look is fixed **at clone time** by
 `pnpm template:apply <slug>` — 5 verticals, 51 templates under
-`apps/themes/templates/`, each two files (`theme.css`, `fonts.ts`). Those are
+`apps/themes/templates/`, each **four** files: `theme.css`, `fonts.ts`,
+`template.json` and `DESIGN.md`. `template.json` is load-bearing, not
+documentation — the applier reads it — so a template written from the "two
+files" this line used to claim would not apply. Those are
 the storefront's *defaults*, compile-time constants in `apps/*/app/globals.css`
 and `apps/*/site/fonts.ts`; per-store branding overrides them at runtime — see
 below.
@@ -513,12 +522,21 @@ client could not send at all. The decision lives in
 `packages/core/src/email/providers.ts`, which imports no AWS SDK: SES is the
 injected `SESOperations`, Resend is plain `fetch`, and both go through
 `createSESService`, so validation, rate limiting and bulk batching are the same
-either way. An unknown provider name is refused rather than falling back.
+either way. An unknown provider name is **refused rather than falling back to
+SES** — `resolveEmailProvider` returns a refusal the caller surfaces; it does
+not throw, so do not go looking for one.
 Set `EMAIL_PROVIDER`, `RESEND_API_KEY` and `RESEND_FROM_EMAIL` on **both** the
 Next.js env and the Convex deployment (`pnpm env:sync` carries them). Resend has
 no configuration sets, so a client who moves loses open/click tracking, not
-their mail. No Convex action constructs an `SESv2Client` any more —
-`convex/emailTransport.ts` is the one seam.
+their mail. In the ENGINE — `apps/themes` and `apps/reference` — no Convex
+action constructs an `SESv2Client` any more; `convex/emailTransport.ts` is the
+one seam, and `email-provider-switch.test.ts` holds it there.
+
+That sentence used to be unqualified, and it was false of the third app:
+`apps/site/convex/email/providers.ts:23,65,68` builds its own `SESv2Client`.
+That is not drift — `apps/site` is the commercial site with its own Convex
+backend and none of the engine packages, so it has no `emailTransport.ts` to
+route through. The rule is the engine's; say which app you mean.
 
 ---
 
@@ -561,7 +579,12 @@ actually reads — several that used to be listed here (`SUMUP_API_KEY`,
 `UBER_EATS_API_KEY`, `DELIVEROO_API_KEY`, `UBER_DIRECT_CUSTOMER_ID`) are read
 by nothing and never were.
 
-**Required — a deployment refuses to start without these** (`schemas.ts:69-105`):
+**Required — a deployment refuses to start without these.** The block that
+enforces them is `siteRequiredShape` in `packages/core/src/env/schemas.ts`, and
+it holds **ten**: the ten down to `AWS_SES_FROM_EMAIL`. `OPENAI_API_KEY` is
+listed here too because nothing that uses AI works without it, but it is
+declared optional and a deployment does boot without one — count the block, not
+this list, and do not re-add a line range, which is what went stale:
 
 ```bash
 NEXT_PUBLIC_CONVEX_URL=       # the backend itself
@@ -570,12 +593,26 @@ SITE_URL=                     # password reset links
 BETTER_AUTH_SECRET=           # >= 32 chars: openssl rand -base64 32
 ENCRYPTION_KEY=               # 64 hex chars: openssl rand -hex 32
 AWS_REGION=eu-west-1
-AWS_ACCESS_KEY_ID=            # the CLIENT's own AWS account, not a fleet key
+AWS_ACCESS_KEY_ID=            # the client's own AWS account — for a NEW client.
+                              # Not yet true of every deployment: see below.
 AWS_SECRET_ACCESS_KEY=
 AWS_S3_BUCKET_NAME=
 AWS_SES_FROM_EMAIL=
 OPENAI_API_KEY=sk-...
 ```
+
+> **One account per client is the decision, not yet the state of the fleet.**
+> `apps/docs/deployment/aws-ownership.md` records what is still owed: every site
+> provisioned before the change holds the fleet-wide key and the shared bucket,
+> and so "still carry credentials to other clients' data
+> ([#199](https://github.com/be-in-digital/beyours/issues/199))". Moving one is a
+> migration — copy its S3 objects, create and verify its SES identity, re-point
+> stored URLs, rotate the shared key — not a config change.
+>
+> `scripts/setup-aws.sh` with no `SITE_SLUG` provisions into that shared account,
+> which is deliberate (a legacy site must be able to re-run it) and now warns
+> before it does. Do not read the comment above as a description of what is
+> deployed.
 
 **Optional — each one gates a feature that stays off until it is set:**
 
@@ -649,8 +686,14 @@ When working on tasks:
     check:attribution` refuses them in the required `Lint` job, over every
     commit between the event's base and `HEAD`. Naming `CLAUDE.md` in a commit
     is not attribution and stays legal; the guard matches co-author trailers,
-    `Claude-*` trailers, session links and "generated with" credits, and it
-    self-tests both directions before it judges anything.
+    `Claude-*` trailers, session links, "generated/made/built with Claude"
+    credits, a bare mention of the assistant by product name, an
+    "AI-generated" credit on a line of its own, and a robot emoji used as a
+    signature — and it self-tests both directions before it judges anything.
+    The last four were added after an audit measured them walking straight
+    through it; the accepted cases guard the collisions that would otherwise
+    make it unusable here (this product HAS an AI-generated blog, and Claude is
+    an ordinary French given name).
     It was prose for months, and #409 measured the cost: 17 of the 24 commits in
     `4e625bde..3a6cb8d1` carry one, permanently, because `core.hooksPath`
     pointed at husky's `.husky/_` — a directory husky gitignores, so it was

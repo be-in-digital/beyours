@@ -10,9 +10,11 @@
  * written afterwards, in #367, against a field that was unbacked before it was
  * read. It is gone with the field (#413).
  *
- * The second still reads `order.estimatedPrepTime` — and `orders.create` writes
- * the prep time it computes onto the **kitchen ticket**, not onto the order. So
- * the email prints no timing row for any real order, and has never printed one.
+ * The second reads `order.estimatedPrepTime`, and `orders.create` wrote the prep
+ * time it computes onto the **kitchen ticket**, not onto the order. So the email
+ * printed no timing row for any real order, and had never printed one. Fixed:
+ * the create loop already holds every product, so it takes the longest
+ * preparation time as it goes and stamps it on the order too.
  *
  * WHY THE UNIT TESTS DID NOT CATCH IT. `packages/core`'s tests call
  * `timingLine({ ...BASE, scheduledFor, estimatedPrepTime })` with fields they
@@ -130,15 +132,16 @@ function fieldsWrittenToOrders(source: string): Set<string> {
 /**
  * Read by the email, written by nothing — each with the reason it is tolerated.
  *
- * `estimatedPrepTime` is a real defect and is recorded here rather than fixed,
- * because wiring it is a change to what a customer-facing email says and has its
- * own review. Removing this entry without wiring the field is not the fix.
+ * Empty, and worth keeping empty. `estimatedPrepTime` sat here: `orders.create`
+ * put the computed prep time on the kitchen ticket and not on the order, so the
+ * email's timing row never printed for any order. It is written now, which is
+ * why the entry is gone — and "keeps the unfed allowlist honest" below is what
+ * makes leaving a stale entry here fail rather than pass.
+ *
+ * An entry may be added for a field that genuinely cannot be fed yet. It may not
+ * be added to silence this test.
  */
-const KNOWINGLY_UNFED: Record<string, string> = {
-  estimatedPrepTime:
-    "#413: orders.create puts the computed prep time on the kitchen ticket, " +
-    "not the order, so the email's timing row never prints. Reported, not fixed.",
-}
+const KNOWINGLY_UNFED: Record<string, string> = {}
 
 /** Convex's own document metadata, and fields set by the id rather than a key. */
 const NOT_ORDER_FIELDS = new Set(["_id", "_creationTime"])

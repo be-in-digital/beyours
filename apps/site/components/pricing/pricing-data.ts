@@ -242,7 +242,9 @@ export const faqItems = [
   {
     question: "Qu'est-ce que l'offre fondateurs ?",
     answer:
-      "Les 10 premiers restaurants ne paient pas la création, offerte au lieu de 3 500 € HT : seule la maintenance annuelle reste due. En échange, des contreparties simples : une étude de cas chiffrée, un témoignage et la possibilité de vous citer en référence. Le nombre de places est limité par notre capacité de livraison. À l'épuisement des 10 places, le prix catalogue s'applique automatiquement. L'offre n'est pas cumulable avec un code de parrainage, et la maintenance reste au tarif normal.",
+      `Les 10 premiers restaurants ne paient pas la création, offerte au lieu de ${formatPrice(
+        eur(planPrices.essentielle.creation),
+      )}\u00a0€ HT : seule la maintenance annuelle reste due. En échange, des contreparties simples : une étude de cas chiffrée, un témoignage et la possibilité de vous citer en référence. Le nombre de places est limité par notre capacité de livraison. À l'épuisement des 10 places, le prix catalogue s'applique automatiquement. L'offre n'est pas cumulable avec un code de parrainage, et la maintenance reste au tarif normal.`,
   },
   {
     question: "La maintenance est-elle obligatoire ?",

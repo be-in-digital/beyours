@@ -464,29 +464,21 @@ export const updateKitchenTicketStatusSchema = z.object({
 // PRINTER VALIDATORS
 // ============================================================================
 
-/**
- * Create Printer Settings Schema
- */
-export const createPrinterSettingsSchema = z.object({
-  storeId: z.string().min(1),
-  name: z.string().min(1, "Le nom de l'imprimante est requis"),
-  type: z.enum(["network", "usb", "bluetooth"]),
-  connectionInfo: z.object({
-    ipAddress: z.string().ipv4().optional(),
-    port: z.number().int().min(1).max(65535).optional(),
-    usbVendorId: z.string().optional(),
-    usbProductId: z.string().optional(),
-  }),
-  station: z.string().optional(),
-  autoPrint: z.boolean().default(true),
-  paperWidth: z.union([z.literal(58), z.literal(80)]).default(80),
-  isDefault: z.boolean().default(false),
-})
-
-/**
- * Update Printer Settings Schema
- */
-export const updatePrinterSettingsSchema = createPrinterSettingsSchema.partial().required({ storeId: true })
+// There are no printer validators here, and there is nothing to add one for.
+//
+// `createPrinterSettingsSchema` and `updatePrinterSettingsSchema` outlived the
+// `printerSettings` table by the removal that took the table out: the table had
+// no reader and no writer, and these two had no consumer either, but they were
+// exported from a published package rather than declared in a schema file, so
+// the sweep missed them.
+//
+// They described the ESC/POS path — `type: "network" | "usb" | "bluetooth"`, an
+// `ipAddress`, a port, USB vendor and product ids — which `CLAUDE.md` says will
+// never be built: a browser cannot open a raw socket and Convex cannot reach a
+// restaurant's LAN, so the thermal path when it comes is cloud printing (the
+// printer polls an HTTP endpoint). A validator for a transport that has been
+// ruled out is not groundwork, it is a claim. What ships lives on
+// `stores.printConfig`.
 
 // ============================================================================
 // PAYMENT VALIDATORS
