@@ -286,11 +286,16 @@ log_success "CORS configured (PUT only)"
 # an erasure box the infrastructure could not honour, and storage grew without
 # ceiling. Issue #331.
 #
-# The app now purges versions itself (convex/cmsMediaDelete.ts, and
-# packages/core S3Service.delete). These two rules are the floor under that:
-# they collect what a purge could not reach — objects deleted before the purge
-# existed, deployments whose IAM policy predates s3:DeleteObjectVersion, and the
-# noncurrent versions of a file that was merely overwritten rather than deleted.
+# The app now purges versions itself: convex/cmsMediaDelete.ts, which is the
+# only media-deletion path the delivered app runs. (packages/core's
+# S3Service.delete does the same for a consumer of that package, and only when
+# the injected S3Operations adapter implements listObjectVersions and
+# deleteObjectVersion — they are optional on the interface. Nothing in apps/*
+# calls it.) These two rules are the floor under all of that: they collect what
+# a purge could not reach — objects deleted before the purge existed,
+# deployments whose IAM policy predates s3:DeleteObjectVersion, adapters without
+# the version methods, and the noncurrent versions of a file that was merely
+# overwritten rather than deleted.
 #
 # NoncurrentVersionExpiration is 30 days rather than 1. Versioning is also an
 # accident-recovery control: a client who overwrites the wrong photograph has a

@@ -114,6 +114,25 @@ jobs:
       - name: Check app divergence
         run: pnpm check:divergence
 
+      # The one check here that reads the commits rather than the tree, and it
+      # is in this job for the same reason as its neighbours: `Lint` is required
+      # by name, so this blocks with no repository-settings change.
+      #
+      # `CLAUDE.md` rule 10 forbids AI attribution in anything that reaches Git,
+      # and nothing executed that rule: across `4e625bde..3a6cb8d1`, 17 of 24
+      # commits carried a `Co-Authored-By:` trailer or a session link, and they
+      # are on protected history permanently (#409). `.githooks/commit-msg`
+      # strips them as they are written, but a hook is skippable with
+      # --no-verify and absent until somebody installs it — which is exactly how
+      # this got out, since `core.hooksPath` pointed at husky's gitignored
+      # `.husky/_` and therefore at nothing at all.
+      #
+      # It needs the `fetch-depth: 0` above: it walks the commits between the
+      # event's base and HEAD, and a depth-1 clone holds neither the base nor
+      # the commits in between. `Lint` is the only job here with that history.
+      - name: Check commits for AI attribution
+        run: pnpm check:attribution
+
       # Documentation is the one artefact here that nothing executes, so it is
       # the one that rots without saying so. CLAUDE.md spent months pointing at
       # four documents that had never existed and four commands that answered

@@ -28,10 +28,25 @@ export const promotionsTable = defineTable({
   // Max discount amount in cents (cap for percentage discounts)
   maxDiscountAmount: v.optional(v.number()),
 
-  // Free product (for discountType === "free_product")
+  // LEGACY, WRITTEN BY NOTHING. These five configured « Produit offert » and
+  // « Offre BOGO », the two discount types `promotions.create` and
+  // `promotions.update` now refuse: they alter the item list rather than the
+  // order total, and no code path builds those items. The types went first, and
+  // for five commits these fields stayed on both args validators — so a plain
+  // `percentage` promotion could be given a `freeProductId` that the promotion
+  // form never renders and `update` cannot clear. They are declared here only
+  // because rows written before the withdrawal still hold them, and they are
+  // read by exactly one thing: `products.remove` refuses to delete a dish the
+  // first three still point at, so a legacy row cannot be turned into a
+  // dangling reference. `PromotionForDiscount` declares none of them, so no
+  // price has ever been computed from one.
+  //
+  // Same treatment as `stores.integrations` (tables/stores.ts): the field stays
+  // for the documents that hold it, and the comment says who still reads it.
+  // Implement `bogo` in `promotionDiscount.ts` and this becomes live
+  // configuration again — put the fields back on the validators there and then,
+  // not before.
   freeProductId: v.optional(v.id("products")),
-
-  // BOGO fields (for discountType === "bogo")
   bogoTriggerProductId: v.optional(v.id("products")),
   bogoRewardProductId: v.optional(v.id("products")),
   bogoTriggerQuantity: v.optional(v.number()),

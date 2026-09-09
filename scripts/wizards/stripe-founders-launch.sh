@@ -450,8 +450,8 @@ section_checkout() {
        is wrong. Fix the coupon; do not ship it.
     5. Abandon the session.
 
-  An unpaid checkout holds a founders seat for 24 h (foundersOffer.ts:19-25)
-  and then returns it, so this costs one seat for a day and nothing
+  An unpaid checkout holds a founders seat for 30 min (foundersOffer.ts:43)
+  and then returns it, so this costs one seat for half an hour and nothing
   permanently.
 
 EXPLAIN

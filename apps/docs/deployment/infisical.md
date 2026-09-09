@@ -325,8 +325,16 @@ by construction: `turbo.json` declares only `SENTRY_ORG`, `SENTRY_PROJECT` and
 `SENTRY_AUTH_TOKEN` in the build task's `env`, so those three — plus
 `NEXT_PUBLIC_*`, through framework inference — are all that can reach the build.
 Everything else the store carries is stripped by turbo before `next build` sees
-it. Fill those three and CI builds start uploading source maps; leave them and
-nothing changes.
+it.
+
+> **This paragraph used to end "fill those three and CI builds start uploading
+> source maps". Do not.** `/platform` holds no `SENTRY_*` key, by design, and
+> putting them there is refused by the spec — see the struck item under *Left*
+> at the end of this document for the measurement and the reasoning. The short
+> version: `SENTRY_PROJECT` is per client, the three are an all-or-none group so
+> the other two cannot go without it, and this job builds all three apps at once
+> from one folder. That turbo declares them is a statement about what *could*
+> reach the build, not a recommendation about where to put them.
 
 Three mechanics keep this safe rather than clever:
 
@@ -442,7 +450,46 @@ Left:
    §A.1 of the rotation runbook has to happen first: a compromised value copied
    into a tidy store is still compromised, and now it is compromised in the
    place everything else reads from.
-3. **`SENTRY_*` in `/platform`** if you want CI builds to upload source maps.
-   The path is proven; only the values are missing. Note this changes the build
-   cache key — turbo declares those three in the build task's `env` — so the
-   first build after is a cache miss by design.
+3. ~~**`SENTRY_*` in `/platform`** if you want CI builds to upload source
+   maps.~~ **Struck 09/09/2026 — this was wrong, and following it cost a line in
+   the daily report every morning.** `/platform`'s spec is
+   `packages/core/.env.example` plus an eleven-name `add:` list, and neither has
+   ever contained a `SENTRY_*` key: `/platform` is 18 keys, none of them Sentry.
+   An operator who did this got, on every `pnpm env:check`:
+
+   ```
+     not in any spec (3): SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT
+   ```
+
+   — and `/platform` lost its `complete` line, in a report
+   `env-store-health.yml` appends verbatim to the job summary at 06:15 UTC daily.
+
+   **The spec is right and this document was wrong.** The three are one
+   all-or-none feature group (`packages/core/src/env/manifest.ts:211-214`,
+   "Sentry source maps"), and one member of it, `SENTRY_PROJECT`, is
+   **per client** — `apps/docs/deployment/sentry.md` is titled *"Sentry — one
+   project per client"*, and the engine's own fixture spells it
+   `SENTRY_PROJECT: 'pizzeria-napoli'`
+   (`packages/core/src/env/__tests__/validate-all-env.test.ts:230`). A folder
+   described as *"BeYours' own credentials — identical on every deployment"*
+   cannot hold a per-client value. And because the group is all-or-none, you
+   cannot split it either: `validateAllEnv` refuses two of the three and names
+   the gap ("rejects half a source-map upload"). So all three stay where the
+   spec already puts them — `/site`, `/reference`, `/themes`, `/demo`.
+
+   **Then what about CI's `/platform` load?** It cannot supply them, and it
+   should not try. `ci.yml`'s build job compiles **all three apps in one turbo
+   run**, so one `SENTRY_PROJECT` in one shared folder would file three apps'
+   source maps under a single Sentry project — the exact merging
+   `sentry.md` exists to prevent. It is also a *compile check*: it builds with
+   `NEXT_PUBLIC_CONVEX_URL: https://placeholder.convex.cloud` and throws the
+   artifacts away, so uploading its maps would create releases for a bundle
+   nobody runs. Source maps belong to the deploy host, per app — which is what
+   `sentry.md` already says: *"It belongs on the build host — a Vercel
+   environment variable or a CI secret."* Set them per Vercel project, not here.
+   Nothing breaks meanwhile: `next.config.ts` sets
+   `sourcemaps.disable: !(ORG && PROJECT && AUTH_TOKEN)`, so an unset triple
+   disables the upload cleanly rather than failing the build.
+
+   Held by `node scripts/infisical-bootstrap.mjs doc`, which checks every
+   "`KEY` in `/folder`" claim in this file against the spec and needs no store.

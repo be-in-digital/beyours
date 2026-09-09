@@ -167,11 +167,11 @@ export const create = {
     discountType: discountTypeValidator,
     discountValue: v.optional(v.number()),
     maxDiscountAmount: v.optional(v.number()),
-    freeProductId: v.optional(v.id("products")),
-    bogoTriggerProductId: v.optional(v.id("products")),
-    bogoRewardProductId: v.optional(v.id("products")),
-    bogoTriggerQuantity: v.optional(v.number()),
-    bogoRewardQuantity: v.optional(v.number()),
+    // WITHDRAWN_PROMOTION_CONFIG_FIELDS are deliberately absent here and in
+    // `update` below. Convex refuses an argument no validator declares —
+    // "Validator error: Unexpected field `freeProductId` in object" — so
+    // omitting them IS the refusal, and both handlers spread `args` straight
+    // into the row, which is how they reached the database unexamined.
     scope: scopeValidator,
     targetProductIds: v.optional(v.array(v.id("products"))),
     targetCategoryIds: v.optional(v.array(v.id("categories"))),
@@ -232,11 +232,11 @@ export const update = {
     discountType: v.optional(discountTypeValidator),
     discountValue: v.optional(v.number()),
     maxDiscountAmount: v.optional(v.number()),
-    freeProductId: v.optional(v.id("products")),
-    bogoTriggerProductId: v.optional(v.id("products")),
-    bogoRewardProductId: v.optional(v.id("products")),
-    bogoTriggerQuantity: v.optional(v.number()),
-    bogoRewardQuantity: v.optional(v.number()),
+    // See `create` above: the five withdrawn configuration fields are refused
+    // by being undeclared. `discountTypeValidator` still admits all five
+    // LITERALS, and deliberately — this handler reads `existing.discountType`
+    // to refuse an edit that would keep a withdrawn type, and that refusal is a
+    // sentence an owner can read rather than a validator error.
     scope: v.optional(scopeValidator),
     targetProductIds: v.optional(v.array(v.id("products"))),
     targetCategoryIds: v.optional(v.array(v.id("categories"))),

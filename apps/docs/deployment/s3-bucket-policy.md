@@ -81,9 +81,17 @@ Three things close that, and all three are applied by `setup-aws.sh`:
 1. **The app purges by version id.** `convex/cmsMediaDelete.ts` lists a key's
    versions and deletes each one, delete markers included — a marker *is* a
    version, so removing only the object versions leaves the key hidden with its
-   marker still billed, and removing only the marker un-deletes the file. The
-   same logic is in `S3Service.delete` for anything going through
-   `@be-in-digital/core`.
+   marker still billed, and removing only the marker un-deletes the file. That
+   file talks to the AWS SDK directly, and it is the only media-deletion path
+   the delivered app runs.
+
+   `S3Service.delete` in `@be-in-digital/core` carries the same logic for a
+   **consumer of the package** — nothing in `apps/*` calls it. And it purges
+   only when the `S3Operations` adapter you injected implements
+   `listObjectVersions` and `deleteObjectVersion`, which are optional on the
+   interface: without them it writes the delete marker and returns
+   `{ outcome: 'delete-marker', reason: 'unsupported-adapter' }`. The adapter in
+   `packages/core/src/aws/README.md` implements both — copy that one.
 2. **Three IAM actions**, without which the app can only write markers:
    `s3:ListBucketVersions` (on the bucket), `s3:GetObjectVersion` and
    `s3:DeleteObjectVersion` (on `/*`). A deployment provisioned before these

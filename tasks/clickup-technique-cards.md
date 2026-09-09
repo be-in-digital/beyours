@@ -36,7 +36,13 @@ quiconque clone le dépôt.
 
 ## Où
 - `scripts/deliveroo-menu-scenarios.sh` — commits `7cf4d41`, `c0f09cb` (corrigé en `bc8807a`)
-- `apps/restaurant-theme/e2e/deliveroo/test-config.ts` — **18 commits**, oublié du runbook d'origine
+- `apps/restaurant-theme/e2e/deliveroo/test-config.ts` — oublié du runbook d'origine
+
+> Le compte de commits a été corrigé le 04/09/2026 : le secret est dans **137 commits**
+> tous refs confondues, dont **41 ancêtres de `main`** (donc publiés). Le « 18 » qui
+> figurait ici ne comptait que `test-config.ts` et oubliait
+> `scripts/deliveroo-menu-scenarios.sh`, où le secret a vécu le plus longtemps.
+> Détail et méthode : `tasks/secret-rotation-runbook.md`.
 
 ## Où la valeur est lue aujourd'hui
 ```

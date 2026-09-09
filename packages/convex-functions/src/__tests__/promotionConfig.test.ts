@@ -23,6 +23,7 @@ import { create, update, PromotionConfigRefusedError } from "../promotions"
 import {
   HONOURABLE_DISCOUNT_TYPES,
   UNHONOURABLE_DISCOUNT_TYPES,
+  WITHDRAWN_PROMOTION_CONFIG_FIELDS,
   isHonourableDiscountType,
 } from "../promotionDiscount"
 
@@ -168,5 +169,48 @@ describe("promotions.update", () => {
 
     expect(ctx.patched).toHaveLength(1)
     expect(ctx.patched[0]?.discountType).toBe("percentage")
+  })
+})
+
+/**
+ * The five fields the two withdrawn types configured.
+ *
+ * #403 took the TYPES off both handlers and off the form, and left these on
+ * both args validators — where they are not decoration, because both handlers
+ * spread `args` straight into the row and `products.remove` reads three of
+ * them. A `percentage` promotion could therefore be given a `freeProductId`
+ * that no screen renders and no `update` can clear, and the dish it named
+ * became undeletable.
+ *
+ * A Convex mutation refuses an argument its validator does not declare, so
+ * absence here IS the refusal; there is nothing in the handler to assert
+ * against. Both apps' `tests/convex/promotion-withdrawn-fields.test.ts` runs
+ * the real mutation and watches the validator do it.
+ */
+describe("the withdrawn configuration is not writable", () => {
+  it.each(WITHDRAWN_PROMOTION_CONFIG_FIELDS)(
+    "promotions.create declares no %s",
+    (field) => {
+      expect(Object.keys(create.args)).not.toContain(field)
+    }
+  )
+
+  it.each(WITHDRAWN_PROMOTION_CONFIG_FIELDS)(
+    "promotions.update declares no %s",
+    (field) => {
+      expect(Object.keys(update.args)).not.toContain(field)
+    }
+  )
+
+  it("is exactly the set the schema still declares for legacy rows", () => {
+    // If one is ever implemented, it comes back on the validators AND leaves
+    // this list, in the same commit — the schema comment says so too.
+    expect([...WITHDRAWN_PROMOTION_CONFIG_FIELDS].sort()).toEqual([
+      "bogoRewardProductId",
+      "bogoRewardQuantity",
+      "bogoTriggerProductId",
+      "bogoTriggerQuantity",
+      "freeProductId",
+    ])
   })
 })

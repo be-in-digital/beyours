@@ -108,12 +108,24 @@ export interface ObjectMetadata {
 /**
  * Injectable interface over the S3 operations
  *
- * The two version operations are OPTIONAL, and that is a deliberate,
- * time-limited compromise rather than an oversight. `setup-aws.sh` has been
- * granting `s3:DeleteObject` and not `s3:DeleteObjectVersion` since the bucket
- * was created, so every already-provisioned client's IAM user can call one and
- * not the other. Making them required would turn `S3Service.delete` into a
- * function that throws on every deployment in the field the day it shipped.
+ * **Implement all six.** The two version operations are optional to the
+ * compiler and mandatory in practice: the bucket `setup-aws.sh` provisions is
+ * versioned, and on a versioned bucket a `DeleteObject` with no `VersionId`
+ * deletes nothing. An adapter that stops at `headObject` type-checks, and then
+ * every single `S3Service.delete` returns
+ * `{ outcome: 'delete-marker', reason: 'unsupported-adapter' }` — the bytes
+ * stay, billed and readable by anyone who can name a version id. That is not
+ * a rare edge case; it is what happens to anyone who writes the four obvious
+ * methods and stops. `packages/core/src/aws/README.md` has an adapter with all
+ * six: copy it.
+ *
+ * They are optional rather than required for one reason, and it is about IAM,
+ * not about what an adapter ought to do. `setup-aws.sh` granted
+ * `s3:DeleteObject` and not `s3:DeleteObjectVersion` from the day the bucket
+ * was created, so an already-provisioned client's IAM user can call one and not
+ * the other. Making the methods required would have turned `S3Service.delete`
+ * into a function that throws on every deployment in the field. Requiring them
+ * becomes possible once every client has been re-provisioned.
  *
  * `delete` therefore purges versions when the adapter offers them and falls
  * back to the delete marker when it does not — and, crucially, SAYS WHICH.

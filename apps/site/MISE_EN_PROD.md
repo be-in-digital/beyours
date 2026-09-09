@@ -112,6 +112,21 @@ Today the "invoice" is the PDF Stripe hosts. Legally insufficient.
   what the old code did: it printed whatever the caller sent, next to fields
   that are real evidence. Optional, therefore, but the eIDAS art. 25 trail is
   thinner without it.
+- [ ] 🟠 **[host] The trusted headers are Vercel's.** `/api/signer-ip` reads the
+  address only from `x-vercel-forwarded-for`, then `x-real-ip` — headers the
+  Vercel edge overwrites, so a client cannot reach past it. Plain
+  `x-forwarded-for` is deliberately not read: it used to be, and since the edge
+  is what makes its client end trustworthy, a request that never went through
+  one had its « Adresse IP constatée » row set by `curl -H`. **Nothing verifies
+  at runtime that this deployment is behind that edge** — it is a claim about
+  the infrastructure, recorded in ONE place,
+  `TRUSTED_SIGNER_IP_HEADERS` in `lib/security/signer-attestation.ts`.
+  So: on Vercel, nothing to do. **Moving to any other host, edit that list** to
+  name the new edge's equivalent header, and only if that edge STRIPS the
+  header on the way in — a reverse proxy that merely appends does not qualify.
+  A deployment behind none of them logs
+  « Aucun en-tête de confiance sur la requête » on every signature and records
+  « non établie », which stays honest but loses the row.
 - [ ] 🟠 **[decision] Customer contract**: YouSign signing is wired for the
   **introducers**. Decide whether the **customer engagement** (build + maintenance)
   goes through a signed contract before go-live, and wire the same flow if it does.

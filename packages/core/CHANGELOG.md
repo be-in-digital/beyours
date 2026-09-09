@@ -81,6 +81,53 @@
 
   Closes #376.
 
+- 5f61648: Add the `./email` and `./email/providers` entry points
+
+  **Recorded after the fact, on 09/09/2026.** These two public subpaths shipped
+  in 2.5.0 and this release note did not mention them, because #405 landed with
+  no changeset at all. Nothing here is new code — 2.5.0 is published and its
+  contents are unchanged. What was missing was the announcement, and a consumer
+  reading this file had no way to learn that the package had grown a new entry
+  point. Written from the diff of `5f61648`, not from memory.
+
+  `@be-in-digital/core` gained two exports, taking it from ten public subpaths
+  to twelve:
+
+  - **`@be-in-digital/core/email`** — the barrel, built by `tsup` (`src/email/index.ts`).
+  - **`@be-in-digital/core/email/providers`** — the transport switch itself.
+
+  What they are for: `EMAIL_PROVIDER` chooses which transport carries a
+  deployment's mail, so a client whose AWS SES production-access request is
+  refused can be pointed at Resend instead of having no way to send at all
+  (#212). It is built on `SESOperations`, the seam that already existed, so
+  `createSESService(config, operations)` — validation, the sandbox rate limit,
+  bulk batching, templates — works unchanged over either transport.
+  `createResendOperations()` implements the same interface using plain `fetch`.
+
+  Two properties worth keeping when you touch this:
+
+  - **No AWS SDK in this path.** `createSESv2Operations` remains the only module
+    in `packages/core` that imports `@aws-sdk/client-sesv2`, so a Convex isolate
+    can import `./email/providers` without pulling the SDK in.
+  - **`resolveEmailProvider` never throws.** It returns a reason, so a
+    misconfiguration is logged rather than crashing a scheduled action
+    mid-campaign. An unknown provider name is refused, not silently defaulted.
+
+  `configurationSet` is deliberately not abstracted: it is SES's open/click
+  tracking and Resend has no equivalent, so the Resend transport ignores it. A
+  client who moves loses open tracking, not their mail.
+
+  **Why this is a note and not a changeset.** A changeset would cut 2.6.0 for
+  code that is already inside 2.5.0, which would be a worse lie than the silence
+  it fixes. The gap it fell through is closed for future changes:
+  `pnpm check:source-drift` (added by #402, `d89ade4`, which merged *after*
+  #405) fails CI when a `packages/*` source has moved since its last bump and no
+  changeset names it. Verified by reproduction on 09/09/2026 — a one-file change
+  under `packages/core/src` with no changeset naming `core` gives
+  `@be-in-digital/core  2.5.0  drifted` and exit 1. At #405's merge, CI ran only
+  `check:pending-release`, which reports changesets that exist and is silent
+  about a missing one.
+
 ## 2.4.0
 
 ### Minor Changes
