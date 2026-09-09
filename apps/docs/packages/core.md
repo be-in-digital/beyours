@@ -85,8 +85,8 @@ import type { I18nConfig, I18nProviderComponent, I18nProviderProps } from "@be-i
 
 `I18nProviderComponent` and `I18nProviderProps` are **types**. The provider
 itself has to be written in the app, for the same reason as `CanAccessProps`:
-this package ships no JSX. `packages/core/src/i18n/examples.ts` puts it plainly —
-"The core package only provides types, not the implementation."
+this package ships no JSX, so it can offer the shape of a provider and not a
+provider.
 
 ### useTranslation Hook
 

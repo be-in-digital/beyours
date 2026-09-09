@@ -527,7 +527,6 @@ export type OrderDoc = BaseEntity & CreateOrderInput & {
   total: number
   estimatedPrepTime?: number
   estimatedDeliveryTime?: number
-  scheduledFor?: number
   completedAt?: number
   cancelledAt?: number
   cancellationReason?: string

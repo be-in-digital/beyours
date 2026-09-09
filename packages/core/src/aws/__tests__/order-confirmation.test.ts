@@ -138,16 +138,17 @@ describe('fulfilmentLines', () => {
 })
 
 describe('timingLine', () => {
-  it('prefers the time the diner asked for', () => {
-    expect(
-      timingLine(
-        { ...BASE, scheduledFor: Date.UTC(2026, 2, 12, 18, 30), estimatedPrepTime: 20 },
-        'Europe/Paris'
-      )
-    ).toBe('Prévue pour le 12 mars 2026 à 19:30')
-  })
-
-  it("falls back to the kitchen's estimate", () => {
+  /*
+   * The case that used to head this block asserted "Prévue pour le 12 mars 2026
+   * à 19:30" from a `scheduledFor` it supplied itself. It passed for as long as
+   * it existed and proved nothing: no order path ever wrote that field, so the
+   * branch it covered could not run in production. It is gone with the branch.
+   *
+   * Read the two below with the same suspicion. Both supply `estimatedPrepTime`
+   * by hand, and no order path writes that either — see `timingLine`'s own note.
+   * They pin the rendering, not the reachability.
+   */
+  it("renders the kitchen's estimate when it is given one", () => {
     expect(timingLine({ ...BASE, estimatedPrepTime: 20 })).toBe(
       'Prête dans environ 20 minutes'
     )

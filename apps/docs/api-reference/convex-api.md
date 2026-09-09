@@ -408,11 +408,17 @@ const stats = useQuery(api.emailCampaigns.getStats, { campaignId });
 
 ## CMS
 
-### `api.cms.getPage`
+### `api.cms.getPage` — removed
 
-```typescript
-const page = useQuery(api.cms.getPage, { storeId, slug: "about" });
-```
+`cms.getPage` had no caller and was removed by #413. The storefront reads a
+page through `api.cms.getPageBlocks`, and the admin editor through
+`getAdminPageBlocks` / `getPreviewPageBlocks`.
+
+> Treat the rest of this page with suspicion. Measured on 2026-09-09, **19 of
+> the 43 `api.*` names it documents did not exist** — before #413 touched
+> anything. `cms.updatePage`, `products.search`, `orders.get`,
+> `emailCampaigns.send` and fifteen more are aspirational, not a contract. This
+> file needs regenerating from the tree; until then it is a wish list.
 
 ### `api.cms.updatePage`
 

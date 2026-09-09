@@ -171,7 +171,6 @@ export const ordersTable = defineTable({
   notes: v.optional(v.string()),
   estimatedPrepTime: v.optional(v.number()), // in minutes
   estimatedDeliveryTime: v.optional(v.number()),
-  scheduledFor: v.optional(v.number()), // timestamp for scheduled orders
   completedAt: v.optional(v.number()),
   cancelledAt: v.optional(v.number()),
   cancellationReason: v.optional(v.string()),

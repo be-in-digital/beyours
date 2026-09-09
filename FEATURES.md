@@ -177,11 +177,14 @@ Epson Server Direct Print, where the printer polls an HTTP endpoint) rather than
 local agent, because a browser cannot open a raw socket and Convex cannot reach a
 restaurant's LAN — LAUNCH-04 §3.
 
-**Not built:** *Kitchen analytics* (no files). *Order assignment* — `assignTo` is
-exported as a real mutation in both apps
-(`apps/*/convex/kitchenTickets.ts:168`) and **no UI calls it**; `assignedTo` appears
-in `packages/admin/src/pages/kitchen/ticket-card.tsx:32` as a prop type and is never
-rendered. *Priority management* — the schema has a priority field and all three
+**Not built:** *Kitchen analytics* (no files). *Order assignment* — `assignTo`
+**was** exported as a real mutation in both apps with no UI calling it; #413
+removed that wrapper along with the rest of the callerless public surface, so
+the mutation is no longer registered on a client's backend. The definition
+survives in `@be-in-digital/convex-functions`, and `assignedTo` still appears in
+`packages/admin/src/pages/kitchen/ticket-card.tsx:32` as a prop type that is
+never rendered — so the feature is exactly as absent as before, with one less
+unreviewed endpoint standing in for it. *Priority management* — the schema has a priority field and all three
 ticket writers hardcode `priority: "normal"`
 (`packages/convex-functions/src/orders.ts:1809`,
 `apps/*/convex/deliverooWebhook.ts:442`, `apps/*/convex/uberEatsWebhook.ts:246`).

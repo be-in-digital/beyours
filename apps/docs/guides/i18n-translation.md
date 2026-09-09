@@ -141,17 +141,25 @@ await upsert({
 });
 ```
 
-`bulkUpsert` takes an array of the same shape; `remove` deletes one row;
-`getForEntity`, `getByLanguage` and `getUIOverrides` read them back.
+`getUIOverrides` reads them back.
+
+There used to be four more here — `bulkUpsert` for an array of the same shape,
+`remove` for one row, and `getForEntity` / `getByLanguage` to read them. None
+had a caller anywhere, and #413 removed them along with the rest of the
+callerless public surface: the catalogue's bulk translation writes translations
+straight onto the document from `autoTranslate`, never through a public
+mutation, and the « Traductions UI » tab writes one string at a time through
+`upsert`. The definitions remain in `@be-in-digital/convex-functions`, so
+wiring a screen to one means restoring its wrapper.
 
 ## Using Translations in Code
 
 ### useTranslation Hook
 
-`@be-in-digital/core` exports the **type** `UseTranslation`, not the hook —
-`packages/core/src/i18n/examples.ts` says so outright: "The core package only
-provides types, not the implementation." The running hook is in
-`@be-in-digital/restaurant`, built on the language store:
+`@be-in-digital/core` exports the **type** `UseTranslation`, not the hook: the
+package ships no JSX and no React runtime, so it can describe a hook and not
+run one. The running hook is in `@be-in-digital/restaurant`, built on the
+language store:
 
 ```typescript
 import { useTranslation } from "@be-in-digital/restaurant";

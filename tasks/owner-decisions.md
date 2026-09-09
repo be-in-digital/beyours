@@ -334,6 +334,21 @@ Also already recorded as « Decided build on 5 Sep 2026 ».
   nowhere; the dashboard nav entry carries no `requiredPermission` at all.
   Decide whether this screen should be gated while you are here.
 
+  > **Still open, and deliberately left open (2026-09-09, #413).** That issue
+  > listed these two under "genuinely dead, safe to delete", and they are indeed
+  > consumed by nothing: `rbac.ts` grants `analytics:read` to `super_admin`,
+  > `client_admin` and `manager`, and `analytics:view_all` to `super_admin`
+  > alone, and no guard, screen, route or Convex function reads either. They are
+  > also not a plain line-deletion — the literals are synthesised from
+  > `Resource.ANALYTICS` × `Action`, so removing them means deciding the fate of
+  > that enum member, and four `rbac.test.ts` cases assert them.
+  >
+  > They were **not** removed, because deleting them answers this question by
+  > default. The dashboard exists and could be gated on `analytics:read`
+  > tomorrow; the alternative — that analytics is genuinely absent (T-1: 0
+  > files) and the permission should come back with the screen — is equally
+  > defensible. That is the owner's call, not a sweep's.
+
 ### What each costs
 
 - **Plats populaires** — a line-item rollup over the window the aggregate
@@ -467,6 +482,31 @@ Three consequences, in the order they hurt a restaurant:
    saved through `use-store-detail.ts:650`; the store-global `orderMode` from the
    kitchen page (`kitchen-page.tsx:75`); and `deliverooWebhook.ts:468` resolves
    *platform override > store global > legacy `autoAccept` > manual*.
+> **Updated 2026-09-09 (#413).** Every function in the table above has been
+> removed from `apps/*/convex`, along with the rest of the callerless public
+> surface — `toggleAutoAccept` among them, which is consistent with the
+> correction just made: the mutation was the unreachable half, and the field it
+> would have written stays configurable from the two screens named above. Read
+> this as a change of *registration*, not of capability: the gaps this section
+> describes are exactly as wide as they were, and the definitions still live in
+> `@be-in-digital/convex-functions`, so wiring a screen means restoring a
+> six-line wrapper beside it. What changed is that a client's deployment no
+> longer publishes an endpoint for a feature it does not have.
+>
+> Three of the listed functions survive, annotated `@kept-callerless`, because a
+> runbook names them: `uberEatsActions.runValidation`,
+> `uberEatsOAuth.generateAuthorizeUrl` and `activateAndListStores`. The first
+> deletion of `generateAuthorizeUrl` was a real break — it is the only writer of
+> the `oauthStates` row the live `uberEatsConnectCallback` HTTP route validates,
+> so removing it would have made Uber Eats unconnectable on every client.
+>
+> Converting them to `internalAction`/`internalQuery` was tried first and is
+> wrong: they all authorise from the CALLER's identity, and an internal function
+> reached from a cron, the Convex dashboard or `npx convex run` has none — it
+> would refuse every caller it could ever have.
+> `tests/convex/scheduled-paths.test.ts` caught the three Deliveroo actions
+> doing precisely that.
+
 2. **No reconciliation.** `orphanProducts` exists *because* an import leaves
    items matching nothing in the catalogue. The screen that resolves them does
    not exist, so they accumulate invisibly. **This one is intact** — 0 UI callers,

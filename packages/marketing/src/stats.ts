@@ -59,18 +59,20 @@ export function incrementCampaignStats(
 }
 
 /**
- * Return a new stats object with revenue and converted incremented.
+ * REMOVED: `incrementRevenueStat`.
+ *
+ * The pure half of the `incrementRevenue` removal. #397 deleted the Convex
+ * mutation that patched `stats.revenue` and `stats.converted`, and left a
+ * tombstone in `packages/convex-functions/src/emailCampaigns.ts` explaining
+ * why: nothing in the product writes a `converted` email event and no order
+ * carries the campaign that led to it, so the attribution a "revenu attribué"
+ * figure is made of does not exist in this schema. This function computed the
+ * same `{ revenue + amount, converted + 1 }` shape for a caller that was
+ * removed on the other side of the package boundary, and had none of its own.
+ *
+ * As there, `CampaignStats.revenue` and `.converted` stay: existing rows carry
+ * them, and wiring a real producer later means adding the producer.
  */
-export function incrementRevenueStat(
-  current: CampaignStats,
-  revenueAmount: number
-): CampaignStats {
-  return {
-    ...current,
-    revenue: current.revenue + revenueAmount,
-    converted: current.converted + 1,
-  }
-}
 
 /**
  * Compute derived metrics from raw stats.

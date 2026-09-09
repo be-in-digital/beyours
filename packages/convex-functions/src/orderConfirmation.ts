@@ -325,8 +325,6 @@ export async function buildOrderConfirmationPayload(
     // A cash order-ahead is confirmed before the money changes hands, so the
     // email must not thank the diner for a payment they have not made.
     paymentPending: order.paymentStatus !== "paid" ? true : undefined,
-    scheduledFor:
-      typeof order.scheduledFor === "number" ? order.scheduledFor : undefined,
     estimatedPrepTime:
       typeof order.estimatedPrepTime === "number"
         ? order.estimatedPrepTime

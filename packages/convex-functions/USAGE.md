@@ -273,31 +273,13 @@ await upsert({
   isAutoTranslated: false,
 })
 
-// Bulk upsert
-const bulkUpsert = useMutation(api.translations.bulkUpsert)
-
-await bulkUpsert({
-  translations: [
-    {
-      storeId: store._id,
-      entityType: "product",
-      entityId: product._id,
-      field: "name",
-      languageCode: "es",
-      value: "Pizza Margarita",
-      isAutoTranslated: true,
-    },
-    {
-      storeId: store._id,
-      entityType: "product",
-      entityId: product._id,
-      field: "description",
-      languageCode: "es",
-      value: "Tomate, mozzarella, albahaca",
-      isAutoTranslated: true,
-    },
-  ],
-})
+// There is no `api.translations.bulkUpsert`. The definition still lives in this
+// package, but #413 removed the app wrapper that registered it: nothing called
+// it, and the two paths that really write translations do not go through it —
+// the catalogue's bulk translation writes onto the document from
+// `autoTranslate`, and the admin's « Traductions UI » tab writes one string at a
+// time through `upsert` above. To wire a screen to it, re-register it in
+// `apps/*/convex/translations.ts` beside `upsert`.
 ```
 
 ### Manage languages

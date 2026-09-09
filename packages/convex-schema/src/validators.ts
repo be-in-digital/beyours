@@ -381,7 +381,6 @@ export const createOrderSchema = z.object({
   }).optional(),
   paymentMethod: z.string().optional(),
   notes: z.string().max(500).optional(),
-  scheduledFor: z.number().int().positive().optional(),
 })
 
 /**

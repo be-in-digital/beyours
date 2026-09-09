@@ -255,7 +255,10 @@ export const packages: PackageInfo[] = [
       {
         name: "Toast",
         type: "component",
-        description: "Toast notification system",
+        // A box, not a system. The provider and `useToast` hook that once made
+        // this a system were removed — the hook threw on every call because
+        // nothing mounted the provider. `sonner` is the toast system.
+        description: "Toast notification box (presentational; sonner drives toasts)",
         importPath: "@be-in-digital/ui",
         tags: ["feedback"],
       },

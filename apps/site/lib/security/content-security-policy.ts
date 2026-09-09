@@ -156,8 +156,9 @@ export function buildContentSecurityPolicy(
     "default-src": ["'self'"],
 
     // 'unsafe-eval' is the dev server's: React Refresh and the Turbopack
-    // runtime evaluate modules. A production build does not, and neither does
-    // three.js — WebGL shaders compile in the GPU pipeline, not through eval.
+    // runtime evaluate modules. A production build does not. This used to name
+    // three.js as the other thing that does not need eval; the WebGL hero it
+    // was there for rendered on no page and went with its dependencies.
     "script-src": isDevelopment
       ? ["'self'", "'unsafe-inline'", "'unsafe-eval'", bookingOrigin]
       : ["'self'", "'unsafe-inline'", bookingOrigin],

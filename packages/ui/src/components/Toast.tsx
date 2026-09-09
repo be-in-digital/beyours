@@ -1,5 +1,29 @@
 "use client"
 
+/**
+ * A toast box. Not a toast system — this package has no such thing, and the one
+ * the product uses is `sonner`, mounted in each app's `app/providers.tsx`.
+ *
+ * WHAT WAS HERE. A second, entirely separate toast system: a `ToastContext`
+ * defaulting to `undefined`, a `ToastProvider` that supplied it, and a
+ * `useToast` hook that threw "useToast must be used within ToastProvider" when
+ * it was absent. `ToastProvider` was mounted in no app, in no package and in no
+ * test, so the hook did not merely go unused — every possible caller of it got
+ * the throw. It was on the published API of `@be-in-digital/ui` by way of
+ * `components/index.ts`, so a client site pinning this package could import
+ * `useToast`, wire a screen to it, and discover at runtime that the only
+ * behaviour it has is to crash.
+ *
+ * `Toast` itself stays, and the distinction matters. It is presentational —
+ * variants, a title, a description, an optional close button — and it needs no
+ * provider to render. It is also one of the twenty consumer-free components
+ * `tasks/reference-themes-divergence.md` deliberately keeps, on the reasoning
+ * that removing a name from a published package is a breaking major that buys
+ * nothing but a shorter barrel. A hook whose every call throws is a different
+ * claim from an export nobody happens to import, and only the first one was
+ * removed here.
+ */
+
 import * as React from "react"
 import { X } from "lucide-react"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -57,61 +81,5 @@ const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
   )
 )
 Toast.displayName = "Toast"
-
-// Toast Provider Context
-type ToastContextType = {
-  toasts: Array<{ id: string; props: ToastProps }>
-  addToast: (props: ToastProps) => void
-  removeToast: (id: string) => void
-}
-
-const ToastContext = React.createContext<ToastContextType | undefined>(
-  undefined
-)
-
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const [toasts, setToasts] = React.useState<
-    Array<{ id: string; props: ToastProps }>
-  >([])
-
-  const addToast = React.useCallback((props: ToastProps) => {
-    const id = Math.random().toString(36).substr(2, 9)
-    setToasts((prev) => [...prev, { id, props }])
-
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((toast) => toast.id !== id))
-    }, 5000)
-  }, [])
-
-  const removeToast = React.useCallback((id: string) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id))
-  }, [])
-
-  return (
-    <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
-      {children}
-      <div className="pointer-events-none fixed bottom-0 right-0 z-50 flex max-h-screen w-full flex-col-reverse gap-2 p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]">
-        {toasts.map(({ id, props }) => (
-          <Toast
-            key={id}
-            {...props}
-            onClose={() => removeToast(id)}
-          />
-        ))}
-      </div>
-    </ToastContext.Provider>
-  )
-}
-
-export const useToast = () => {
-  const context = React.useContext(ToastContext)
-  if (!context) {
-    throw new Error("useToast must be used within ToastProvider")
-  }
-  return context
-}
 
 export { Toast, toastVariants }

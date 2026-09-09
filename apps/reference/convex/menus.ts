@@ -1,9 +1,6 @@
 import { query, internalMutation } from "./_generated/server";
-import type { MutationCtx } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import * as defs from "@be-in-digital/convex-functions/menus";
-import { claimMenuSyncWindow } from "@be-in-digital/convex-functions/rateLimit";
 import { touchesTranslatableText } from "@be-in-digital/convex-functions/autoTranslate";
 import { storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 import { scheduleMenuSync } from "./lib/menuSync";
@@ -13,9 +10,6 @@ import { scheduleTranslation } from "./autoTranslate";
 
 // @public-by-design: menus are the published storefront offering.
 export const list = query(defs.list);
-// @public-by-design: menus are the published storefront offering
-export const getById = query(defs.getById);
-
 // === Mutations (with menu sync trigger) ===
 
 /**

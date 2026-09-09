@@ -93,8 +93,6 @@ export interface OrderConfirmationInput {
    * payment they have not made.
    */
   paymentPending?: boolean
-  /** Timestamp the diner asked for, when they scheduled the order. */
-  scheduledFor?: number
   /** Minutes, when the kitchen has an estimate instead. */
   estimatedPrepTime?: number
   /** The live order page, `/order/{id}?token={viewToken}`. */
@@ -165,6 +163,11 @@ const MONTHS_FR = [
  * given. A diner told "à 19:30" who arrives at 20:30 because the server
  * answered in UTC is a complaint, not a rounding error.
  */
+// No caller in this file any more: its one use was the `scheduledFor` branch of
+// `timingLine`, removed with the field (#413). Kept because this module is
+// published as `@be-in-digital/core/aws/ses/order-confirmation`, so the name is
+// on a client's API — the same reasoning `tasks/reference-themes-divergence.md`
+// applies to the twenty consumer-free components in `packages/ui`.
 export function formatDateTime(timestamp: number, timeZone?: string): string {
   const date = new Date(timestamp)
   if (Number.isNaN(date.getTime())) return ""
@@ -301,15 +304,28 @@ export function fulfilmentLines(input: OrderConfirmationInput): {
   return { heading: "Sur place", detail }
 }
 
-/** "Prévue pour le 12 mars 2026 à 19:30" / "Prête dans environ 20 minutes". */
-export function timingLine(
-  input: OrderConfirmationInput,
-  timeZone?: string
-): string | undefined {
-  if (input.scheduledFor) {
-    const when = formatDateTime(input.scheduledFor, timeZone)
-    if (when) return `Prévue pour le ${when}`
-  }
+/**
+ * "Prête dans environ 20 minutes", when anything can say so.
+ *
+ * This used to open with a branch reading `scheduledFor` — "Prévue pour le 12
+ * mars 2026 à 19:30". `orders.scheduledFor` had no writer: its only one was a
+ * dead Uber Eats importer deleted with #313, and #363 had already removed the
+ * sibling `scheduledAt` on the finding that customer-facing scheduled ordering
+ * is a capability this product does not have. `orders.create` takes no time
+ * argument at all. The branch was written in #367, after that ruling, against a
+ * field that was already unbacked, and could never have run.
+ *
+ * KNOWN, AND DELIBERATELY NOT FIXED HERE: the branch that remains does not run
+ * either. `orderConfirmation.ts` reads `order.estimatedPrepTime`, while
+ * `orders.create` writes the prep time it computes onto the **kitchen ticket**
+ * instead (`estimatedPrepTime: summary.estimatedPrepTime`, inside the ticket
+ * insert). Nothing writes the field this reads, so for every real order this
+ * returns `undefined` and the confirmation email prints no timing row at all.
+ * That is a live defect in a customer-facing email, not dead code, and wiring it
+ * is a change with its own review — so it is reported under #413 rather than
+ * smuggled in under a deletion.
+ */
+export function timingLine(input: OrderConfirmationInput): string | undefined {
   if (input.estimatedPrepTime && input.estimatedPrepTime > 0) {
     return `Prête dans environ ${input.estimatedPrepTime} minutes`
   }
@@ -396,7 +412,7 @@ export function renderOrderConfirmationText(
   options: { timeZone?: string } = {}
 ): string {
   const fulfilment = fulfilmentLines(input)
-  const timing = timingLine(input, options.timeZone)
+  const timing = timingLine(input)
   const method = paymentMethodLabel(input.paymentMethod)
 
   const due = paymentDueLine(input)
@@ -451,7 +467,7 @@ export function renderOrderConfirmationHtml(
 ): string {
   const e = escapeHtml
   const fulfilment = fulfilmentLines(input)
-  const timing = timingLine(input, options.timeZone)
+  const timing = timingLine(input)
   const method = paymentMethodLabel(input.paymentMethod)
 
   const due = paymentDueLine(input)

@@ -50,19 +50,6 @@ export const list = storeQuery({
   handler: (ctx, args) => defs.list.handler(ctx, args),
 });
 
-export const getById = storeQuery({
-  permission: "marketing:read",
-  storeIdFrom: emailSubscribersStoreId,
-  args: defs.getById.args,
-  handler: (ctx, args) => defs.getById.handler(ctx, args),
-});
-
-export const getByEmail = storeQuery({
-  permission: "marketing:read",
-  args: defs.getByEmail.args,
-  handler: (ctx, args) => defs.getByEmail.handler(ctx, args),
-});
-
 export const countByStatus = storeQuery({
   permission: "marketing:read",
   args: defs.countByStatus.args,
@@ -89,13 +76,6 @@ export const create = storeMutation({
     await scheduleConfirmation(ctx, id as Id<"emailSubscribers">);
     return id;
   },
-});
-
-export const update = storeMutation({
-  permission: "marketing:write",
-  storeIdFrom: emailSubscribersStoreId,
-  args: defs.update.args,
-  handler: (ctx, args) => defs.update.handler(ctx, args),
 });
 
 export const remove = storeMutation({
@@ -126,20 +106,6 @@ export const purgeRemoval = internalMutation({
     }
     return result;
   },
-});
-
-export const addTag = storeMutation({
-  permission: "marketing:write",
-  storeIdFrom: emailSubscribersStoreId,
-  args: defs.addTag.args,
-  handler: (ctx, args) => defs.addTag.handler(ctx, args),
-});
-
-export const removeTag = storeMutation({
-  permission: "marketing:write",
-  storeIdFrom: emailSubscribersStoreId,
-  args: defs.removeTag.args,
-  handler: (ctx, args) => defs.removeTag.handler(ctx, args),
 });
 
 export const importBatch = storeMutation({

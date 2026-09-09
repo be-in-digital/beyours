@@ -20,13 +20,6 @@ export const list = storeQuery({
   handler: (ctx, args) => defs.list.handler(ctx, args),
 });
 
-export const getById = storeQuery({
-  permission: "marketing:read",
-  args: defs.getById.args,
-  storeIdFrom: storeIdFromDocument("Promotion not found"),
-  handler: (ctx, args) => defs.getById.handler(ctx, args),
-});
-
 // Answers "has this email already used this promotion?" — a membership probe on
 // an arbitrary address, and it had no caller at all outside the server.
 export const internalGetCustomerUsageCount = internalQuery(
