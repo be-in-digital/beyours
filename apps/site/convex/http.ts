@@ -211,19 +211,30 @@ const stripeWebhookHandler = (secretEnvVar: string) =>
        reads both shapes and says so loudly. */
     const event = JSON.parse(body) as Stripe.Event;
 
-    // Idempotency — skip if already processed. If it exists but is not processed, retry.
-    const existing = await ctx.runQuery(
-      internal.stripeEvents.getByEventId,
-      { eventId: event.id },
-    );
-    if (existing?.processed) {
+    /* Idempotency, claimed in ONE transaction.
+
+       This was a `runQuery` and then a `runMutation`: two transactions with a
+       gap, from an httpAction that is not a transaction at all. Stripe delivers
+       an event more than once by design, and two deliveries overlapping in that
+       gap both read nothing and both insert — `schema.ts` has an index on
+       `eventId`, not a unique constraint, and Convex has none to declare.
+
+       The duplicate was permanent. The read was `.unique()`, which throws on a
+       second row, and it stood HERE — above the `try` below — so every later
+       delivery of that id died uncaught, answered 500 and never reached
+       `captureBackendError`. A duplicated `charge.refunded` then never
+       registers the refund, the subscription keeps billing, the commission is
+       never clawed back, and nothing reports any of it.
+
+       `stripeEvents.claim` does the read and the insert inside one mutation,
+       which Convex runs serialisably: a concurrent pair conflicts on the index
+       and one retries against the row the other wrote. */
+    const claim = await ctx.runMutation(internal.stripeEvents.claim, {
+      eventId: event.id,
+      eventType: event.type,
+    });
+    if (claim.processed) {
       return new Response("Already processed", { status: 200 });
-    }
-    if (!existing) {
-      await ctx.runMutation(internal.stripeEvents.create, {
-        eventId: event.id,
-        eventType: event.type,
-      });
     }
 
     try {

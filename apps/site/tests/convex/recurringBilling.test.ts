@@ -768,3 +768,167 @@ describe("a commission is never wired twice", () => {
     expect(payable).toHaveLength(0);
   });
 });
+
+/* ═══════════════════════════════════════════════
+   4. One delivery, one row
+   ═══════════════════════════════════════════════ */
+
+/**
+ * The idempotency table's own defect, which is not about billing and reaches
+ * every event type through the same door.
+ *
+ * `http.ts` read `stripe_events` with `runQuery` and inserted with
+ * `runMutation` — two transactions, from an httpAction that is not one. Stripe
+ * delivers an event more than once by design, and two deliveries overlapping in
+ * that gap both read nothing and both insert; `schema.ts:334-339` declares an
+ * index on `eventId` and no unique constraint, because Convex has none to
+ * declare.
+ *
+ * What made one duplicate permanent is where the read stood. It was `.unique()`
+ * — which throws on a second row — and it sat ABOVE the `try` that reports, so
+ * every later delivery of that id died uncaught with
+ * `unique() query returned more than one result from table stripe_events`,
+ * answered 500, and never reached `captureBackendError`.
+ *
+ * For `charge.refunded` that is the whole of section 2 above silently undone:
+ * the refund never registers, Stripe keeps billing the subscription, the
+ * commission is never clawed back, and no report is filed anywhere. Stripe
+ * retries for three days against the same duplicate and gives up.
+ */
+describe("a duplicated event does not brick that event for ever", () => {
+  async function seedPaidSale(t: ReturnType<typeof convexTest>) {
+    const orderId = await seedOrder(t);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("payments", {
+        orderId,
+        stripePaymentIntentId: "pi_refunded",
+        stripeSessionId: "cs_1",
+        amountCents: 950000,
+        status: "succeeded" as const,
+        paymentMethod: "card" as const,
+        createdAt: Date.now(),
+      });
+      await ctx.db.insert("subscriptions", {
+        orderId,
+        stripeSubscriptionId: "sub_live_1",
+        stripeCustomerId: "cus_1",
+        customerEmail: "chef@trattoria.fr",
+        plan: "premium" as const,
+        billingPeriod: "yearly" as const,
+        status: "active" as const,
+        createdAt: Date.now(),
+      });
+    });
+    return orderId;
+  }
+
+  /** The rows the racing version left behind, written straight in. */
+  async function seedDuplicateClaims(
+    t: ReturnType<typeof convexTest>,
+    eventId: string,
+  ) {
+    await t.run(async (ctx) => {
+      for (let i = 0; i < 2; i++) {
+        await ctx.db.insert("stripe_events", {
+          eventId,
+          eventType: "charge.refunded",
+          processed: false,
+          createdAt: Date.now(),
+        });
+      }
+    });
+  }
+
+  /**
+   * The reported harm, end to end.
+   *
+   * A deployment that ran the racing version is ALREADY holding duplicates —
+   * this is not a race to reproduce, it is a state to recover from — so the
+   * fix has to be a reader that tolerates them, not only a writer that stops
+   * making them.
+   */
+  test("a refund still registers on a table that already holds duplicates", async () => {
+    const t = convexTest(schema, modules);
+    await seedPaidSale(t);
+    await seedDuplicateClaims(t, "evt_refund_1");
+
+    const response = await postSigned(
+      t,
+      ROUTE,
+      chargeRefunded("pi_refunded"),
+      SECRET,
+    );
+
+    // Not 500. `.unique()` threw here, above the try, so nothing was reported
+    // and nothing was handled.
+    expect(response.status).toBe(200);
+    await drainScheduled(t);
+
+    const payments = await t.run((ctx) => ctx.db.query("payments").collect());
+    expect(payments[0]?.status).toBe("refunded");
+    const subs = await t.run((ctx) => ctx.db.query("subscriptions").collect());
+    expect(subs[0]?.status).toBe("canceled");
+  });
+
+  /**
+   * And both rows are retired, not one.
+   *
+   * `markProcessed` was `.unique()` too. Settling a single row of a duplicated
+   * pair leaves the other reading `processed: false`, so the next delivery is
+   * admitted and the whole reversal runs a second time — refunding, cancelling
+   * and clawing back twice.
+   */
+  test("every row for the id is retired, so no retry is re-admitted", async () => {
+    const t = convexTest(schema, modules);
+    await seedPaidSale(t);
+    await seedDuplicateClaims(t, "evt_refund_1");
+
+    await postSigned(t, ROUTE, chargeRefunded("pi_refunded"), SECRET);
+    await drainScheduled(t);
+
+    const events = await t.run((ctx) => ctx.db.query("stripe_events").collect());
+    expect(events).toHaveLength(2);
+    expect(events.every((e) => e.processed)).toBe(true);
+
+    // The retry Stripe sends anyway is refused at the door.
+    stripeFake.cancelled.length = 0;
+    const retry = await postSigned(
+      t,
+      ROUTE,
+      chargeRefunded("pi_refunded"),
+      SECRET,
+    );
+    expect(retry.status).toBe(200);
+    expect(await retry.text()).toBe("Already processed");
+    expect(stripeFake.cancelled).toEqual([]);
+  });
+
+  /**
+   * The claim itself: one row per event id.
+   *
+   * Stated plainly, because this one does NOT discriminate — it passes against
+   * the racing version too. `convex-test` runs in one process and serialises
+   * these two deliveries, so no harness here can produce the interleaving that
+   * inserted twice on the real backend. What closes the race is Convex's own
+   * transaction semantics: `stripeEvents.claim` does the read and the insert
+   * inside ONE mutation, the index read is in that handler's read set, the
+   * insert writes it, so a concurrent pair conflicts and one is retried against
+   * the row the other wrote. This asserts the shape that makes that true — one
+   * mutation, one row, retired — and the two tests above are the ones that hold
+   * the damage.
+   */
+  test("two deliveries of one event leave one row", async () => {
+    const t = convexTest(schema, modules);
+    await seedPaidSale(t);
+
+    await Promise.all([
+      postSigned(t, ROUTE, chargeRefunded("pi_refunded"), SECRET),
+      postSigned(t, ROUTE, chargeRefunded("pi_refunded"), SECRET),
+    ]);
+    await drainScheduled(t);
+
+    const events = await t.run((ctx) => ctx.db.query("stripe_events").collect());
+    expect(events).toHaveLength(1);
+    expect(events[0]?.processed).toBe(true);
+  });
+});
