@@ -797,3 +797,71 @@ describe("a called workflow never asks for more than its caller grants", () => {
     },
   )
 })
+
+/**
+ * A step that reads git tags must fetch them first.
+ *
+ * `publish-mirror.yml`'s `workflow_run` path decides whether to sync by asking
+ * `git tag --points-at HEAD`. Its checkout sets `fetch-tags: true`, and that
+ * input does not survive a `ref:` that is a SHA — actions/checkout then runs a
+ * fetch carrying no tag refspec at all. Measured on run 34407658142:
+ *
+ *   git … fetch --prune --no-recurse-submodules --depth=1 origin de6de57…
+ *
+ * So the tag namespace was empty, the step answered "that Release published
+ * nothing", the sync was skipped, and the job reported SUCCESS. The Release had
+ * published eight packages including the one the mirror's export gate had been
+ * failing on all day.
+ *
+ * The condition was unreachable, not merely wrong: with no tags ever fetched,
+ * that path could never answer "published", so it could never sync. Every
+ * `workflow_run` sync since the check was introduced was a no-op wearing a
+ * green tick — which is the same defect class as the one the `report` job was
+ * added for, one layer further in, and invisible to it because a stand-down
+ * after "nothing was published" is a legitimate green.
+ */
+describe("a step that reads tags it did not create fetches them first", () => {
+  /** YAML comments stripped, so prose about tags is not read as code. */
+  const codeOf = (text: string) =>
+    text
+      .split("\n")
+      .map((line) => (/^\s*#/.test(line) ? "" : line.replace(/\s+#.*$/, "")))
+      .join("\n")
+
+  const RAW_WORKFLOWS = WORKFLOW_FILES.map((file) => ({
+    file,
+    code: codeOf(fs.readFileSync(path.join(WORKFLOW_DIR, file), "utf8")),
+  }))
+
+  /**
+   * Only workflows that read tags SOMEBODY ELSE wrote.
+   *
+   * `release.yml` reads `git tag --points-at HEAD` too, and correctly needs no
+   * fetch: `changeset publish` creates those tags in that same job moments
+   * earlier, then it pushes them. Requiring a fetch there would be a false
+   * positive — the first draft of this test produced exactly that.
+   */
+  const readsForeignTags = RAW_WORKFLOWS.filter(
+    ({ code }) =>
+      /git tag\s+--points-at/.test(code) &&
+      !/changeset publish|git tag\s+-[am]/.test(code),
+  )
+
+  test("there is a tag-reading step to check", () => {
+    // If this hits zero the assertion below is vacuous and passes for ever.
+    expect(readsForeignTags.length).toBeGreaterThan(0)
+  })
+
+  test.each(readsForeignTags)("$file fetches tags before reading them", ({ code }) => {
+    const readAt = code.search(/git tag\s+--points-at/)
+    const fetchAt = code.search(/git fetch[^\n]*(refs\/tags|--tags)/)
+
+    expect(
+      fetchAt,
+      "this workflow reads tags it did not create, and never fetches them. " +
+        "`fetch-tags: true` on actions/checkout does NOT apply when `ref:` is a SHA, " +
+        "so the tag namespace is empty and the read silently answers 'nothing published'.",
+    ).toBeGreaterThan(-1)
+    expect(fetchAt, "the fetch has to come before the read").toBeLessThan(readAt)
+  })
+})

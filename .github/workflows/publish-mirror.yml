@@ -279,6 +279,32 @@ jobs:
         if: github.event_name == 'workflow_run'
         run: |
           set -euo pipefail
+
+          # FETCH THE TAGS FIRST. `fetch-tags: true` on the checkout above does
+          # not survive a `ref:` that is a SHA: the fetch actions/checkout then
+          # runs carries no tag refspec at all. Measured on run 34407658142,
+          # the whole of it was
+          #
+          #   git … fetch --prune --no-recurse-submodules --depth=1 origin de6de57…
+          #
+          # so `git tag --points-at HEAD` read an EMPTY tag namespace, this step
+          # answered "that Release published nothing", the sync was skipped, and
+          # the job went green. That Release had published eight packages,
+          # `@be-in-digital/convex-functions@7.0.0` among them — the exact
+          # version the mirror's export gate had been failing on for a day.
+          #
+          # The condition is unreachable rather than merely wrong: with no tags
+          # ever fetched, this path could never answer "published", so it could
+          # never sync. Every `workflow_run` sync since the check was added was
+          # a no-op reported as a success.
+          if ! git fetch --depth=1 origin "+refs/tags/*:refs/tags/*" 2>/dev/null; then
+            # A fetch that FAILED is not a Release that published nothing, and
+            # answering "false" here is what froze the mirror silently. An
+            # unanswerable question stops the run instead.
+            echo "::error::Could not fetch tags, so whether that Release published cannot be determined. Refusing to guess — a wrong 'no' here skips the sync and reports success."
+            exit 1
+          fi
+
           tags=$(git tag --points-at HEAD)
           if [ -z "$tags" ]; then
             echo "::notice::That Release published nothing — no tags at $(git rev-parse --short HEAD). The push path owns any template change, and it waits for the E2E suite. Skipping."
