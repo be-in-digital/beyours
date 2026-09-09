@@ -26,11 +26,18 @@
  *     COMMIT message, not from the pull request body — `038eb9db` opens with
  *     the commit's first paragraph while #418's description opens with
  *     "Closes #412". So a branch commit checked here is the thing that lands.
- *   - Not the author or committer identity. `e0621c3c` on #418's branch is
- *     authored by `Claude <noreply@anthropic.com>`, and every one of the 24
- *     commits on `main` is authored by a person and committed by
- *     `GitHub <noreply@github.com>`: squash-merge drops branch authorship, so
- *     refusing it would fail pull requests over commits that never land.
+ *   - The AUTHOR and COMMITTER identity of each of them, which this check used
+ *     to skip on the reasoning that "squash-merge drops branch authorship, so
+ *     refusing it would fail pull requests over commits that never land". That
+ *     was wrong, and #446 is the measurement that says so: all three of its
+ *     branch commits are authored by `Claude <noreply@anthropic.com>`, not one
+ *     of the three messages carries a trailer of any kind, and the squash on
+ *     `main` ends `---------` followed by `Co-authored-by: Claude
+ *     <noreply@anthropic.com>` — GitHub's own synthesis format. Squash-merge
+ *     does not drop branch authorship; it converts it into a co-author trailer.
+ *     So a message-only scan can read three clean commits and watch the merge
+ *     write the violation itself. It cost a red CI on `main`, a `Release` and a
+ *     `Publish mirror` that never started, and a line nobody may now rewrite.
  *   - Not the pull request title or body. They carry the footer today and do
  *     not become the commit message — while the repository squashes from
  *     commit messages. If that setting is ever changed to "pull request title
@@ -53,6 +60,7 @@ import { fileURLToPath } from "node:url"
 import {
   exclusionsFromEvent,
   findAttribution,
+  findAttributingIdentity,
   rangeMustHaveCommits,
   runSelfTest,
 } from "./lib/commit-attribution.mjs"
@@ -226,18 +234,27 @@ function resolveScope(argvRange) {
  * displaying in full. Control bytes are invisible in every UI that matters, so
  * nothing about that commit would have looked wrong.
  */
+const COMMIT_FIELDS = ["%H", "%an", "%ae", "%cn", "%ce", "%B"]
+
 function commitsIn(logArgs) {
-  const raw = git(["log", "--format=%H%x00%B%x00", ...logArgs])
+  const raw = git(["log", `--format=${COMMIT_FIELDS.join("%x00")}%x00`, ...logArgs])
   if (raw === null) return null
 
-  // sha, message, sha, message, … — unambiguous, since neither field can
-  // contain the separator.
+  // sha, author name, author email, committer name, committer email, message,
+  // … — unambiguous, since no field can contain the separator. A name or an
+  // address holding a NUL is as impossible as a message holding one.
   const fields = raw.split("\0")
   const commits = []
-  for (let i = 0; i + 1 < fields.length; i += 2) {
+  const width = COMMIT_FIELDS.length
+  for (let i = 0; i + width - 1 < fields.length; i += width) {
     const sha = fields[i].replace(/^\n/, "").trim()
     if (!sha) continue
-    commits.push({ sha, message: fields[i + 1] })
+    commits.push({
+      sha,
+      author: { name: fields[i + 1], email: fields[i + 2] },
+      committer: { name: fields[i + 3], email: fields[i + 4] },
+      message: fields[i + 5],
+    })
   }
   return commits
 }
@@ -294,9 +311,35 @@ if (commits.length === 0 && mustHaveCommits) {
 
 /* ── The verdict ────────────────────────────────────────────────────────── */
 
+/**
+ * A commit's attributing identities, as hits shaped like the message ones.
+ *
+ * Reported as `identity` rather than a line number, because there is no line to
+ * point at and rewording the message will not help — `git commit --amend
+ * --author` is the fix, and the report below says so.
+ */
+function identityHits(commit) {
+  const hits = []
+  for (const [role, who] of [
+    ["author", commit.author],
+    ["committer", commit.committer],
+  ]) {
+    const rule = findAttributingIdentity(who.name, who.email)
+    if (rule) {
+      hits.push({
+        identity: role,
+        text: `${role}: ${who.name} <${who.email}>`,
+        rule: rule.id,
+        why: `${rule.why} — GitHub writes this into the squash as a co-author trailer`,
+      })
+    }
+  }
+  return hits
+}
+
 const offenders = []
 for (const commit of commits) {
-  const hits = findAttribution(commit.message)
+  const hits = [...findAttribution(commit.message), ...identityHits(commit)]
   if (hits.length) offenders.push({ ...commit, hits })
 }
 
@@ -311,7 +354,7 @@ if (offenders.length) {
     const subject = commit.message.split("\n")[0]
     console.error(`    ${commit.sha.slice(0, 8)}  ${subject}`)
     for (const hit of commit.hits) {
-      console.error(`      line ${hit.line}: ${hit.why}`)
+      console.error(`      ${hit.identity ? hit.identity : `line ${hit.line}`}: ${hit.why}`)
       console.error(`        ${hit.text}`)
     }
   }
@@ -320,6 +363,16 @@ if (offenders.length) {
   console.error(`  Reword them — the history is still yours to change while it is on a branch:`)
   console.error(`      git commit --amend        (the tip)`)
   console.error(`      git rebase -i ${rebaseOnto()}   (anything older)\n`)
+  if (offenders.some((commit) => commit.hits.some((hit) => hit.identity))) {
+    console.error(`  An IDENTITY is not in the message, so rewording will not reach it. Set the`)
+    console.error(`  one this repository should record, then rewrite the commits under it:`)
+    console.error(`      git config user.name "Your Name"`)
+    console.error(`      git config user.email "you@example.com"`)
+    console.error(`      git commit --amend --reset-author --no-edit        (the tip)`)
+    console.error(
+      `      git rebase ${rebaseOnto()} --exec 'git commit --amend --reset-author --no-edit'\n`
+    )
+  }
   console.error(`  Then stop it happening again: \`pnpm install\` installs .githooks/commit-msg,`)
   console.error(`  which removes these lines as they are written.\n`)
   process.exit(1)

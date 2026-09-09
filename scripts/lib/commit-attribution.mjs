@@ -193,6 +193,88 @@ export function splitAtScissors(message) {
 }
 
 /**
+ * Identities that GitHub turns into an attribution trailer of its own.
+ *
+ * WHY THIS EXISTS, and it is a correction rather than a widening. This module
+ * deliberately did not read author or committer identity, on the stated
+ * reasoning that "squash-merge drops branch authorship, so refusing it would
+ * fail pull requests over commits that never land". That is false, and it was
+ * falsified by the commit it was written beside.
+ *
+ * Measured on #446, whose squash `e5394e5` carries a permanent
+ * `Co-authored-by: Claude <noreply@anthropic.com>` on `main`:
+ *
+ *   - all three branch commits are AUTHORED by `Claude <noreply@anthropic.com>`
+ *   - not one of their three messages contains a trailer of any kind
+ *   - the squash message ends `---------` then the trailer, which is GitHub's
+ *     own synthesis format, not text copied from anywhere
+ *
+ * Squash-merge does not drop branch authorship. It converts it into a
+ * `Co-authored-by` line, credited to every distinct author in the batch. So a
+ * message scan alone can read three clean commits and watch the merge write the
+ * violation itself, which is exactly what happened — a red CI on `main`, a
+ * `Release` and a `Publish mirror` that never started, and history nobody may
+ * rewrite.
+ *
+ * A LIST, NOT A HEURISTIC. Each row is an identity a harness commits as. That
+ * is deliberate: `CLAUDE.md` records that Claude is an ordinary French given
+ * name, and a guard that refuses a commit from a colleague called Claude gets
+ * switched off rather than obeyed. So the address is what decides wherever
+ * there is an address to decide on, and the one name rule below is bounded to
+ * shapes a person does not have. Adding an assistant means adding a row here
+ * and a case to `SELF_TEST_CASES`.
+ */
+export const IDENTITY_RULES = [
+  {
+    id: "assistant-address",
+    why: "a commit authored by an AI assistant's own account",
+    // The decisive signal, and the one #446 took. A person does not hold an
+    // address at these domains.
+    match: ({ email }) => /@(?:anthropic\.com|openai\.com)$/i.test(email),
+  },
+  {
+    id: "assistant-bot-account",
+    why: "a commit authored by an AI assistant's bot account",
+    // GitHub's own no-mailbox addresses, which is how Copilot and friends
+    // appear. Matched on the local part, since the domain is shared with every
+    // human who hides their address.
+    match: ({ email }) =>
+      /^\d*\+?(?:copilot|devin|claude|cursor|codex)(?:\[bot\])?@users\.noreply\.github\.com$/i.test(
+        email
+      ),
+  },
+  {
+    id: "assistant-identity",
+    why: "a commit authored under the assistant's product name",
+    // `Claude`, `Claude Code`, `Claude Opus 5` — a product name, not a person's.
+    // Bounded twice, because this is the row that could refuse a colleague:
+    // the name must be the product name and NOTHING else (so `Claude Dupont`
+    // cannot match), and the address must be one with no mailbox behind it (so
+    // a real Claude who receives mail is never asked about it).
+    match: ({ name, email }) =>
+      /^claude(?:[ \t-]+(?:code|ai|opus|sonnet|haiku|fable)(?:[ \t-]*\d+(?:\.\d+)?)?)?$/i.test(
+        name.trim()
+      ) && /(?:^noreply@|^no-reply@|\.noreply\.|@users\.noreply\.github\.com$)/i.test(email),
+  },
+]
+
+/**
+ * The first identity rule `{ name, email }` trips, or null.
+ *
+ * An empty name or address trips nothing: git records both for every commit,
+ * and inventing a verdict from a missing field is how a guard starts refusing
+ * things nobody can explain.
+ */
+export function findAttributingIdentity(name, email) {
+  const identity = { name: name ?? "", email: email ?? "" }
+  if (!identity.email && !identity.name) return null
+  for (const rule of IDENTITY_RULES) {
+    if (rule.match(identity)) return rule
+  }
+  return null
+}
+
+/**
  * The first rule a line trips, or null. `ATTRIBUTION_RULES` is ordered
  * most-specific-first on purpose: the harness footer trips both
  * `generated-with` and `session-link`, and the reason printed to whoever wrote
@@ -458,14 +540,77 @@ export const SELF_TEST_CASES = [
     message: "feat(kds): show a 🤖 badge on tickets an automation created\n",
     expect: "accept",
   },
+
+  /* ── Identity, which is the other way a trailer reaches `main` ─────────── */
+
+  {
+    // #446 exactly: three clean messages, and GitHub wrote the trailer from
+    // this.
+    name: "the assistant's own account authoring a clean message",
+    identity: { name: "Claude", email: "noreply@anthropic.com" },
+    expect: "reject",
+  },
+  {
+    name: "the assistant's account under a model name",
+    identity: { name: "Claude Opus 5", email: "noreply@anthropic.com" },
+    expect: "reject",
+  },
+  {
+    name: "an assistant's GitHub bot account",
+    identity: { name: "Copilot", email: "198982749+Copilot@users.noreply.github.com" },
+    expect: "reject",
+  },
+  {
+    name: "the product name with no mailbox behind it",
+    identity: { name: "Claude", email: "12345+claude@users.noreply.github.com" },
+    expect: "reject",
+  },
+  {
+    // The case that decides whether this guard survives contact with the team.
+    // `CLAUDE.md` says it in as many words: Claude is an ordinary French given
+    // name. Refusing a colleague's commit gets a guard switched off.
+    name: "a colleague called Claude is not an assistant",
+    identity: { name: "Claude Dubois", email: "claude.dubois@restaurant.fr" },
+    expect: "accept",
+  },
+  {
+    name: "a colleague called Claude hiding their address is still a colleague",
+    identity: { name: "Claude Dupont", email: "72397342+claude-dupont@users.noreply.github.com" },
+    expect: "accept",
+  },
+  {
+    // Every squash on `main` is committed by this. Refusing it would refuse
+    // the entire history.
+    name: "GitHub's own committer identity",
+    identity: { name: "GitHub", email: "noreply@github.com" },
+    expect: "accept",
+  },
+  {
+    name: "a person with a GitHub no-reply address",
+    identity: { name: "Mamadou Faye Seck", email: "72397342+doums85@users.noreply.github.com" },
+    expect: "accept",
+  },
 ]
 
-/** Which self-test cases the detector currently gets wrong. Empty is the only good answer. */
+/**
+ * Which self-test cases the detector currently gets wrong. Empty is the only
+ * good answer.
+ *
+ * A case carries either a `message` or an `identity`, and both kinds run here
+ * rather than in two harnesses: `check-commit-attribution.mjs` proves the guard
+ * once before trusting it, so a rule that is not covered by THIS function is a
+ * rule nothing proves.
+ */
 export function runSelfTest(cases = SELF_TEST_CASES) {
   const broken = []
   for (const testCase of cases) {
-    const hits = findAttribution(testCase.message)
-    const verdict = hits.length > 0 ? "reject" : "accept"
+    const verdict = testCase.identity
+      ? findAttributingIdentity(testCase.identity.name, testCase.identity.email)
+        ? "reject"
+        : "accept"
+      : findAttribution(testCase.message).length > 0
+        ? "reject"
+        : "accept"
     if (verdict !== testCase.expect) {
       broken.push(`${testCase.name} — expected to ${testCase.expect}, but it would ${verdict}`)
     }
