@@ -11,26 +11,31 @@ import { scheduleTranslation } from "./autoTranslate";
 // === Queries (public for storefront) ===
 
 // @public-by-design: the catalogue IS the storefront. Prices and availability
-// are meant to be readable without an account.
-// @public-by-design: the catalogue IS the storefront; prices and availability are public
+// are meant to be readable without an account — but only for what is ON SALE.
+// Both of these filter on `isActive`; `listAll` and `getAnyById` below are the
+// unfiltered pair, and they are guarded.
 export const list = query(defs.list);
-// @public-by-design: the catalogue IS the storefront; prices and availability are public
+// @public-by-design: the storefront's product page; serves only what is on sale
 export const getById = query(defs.getById);
-// The drafts, for the admin only. `list` above is the diner's view and stops at
-// what is on sale; this is the catalogue manager's, and it is store-scoped and
-// permission-gated because a dish that is not on sale yet is the owner's
-// business and nobody else's (#443).
-export const listAll = storeQuery({
-  permission: "products:read",
-  args: defs.listAll.args,
-  handler: (ctx, args) => defs.listAll.handler(ctx, args),
-});
 // @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const getManualTrending = query(defs.getManualTrending);
 // @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const getTrending = query(defs.getTrending);
 // @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const getManyByIds = query(defs.getManyByIds);
+
+// === Queries (the owner's own catalogue, drafts included) ===
+//
+// `list` and `getById` above are the storefront's and return only what is on
+// sale. These two are their counterparts for the back office, and they are
+// guarded rather than public for the obvious reason: an unpublished dish, its
+// price and its stock are the establishment's business until the owner says
+// otherwise.
+export const listAll = storeQuery({
+  permission: "products:read",
+  args: defs.listAll.args,
+  handler: (ctx, args) => defs.listAll.handler(ctx, args),
+});
 
 // === Helpers ===
 
@@ -43,6 +48,21 @@ export const getManyByIds = query(defs.getManyByIds);
  * read BEFORE the handler runs, not after.
  */
 const productStoreId = storeIdFromDocument("Product not found");
+
+/**
+ * One product, whatever its state — the edit screen's read.
+ *
+ * Below `productStoreId` rather than beside `listAll`, because `storeIdFrom`
+ * is evaluated when this module loads: referencing the const from above it is
+ * a temporal dead zone, and the whole `convex/products.ts` module fails to
+ * import rather than one query failing to run.
+ */
+export const getAnyById = storeQuery({
+  permission: "products:read",
+  storeIdFrom: productStoreId,
+  args: defs.getAnyById.args,
+  handler: (ctx, args) => defs.getAnyById.handler(ctx, args),
+});
 
 /** Resolve storeId from a `productId` arg for authorization */
 async function storeIdFromProductId(

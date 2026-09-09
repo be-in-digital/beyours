@@ -31,6 +31,31 @@ const blogContentValidator = v.object({
 })
 
 /**
+ * The fields of an article that are prose, not markup.
+ *
+ * Kept beside `blogContentValidator` so that adding a text field to one and
+ * not the other is a visible omission rather than a silent one.
+ */
+const PLAIN_TEXT_FIELDS = ["title", "excerpt", "metaTitle", "metaDescription"] as const
+
+/**
+ * Those of the plain-text fields this payload actually carries, cleaned.
+ *
+ * Exported so `blogPublish` can apply it too. Cleaning on write alone leaves a
+ * row drafted BEFORE this existed carrying an unsanitised title, and publishing
+ * is the moment that title reaches the public breadcrumb JSON-LD — the same
+ * reason the body is cleaned on both paths rather than one.
+ */
+export function plainTextFields(content: Record<string, unknown> | undefined) {
+  const out: Record<string, string> = {}
+  for (const field of PLAIN_TEXT_FIELDS) {
+    const value = content?.[field]
+    if (typeof value === "string") out[field] = sanitizePlainText(value)
+  }
+  return out
+}
+
+/**
  * How much markup is worth scanning for a reading time.
  *
  * This runs once per article inside `listPublishedArticles`, which is the query
@@ -450,7 +475,8 @@ export async function createArticleCore(
     authorId: string
   },
 ): Promise<string> {
-  const slug = await ensureUniqueSlug(ctx, args.storeId, generateSlug(args.title), null)
+  const title = sanitizePlainText(args.title)
+  const slug = await ensureUniqueSlug(ctx, args.storeId, generateSlug(title), null)
   const timestamp = now()
 
   const articleId = await ctx.db.insert("blogArticles", {
@@ -461,7 +487,7 @@ export async function createArticleCore(
     draftCategoryId: args.categoryId,
     draftAuthorId: args.authorId,
     draftContent: {
-      title: args.title,
+      title,
       slug,
       excerpt: "",
       // coverImageId intentionally absent — set on first save, required at publish
@@ -474,25 +500,6 @@ export async function createArticleCore(
   })
 
   return articleId
-}
-
-/**
- * The article fields that are text, never markup.
- *
- * Returned as a partial object so a caller can spread it over content it has
- * already built, and so a field the caller did not send stays absent rather
- * than being resurrected as `""` — `contentEquals` compares these documents to
- * decide `hasUnpublishedChanges`, and inventing a key would report an edit
- * nobody made.
- */
-export function plainTextFields(content: any): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const field of ["title", "excerpt", "metaTitle", "metaDescription"]) {
-    if (typeof content?.[field] === "string") {
-      out[field] = sanitizePlainText(content[field])
-    }
-  }
-  return out
 }
 
 /**
@@ -543,18 +550,18 @@ export async function saveDraftCore(
   // compromised admin session would use — was stored verbatim and rendered on
   // the public site. Same allow-list for both, applied here on write, and the
   // renderer sanitises again for rows written before this existed.
+  //
+  // The four text fields beside it were not cleaned at all, and they travel
+  // FURTHER than the body: the title alone reaches the page `<title>`, the
+  // breadcrumb JSON-LD, the Open Graph tags and the card on the blog index —
+  // none of which run the body through a renderer that sanitises. They are one
+  // line of prose each; `sanitizePlainText` leaves the words and drops the
+  // markup.
   const draftContent = {
     ...args.draftContent,
     ...(typeof args.draftContent?.content === "string"
       ? { content: sanitizeArticleHtml(args.draftContent.content) }
       : {}),
-    // The body was cleaned twice and the SHORT fields not at all, which is
-    // the gap #445 was reported through: `title` rides this spread into
-    // `article.content.title`, into the breadcrumb trail, and into a
-    // `<script type="application/ld+json">` block. The sink escapes properly
-    // now; this is the other half, and it is the half that says a title is
-    // text. `sanitizePlainText` strips tags and keeps the words, so an author
-    // who typed one loses the tag rather than the sentence.
     ...plainTextFields(args.draftContent),
     slug,
     updatedAt: timestamp,

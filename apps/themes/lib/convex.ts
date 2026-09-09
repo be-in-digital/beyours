@@ -2,15 +2,25 @@
 import { convexBetterAuthNextJs } from "@convex-dev/better-auth/nextjs";
 
 /**
- * Origins the Next.js auth handler accepts, mirroring `convex/auth.ts`.
+ * Development origins, trusted only outside a production build.
  *
- * A client site runs on its own domain; the extra dev port only exists because
- * a second workspace takes 3000.
+ * They used to be unconditional, and `http://localhost:3000` was also the
+ * FALLBACK for an unset `BETTER_AUTH_URL` — so a delivered restaurant site
+ * accepted auth callbacks addressed to a developer's machine, on its own
+ * domain, forever. Next sets `NODE_ENV` to "production" in a built app and
+ * "development" under `next dev`, which is exactly the line this needs to
+ * fall on: convenience for us, nothing extra at the restaurant.
  */
-export function nextTrustedOrigins(authUrl: string | undefined): string[] {
-  const base = authUrl ?? "http://localhost:3000";
-  const isLocal = /^https?:\/\/localhost(:\d+)?\/?$/i.test(base);
-  return isLocal ? [...new Set([base, "http://localhost:3000", "http://localhost:3001"])] : [base];
+const DEV_ORIGINS = ["http://localhost:3000", "http://localhost:3001"];
+
+/** The origins this deployment was configured with, in order of precedence. */
+function trustedOrigins(): string[] {
+  const configured = [process.env.BETTER_AUTH_URL, process.env.SITE_URL].filter(
+    (origin): origin is string => Boolean(origin),
+  );
+  return process.env.NODE_ENV === "production"
+    ? configured
+    : [...configured, ...DEV_ORIGINS];
 }
 
 // Lazy singleton to avoid throwing during Next.js build
@@ -21,12 +31,7 @@ function auth() {
     _auth = convexBetterAuthNextJs({
       convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
       convexSiteUrl: process.env.CONVEX_SITE_URL!,
-      // `http://localhost:3001` used to be appended here unconditionally, so
-      // every delivered client site trusted a development origin it has no use
-      // for — the same defect as `convex/auth.ts`, on the Next.js half of the
-      // seam, and the reason fixing only one of them would have left the hole
-      // open. Localhost is trusted exactly while this site IS localhost.
-      trustedOrigins: nextTrustedOrigins(process.env.BETTER_AUTH_URL),
+      trustedOrigins: trustedOrigins(),
     } as any);
   }
   return _auth;

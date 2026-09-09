@@ -58,15 +58,12 @@ export const validate = action({
     // Deployment-wide operation with no store to scope against. "Logged in"
     // included every customer account, so the check is by role.
     //
-    // THIS CALL USED TO SIT INSIDE THE `if (!identity)` BLOCK ABOVE, which is
-    // the branch only unauthenticated callers take — and they were rejected on
-    // the next line regardless. So the permission check ran for nobody: every
-    // signed-in account, including a diner's, reached the platform calls below
-    // and could drive credential probes against the restaurant's own Uber Eats,
-    // Deliveroo and Uber Direct credentials, using the sanitised replies as a
-    // store/brand-id oracle. The `@guarded-inline` marker above was true of the
-    // text and false of the control flow; the lint rule that was supposed to
-    // catch that only matched strings, and now walks the AST (#445).
+    // This call used to sit INSIDE the `if (!identity)` block above, which is
+    // the exact inverse of what it is for: the only callers it ran for were
+    // the ones already being turned away, and every authenticated account —
+    // including a diner's — reached the platform credentials unchecked. The
+    // `@guarded-inline` marker on this action was true of the text and false
+    // of the control flow.
     await ctx.runQuery(internal.authHelpers.checkPermission, {
       permission: "settings:read",
     });

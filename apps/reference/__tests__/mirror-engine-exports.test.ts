@@ -785,6 +785,23 @@ describe("the publisher runs the guard", () => {
     "utf8",
   )
 
+  /**
+   * The lookup itself, which now lives beside the check it feeds.
+   *
+   * It used to be inlined in the publisher, and these tests read the
+   * publisher's text for `npm pack` and `tarballContents`. `check-source-drift`
+   * needs the same lookup — it asks the same question one step earlier, on the
+   * pull request — and a second copy of it is exactly the pair that drifts
+   * apart, which is the failure this whole file exists to prevent. So the
+   * function moved to `lib/engine-exports.mjs` and these tests follow the call
+   * rather than the string: the publisher must reach the tarball, wherever the
+   * code that reads it sits.
+   */
+  const lookup = fs.readFileSync(
+    path.join(__dirname, "../../../scripts/lib/engine-exports.mjs"),
+    "utf8",
+  )
+
   test("it imports the check", () => {
     expect(publisher).toContain("engine-exports.mjs")
     expect(publisher).toContain("unresolvableImports")
@@ -820,8 +837,12 @@ describe("the publisher runs the guard", () => {
    * that packument does carry.
    */
   test("it reads the published exports from the tarball, not from npm view", () => {
-    expect(publisher).toContain("tarballContents")
-    expect(publisher).toMatch(/"pack"/)
+    // The publisher asks for the tarball…
+    expect(publisher).toContain("publishedTarball")
+    // …and what answers reads the archive, never the packument.
+    expect(lookup).toContain("tarballContents")
+    expect(lookup).toMatch(/"pack"/)
+    expect(lookup).not.toMatch(/"view"[^\]]*"exports"/)
     expect(publisher).not.toMatch(/"view"[^\]]*"exports"/)
   })
 
@@ -836,7 +857,16 @@ describe("the publisher runs the guard", () => {
    * the same shape of silent skip as #380.
    */
   test("it carries the tarball's file list into the check, not just the map", () => {
-    expect(publisher).toContain("published[pkg] = { version, ...publishedTarball(pkg, version) }")
+    // Both halves of the one read, spread together. Matched on shape rather
+    // than on the exact call: it gained a `{ dir: work }` argument so the
+    // unpacked tarballs are swept by the publisher's own `finally`, and a test
+    // pinned to the old spelling refuses a change that did not touch what it
+    // guards.
+    expect(publisher).toMatch(
+      /published\[pkg\] = \{ version, \.\.\.publishedTarball\(pkg, version[^)]*\) \}/,
+    )
+    // And the lookup returns both halves, or the spread above carries one.
+    expect(lookup).toMatch(/return \{ exports: EXPORTS_UNKNOWN, files: undefined \}/)
   })
 
   /**

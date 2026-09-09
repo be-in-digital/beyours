@@ -11,49 +11,51 @@ import { v } from "convex/values"
 /**
  * List all categories for a store, ordered by sortOrder
  */
-/**
- * The categories a diner may be shown.
- *
- * Public and unauthenticated, and it had the same defect as `products.list`:
- * a category the owner had switched off was still served to the carte, the
- * sitemap and the JSON-LD. Filtered in memory rather than by index — unlike
- * products and menus, `categoriesTable` declares no `by_storeId_isActive`, and
- * a restaurant has tens of categories where it has hundreds of dishes, so the
- * read is bounded either way and a migration to add an index would not pay for
- * itself.
- *
- * Admin screens that need the switched-off ones call `listAll`.
- */
 export const list = {
   args: { storeId: v.id("stores") },
   handler: async (ctx: any, args: any) => {
-    const categories = await ctx.db
+    return await ctx.db
       .query("categories")
       .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .order("asc")
       .collect()
-    return categories
-      .filter((category: any) => category.isActive === true)
-      .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      .then((categories: any) =>
+        categories
+          // The storefront's read: a category the owner has switched off is
+          // not a section of the carte. `listActiveWithCounts` next door has
+          // always said so; this one returned the lot, and the menu page and
+          // the JSON-LD are built from THIS query.
+          //
+          // There is no `by_storeId_isActive` index on this table and there
+          // does not need to be: a store has tens of categories, not
+          // thousands, and the sort below already walks the whole list.
+          .filter((c: any) => c.isActive)
+          .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      )
   },
 }
 
 /**
- * Every category of a store, switched-off ones included.
+ * Every category, switched off ones included — for the people who own them.
  *
- * For the admin catalogue and the kitchen station mapping, which has to keep
- * showing a mapping whose category is currently off — otherwise turning a
- * category off would silently drop the routing rule with it.
+ * The counterpart to `products.listAll`, and needed by more than the back
+ * office: the Uber Eats and Deliveroo importers match incoming categories
+ * against the existing ones, and matching against the ACTIVE ones only would
+ * create a second "Desserts" beside the switched-off first.
+ *
+ * Wrapped with `storeQuery` + `products:read` in each app's `convex/`.
  */
 export const listAll = {
   args: { storeId: v.id("stores") },
   handler: async (ctx: any, args: any) => {
-    const categories = await ctx.db
+    return await ctx.db
       .query("categories")
       .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .order("asc")
       .collect()
-    return categories.sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      .then((categories: any) =>
+        categories.sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      )
   },
 }
 

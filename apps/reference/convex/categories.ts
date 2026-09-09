@@ -13,9 +13,9 @@ import { scheduleTranslation } from "./autoTranslate";
 export const list = query(defs.list);
 // @public-by-design: storefront category menu, rendered for anonymous visitors
 export const listActiveWithCounts = query(defs.listActiveWithCounts);
-// The switched-off categories, for the admin catalogue and the kitchen station
-// mapping. `list` above is the diner's view and stops at what is on the carte
-// (#443).
+
+// The same catalogue with the switched-off sections in it, for the screens
+// that manage them and for the platform importers that match against them.
 export const listAll = storeQuery({
   permission: "products:read",
   args: defs.listAll.args,

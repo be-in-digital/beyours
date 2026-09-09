@@ -12,30 +12,7 @@ import { WITHDRAWN_PROMOTION_PRODUCT_FIELDS } from "./promotionDiscount"
 // === QUERIES ===
 
 /**
- * The products a diner may be shown.
- *
- * PUBLIC AND UNAUTHENTICATED — this is the storefront carte, and it is meant to
- * be readable without an account. What it was NOT meant to include is a dish
- * the owner has not put on sale. `isActive: false` is how a draft, a
- * discontinued item and a seasonal one out of season all look, and this query
- * returned all of them at full price:
- *
- *     products.list => [{"name":"LIVE"},{"name":"SECRET-DRAFT","isActive":false}]
- *
- * #440 closed the same hole in `getManyByIds` and its commit body said the fix
- * made that query behave "like every other public read of that table". Measured
- * afterwards, the other public reads did not filter: `list` is the one the
- * public carte, the sitemap and the JSON-LD all call, so a draft rendered live,
- * was indexed by search engines through `sitemap.ts`, and was then REFUSED at
- * checkout — `orderLine.ts:276` rejects an inactive product at order creation.
- * So the leak was also a broken funnel: the diner picked a dish the shop had
- * already decided not to sell, and found out at payment.
- *
- * `by_storeId_isActive` indexes it rather than filtering after the read, so a
- * large catalogue does not pay for the rows it is about to discard.
- *
- * Admin screens that legitimately need the drafts call `listAll`, which is
- * store-scoped and asks for `products:read`.
+ * List all products for a store
  */
 export const list = {
   args: { storeId: v.id("stores") },
@@ -50,13 +27,20 @@ export const list = {
 }
 
 /**
- * Every product of a store, drafts included.
+ * The whole catalogue, drafts included — for the people who own it.
  *
- * The half of the old `list` that has a legitimate caller: the admin screens
- * that manage the catalogue, which must be able to see a dish precisely
- * because it is not on sale yet. Store-scoped and permission-gated at the app
- * wrapper (`products:read`), so it is not the same question as the one the
- * carte asks.
+ * `list` is the storefront's query and returns only what is on sale. The
+ * owner's own product screen needs the other rows too: `isActive: false` is
+ * how a draft, a discontinued dish and a seasonal one out of season all look,
+ * and a back office that cannot see them cannot publish them.
+ *
+ * The split is two endpoints rather than one endpoint reading the caller,
+ * deliberately. A query whose contents depend on who is asking is one an
+ * anonymous caller can probe, and it would also have shown a signed-in owner
+ * their own drafts on the PUBLIC carte — where the checkout then refuses
+ * them, which is the bug this pair exists to end rather than move.
+ *
+ * Wrapped with `storeQuery` + `products:read` in each app's `convex/`.
  */
 export const listAll = {
   args: { storeId: v.id("stores") },
@@ -69,19 +53,32 @@ export const listAll = {
 }
 
 /**
- * Get product by ID
+ * Get product by ID — the storefront's read, so a dish not on sale is absent.
  *
- * Also public, and it leaked the same rows by a different door: an id is not a
- * secret — it appears in order lines, in favourites and in the DOM — so
- * `getById(draftId)` returned the whole draft document, price and all. Now an
- * inactive product answers `null`, which is what a diner following a stale
- * link to a withdrawn dish should get anyway.
+ * An id is not a secret: it is in every order line, in the favourites list and
+ * in the DOM of the page that linked here. Returning the document to anyone
+ * holding one put unpublished dishes on `/product/<id>` and into the JSON-LD
+ * of that page. `null` is the same answer the route already handles for a
+ * deleted product, so the 404 path is the one that was already tested.
  */
 export const getById = {
   args: { id: v.id("products") },
   handler: async (ctx: any, args: any) => {
     const product = await ctx.db.get(args.id)
-    return product && product.isActive === true ? product : null
+    return product && product.isActive ? product : null
+  },
+}
+
+/**
+ * Get product by ID, whatever its state — for the owner's edit screen.
+ *
+ * The counterpart to `listAll`: a draft has to be openable by the person
+ * writing it. Guarded by `products:read` in the app wrappers.
+ */
+export const getAnyById = {
+  args: { id: v.id("products") },
+  handler: async (ctx: any, args: any) => {
+    return await ctx.db.get(args.id)
   },
 }
 

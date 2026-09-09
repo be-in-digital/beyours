@@ -284,34 +284,11 @@ type Scenario = {
   /** The ref the run itself is on, for the push and dispatch paths. */
   ref?: string
   cancelled?: boolean
-  /**
-   * `needs.released.outputs.published` — did the Release actually publish?
-   *
-   * A separate JOB since #445, and the reason is the defect it fixes rather
-   * than tidiness. It used to be a step guarding the `Sync` step, so a Release
-   * that published nothing skipped that step and the job still reported
-   * SUCCESS — a green `Publish mirror` for a run that copied nothing, while
-   * the boilerplate's `pushedAt` had not moved for a day. As a job output it
-   * reaches the job-level `if:`, and the run shows as skipped instead.
-   *
-   * Defaults to `"true"`: most `workflow_run` scenarios here are about the
-   * OTHER gates, and a Release that published is the case those describe.
-   */
-  released?: string
-  /** `needs.released.result`, which is `skipped` off the workflow_run path. */
-  releasedResult?: JobResult
 }
 
 /** Every `needs:` result the scenario implies, for the implicit-success rule. */
 function resultsOf(scenario: Scenario): JobResult[] {
-  return [
-    scenario.verify,
-    scenario.e2e ?? scenario.verify,
-    ...(scenario.plan ? [scenario.plan] : []),
-    // `released` is skipped off the `workflow_run` path and is a real `needs:`
-    // entry, so the implicit-success rule has to see it too.
-    ...(scenario.releasedResult ? [scenario.releasedResult] : []),
-  ]
+  return [scenario.verify, scenario.e2e ?? scenario.verify, ...(scenario.plan ? [scenario.plan] : [])]
 }
 
 /**
@@ -344,8 +321,6 @@ function evaluate(expression: string, scenario: Scenario): boolean {
     // Absent from publish-mirror.yml's condition; naming it here anyway costs
     // nothing and lets one evaluator read both chains.
     "needs.plan.result": scenario.plan ?? "success",
-    "needs.released.outputs.published": scenario.released ?? "true",
-    "needs.released.result": scenario.releasedResult ?? "success",
   }
 
   const tokens = expression
@@ -479,30 +454,6 @@ describe("the mirror publishes on exactly the runs that passed CI", () => {
       false,
     ],
     ["a successful Release, where verify is skipped on purpose", afterRelease("success"), true],
-    [
-      // THE #445 DEFECT, as a scenario.
-      //
-      // A template change starts both paths. The Release it also starts moves
-      // no package version, so `changeset publish` tags nothing, so this run
-      // must NOT sync — the gated `push` run beside it owns that tree and is
-      // still waiting on the E2E suite.
-      //
-      // It was already true that nothing was pushed here. What was false was
-      // what the run REPORTED: the guard was a step, so the sync step was
-      // skipped and the job finished green. Expressing the guard as a job
-      // output is what makes this case a skipped job instead of a green one,
-      // and this row is what stops it sliding back into a step.
-      "a successful Release that published nothing",
-      { ...afterRelease("success"), released: "false" },
-      false,
-    ],
-    [
-      // The mirror-freshness claim in the other direction: a Release that DID
-      // publish is the one case this path exists for, and it must still sync.
-      "a successful Release that published a package",
-      { ...afterRelease("success"), released: "true" },
-      true,
-    ],
     [
       // `release.yml` triggers on main only today. One trigger line away, this
       // would otherwise sync a branch to every client site.

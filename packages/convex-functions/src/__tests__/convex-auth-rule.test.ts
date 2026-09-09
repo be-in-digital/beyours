@@ -1,325 +1,185 @@
 /**
- * The rule that guards 154 markers, finally guarded itself.
+ * Tests for the ESLint rules that guard the Convex authorisation seam.
  *
- * `eslint/convex-auth.mjs` had no test of any kind. #445 ran a synthetic
- * harness of twelve declarations against it on ESLint 9.39.4 — one control that
- * must error, one control that must pass, and ten known ways to talk past it —
- * and TEN OF THE TWELVE SLIPPED. A rule nothing tests is a rule whose green run
- * means nothing, and this one had a real exploit riding on it: the permission
- * check in `convex/validateIntegration.ts` sat inside `if (!identity) {…}`,
- * where no signed-in caller reaches it, and the rule passed the file because
- * the STRINGS `ctx.auth` and `ctx.runQuery(` appeared somewhere nearby.
+ * The rules had none, which is how they came to be wrong in three ways at once
+ * and stay that way: `httpAction` was never covered, a marker counted as a
+ * substring of any comment, and `@guarded-inline` asserted something nothing
+ * checked. A rule with no tests is a rule nobody can change safely, and this
+ * one decides whether a Convex function is allowed to be reachable.
  *
- * This file is that harness, kept. Each case states what a linter can and
- * cannot conclude, so a future relaxation of the rule has to argue with a named
- * failure rather than a silent one.
- *
- * Case K is deliberately asserted as PASSING. A marker whose reason is long but
- * meaningless cannot be caught by a linter, and pretending otherwise would be
- * the same kind of decorative check this file exists to remove. It is review's
- * job, and it is now the ONLY part left to review.
+ * The cases below are written as talking-around attempts, because that is what
+ * the rule is for: not catching an honest mistake, but catching the shortcut
+ * taken by someone who wants the error to go away.
  */
 
-import { describe, expect, it } from "vitest"
-import { Linter } from "eslint"
+import { RuleTester } from "eslint"
+import { describe, it } from "vitest"
+// @ts-expect-error — the rule module is plain ESM JavaScript with no types.
+import { noUnguardedConvexFunction, requireConvexPermission } from "../../eslint/convex-auth.mjs"
 
-import convexAuth from "../../eslint/convex-auth.mjs"
+const ruleTester = new RuleTester({
+  languageOptions: { ecmaVersion: 2022, sourceType: "module" },
+})
 
-const linter = new Linter()
+describe("no-unguarded-convex-function", () => {
+  it("applies the seam", () => {
+    ruleTester.run("no-unguarded-convex-function", noUnguardedConvexFunction, {
+      valid: [
+        // The normal shape: scoped to a tenant, with a permission.
+        `export const list = storeQuery({ permission: "team:read", handler: h })`,
 
-/** Lint one snippet with both rules on, as an app's `convex/` config does. */
-function lint(code: string): string[] {
-  const messages = linter.verify(code, {
-    plugins: { convex: convexAuth as never },
-    languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "module",
-    },
-    rules: {
-      "convex/no-unguarded-convex-function": "error",
-      "convex/require-convex-permission": "error",
-    },
-  })
-  return messages.map((m) => String(m.messageId ?? m.message))
-}
+        // A real escape hatch, with a reason long enough to weigh.
+        `// @public-by-design: the storefront catalogue is open to anyone
+         export const list = query({ handler: h })`,
 
-/** Did the rule object to this snippet at all? */
-const rejects = (code: string) => lint(code).length > 0
+        // `@guarded-inline` backed by a session lookup.
+        `// @guarded-inline: derives the caller from the session, takes no id
+         export const mine = query({ handler: async (ctx) => {
+           const identity = await ctx.auth.getUserIdentity()
+           return identity ? [] : []
+         } })`,
 
-describe("the two controls", () => {
-  it("A — reports a bare mutation carrying no marker", () => {
-    expect(
-      rejects(`
-        export const remove = mutation({
-          args: {},
-          handler: async (ctx) => { await ctx.db.delete("x") },
-        })
-      `),
-    ).toBe(true)
-  })
+        // Backed by an internal check instead — the only shape an action has.
+        `// @guarded-inline: authorises through an internal query first
+         export const send = action({ handler: async (ctx) => {
+           await ctx.runQuery(internal.team.assertCanManage, {})
+         } })`,
 
-  it("J — reports @guarded-inline with no guard signal at all", () => {
-    expect(
-      rejects(`
-        // @guarded-inline: this is checked somewhere else entirely
-        export const remove = mutation({
-          args: {},
-          handler: async (ctx) => { await ctx.db.delete("x") },
-        })
-      `),
-    ).toBe(true)
-  })
+        // Backed by a require*/assert*/check* call.
+        `// @guarded-inline: requireStaff applies the roster policy here
+         export const all = query({ handler: async (ctx) => requireStaff(ctx) })`,
 
-  it("accepts a real inline guard, so the rule stays usable", () => {
-    // The shape every honest guard in this repository already has: obtain the
-    // caller, then refuse them. If this ever reports, the rule is too strict
-    // and 98 `@guarded-inline` markers are about to be rewritten for nothing.
-    expect(
-      lint(`
-        // @guarded-inline: stores:write checked in the handler; no store exists yet
-        export const create = authedMutation({
-          args: {},
-          handler: async (ctx, args) => {
-            const user = await getAuthUser(ctx)
-            if (!hasPermission(user.role, "stores:write")) {
-              throw new Error("Access denied")
-            }
-            return defs.create.handler(ctx, args)
-          },
-        })
-      `),
-    ).toEqual([])
-  })
+        // Rebuilding the declaration from tokens puts a space at every token
+        // boundary, so a member expression the source writes tight arrives as
+        // `ctx . auth . getUserIdentity ( )`. Every signal has to survive that,
+        // and this is the case that says so.
+        `// @guarded-inline: reads the session off the request context
+         export const mine = action({ handler: async (ctx) => {
+           const who = await ctx
+             .auth
+             .getUserIdentity()
+           return who ? [] : []
+         } })`,
 
-  it("accepts a storeMutation that names a write permission", () => {
-    expect(
-      lint(`
-        export const update = storeMutation({
-          args: {},
-          permission: "products:write",
-          handler: async (ctx) => { await ctx.db.patch("x", {}) },
-        })
-      `),
-    ).toEqual([])
-  })
+        // `safeGetAuthUser` is the session lookup under another name, and the
+        // first spelling this rule failed to recognise.
+        `// @guarded-inline: returns the caller's own session user
+         export const me = query({ handler: (ctx) => authComponent.safeGetAuthUser(ctx) })`,
 
-  it("accepts internal builders, which no client can call", () => {
-    expect(
-      lint(`
-        export const recount = internalMutation({
-          args: {},
-          handler: async (ctx) => { await ctx.db.patch("x", {}) },
-        })
-      `),
-    ).toEqual([])
-  })
+        // An HTTP route that names the proof it relies on.
+        `// @guarded-inline: verifies the HMAC over the raw body before reading it
+         export const hook = httpAction(async (ctx, request) => {
+           await ctx.runAction(internal.verify.signature, {})
+         })`,
 
-  it("accepts the non-function exports a convex/ file also carries", () => {
-    // Validators, routers and cron tables are not Convex functions, and
-    // reporting them is how a rule gets switched off.
-    expect(
-      lint(`
-        export const status = v.union(v.literal("a"), v.literal("b"))
-        export const http = httpRouter()
-        export const crons = cronJobs()
-      `),
-    ).toEqual([])
+        // Internal functions are not publicly callable and are not the rule's business.
+        `export const sweep = internalMutation({ handler: h })`,
+
+        // A known hole, named and owned. The marker is not absolution — it is
+        // the to-do list, and `grep -rn "@unguarded-tracked"` is how you read it.
+        `// @unguarded-tracked: #162 — no CSRF state on this OAuth callback
+         export const cb = httpAction(async () => new Response("ok"))`,
+      ],
+
+      invalid: [
+        // The original habit.
+        {
+          code: `export const create = mutation({ handler: h })`,
+          errors: [{ messageId: "bare" }],
+        },
+        {
+          code: `export const list = authedQuery({ handler: h })`,
+          errors: [{ messageId: "authOnly" }],
+        },
+        {
+          code: `export const run = action({ handler: h })`,
+          errors: [{ messageId: "bareAction" }],
+        },
+
+        // The blind spot: an HTTP route is the one surface reachable with
+        // nothing but curl, and it was the one the rule never looked at.
+        {
+          code: `export const hook = httpAction(async () => new Response("ok"))`,
+          errors: [{ messageId: "bareHttp" }],
+        },
+
+        // Prose ABOUT the marker used to silence the rule, because the check
+        // was a substring match on the whole comment.
+        {
+          code: `// this endpoint is deliberately not @public-by-design, see the ticket
+                 export const create = mutation({ handler: h })`,
+          errors: [{ messageId: "bare" }],
+        },
+
+        // A marker with nothing after it says only "I wanted this to pass".
+        {
+          code: `// @public-by-design:
+                 export const create = mutation({ handler: h })`,
+          errors: [{ messageId: "missingReason" }],
+        },
+        {
+          code: `// @guarded-inline: ok
+                 export const create = mutation({ handler: h })`,
+          errors: [{ messageId: "missingReason" }],
+        },
+
+        // The claim that used to cost nothing to make: "this is guarded"
+        // pasted above a handler that guards nothing.
+        {
+          code: `// @guarded-inline: the caller is obviously allowed to do this
+                 export const wipe = mutation({ handler: async (ctx) => {
+                   await ctx.db.delete(args.id)
+                 } })`,
+          errors: [{ messageId: "guardedWithoutGuard" }],
+        },
+        {
+          code: `// @guarded-inline: the provider signs every request it sends
+                 export const hook = httpAction(async () => new Response("ok"))`,
+          errors: [{ messageId: "guardedWithoutGuard" }],
+        },
+
+        // "We know, we know" with nobody on the hook for it.
+        {
+          code: `// @unguarded-tracked: we should really add a state check here
+                 export const cb = httpAction(async () => new Response("ok"))`,
+          errors: [{ messageId: "trackedWithoutIssue" }],
+        },
+
+        // The fourth way around, and the one the marker's own docblock says it
+        // exists to stop: the guard signal was tested against the declaration's
+        // TEXT, comments included, so writing the name of a guard in a comment
+        // satisfied a check about code. Nothing here authorises anything.
+        {
+          code: `// @guarded-inline: the caller is checked before we get here
+                 export const wide = action({ handler: async () => {
+                   // the caller already went through ctx.auth.getUserIdentity()
+                   return await fetch("https://example.test")
+                 } })`,
+          errors: [{ messageId: "guardedWithoutGuard" }],
+        },
+        {
+          code: `// @guarded-inline: requireStaff is applied by the caller
+                 export const wipe = mutation({ handler: async (ctx) => {
+                   /* requireStaff(ctx) — see the admin route */
+                   await ctx.db.delete(args.id)
+                 } })`,
+          errors: [{ messageId: "guardedWithoutGuard" }],
+        },
+      ],
+    })
   })
 })
 
-describe("the ten evasions #445 measured, all closed", () => {
-  it("B — @guarded-inline whose only signal obtains an identity and never checks it", () => {
-    expect(
-      rejects(`
-        // @guarded-inline: reads the caller's identity before acting
-        export const probe = action({
-          args: {},
-          handler: async (ctx) => {
-            await ctx.auth.getUserIdentity()
-            return { ok: true }
-          },
-        })
-      `),
-    ).toBe(true)
-  })
-
-  it("C — @guarded-inline whose only guard signal is text inside a comment", () => {
-    // The rule read `sourceCode.getText()`, which includes comments. Prose
-    // about a guard counted as a guard.
-    expect(
-      rejects(`
-        // @guarded-inline: the handler calls requirePermission and ctx.runQuery
-        export const probe = action({
-          args: {},
-          // we would call ctx.auth.getUserIdentity() here
-          handler: async () => ({ ok: true }),
-        })
-      `),
-    ).toBe(true)
-  })
-
-  it("D — a read permission declared on an operation that deletes", () => {
-    expect(
-      rejects(`
-        export const remove = storeMutation({
-          args: {},
-          permission: "orders:read",
-          handler: async (ctx) => { await ctx.db.delete("x") },
-        })
-      `),
-    ).toBe(true)
-  })
-
-  it("E — storeMutation with permission: undefined", () => {
-    expect(
-      rejects(`
-        export const remove = storeMutation({
-          args: {},
-          permission: undefined,
-          handler: async (ctx) => { await ctx.db.delete("x") },
-        })
-      `),
-    ).toBe(true)
-  })
-
-  it("F — an unknown builder the rule had nothing to say about", () => {
-    expect(
-      rejects(`
-        export const remove = publicMutation({
-          args: {},
-          handler: async (ctx) => { await ctx.db.delete("x") },
-        })
-      `),
-    ).toBe(true)
-  })
-
-  it("G — a member-expression builder", () => {
-    // `node.callee.type !== "Identifier"` returned early, so `server.mutation`
-    // was invisible.
-    expect(
-      rejects(`
-        export const remove = server.mutation({
-          args: {},
-          handler: async (ctx) => { await ctx.db.delete("x") },
-        })
-      `),
-    ).toBe(true)
-  })
-
-  it("H — an aliased builder", () => {
-    expect(
-      rejects(`
-        const m = mutation
-        export const remove = m({
-          args: {},
-          handler: async (ctx) => { await ctx.db.delete("x") },
-        })
-      `),
-    ).toBe(true)
-  })
-
-  it("I — a variable merely NAMED like a guard, never called", () => {
-    expect(
-      rejects(`
-        // @guarded-inline: requireOwner is applied to every caller here
-        export const probe = action({
-          args: {},
-          handler: async () => {
-            const requireOwner = true
-            return { ok: requireOwner }
-          },
-        })
-      `),
-    ).toBe(true)
-  })
-
-  it("L — @guarded-inline whose ctx.runQuery sits on a branch no caller takes", () => {
-    // THE LIVE EXPLOIT, reduced. `validateIntegration` put the permission check
-    // inside `if (!identity)`, so only unauthenticated callers reached it — and
-    // they were rejected on the next line anyway.
-    expect(
-      rejects(`
-        // @guarded-inline: checks settings:read by role — no store to scope against
-        export const validate = action({
-          args: {},
-          handler: async (ctx) => {
-            const identity = await ctx.auth.getUserIdentity()
-            if (!identity) {
-              await ctx.runQuery(internal.authHelpers.checkPermission, {
-                permission: "settings:read",
-              })
-              return { valid: false, error: "Non authentifié" }
-            }
-            return { valid: true }
-          },
-        })
-      `),
-    ).toBe(true)
-  })
-
-  it("K — a long but meaningless reason still passes, and that is honest", () => {
-    // Not a gap being tolerated quietly: a sentence cannot be graded by a
-    // linter, and the length floor is a filter for shrugs. Asserting the true
-    // behaviour here keeps the limit visible instead of implied.
-    expect(
-      lint(`
-        // @public-by-design: this is fine for reasons that are described at length here
-        export const list = query(defs.list)
-      `),
-    ).toEqual([])
-  })
-})
-
-describe("the guard has to be on the path every caller takes", () => {
-  it("accepts a guard called unconditionally", () => {
-    expect(
-      lint(`
-        // @guarded-inline: settings:read checked by role before anything else runs
-        export const validate = action({
-          args: {},
-          handler: async (ctx) => {
-            await ctx.runQuery(internal.authHelpers.checkPermission, {
-              permission: "settings:read",
-            })
-            return { valid: true }
-          },
-        })
-      `),
-    ).toEqual([])
-  })
-
-  it("accepts a guard called in an `if` CONDITION, which everyone evaluates", () => {
-    expect(
-      lint(`
-        // @guarded-inline: refuses any caller the permission query rejects
-        export const validate = action({
-          args: {},
-          handler: async (ctx) => {
-            if (!(await ctx.runQuery(internal.authHelpers.checkPermission, {}))) {
-              throw new Error("denied")
-            }
-            return { valid: true }
-          },
-        })
-      `),
-    ).toEqual([])
-  })
-
-  it("reports a guard reachable only from a catch block", () => {
-    expect(
-      rejects(`
-        // @guarded-inline: the permission check runs when the call fails
-        export const validate = action({
-          args: {},
-          handler: async (ctx) => {
-            try {
-              return { valid: true }
-            } catch {
-              await ctx.runQuery(internal.authHelpers.checkPermission, {})
-            }
-          },
-        })
-      `),
-    ).toBe(true)
+describe("require-convex-permission", () => {
+  it("makes a store-scoped function say what it allows", () => {
+    ruleTester.run("require-convex-permission", requireConvexPermission, {
+      valid: [`export const list = storeQuery({ permission: "orders:read", handler: h })`],
+      invalid: [
+        {
+          code: `export const list = storeQuery({ handler: h })`,
+          errors: [{ messageId: "missing" }],
+        },
+      ],
+    })
   })
 })

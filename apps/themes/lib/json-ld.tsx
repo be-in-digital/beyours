@@ -413,52 +413,30 @@ export function buildBreadcrumbSchema(
 // ---------------------------------------------------------------------------
 
 /**
- * Serialise a JSON-LD document for embedding inside a `<script>` element.
+ * JSON, serialised so it cannot end the `<script>` element it sits in.
  *
- * WHY NOT `.replace(/<\/script>/gi, …)`, which is what this did until #445.
- * That regex matches one spelling of the end tag and an HTML parser accepts
- * several. Per the HTML standard's script-data state, what closes the element
- * is `</script` followed by whitespace, `/` or `>` — so `</script >` and
- * `</script/>` both terminate it and neither matches the pattern. Two of those
- * spellings survive `JSON.stringify` untouched (it escapes tab, newline and
- * carriage return, which is why only the space and the solidus get through),
- * and the breakout was demonstrated as execution rather than injection:
+ * WHY NOT A REGULAR EXPRESSION FOR `</script>`. That is what this did, and it
+ * matched the literal string only. An HTML parser ends a script element at
+ * `</script` followed by whitespace, `/` or `>` — so `</script >`,
+ * `</script/>` and `</script\n>` all walked straight through a
+ * `.replace(/<\/script>/gi, …)` and closed the tag. Everything after them was
+ * parsed as markup. The fields reaching this function are an establishment's
+ * own copy: the article title, the dish name, the address.
  *
- *     {"name":"</script ><script>document.title='PWNED'</script >"}
- *     document.title after parse === "PWNED"
+ * ESCAPING `<` INSTEAD closes the whole class rather than the spelling that was
+ * noticed. No `</script` variant can survive an escaped `<`, and neither can
+ * `<!--`, which starts a comment the script parser also honours. `>` and `&`
+ * go with it so that `-->` and entity tricks cannot reconstitute either.
  *
- * It is reachable. A blog title rides `saveDraft` → `publishArticle` →
- * `article.content.title` into the breadcrumb trail below, and the title is
- * sanitised nowhere — the body is sanitised twice, the title not at all.
- * `Role.MANAGER` holds `content:write`, and production CSP grants
- * `'unsafe-inline'` with no nonce, so a manager account was one draft away
- * from running script on every visitor's page.
- *
- * WHAT REPLACES IT: escaping the characters themselves rather than the
- * sequences they can spell. `<`, `>` and `&` cannot appear in JSON output
- * except inside a string literal — every structural character of JSON is one
- * of `{}[]:,"`, a digit or a bare keyword — so rewriting all three to their
- * `\uXXXX` form is total, and total is the property a pattern match cannot
- * have. A JSON parser decodes `\u003c` back to `<`, so the document a
- * consumer reads is unchanged: this is an encoding, not a sanitiser, and it
- * removes nothing from the data.
- *
- * U+2028 and U+2029 go too. `JSON.stringify` leaves them raw and they are line
- * terminators to a JavaScript parser, which matters the moment anything reads
- * this block as a script rather than as `application/ld+json`.
- *
- * Exported because the test that guards it has to RUN it. The previous one
- * asserted `read("lib/json-ld.tsx")).toContain('type="application/ld+json"')`
- * — a string-containment check against the source file, which says nothing
- * about escaping and passed throughout the window above.
+ * `\u003c` is a JSON string escape, so `JSON.parse` — and every consumer of
+ * `application/ld+json`, Google's included — reads back the original
+ * character. The document is not altered; only its spelling on the wire is.
  */
-export function serialiseJsonLd(data: JsonLdDocument): string {
-  return JSON.stringify(pruneUndefined(data))
+export function serializeJsonLd(data: unknown): string {
+  return JSON.stringify(data)
     .replace(/</g, "\\u003c")
     .replace(/>/g, "\\u003e")
     .replace(/&/g, "\\u0026")
-    .replace(/\u2028/g, "\\u2028")
-    .replace(/\u2029/g, "\\u2029")
 }
 
 /**
@@ -470,7 +448,7 @@ export function JsonLd({ data }: { data: JsonLdDocument | undefined }) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: serialiseJsonLd(data) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(pruneUndefined(data)) }}
     />
   )
 }

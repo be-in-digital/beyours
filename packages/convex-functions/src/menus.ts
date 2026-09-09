@@ -169,28 +169,21 @@ async function assertSectionsInStore(
  * List all menus for a store
  */
 /**
- * The menus a diner may be shown.
+ * Every menu of a store, switched-off ones included.
  *
- * Third of the three public catalogue reads that returned switched-off rows.
- * `menusTable` already declared `by_storeId_isActive` and nothing used it —
- * the index for the filter was sitting beside the query that did not filter.
+ * NOT filtered on `isActive`, and NOT public — the two facts are the same
+ * decision. `products.list` and `categories.list` are filtered because the
+ * storefront renders them to anonymous visitors; nothing renders menus to
+ * anyone but the owner. So rather than a filtered public query beside a
+ * guarded twin, this is one guarded query: `toggleStatus` exists precisely so
+ * a menu can be taken off the carte and put back, and the screen with that
+ * button has to see what it switched off.
  *
- * Admin screens call `listAll`.
+ * Wrapped with `storeQuery` + `products:read` in each app's `convex/`. If a
+ * storefront menu view is ever built, it needs its own filtered query — do not
+ * open this one up.
  */
 export const list = {
-  args: { storeId: v.id("stores") },
-  handler: async (ctx: any, args: any) => {
-    return await ctx.db
-      .query("menus")
-      .withIndex("by_storeId_isActive", (q: any) =>
-        q.eq("storeId", args.storeId).eq("isActive", true)
-      )
-      .collect()
-  },
-}
-
-/** Every menu of a store, switched-off ones included, for the admin. */
-export const listAll = {
   args: { storeId: v.id("stores") },
   handler: async (ctx: any, args: any) => {
     return await ctx.db

@@ -68,13 +68,17 @@ export function ProductsPage() {
 
   const debouncedSearch = useDebounce(searchQuery, 300)
 
+  // `listAll`, not `list`: `list` is the storefront's query and returns only
+  // what is on sale, and this screen is where a draft is written and published.
+  // The status filter below has an "inactive" option that would have had
+  // nothing to show.
   const products = useQuery(
-    api?.products?.list,
+    api?.products?.listAll,
     storeId ? { storeId } : "skip"
   )
 
   const categories = useQuery(
-    api?.categories?.list,
+    api?.categories?.listAll,
     storeId ? { storeId } : "skip"
   )
 

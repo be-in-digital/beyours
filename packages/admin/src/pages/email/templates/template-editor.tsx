@@ -426,7 +426,7 @@ export function TemplateEditor({ template, onBack }: TemplateEditorProps) {
                           <button
                             type="button"
                             onClick={() => duplicateBlock(block.id)}
-                            className="rounded p-px text-muted-foreground hover:text-primary"
+                            className="inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:text-primary"
                             title="Dupliquer"
                           >
                             <Copy className="h-3 w-3" />

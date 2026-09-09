@@ -73,33 +73,38 @@ export function sanitizeRichTextHtml(html: string): string {
 }
 
 /**
- * A field that is text and was never meant to be markup — a title, an excerpt,
- * a meta description.
+ * A field that is text, reduced to text.
  *
- * These carried no allow-list at all, because nothing rendered them through
- * `dangerouslySetInnerHTML` and the question looked settled. It was not: a
- * blog title reaches the breadcrumb JSON-LD, which is serialised into a
- * `<script>` block, and the escaping there was walked around with
- * `</script >`. That hole is closed at the sink (`lib/json-ld.tsx`), where it
- * has to be — but a title is still not a place markup belongs, and storing it
- * raw means every future sink inherits the same question.
+ * WHAT THIS IS FOR. `saveDraft` cleaned `content` and nothing else, so an
+ * article's title, excerpt and meta description were stored exactly as typed.
+ * A title is not a document — it is one line an establishment writes about its
+ * own article — and it travels further than the body does: into the page
+ * `<title>`, into the breadcrumb JSON-LD, into the Open Graph tags, into the
+ * card on the blog index. Markup has no business in any of them.
  *
- * `allowedTags: []` strips every tag and keeps the text between them, so a
- * title typed with a stray `<b>` survives as words rather than being rejected.
- * `disallowedTagsMode: "discard"` drops the tag itself rather than escaping it
- * into visible `&lt;b&gt;`, which is what an author means by deleting it.
+ * `allowedTags: []` drops every tag and keeps the text inside it, so a title
+ * pasted from a word processor with a stray `<b>` survives as its words
+ * rather than being emptied. `disallowedTagsMode: "discard"` throws away the
+ * contents of `<script>` and `<style>` instead of promoting them to text — the
+ * one place where keeping the inside would be worse than losing it.
  *
- * Entities are decoded rather than left doubled: `sanitize-html` would
- * otherwise turn a legitimate `Moules & frites` into `Moules &amp; frites`,
- * which then renders as literal `&amp;` in a `<title>` and in JSON-LD. The
- * three it re-encodes are decoded back, which is safe precisely because no
- * consumer of this value is allowed to treat it as markup.
+ * The entity decode afterwards is deliberate. `sanitize-html` escapes what it
+ * keeps, so `Café & Co` comes back as `Café &amp; Co`, and this value is
+ * rendered as JSX text and as a JSON-LD string — both of which escape again.
+ * Storing the escaped form would show the ampersand's entity to the diner.
  */
 export function sanitizePlainText(text: string): string {
-  return sanitizeHtml(text, { allowedTags: [], allowedAttributes: {}, disallowedTagsMode: "discard" })
-    .replace(/&amp;/g, "&")
+  const stripped = sanitizeHtml(text, {
+    allowedTags: [],
+    allowedAttributes: {},
+    disallowedTagsMode: "discard",
+  })
+  return stripped
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    // Ampersand last, or `&amp;lt;` would decode to `<` in two steps.
+    .replace(/&amp;/g, "&")
+    .trim()
 }
