@@ -21,7 +21,8 @@
     "./restaurant": "./src/components/restaurant/index.ts",
     "./admin": "./src/components/admin/index.ts",
     "./contrast": "./src/lib/contrast.ts",
-    "./contrast-scan": "./src/lib/contrast-scan.ts"
+    "./contrast-scan": "./src/lib/contrast-scan.ts",
+    "./target-size": "./src/lib/target-size.ts"
   },
   "scripts": {
     "lint": "eslint src/",

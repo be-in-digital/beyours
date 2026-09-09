@@ -4,6 +4,10 @@ import { useQuery, useMutation, useAction } from "convex/react"
 import { toast } from "sonner"
 import { useState, use, useEffect } from "react"
 import { type AddressValue } from "@be-in-digital/ui"
+import {
+  FOLLOWS_GLOBAL_HOURS_BY_DEFAULT,
+  followsGlobalHours,
+} from "@be-in-digital/convex-schema"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { centsToEuros, eurosToCents } from "../../lib/formatters"
 import { convexErrorMessage } from "../../lib/convex-error"
@@ -62,10 +66,12 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
   const store = useQuery(api.stores.getById, { id: storeId as string })
   const globalSettings = useQuery(api.globalSettings.get)
   const storeIntegrations = useQuery(api.storeIntegrations.listByStore, { storeId: storeId as string })
-  // The catalogue the station mapping is drawn against. `api.categories.list`
+  // The catalogue the station mapping is drawn against. `api.categories.listAll`
   // is the query the product forms already use — the mapping is keyed on
-  // category because that is the unit `orders.resolveStations` reads.
-  const categories = useQuery(api.categories.list, { storeId: storeId as string })
+  // category because that is the unit `orders.resolveStations` reads. `listAll`
+  // rather than `list`: a station mapping for a category the owner has since
+  // switched off is still a mapping, and it has to stay visible to be changed.
+  const categories = useQuery(api.categories.listAll, { storeId: storeId as string })
 
   const updateStore = useMutation(api.stores.update)
   const updateAddressMutation = useMutation(api.stores.updateAddress)
@@ -111,8 +117,14 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
   const [kitchenStations, setKitchenStations] = useState<string[]>([])
   const [stationMapping, setStationMapping] = useState<Record<string, string>>({})
 
-  // Hours tab state
-  const [useGlobalHours, setUseGlobalHours] = useState(true)
+  // Hours tab state.
+  //
+  // Seeded from the shared default rather than a literal: this screen said
+  // `true` while `resolveStoreHours` enforced the opposite, so a store that
+  // predates the flag was drawn as following the deployment-wide week and
+  // served its own. `followsGlobalHours` is now the only reading of the field,
+  // and the order path calls the same function.
+  const [useGlobalHours, setUseGlobalHours] = useState(FOLLOWS_GLOBAL_HOURS_BY_DEFAULT)
   const [hours, setHours] = useState<DayHours[]>([])
 
   // Settings tab state - override toggles
@@ -223,7 +235,7 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
       )
     )
 
-    setUseGlobalHours(store.useGlobalHours ?? true)
+    setUseGlobalHours(followsGlobalHours(store))
 
     // Initialize hours
     if (store.hours && Array.isArray(store.hours)) {

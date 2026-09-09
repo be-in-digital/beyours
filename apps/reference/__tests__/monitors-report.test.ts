@@ -94,39 +94,39 @@ test.each(MONITORS)("%s is allowed to open one", (file) => {
   }
 })
 
-test("env-store-health survives the step that has actually been failing", () => {
-  // The 401 was at the login step, and a step that aborts the job takes every
-  // later step with it — including any reporting. So the workflow built to
-  // report an unreachable store was, precisely when the store was unreachable,
-  // unable to report anything. `continue-on-error` plus a reporter gated on
-  // `always()` is what makes the failure survivable long enough to be told.
+test("env-store-health reports even when the step that fails is the login", () => {
+  /**
+   * WHAT ACTUALLY FAILED, and a correction to what this test first asserted.
+   *
+   * Every run this workflow ever made went red at "Log in as the CI machine
+   * identity" with `[status-code=401] [message="Invalid credentials"]`, and the
+   * file carried no reporting at all — so the check built to say the secrets
+   * store is unreachable was itself silent.
+   *
+   * This branch first concluded that a failing login "takes every later step
+   * with it, including any reporting", and added `continue-on-error` plus an
+   * `always()` reporter to work around it. THAT PREMISE WAS WRONG: a failed
+   * step skips subsequent steps only where their condition does not admit
+   * failure. `if: failure()` is exactly the condition that does — it is
+   * defined as running when a previous step failed — so a plain
+   * `if: failure()` reporter runs precisely when the login 401s, with no
+   * `continue-on-error` anywhere.
+   *
+   * #446 landed that simpler shape, and it is the one asserted here: what
+   * matters is not which mechanism is used but that the reporter's condition
+   * ADMITS a failure, rather than being a plain expression that a failed step
+   * skips.
+   */
   const workflow = read("env-store-health.yml")
-  const all = steps(workflow)
-
-  const login = all.find((step) => /infisical login/.test(step.run ?? ""))
-  expect(login, "the login step has gone").toBeDefined()
-  expect(
-    (login as Step & { "continue-on-error"?: boolean })["continue-on-error"],
-    "the login step aborts the job, so nothing after it can report the failure"
-  ).toBe(true)
-
-  const reporter = all.find((step) => /gh issue (create|comment)/.test(step.run ?? ""))
+  const reporter = steps(workflow).find((step) =>
+    /gh issue (create|comment)/.test(step.run ?? "")
+  )
   expect(reporter, "no reporting step").toBeDefined()
   expect(
-    /always\(\)/.test(reporter?.if ?? ""),
-    "the reporter is not gated on always(), so a failed step skips it"
+    /failure\(\)|always\(\)/.test(reporter?.if ?? ""),
+    "the reporter's condition does not admit a failed step, so the one case it " +
+      "exists for is the one case it is skipped in"
   ).toBe(true)
-})
-
-test("env-store-health still fails the run when the store is unreachable", () => {
-  // `continue-on-error` on the working steps means the job would otherwise show
-  // GREEN while the store is down — trading one silence for a worse one.
-  const workflow = read("env-store-health.yml")
-  const verdict = steps(workflow).find((step) => /exit 1/.test(step.run ?? "") && /always\(\)/.test(step.if ?? ""))
-  expect(
-    verdict,
-    "nothing fails the run after the reporting step, so an unreachable store reads as green"
-  ).toBeDefined()
 })
 
 test("mirror-health does not title an issue with a fact it did not measure", () => {

@@ -19,15 +19,63 @@ export const list = {
   handler: async (ctx: any, args: any) => {
     return await ctx.db
       .query("products")
+      .withIndex("by_storeId_isActive", (q: any) =>
+        q.eq("storeId", args.storeId).eq("isActive", true)
+      )
+      .collect()
+  },
+}
+
+/**
+ * The whole catalogue, drafts included — for the people who own it.
+ *
+ * `list` is the storefront's query and returns only what is on sale. The
+ * owner's own product screen needs the other rows too: `isActive: false` is
+ * how a draft, a discontinued dish and a seasonal one out of season all look,
+ * and a back office that cannot see them cannot publish them.
+ *
+ * The split is two endpoints rather than one endpoint reading the caller,
+ * deliberately. A query whose contents depend on who is asking is one an
+ * anonymous caller can probe, and it would also have shown a signed-in owner
+ * their own drafts on the PUBLIC carte — where the checkout then refuses
+ * them, which is the bug this pair exists to end rather than move.
+ *
+ * Wrapped with `storeQuery` + `products:read` in each app's `convex/`.
+ */
+export const listAll = {
+  args: { storeId: v.id("stores") },
+  handler: async (ctx: any, args: any) => {
+    return await ctx.db
+      .query("products")
       .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .collect()
   },
 }
 
 /**
- * Get product by ID
+ * Get product by ID — the storefront's read, so a dish not on sale is absent.
+ *
+ * An id is not a secret: it is in every order line, in the favourites list and
+ * in the DOM of the page that linked here. Returning the document to anyone
+ * holding one put unpublished dishes on `/product/<id>` and into the JSON-LD
+ * of that page. `null` is the same answer the route already handles for a
+ * deleted product, so the 404 path is the one that was already tested.
  */
 export const getById = {
+  args: { id: v.id("products") },
+  handler: async (ctx: any, args: any) => {
+    const product = await ctx.db.get(args.id)
+    return product && product.isActive ? product : null
+  },
+}
+
+/**
+ * Get product by ID, whatever its state — for the owner's edit screen.
+ *
+ * The counterpart to `listAll`: a draft has to be openable by the person
+ * writing it. Guarded by `products:read` in the app wrappers.
+ */
+export const getAnyById = {
   args: { id: v.id("products") },
   handler: async (ctx: any, args: any) => {
     return await ctx.db.get(args.id)

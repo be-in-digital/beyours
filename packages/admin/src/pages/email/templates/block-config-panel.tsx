@@ -30,7 +30,7 @@ export function BlockConfigPanel() {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const products = useQuery(
-    api?.products?.list,
+    api?.products?.listAll,
     storeId ? { storeId } : "skip"
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ) as any[] | undefined

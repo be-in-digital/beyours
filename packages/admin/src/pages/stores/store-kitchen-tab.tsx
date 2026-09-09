@@ -504,7 +504,7 @@ export function StoreKitchenTab({
                       data-testid={`station-remove-${station}`}
                       aria-label={`Supprimer le poste « ${station} »`}
                       onClick={() => removeStation(station)}
-                      className="rounded-full p-0.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                      className="inline-flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
                     >
                       <X className="h-3 w-3" />
                     </button>

@@ -109,8 +109,8 @@ export function MenuFormDialog({ open, onOpenChange, menu }: MenuFormDialogProps
   const createMenu = useMutation(api?.menus?.create)
   const updateMenu = useMutation(api?.menus?.update)
 
-  const products = useQuery(api?.products?.list, storeId ? { storeId } : "skip")
-  const categories = useQuery(api?.categories?.list, storeId ? { storeId } : "skip")
+  const products = useQuery(api?.products?.listAll, storeId ? { storeId } : "skip")
+  const categories = useQuery(api?.categories?.listAll, storeId ? { storeId } : "skip")
 
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -468,7 +468,7 @@ function SectionCard({
             type="button"
             onClick={() => onMove("up")}
             disabled={index === 0}
-            className="text-muted-foreground hover:text-foreground disabled:opacity-30 p-0.5"
+            className="inline-flex size-6 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
           >
             <ChevronUp className="h-3 w-3" />
           </button>
@@ -476,7 +476,7 @@ function SectionCard({
             type="button"
             onClick={() => onMove("down")}
             disabled={index === total - 1}
-            className="text-muted-foreground hover:text-foreground disabled:opacity-30 p-0.5"
+            className="inline-flex size-6 items-center justify-center text-muted-foreground hover:text-foreground disabled:opacity-30"
           >
             <ChevronDown className="h-3 w-3" />
           </button>

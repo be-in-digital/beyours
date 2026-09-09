@@ -378,7 +378,7 @@ export function BlogAutoConfigForm({
                   <button
                     type="button"
                     onClick={() => removeTheme(idx)}
-                    className="ml-1 rounded-full p-0.5 hover:bg-muted"
+                    className="ml-1 inline-flex size-6 items-center justify-center rounded-full hover:bg-muted"
                   >
                     <X className="h-3 w-3" />
                   </button>

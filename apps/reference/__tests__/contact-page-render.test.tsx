@@ -182,10 +182,12 @@ describe("the contact page", () => {
      * the order path enforced the other. Two answers to one question, and the
      * one a person reads was the wrong one.
      *
-     * `useGlobalHours` is left unset on the fixture on purpose — that is the
-     * state of every store nobody has saved since the column was added, and it
-     * means "follow the global week" everywhere else in the product.
+     * The flag is set EXPLICITLY here. `FOLLOWS_GLOBAL_HOURS_BY_DEFAULT` is
+     * `false` (#446), so an unwritten flag means "keep your own week" — this
+     * page's bug is about the establishments that genuinely do follow the
+     * global one, and those say so.
      */
+    store = { ...LE_COMPTOIR, useGlobalHours: true }
     globalSettings = {
       hours: [
         { day: 1, open: "07:00", close: "09:00", isClosed: false },

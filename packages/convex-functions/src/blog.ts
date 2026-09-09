@@ -11,7 +11,7 @@
 
 import { v } from "convex/values"
 import { generateSlug, now } from "./helpers"
-import { sanitizeArticleHtml } from "./htmlSanitize"
+import { sanitizeArticleHtml, sanitizePlainText } from "./htmlSanitize"
 
 // ============================================================================
 // Validators (reusable across queries and mutations)
@@ -29,6 +29,24 @@ const blogContentValidator = v.object({
   ogImageId: v.optional(v.id("cmsMedia")),
   updatedAt: v.number(),
 })
+
+/**
+ * The fields of an article that are prose, not markup.
+ *
+ * Kept beside `blogContentValidator` so that adding a text field to one and
+ * not the other is a visible omission rather than a silent one.
+ */
+const PLAIN_TEXT_FIELDS = ["title", "excerpt", "metaTitle", "metaDescription"] as const
+
+/** Those of the plain-text fields this payload actually carries, cleaned. */
+function plainTextFields(content: Record<string, unknown> | undefined) {
+  const out: Record<string, string> = {}
+  for (const field of PLAIN_TEXT_FIELDS) {
+    const value = content?.[field]
+    if (typeof value === "string") out[field] = sanitizePlainText(value)
+  }
+  return out
+}
 
 /**
  * How much markup is worth scanning for a reading time.
@@ -450,7 +468,8 @@ export async function createArticleCore(
     authorId: string
   },
 ): Promise<string> {
-  const slug = await ensureUniqueSlug(ctx, args.storeId, generateSlug(args.title), null)
+  const title = sanitizePlainText(args.title)
+  const slug = await ensureUniqueSlug(ctx, args.storeId, generateSlug(title), null)
   const timestamp = now()
 
   const articleId = await ctx.db.insert("blogArticles", {
@@ -461,7 +480,7 @@ export async function createArticleCore(
     draftCategoryId: args.categoryId,
     draftAuthorId: args.authorId,
     draftContent: {
-      title: args.title,
+      title,
       slug,
       excerpt: "",
       // coverImageId intentionally absent — set on first save, required at publish
@@ -524,11 +543,19 @@ export async function saveDraftCore(
   // compromised admin session would use — was stored verbatim and rendered on
   // the public site. Same allow-list for both, applied here on write, and the
   // renderer sanitises again for rows written before this existed.
+  //
+  // The four text fields beside it were not cleaned at all, and they travel
+  // FURTHER than the body: the title alone reaches the page `<title>`, the
+  // breadcrumb JSON-LD, the Open Graph tags and the card on the blog index —
+  // none of which run the body through a renderer that sanitises. They are one
+  // line of prose each; `sanitizePlainText` leaves the words and drops the
+  // markup.
   const draftContent = {
     ...args.draftContent,
     ...(typeof args.draftContent?.content === "string"
       ? { content: sanitizeArticleHtml(args.draftContent.content) }
       : {}),
+    ...plainTextFields(args.draftContent),
     slug,
     updatedAt: timestamp,
   }

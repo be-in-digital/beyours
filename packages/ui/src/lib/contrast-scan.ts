@@ -95,21 +95,13 @@ export interface ScanOptions {
   /** Extra scope selectors to read out of `globals.css`. */
   scopes?: string[]
   /**
-   * Stylesheets layered over `globals.css`, in cascade order.
+   * Stylesheets layered over `app/globals.css`, in cascade order.
    *
-   * WHY THIS EXISTS. `app/layout.tsx` imports `./globals.css` and then
-   * `@/site/theme.css`, and `pnpm template:apply <slug>` overwrites that second
-   * file from one of the 51 verticals under `templates/` — 45 to 53 token
-   * overrides, chosen at clone time. A sweep of `globals.css` alone measures
-   * the engine default, which is the ONE palette no delivered site runs.
-   *
-   * `loadTokens` has taken overlays since the token matrix was written. This
-   * one did not pass them, so the CLASS sweep — the half that resolves
-   * `text-primary on bg-muted` and every other utility pair — went on reading
-   * the default 51 times over. Measured across the catalogue with the argument
-   * wired through: 49 of 51 templates carried at least one guardable failing
-   * pair, 272 pairs in all, none of them visible to the guard written to catch
-   * exactly that.
+   * `loadTokens` has taken these since the template sweep was written, and
+   * this function did not pass them — so every caller that named a template
+   * got the ENGINE palette measured and reported green, which is the palette
+   * no client ships. `template-contrast.test.ts` only escaped it by calling
+   * `loadTokens` directly and re-implementing the walk.
    */
   overlays?: string[]
   /**
@@ -390,6 +382,104 @@ function isGraphical(node: ts.Node, element: ts.JsxOpeningLikeElement): boolean 
   return false
 }
 
+/**
+ * The colours an element paints with `style={{ … }}` rather than a class.
+ *
+ * WHY THIS EXISTS. The sweep read `className` and nothing else, so an element
+ * that set its ink or its surface inline was invisible to it — and the guard
+ * stayed green over a pair that fails, which is worse than not running. Inline
+ * declarations are also the ones most likely to be wrong: they are written by
+ * hand, one element at a time, outside the token system that the rest of this
+ * file exists to check.
+ *
+ * ONLY LITERALS ARE READ. `style={{ color: brand }}` is a value this parse
+ * cannot know, and guessing one is how a scanner starts reporting failures the
+ * product never renders. An unreadable value is left unmeasured, exactly as an
+ * unresolvable class is.
+ */
+interface InlineStyle {
+  color?: string
+  background?: string
+}
+
+/**
+ * Every literal this expression can evaluate to; `null` for a value the parse
+ * cannot know.
+ *
+ * `style={{ backgroundColor: block.backgroundColor ?? "#000000" }}` is how
+ * this codebase writes almost all of them, and reading only bare string
+ * literals would have measured none of them — the feature would have been
+ * added and read zero elements. The fallback of a `??` is a state the product
+ * genuinely renders (the field is unset), and both arms of a ternary are, for
+ * the same reason `alternatives` takes both.
+ */
+function literalValues(node: ts.Expression): Array<string | null> {
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return [node.text]
+  if (ts.isParenthesizedExpression(node)) return literalValues(node.expression)
+  if (ts.isConditionalExpression(node)) {
+    return [...literalValues(node.whenTrue), ...literalValues(node.whenFalse)]
+  }
+  if (ts.isBinaryExpression(node)) {
+    const kind = node.operatorToken.kind
+    if (kind === ts.SyntaxKind.QuestionQuestionToken || kind === ts.SyntaxKind.BarBarToken) {
+      return [...literalValues(node.left), ...literalValues(node.right)]
+    }
+  }
+  return [null]
+}
+
+/** Every inline colour pair this element can paint, as separate alternatives. */
+function styleAlternatives(element: ts.JsxOpeningLikeElement): InlineStyle[] {
+  for (const attribute of element.attributes.properties) {
+    if (!ts.isJsxAttribute(attribute)) continue
+    if (attribute.name.getText() !== "style") continue
+    const initializer = attribute.initializer
+    if (!initializer || !ts.isJsxExpression(initializer) || !initializer.expression) return []
+    const object = initializer.expression
+    if (!ts.isObjectLiteralExpression(object)) return []
+
+    let styles: InlineStyle[] = [{}]
+    for (const property of object.properties) {
+      if (!ts.isPropertyAssignment(property)) continue
+      const name = property.name
+      const key = ts.isIdentifier(name) || ts.isStringLiteral(name) ? name.text : null
+      if (!key) continue
+
+      let field: "color" | "background"
+      if (key === "color") field = "color"
+      else if (key === "backgroundColor" || key === "background") field = "background"
+      else continue
+
+      const values = literalValues(property.initializer).filter(
+        // `background` is shorthand: a gradient or an image in it names no
+        // single surface colour, so only a plain colour value is taken.
+        (value): value is string =>
+          value !== null && !(key === "background" && /\b(?:gradient|url)\(/.test(value))
+      )
+      if (!values.length) continue
+
+      const next: InlineStyle[] = []
+      for (const style of styles) {
+        for (const value of values) {
+          if (next.length >= MAX_ALTERNATIVES) break
+          next.push({ ...style, [field]: value })
+        }
+      }
+      styles = next.length ? next : styles
+    }
+
+    const seen = new Set<string>()
+    return styles.filter((style) => {
+      if (!style.color && !style.background) return false
+      const key = `${style.color ?? ""}|${style.background ?? ""}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }
+  return []
+}
+
 function classAlternatives(element: ts.JsxOpeningLikeElement): string[][] {
   for (const attribute of element.attributes.properties) {
     if (!ts.isJsxAttribute(attribute)) continue
@@ -398,120 +488,6 @@ function classAlternatives(element: ts.JsxOpeningLikeElement): string[][] {
     return lists.length ? lists : [[]]
   }
   return []
-}
-
-/**
- * The colours an inline `style={{ … }}` paints.
- *
- * WHY THIS EXISTS, and what it costs to be without it. This scanner resolved
- * `className` strings and NOTHING else, and said so in its own header —
- * "inline style={{}} never read". That is a real limit of a class sweep, and
- * it was load-bearing: the onboarding tour hands a `styles={{}}` object to a
- * third-party provider, and 14 more `style={{ color: … }}` sites live in
- * `packages/admin/src/pages/`.
- *
- * The gap was demonstrated rather than argued: making the tour badge paint
- * `--primary` on `--primary` produced a pair measuring EXACTLY 1.000:1 — white
- * on white, in effect — and both the tour's own test and this sweep stayed
- * green. The tour's test asserts that both members of the pair are SET and
- * which tokens the popover uses; it does no arithmetic, so a pair that is
- * present and identical passes it.
- *
- * Three spellings are understood, which are the three this codebase uses:
- * `hsl(var(--token))`, `var(--token)` and a hex literal. A value built at
- * runtime — `CHART_COLORS[index]`, `block.textColor ?? "#333"` — resolves only
- * as far as its literal fallback, and a value with none is skipped rather than
- * guessed at. Stated because a guard that guessed would be argued with and
- * then disabled.
- */
-function inlineStyle(
-  element: ts.JsxOpeningLikeElement,
-  source: ts.SourceFile
-): Array<{ label: string; color?: string; background?: string }> {
-  const found: Array<{ label: string; color?: string; background?: string }> = []
-
-  /** One object literal's colour pair. */
-  const readObject = (object: ts.ObjectLiteralExpression, label: string): void => {
-    const pair: { label: string; color?: string; background?: string } = { label }
-    for (const property of object.properties) {
-      if (!ts.isPropertyAssignment(property)) continue
-      const key = property.name.getText(source).replace(/['"]/g, "")
-      if (key !== "color" && key !== "backgroundColor" && key !== "background") continue
-      const value = readColourExpression(property.initializer, source)
-      if (!value) continue
-      if (key === "color") pair.color = value
-      else pair.background = value
-    }
-    if (pair.color || pair.background) found.push(pair)
-  }
-
-  /** The object a value settles on: itself, or what an arrow function returns. */
-  const objectOf = (node: ts.Expression): ts.ObjectLiteralExpression | null => {
-    if (ts.isObjectLiteralExpression(node)) return node
-    if (ts.isArrowFunction(node)) {
-      const body = node.body
-      if (ts.isObjectLiteralExpression(body)) return body
-      if (ts.isParenthesizedExpression(body) && ts.isObjectLiteralExpression(body.expression)) {
-        return body.expression
-      }
-    }
-    if (ts.isParenthesizedExpression(node)) return objectOf(node.expression)
-    return null
-  }
-
-  for (const attribute of element.attributes.properties) {
-    if (!ts.isJsxAttribute(attribute)) continue
-    const name = attribute.name.getText(source)
-    // `style` is the DOM attribute. `styles` is the prop a third-party
-    // component takes a map of named surfaces on — Reactour's tour provider is
-    // the one in this codebase, and its `badge` and `popover` entries are
-    // exactly the pairs nothing was measuring.
-    if (name !== "style" && name !== "styles") continue
-    const initializer = attribute.initializer
-    if (!initializer || !ts.isJsxExpression(initializer) || !initializer.expression) continue
-    const object = objectOf(initializer.expression)
-    if (!object) continue
-
-    if (name === "style") {
-      readObject(object, "style")
-      continue
-    }
-    // A map of named surfaces: each entry is its own pair, measured on its own.
-    for (const property of object.properties) {
-      if (!ts.isPropertyAssignment(property)) continue
-      const nested = objectOf(property.initializer)
-      if (nested) readObject(nested, `styles.${property.name.getText(source)}`)
-    }
-  }
-  return found
-}
-
-/**
- * The colour a style-object value settles on, as a word this Resolver knows.
- *
- * `hsl(var(--popover))` and `var(--popover)` become `popover`; a hex literal
- * becomes `[#rrggbb]`, which is the arbitrary-value spelling `colour()` already
- * parses. A `??` falls through to its right-hand side, because that is the
- * value the engine SHIPS — the left-hand side is whatever a client later
- * chooses, and no static reading can know it.
- */
-function readColourExpression(node: ts.Expression, source: ts.SourceFile): string | null {
-  if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken) {
-    return readColourExpression(node.right, source)
-  }
-  if (ts.isConditionalExpression(node)) {
-    // Both branches ship; the caller measures whichever it is handed, and a
-    // pair is only reported when both sides resolve, so taking the "true"
-    // branch here is a choice to measure something rather than nothing.
-    return readColourExpression(node.whenTrue, source)
-  }
-  if (!ts.isStringLiteral(node) && !ts.isNoSubstitutionTemplateLiteral(node)) return null
-  const text = node.text.trim()
-  const token = text.match(/^(?:hsl|rgb)\(\s*var\(\s*--([a-z0-9-]+)\s*\)\s*\)$/i)
-    ?? text.match(/^var\(\s*--([a-z0-9-]+)\s*\)$/i)
-  if (token) return token[1]!
-  if (/^#[0-9a-f]{3,8}$/i.test(text)) return `[${text}]`
-  return null
 }
 
 /* -------------------------------------------------------------------------- */
@@ -563,8 +539,47 @@ class Resolver {
     return null
   }
 
+  /**
+   * A CSS colour value as an inline `style` writes it.
+   *
+   * The three spellings this codebase actually uses inline — a hex literal, a
+   * `var(--token)` reference, and a bare palette word. `rgb()`/`rgba()` are
+   * read too because a hand-written inline style is where they turn up.
+   * Anything else returns null and is left unmeasured rather than guessed.
+   */
+  cssColour(value: string, mode: Mode, scope: string): { rgb: Rgb; alpha: number } | null {
+    const text = value.trim()
+    if (!text || text === "transparent" || text === "currentColor" || text === "inherit") return null
+
+    const hex = parseHex(text)
+    if (hex) return { rgb: hex, alpha: 1 }
+
+    const rgbFn = text.match(
+      /^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)(?:[\s,/]+([\d.]+%?))?\s*\)$/
+    )
+    if (rgbFn) {
+      const channel = (raw: string): number => Number(raw) / 255
+      const raw = rgbFn[4]
+      const alpha = raw === undefined ? 1 : raw.endsWith("%") ? Number(raw.slice(0, -1)) / 100 : Number(raw)
+      return {
+        rgb: { r: channel(rgbFn[1]!), g: channel(rgbFn[2]!), b: channel(rgbFn[3]!) },
+        alpha: Number.isFinite(alpha) ? alpha : 1,
+      }
+    }
+
+    // `var(--primary)` — the token name is what `colour` already resolves, and
+    // resolving it through the same scope chain is the whole point: an inline
+    // `var(--foreground)` inside `.storefront-theme` is that scope's value.
+    const variable = text.match(/^var\(\s*--([a-z0-9-]+)\s*(?:,[^)]*)?\)$/i)
+    if (variable) return this.colour(variable[1]!, mode, scope)
+
+    // A bare word: `white`, `black`, or a palette entry.
+    if (/^[a-z][a-z0-9-]*$/.test(text)) return this.colour(text, mode, scope)
+    return null
+  }
+
   /** What one class list says, for one colour scheme and one state. */
-  read(classes: string[], mode: Mode, scope: string, state: string): Reading {
+  read(classes: string[], mode: Mode, scope: string, state: string, inline?: InlineStyle | null): Reading {
     const reading: Reading = { backgrounds: [], text: null, sizePx: null, weight: null, opacity: 1 }
     const opacities: number[] = []
 
@@ -623,6 +638,22 @@ class Resolver {
       }
     }
 
+    // Inline last, and unconditionally: a `style` declaration outranks every
+    // class on the element whatever variant the class carries, so it is not
+    // enough to sort it to the end of the list above — a `hover:text-…` would
+    // still have won. This is also why it ignores `state`: the same inline
+    // value paints every state of the element.
+    if (inline) {
+      if (inline.background) {
+        const paint = this.cssColour(inline.background, mode, scope)
+        if (paint) reading.backgrounds = [{ ...paint, cls: `style:background:${inline.background}` }]
+      }
+      if (inline.color) {
+        const paint = this.cssColour(inline.color, mode, scope)
+        if (paint) reading.text = { ...paint, cls: `style:color:${inline.color}` }
+      }
+    }
+
     const visible = opacities.filter((value) => value > 0)
     reading.opacity = visible.length ? Math.max(...visible) : 1
     return reading
@@ -677,8 +708,6 @@ export function scanContrast(options: ScanOptions): ContrastFailure[] {
     ...scopes,
     ...scopes.map((scope) => `.dark ${scope}`),
   ]
-  // The real cascade: globals first, then whatever `layout.tsx` layers on top.
-  // Defaulting to `[]` keeps the engine-default sweep exactly as it was.
   const tokens = loadTokens(appDir, selectors, options.overlays ?? [])
   const resolver = new Resolver(loadTailwindPalette(appDir), tokens)
 
@@ -710,59 +739,27 @@ export function scanContrast(options: ScanOptions): ContrastFailure[] {
               : null
 
           if (element) {
+            // An element can paint entirely inline and carry no className at
+            // all. `classAlternatives` returns [] for it, and the loop below
+            // skips an empty list — which is how those elements went unread.
+            const styles = styleAlternatives(element)
             const lists = classAlternatives(element)
+            const combinations: Array<{ classes: string[]; style: InlineStyle | null }> = []
+            for (const classes of lists.length ? lists : [[]]) {
+              if (styles.length) {
+                for (const style of styles) combinations.push({ classes, style })
+              } else if (classes.length) {
+                combinations.push({ classes, style: null })
+              }
+            }
             const graphical = isGraphical(node, element)
             const line = source.getLineAndCharacterOfPosition(element.getStart()).line + 1
             const inherited: Context[] = []
 
-            // The inline pair, before the classes. `style` beats `className`
-            // in the cascade — an inline declaration outranks any rule — so a
-            // colour set here is the one that renders, and it used to be the
-            // one nothing measured.
-            for (const inline of inlineStyle(element, source)) {
-              // Both halves have to be declared here. A surface with no ink, or
-              // ink with no surface, inherits the other from somewhere this
-              // cannot see — which is a real finding but not a measurable one.
-              if (!inline.color || !inline.background) continue
-              const ink = resolver.colour(inline.color, mode, scope)
-              const ground = resolver.colour(inline.background, mode, scope)
-              if (ink && ground) {
-                const surface = over(ground.rgb, context.surface, ground.alpha)
-                const painted = over(ink.rgb, surface, ink.alpha)
-                const ratio = contrast(painted, surface)
-                const floor =
-                  options.minimumRatio ??
-                  (graphical ? AA_LARGE : floorFor(context.sizePx, context.weight))
-                const key = `${file}|${mode}|${inline.label}|${inline.color}|${inline.background}`
-                if (ratio < floor && !reported.has(key)) {
-                  reported.add(key)
-                  failures.push({
-                    file: relative(appDir, file),
-                    line,
-                    mode,
-                    scope,
-                    state: "base",
-                    foreground: `${inline.label}.color=${inline.color}`,
-                    background: `${inline.label}.background=${inline.background}`,
-                    foregroundHex: toHex(painted),
-                    backgroundHex: toHex(surface),
-                    ratio: Math.round(ratio * 1000) / 1000,
-                    floor,
-                    sizePx: context.sizePx,
-                    weight: context.weight,
-                    // Both halves are declared right here, so unlike a class
-                    // pair there is no doubt about what the surface is.
-                    surfaceKnown: true,
-                  })
-                }
-              }
-            }
-
-            for (const classes of lists) {
-              if (!classes.length) continue
+            for (const { classes, style } of combinations) {
               for (const state of STATES) {
                 if (state !== "base" && !classes.some((c) => splitVariants(c).variants.includes(state))) continue
-                const reading = resolver.read(classes, mode, scope, state)
+                const reading = resolver.read(classes, mode, scope, state, style)
 
                 let backdrop = context.backdrop
                 let groupAlpha = context.groupAlpha

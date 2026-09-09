@@ -25,34 +25,42 @@ import { restaurantClock, parseClockTime } from "./timeWindow"
 import type { BusinessHours } from "./types"
 
 /**
- * Does this location follow the deployment-wide week?
+ * What an unwritten `useGlobalHours` means — declared once, for both ends.
  *
- * WHY `undefined` MEANS YES. `useGlobalHours` is `v.optional(v.boolean())` in
- * the schema, so a store nobody has opened in the dashboard since the column
- * was added carries no value at all. Every other layer already calls that
- * `true`: `validators.ts` declares `z.boolean().default(true)`, `stores.create`
- * seeds `useGlobalHours: true`, and `use-store-detail.ts` opens the switch on
- * with `store.useGlobalHours ?? true`. Only this function read the absent value
- * as `false`, and a bare `if (store.useGlobalHours && …)` is how it did it.
+ * THE DISAGREEMENT THIS SETTLES. `useGlobalHours` is `v.optional(v.boolean())`,
+ * so a store written before the field existed carries no value at all. The
+ * dashboard read that as `?? true` and drew the switch ON — "this location
+ * follows the deployment-wide week". `resolveStoreHours` read it as a falsy
+ * `&&` and served the store's OWN week. So an owner could edit the global
+ * hours, watch the screen agree that this location follows them, and have the
+ * order path enforce something else entirely. Neither side was wrong on its
+ * own; there were simply two answers, and no one place to change.
  *
- * THE COST OF THE DISAGREEMENT, measured on the bench. The owner opens
- * Horaires, sees the toggle on and the sentence « Cet établissement utilise les
- * horaires globaux », sets the global week to 02:00–03:00 and saves — and the
- * store row still holds no `useGlobalHours`, because saving the GLOBAL hours
- * writes `globalSettings`, not the store. At 18:29 the storefront then resolved
- * the store's own 09:00–22:00, showed no closed banner and enabled every
- * add-to-cart button: open when the owner believed they had closed, taking
- * orders for a kitchen with nobody in it. The same defect had already been seen
- * in the other direction — closed when it should have been open — and it is one
- * `??` either way.
+ * FALSE IS THE ANSWER, and it is chosen for what it does not do. This is a
+ * live product where the wrong week means orders refused during service, or a
+ * kitchen ticket at four in the morning. `false` is what the order path has
+ * always enforced, so adopting it changes no establishment's actual opening
+ * hours — it only stops the dashboard claiming otherwise. `true` would have
+ * silently moved every legacy store onto the global week.
  *
- * An explicit `false` is the only thing that keeps a location on its own hours,
- * which is what the switch writes when an owner turns it off.
+ * It costs nothing going forward: `stores.create` writes `useGlobalHours: true`
+ * explicitly, so a store made through the product never reaches this default,
+ * and the first save from the hours screen writes the flag either way. The
+ * default is only ever consulted for rows that predate the field.
  */
-export function followsGlobalHours(store: {
-  useGlobalHours?: boolean | null
-}): boolean {
-  return store.useGlobalHours ?? true
+export const FOLLOWS_GLOBAL_HOURS_BY_DEFAULT = false
+
+/**
+ * Does this establishment follow the deployment-wide week?
+ *
+ * The single reading of the flag. The screen and the order path both call it,
+ * so they cannot answer the question differently again — which is what went
+ * wrong, rather than either answer being indefensible.
+ */
+export function followsGlobalHours(
+  store: { useGlobalHours?: boolean | null } | null | undefined
+): boolean {
+  return store?.useGlobalHours ?? FOLLOWS_GLOBAL_HOURS_BY_DEFAULT
 }
 
 /**
@@ -62,11 +70,6 @@ export function followsGlobalHours(store: {
  * follows the deployment-wide week; off, it keeps its own. Resolved on read
  * rather than copied on write, so editing the global hours reaches every
  * location that follows them without a migration.
- *
- * A location that follows the global week and is handed NO global week falls
- * back to its own rather than to nothing: an empty result is read as "no
- * schedule declared" by `isWithinBusinessHoursAt`, which is permission to serve
- * at any hour. The fallback is the conservative half of the same choice.
  */
 export function resolveStoreHours(
   store:

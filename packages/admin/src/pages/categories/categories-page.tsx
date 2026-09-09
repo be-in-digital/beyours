@@ -38,7 +38,7 @@ export function CategoriesPage() {
   const { api } = useAdminApiStore()
   const storeId = useAdminStoreId()
   const categories = useQuery(
-    api?.categories?.list,
+    api?.categories?.listAll,
     storeId ? { storeId } : "skip"
   )
 
@@ -46,7 +46,7 @@ export function CategoriesPage() {
   // number is not zero, and an owner should read it before the click rather
   // than in a toast afterwards.
   const products = useQuery(
-    api?.products?.list,
+    api?.products?.listAll,
     storeId ? { storeId } : "skip"
   )
 

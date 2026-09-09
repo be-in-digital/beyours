@@ -21,7 +21,7 @@ export function FieldInfo({ title, description, steps, links, note }: FieldInfoP
       <DialogTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center justify-center h-4 w-4 rounded-full text-muted-foreground hover:text-foreground transition-colors"
+          className="inline-flex size-6 items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
           aria-label={`Aide : ${title}`}
         >
           <Info className="h-3.5 w-3.5" />

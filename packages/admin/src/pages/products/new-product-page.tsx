@@ -23,7 +23,7 @@ export function NewProductPage() {
 
   // Fetch categories for the form
   const categories = useQuery(
-    api?.categories?.list,
+    api?.categories?.listAll,
     storeId ? { storeId } : "skip"
   )
 

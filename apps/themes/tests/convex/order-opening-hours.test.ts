@@ -279,18 +279,26 @@ describe("orders.create — the weekly schedule", () => {
     expect(code).toBe("outside_opening_hours")
   })
 
-  test("follows the global week when the store row was never saved", async () => {
-    // THE 4 A.M. CASE, reproduced. `useGlobalHours` is `v.optional(v.boolean())`
-    // and a store nobody has opened in the dashboard since the column landed
-    // carries NO value — which the resolver read as "keep your own hours" while
-    // the Horaires tab showed the switch ON and the sentence « Cet
-    // établissement utilise les horaires globaux » above the global week.
+  test("keeps its own week when the store row was never saved", async () => {
+    // THE 4 A.M. CASE, and the direction it was settled in.
     //
-    // So the owner set the global week to 02:00–03:00, saw the store screen
-    // agree, and the storefront went on serving its seeded 09:00–22:00: no
-    // closed banner, every add-to-cart button live, and an order landing in a
-    // kitchen with nobody in it. Absent now means "follow global", as every
-    // other layer already said it did.
+    // `useGlobalHours` is `v.optional(v.boolean())`, so a store nobody has
+    // opened since the column landed carries NO value — and the dashboard read
+    // that as `?? true` (switch ON, « Cet établissement utilise les horaires
+    // globaux ») while this order path read it as falsy and served the store's
+    // own week. Two answers to one question: an owner could set the global week
+    // to 02:00–03:00, watch the screen agree, and have the storefront go on
+    // serving 09:00–22:00.
+    //
+    // #446 settled it at `FOLLOWS_GLOBAL_HOURS_BY_DEFAULT = false` and moved
+    // the SCREEN to match, which is the safer half: `false` is what this path
+    // has always enforced, so no establishment's real hours moved. Making the
+    // default `true` instead — which this branch first did — would have put
+    // every legacy store onto the deployment-wide week unasked, and on a narrow
+    // global week that is a restaurant that quietly stops taking orders.
+    //
+    // So an unwritten flag serves the location's own week, and the owner who
+    // wants the global one now sees a switch that is honestly OFF.
     const t = newHarness()
     await seedGlobalSettings(t, { hours: week("02:00", "03:00") })
     const storeId = await seedStore(t, week("09:00", "22:00"))
@@ -298,10 +306,9 @@ describe("orders.create — the weekly schedule", () => {
 
     // 18:29 Paris, far outside 02:00–03:00 and squarely inside 09:00–22:00.
     vi.setSystemTime(Date.UTC(2029, 6, 3, 16, 29, 0))
-    const { accepted, code } = await attempt(t, storeId, productId)
+    const { accepted } = await attempt(t, storeId, productId)
 
-    expect(accepted).toBe(false)
-    expect(code).toBe("outside_opening_hours")
+    expect(accepted).toBe(true)
   })
 
   test("keeps the location's own week when the flag is explicitly off", async () => {

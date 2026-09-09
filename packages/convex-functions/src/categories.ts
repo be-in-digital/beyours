@@ -20,6 +20,40 @@ export const list = {
       .order("asc")
       .collect()
       .then((categories: any) =>
+        categories
+          // The storefront's read: a category the owner has switched off is
+          // not a section of the carte. `listActiveWithCounts` next door has
+          // always said so; this one returned the lot, and the menu page and
+          // the JSON-LD are built from THIS query.
+          //
+          // There is no `by_storeId_isActive` index on this table and there
+          // does not need to be: a store has tens of categories, not
+          // thousands, and the sort below already walks the whole list.
+          .filter((c: any) => c.isActive)
+          .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      )
+  },
+}
+
+/**
+ * Every category, switched off ones included — for the people who own them.
+ *
+ * The counterpart to `products.listAll`, and needed by more than the back
+ * office: the Uber Eats and Deliveroo importers match incoming categories
+ * against the existing ones, and matching against the ACTIVE ones only would
+ * create a second "Desserts" beside the switched-off first.
+ *
+ * Wrapped with `storeQuery` + `products:read` in each app's `convex/`.
+ */
+export const listAll = {
+  args: { storeId: v.id("stores") },
+  handler: async (ctx: any, args: any) => {
+    return await ctx.db
+      .query("categories")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .order("asc")
+      .collect()
+      .then((categories: any) =>
         categories.sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
       )
   },

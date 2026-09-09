@@ -621,6 +621,37 @@ if [ -n "$SES_WEBHOOK_URL" ]; then
   else
     log_success "Already subscribed: $SES_WEBHOOK_URL"
   fi
+
+  # WITHOUT THIS THE SUBSCRIPTION CAN NEVER CONFIRM.
+  #
+  # `handleSesWebhook` verifies Amazon's signature, which proves Amazon sent
+  # the message and NOT that our topic did — so it refuses any notification
+  # whose TopicArn is not named by `SES_SNS_TOPIC_ARN`. That includes the
+  # SubscriptionConfirmation SNS posts seconds after the `subscribe` above.
+  # The script created the topic, subscribed the endpoint, and never told the
+  # backend which topic to accept, so the confirmation was refused, SNS gave
+  # up retrying, and the subscription sat PendingConfirmation for ever. Every
+  # bounce and complaint published to the topic and reached nobody.
+  #
+  # It goes on the CONVEX deployment, not in `.env.local`: the verifier runs
+  # there. It is written to $ENV_FILE too, further down, so `pnpm env:sync`
+  # and `setup-convex-env.sh` carry it on any later run.
+  if command -v pnpx >/dev/null 2>&1 || command -v npx >/dev/null 2>&1; then
+    CONVEX_RUNNER=$(command -v pnpx || command -v npx)
+    log_info "Naming the topic on the Convex deployment (SES_SNS_TOPIC_ARN)..."
+    if "$CONVEX_RUNNER" convex env set SES_SNS_TOPIC_ARN "$SNS_TOPIC_ARN" >/dev/null 2>&1; then
+      log_success "SES_SNS_TOPIC_ARN set — the deployment will accept the confirmation"
+    else
+      log_warn "Could not set SES_SNS_TOPIC_ARN on the Convex deployment."
+      log_warn "Until it is set, /webhooks/ses refuses EVERY notification from"
+      log_warn "this topic, the subscription stays PendingConfirmation, and"
+      log_warn "bounces reach nobody. Run this from the app directory:"
+      log_warn "  npx convex env set SES_SNS_TOPIC_ARN $SNS_TOPIC_ARN"
+    fi
+  else
+    log_warn "No npx/pnpx on PATH, so SES_SNS_TOPIC_ARN was not set on Convex."
+    log_warn "  npx convex env set SES_SNS_TOPIC_ARN $SNS_TOPIC_ARN"
+  fi
 else
   log_warn "CONVEX_SITE_URL is unknown, so nothing is subscribed to the topic."
   log_warn "Bounces and complaints will publish to SNS and reach nobody."
@@ -765,15 +796,18 @@ fi
 
 log_section "Step 4: Update .env.local"
 
+# Hoisted out of the branch below: the SES topic is written to the env file
+# whether or not new credentials were minted, and BSD sed needs the empty
+# backup suffix that GNU sed refuses. A `${SED_I:-sed -i}` fallback would have
+# been wrong on macOS exactly when no key was generated.
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  SED_I="sed -i ''"
+else
+  SED_I="sed -i"
+fi
+
 if [ -n "${NEW_ACCESS_KEY:-}" ]; then
   log_info "Updating $ENV_FILE with new credentials..."
-
-  # Use sed to update existing values or append new ones
-  if [[ "$OSTYPE" == "darwin"* ]]; then
-    SED_I="sed -i ''"
-  else
-    SED_I="sed -i"
-  fi
 
   # Update AWS credentials
   $SED_I "s|^AWS_REGION=.*|AWS_REGION=$REGION|" "$ENV_FILE"
@@ -793,6 +827,21 @@ if [ -n "${NEW_ACCESS_KEY:-}" ]; then
 else
   log_warn "No new keys generated, .env.local not updated"
   log_info "Manually update .env.local with your existing credentials"
+fi
+
+# The feedback topic, recorded whether or not new keys were minted: a re-run
+# that generates no credentials still has a topic, and this is the value the
+# SES webhook verifier checks a notification's TopicArn against.
+if [ -n "${SNS_TOPIC_ARN:-}" ] && [ -f "$ENV_FILE" ]; then
+  if grep -q '^SES_SNS_TOPIC_ARN=' "$ENV_FILE"; then
+    $SED_I "s|^SES_SNS_TOPIC_ARN=.*|SES_SNS_TOPIC_ARN=$SNS_TOPIC_ARN|" "$ENV_FILE"
+  else
+    echo "" >> "$ENV_FILE"
+    echo "# Which SNS topic /webhooks/ses accepts. Must also be set on the" >> "$ENV_FILE"
+    echo "# Convex deployment — that is where the verifier runs." >> "$ENV_FILE"
+    echo "SES_SNS_TOPIC_ARN=$SNS_TOPIC_ARN" >> "$ENV_FILE"
+  fi
+  log_success "SES_SNS_TOPIC_ARN recorded in $ENV_FILE"
 fi
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -816,6 +865,7 @@ echo "  From: $FROM_EMAIL"
 echo "  Config Set: $SES_CONFIG_SET"
 echo "  Region: $REGION"
 echo "  Feedback topic: ${SNS_TOPIC_ARN:-none}"
+echo "  Topic named to the backend: SES_SNS_TOPIC_ARN=${SNS_TOPIC_ARN:-unset}"
 if [ -n "${SES_WEBHOOK_URL:-}" ]; then
   echo "  Bounces & complaints: $SES_WEBHOOK_URL"
 else

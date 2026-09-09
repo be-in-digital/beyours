@@ -29,23 +29,26 @@ describe("resolveStoreHours", () => {
   const globalWeek = week("08:00", "16:00")
   const storeWeek = week("11:00", "23:00")
 
-  it("follows the global week when the flag was never written", () => {
-    // THIS ASSERTION USED TO SAY THE OPPOSITE, and the product shipped the
-    // opposite. `useGlobalHours` is `v.optional(v.boolean())`, so a store
-    // nobody has saved since the column landed carries no value — and every
-    // other layer already calls that `true`: `validators.ts` defaults it,
-    // `stores.create` seeds it, and the Horaires switch opens ON with
-    // `store.useGlobalHours ?? true`. Only the resolver read absent as `false`.
+  it("keeps the establishment's own week when the flag was never written", () => {
+    // THE DEFAULT IS DECLARED ONCE, in `FOLLOWS_GLOBAL_HOURS_BY_DEFAULT`, and
+    // it is `false`. This branch originally made it `true` — every other layer
+    // read an absent flag that way, and the observed failure was a storefront
+    // serving 09:00-22:00 while the store screen stated the global 02:00-03:00.
     //
-    // What that cost, reproduced end to end: the owner sets the global week to
-    // 02:00–03:00, the store screen says « Cet établissement utilise les
-    // horaires globaux », and at 18:29 the storefront showed no closed banner
-    // and every add-to-cart button enabled. Open when the owner believed they
-    // had closed. An establishment that wants its own week says so with an
-    // explicit `false`, which is what the switch writes when it is turned off.
+    // #446 landed the opposite choice on `main` and it is the better one, for
+    // a reason this branch had under-weighted: `false` is what the ORDER PATH
+    // has always enforced, so adopting it changes no establishment's actual
+    // hours — it only stops the dashboard claiming otherwise, which #446 also
+    // fixed by having the switch read `followsGlobalHours` too. `true` would
+    // have silently moved every legacy store onto the deployment-wide week,
+    // which on a narrow global week means a restaurant that quietly stops
+    // taking orders.
+    //
+    // The disagreement was never about which week is right; it was that the
+    // screen and the order path answered differently. One reading settles it.
     expect(
       resolveStoreHours({ hours: storeWeek }, { hours: globalWeek })
-    ).toEqual(globalWeek)
+    ).toEqual(storeWeek)
   })
 
   it("keeps the establishment's own week when the flag is explicitly off", () => {
