@@ -20,7 +20,10 @@ import { useCartStore, formatPrice,
   clearCheckoutAttempt,
   useCartHydrated,
 } from "@be-in-digital/restaurant"
-import { resolveTaxRatePercent } from "@be-in-digital/convex-functions/orderTotals"
+import {
+  computeOrderTotals,
+  resolveTaxRatePercent,
+} from "@be-in-digital/convex-functions/orderTotals"
 import { effectiveDeliveryFeeMode } from "@be-in-digital/convex-functions/deliveryQuote"
 import {
   resolvePromotionDiscount,
@@ -398,6 +401,40 @@ export default function CheckoutPage() {
 
   const cardProvider = globalSettings?.payments?.cardProvider ?? "stripe"
 
+  /**
+   * What this basket owes right now, in cents — or `undefined` while it cannot
+   * be known.
+   *
+   * The payment tiles need it: a card provider has a floor (0,50 € at Stripe,
+   * in EUR) and a 100 % coupon takes an order below it, to zero. Offering a
+   * card for either produced an order no retry could ever settle.
+   *
+   * Computed with the same pure function the summary and the SERVER bill with,
+   * from the same inputs, so the figure the tiles reason about is the figure
+   * the diner is reading beside them. `null` from `estimatedDeliveryFee` means
+   * the quote has not landed, and a total without it is not the total.
+   */
+  const amountDue = (() => {
+    if (estimatedDeliveryFee === null) return undefined
+    return computeOrderTotals({
+      subtotal: getSubtotal(),
+      taxRatePercent: resolveTaxRatePercent({
+        globalTaxRate: globalSettings?.taxRate,
+      }),
+      lines: items.map((item) => ({
+        subtotal:
+          (item.price + item.options.reduce((sum, o) => sum + o.priceModifier, 0)) *
+          item.quantity,
+        taxRatePercent: item.taxRate ?? resolveTaxRatePercent({
+          globalTaxRate: globalSettings?.taxRate,
+        }),
+      })),
+      deliveryFee: estimatedDeliveryFee ?? 0,
+      discount:
+        appliedPromo?.discountAmount ?? automaticOffer?.discountAmount ?? 0,
+    }).total
+  })()
+
   const handleSubmit = async (data: {
     name: string
     email?: string
@@ -638,6 +675,7 @@ export default function CheckoutPage() {
               isSubmitting={isSubmitting}
               addresses={addresses}
               isAuthenticated={!!session?.user}
+              amountDue={amountDue}
               user={session?.user ? {
                 name: session.user.name ?? undefined,
                 email: session.user.email ?? undefined,

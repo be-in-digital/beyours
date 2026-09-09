@@ -22,12 +22,26 @@ export const verify = internalAction({
     /** The raw JSON body, exactly as received. */
     body: v.string(),
   },
-  handler: async (_ctx, args): Promise<{ valid: boolean; reason?: string }> => {
+  handler: async (
+    _ctx,
+    args
+  ): Promise<{
+    valid: boolean;
+    reason?: string;
+    /** The topic the message came from, once the signature has proved it. */
+    topicArn?: string;
+    /** Whether this deployment may confirm a subscription for that topic. */
+    mayConfirm?: boolean;
+  }> => {
     const {
       buildSnsStringToSign,
       canVerify,
       hashAlgorithmFor,
+      isAllowedTopic,
       isValidSigningCertUrl,
+      mayConfirmSubscription,
+      parseAllowedTopicArns,
+      SES_SNS_TOPIC_ARN_ENV,
     } = await import("@be-in-digital/convex-functions/snsSignature");
 
     let message: Record<string, unknown>;
@@ -58,23 +72,55 @@ export const verify = internalAction({
       return { valid: false, reason: "cert_unreachable" };
     }
 
+    // `hashAlgorithmFor` refuses SignatureVersion 1 (SHA-1), so this is also
+    // the version gate. Reported separately: a topic still on version 1 is a
+    // one-line setup fix, and "incomplete" would send an operator looking for
+    // a missing field.
     const algorithm = hashAlgorithmFor(String(message.SignatureVersion));
+    if (!algorithm) return { valid: false, reason: "signature_version" };
     const stringToSign = buildSnsStringToSign(message);
-    if (!algorithm || stringToSign === null) {
+    if (stringToSign === null) {
       return { valid: false, reason: "incomplete" };
     }
 
     const crypto = await import("node:crypto");
+    let signatureOk: boolean;
     try {
-      const verifier = crypto.createVerify(
-        algorithm === "sha1" ? "RSA-SHA1" : "RSA-SHA256"
-      );
+      // One algorithm, because `hashAlgorithmFor` now answers with one:
+      // SignatureVersion 1 is SHA-1 and is refused above.
+      const verifier = crypto.createVerify("RSA-SHA256");
       verifier.update(stringToSign, "utf8");
-      const valid = verifier.verify(certPem, String(message.Signature), "base64");
-      return valid ? { valid: true } : { valid: false, reason: "bad_signature" };
+      signatureOk = verifier.verify(
+        certPem,
+        String(message.Signature),
+        "base64"
+      );
     } catch {
       // A malformed certificate or signature is a rejection, never a pass.
       return { valid: false, reason: "bad_signature" };
     }
+    if (!signatureOk) return { valid: false, reason: "bad_signature" };
+
+    // The signature proves AMAZON sent this. It does not prove OUR topic did:
+    // every SNS topic in every AWS account is signed by the same
+    // infrastructure, with a certificate on the same hosts the URL check
+    // allows. So the topic is checked too, after the signature has made the
+    // `TopicArn` field trustworthy — before it, it is just another string the
+    // sender wrote.
+    const allowed = parseAllowedTopicArns(process.env[SES_SNS_TOPIC_ARN_ENV]);
+    const topicArn =
+      typeof message.TopicArn === "string" ? message.TopicArn : undefined;
+    if (!isAllowedTopic(topicArn, allowed)) {
+      return { valid: false, reason: "topic_not_allowed" };
+    }
+
+    return {
+      valid: true,
+      ...(topicArn ? { topicArn } : {}),
+      // Confirming a subscription is what turns "a stranger pointed their
+      // topic at us" into "a stranger can publish to us", so it is decided
+      // here, against the configuration, and never from the body alone.
+      mayConfirm: mayConfirmSubscription(topicArn, allowed),
+    };
   },
 });

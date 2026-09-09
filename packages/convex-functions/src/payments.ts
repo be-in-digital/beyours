@@ -13,7 +13,7 @@ import {
   paymentStatusAfterSettlement,
 } from "./paymentSettlement"
 import { recordPaymentStatus } from "./orders"
-import { collectionOnOrder } from "./paymentLedger"
+import { collectionOnOrder, LEDGERED_STATUSES } from "./paymentLedger"
 import type { OrderConfirmationDispatch } from "./orderConfirmation"
 
 /** The providers whose events can settle or reverse a charge on their own. */
@@ -194,9 +194,11 @@ export const create = {
  *    `q.eq("externalId", undefined)` matches every cash payment. A settlement
  *    with no reference is refused outright: it can be neither deduplicated nor
  *    refunded through the provider.
- *  - The row is inserted directly as "succeeded". The old `create` then
+ *  - A new row is inserted directly as "succeeded". The old `create` then
  *    `updateStatus` pair was a second read-then-write window, and the reason a
- *    row could sit at "pending" forever when the second call never landed.
+ *    row could sit at "pending" forever when the second call never landed. A
+ *    row that is ALREADY there and still pending is promoted in place — see
+ *    the comment on the match below for what leaving it pending cost.
  *
  * A fourth guard was added later, and it is a different question from all
  * three: `by_externalId` recognises a charge it has already seen, and cannot
@@ -273,8 +275,28 @@ export const settlePayment = {
       )
     }
 
+    // A row for this charge on this order already stands. Whether it is DONE
+    // is a different question from whether it EXISTS, and only the second was
+    // being asked: any match at all returned `created: false` and was left
+    // exactly as it was found.
+    //
+    // A `pending` row is not a settlement. It is the placeholder
+    // `payments.create` writes before anything has been heard from the
+    // provider, and leaving it pending while the ORDER goes to `paid` — which
+    // is what `settleByExternalReference` does immediately after this returns
+    // — produced a charge that was:
+    //
+    //   - permanently unrefundable through the product, because `planRefund`
+    //     accepts only `succeeded` and `partially_refunded`, and nothing else
+    //     ever revisits the row;
+    //   - still open to a second collection, because `collectionOnOrder` counts
+    //     the same two statuses, so the order read as holding no money at all.
+    //
+    // So a settled charge is only recognised as already-recorded when the row
+    // says the money is actually on the ledger. Anything else falls through to
+    // the guard below and is promoted.
     const match = existing.find((p: any) => p.orderId === args.orderId)
-    if (match) {
+    if (match && LEDGERED_STATUSES.has(match.status)) {
       return { paymentId: match._id, created: false }
     }
 
@@ -328,6 +350,35 @@ export const settlePayment = {
     }
 
     const now = Date.now()
+
+    // Promote the placeholder rather than inserting beside it. Two rows for one
+    // charge is the duplicate `by_externalId` exists to prevent, and the guard
+    // above has just established that this order holds no other collection.
+    //
+    // `provider`, `amount` and `currency` are overwritten, not preserved. A
+    // `pending` row is by definition "nothing has been heard from the
+    // provider" — a placeholder, not a record — and the settlement is the
+    // first authoritative account of the charge. It matters most for
+    // `provider`: a refund is issued against whatever that field says, so a
+    // row left naming the wrong one sends the refund to a provider that is not
+    // holding the money.
+    if (match) {
+      await ctx.db.patch(match._id, {
+        provider: args.provider,
+        amount: args.amount,
+        currency: args.currency,
+        status: "succeeded",
+        updatedAt: now,
+        ...(args.metadata
+          ? { metadata: { ...(match.metadata ?? {}), ...args.metadata } }
+          : {}),
+      })
+      // `created` means "this call is what put the money on the ledger", which
+      // it is. It has never meant "a document was inserted" — the callers use
+      // it to decide whether a settlement is news.
+      return { paymentId: match._id, created: true }
+    }
+
     const paymentId = await ctx.db.insert("payments", {
       ...args,
       externalId,

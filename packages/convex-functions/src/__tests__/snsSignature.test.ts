@@ -3,7 +3,10 @@ import {
   buildSnsStringToSign,
   canVerify,
   hashAlgorithmFor,
+  isAllowedTopic,
   isValidSigningCertUrl,
+  mayConfirmSubscription,
+  parseAllowedTopicArns,
 } from "../snsSignature"
 
 const NOTIFICATION = {
@@ -12,7 +15,9 @@ const NOTIFICATION = {
   TopicArn: "arn:aws:sns:eu-west-1:123456789012:ses-events",
   Message: '{"notificationType":"Bounce"}',
   Timestamp: "2026-08-29T22:00:00.000Z",
-  SignatureVersion: "1",
+  // Version 2 (SHA-256). Version 1 is SHA-1 and is refused — see
+  // `hashAlgorithmFor`.
+  SignatureVersion: "2",
   Signature: "abc",
   SigningCertURL:
     "https://sns.eu-west-1.amazonaws.com/SimpleNotificationService-1234.pem",
@@ -88,11 +93,18 @@ describe("buildSnsStringToSign", () => {
 })
 
 describe("hashAlgorithmFor", () => {
-  it("maps the two versions SNS uses and refuses the rest", () => {
-    expect(hashAlgorithmFor("1")).toBe("sha1")
+  it("accepts SignatureVersion 2 and refuses everything else", () => {
     expect(hashAlgorithmFor("2")).toBe("sha256")
     expect(hashAlgorithmFor("3")).toBeNull()
     expect(hashAlgorithmFor(undefined)).toBeNull()
+  })
+
+  it("refuses SignatureVersion 1, which is SHA-1", () => {
+    // It used to be accepted. The sender picks the version, and the "sender"
+    // of a body that has not been authenticated yet is whoever POSTed it — so
+    // offering both means the weaker one is the one that counts. AWS added
+    // version 2 for exactly this and a topic can be pinned to it.
+    expect(hashAlgorithmFor("1")).toBeNull()
   })
 })
 
@@ -105,6 +117,7 @@ describe("canVerify", () => {
     expect(canVerify({ ...NOTIFICATION, Signature: undefined })).toBe(false)
     expect(canVerify({ ...NOTIFICATION, Signature: "" })).toBe(false)
     expect(canVerify({ ...NOTIFICATION, SignatureVersion: "9" })).toBe(false)
+    expect(canVerify({ ...NOTIFICATION, SignatureVersion: "1" })).toBe(false)
     expect(canVerify({ ...NOTIFICATION, SigningCertURL: "https://evil.test/c.pem" })).toBe(false)
     expect(canVerify({ ...NOTIFICATION, Type: "Nonsense" })).toBe(false)
   })
@@ -121,5 +134,74 @@ describe("a message type that is not a message type", () => {
       expect(buildSnsStringToSign({ ...NOTIFICATION, Type: type })).toBeNull()
       expect(canVerify({ ...NOTIFICATION, Type: type })).toBe(false)
     }
+  })
+})
+
+/**
+ * A valid signature says AMAZON sent it, not that OUR topic did.
+ *
+ * Every SNS topic in every AWS account is signed by the same infrastructure,
+ * with a certificate on the same `sns.<region>.amazonaws.com` hosts the URL
+ * check allows. So a correctly signed message from a topic an attacker owns
+ * passed every check this module made — and the handler behind it marks
+ * subscribers bounced and complained from ids in the message body.
+ *
+ * What made it self-service was the confirmation: the webhook fetched any
+ * `SubscribeURL` on an Amazon host once the signature verified, so an attacker
+ * pointed their own topic at the endpoint and the endpoint subscribed itself.
+ */
+describe("which topic a message is from", () => {
+  const OURS = "arn:aws:sns:eu-west-1:123456789012:ses-events"
+  const THEIRS = "arn:aws:sns:eu-west-1:999999999999:ses-events"
+
+  describe("parseAllowedTopicArns", () => {
+    it("reads one, several, or none", () => {
+      expect(parseAllowedTopicArns(OURS)).toEqual([OURS])
+      expect(parseAllowedTopicArns(` ${OURS} , ${THEIRS} `)).toEqual([OURS, THEIRS])
+      expect(parseAllowedTopicArns("")).toEqual([])
+      expect(parseAllowedTopicArns(undefined)).toEqual([])
+      expect(parseAllowedTopicArns(" , ")).toEqual([])
+    })
+  })
+
+  describe("isAllowedTopic", () => {
+    it("accepts the configured topic and refuses another account's", () => {
+      expect(isAllowedTopic(OURS, [OURS])).toBe(true)
+      expect(isAllowedTopic(THEIRS, [OURS])).toBe(false)
+      expect(isAllowedTopic(undefined, [OURS])).toBe(false)
+    })
+
+    it("matches the whole ARN, not a prefix of it", () => {
+      // `arn:…:111:beyours` must not be satisfied by
+      // `arn:…:999:beyours-evil`, which is what a `startsWith` or an
+      // `includes` would do.
+      expect(isAllowedTopic(`${OURS}-evil`, [OURS])).toBe(false)
+      expect(isAllowedTopic(OURS.slice(0, -1), [OURS])).toBe(false)
+    })
+
+    it("accepts anything when nothing is configured", () => {
+      // Deliberate: refusing here would silently stop every bounce and
+      // complaint on a deployment that has not set the variable yet, which
+      // trades a hardening for an outage. SNS only delivers on a CONFIRMED
+      // subscription, and that is where the list bites.
+      expect(isAllowedTopic(THEIRS, [])).toBe(true)
+      expect(isAllowedTopic(undefined, [])).toBe(true)
+    })
+  })
+
+  describe("mayConfirmSubscription", () => {
+    it("confirms only a topic this deployment was told about", () => {
+      expect(mayConfirmSubscription(OURS, [OURS])).toBe(true)
+      expect(mayConfirmSubscription(THEIRS, [OURS])).toBe(false)
+    })
+
+    it("confirms nothing at all when nothing is configured", () => {
+      // The opposite default from `isAllowedTopic`, and the difference is the
+      // whole fix: confirming a subscription is what turns "a stranger pointed
+      // their topic at us" into "a stranger can publish to us". An operator
+      // can still confirm one from the AWS console.
+      expect(mayConfirmSubscription(OURS, [])).toBe(false)
+      expect(mayConfirmSubscription(undefined, [])).toBe(false)
+    })
   })
 })

@@ -17,6 +17,17 @@
  * passes them; this module buckets against whatever it is given and invents no
  * boundary of its own.
  *
+ * WHAT "REVENUE" MEANS HERE, AND WHAT IT USED TO MEAN. It is money that
+ * arrived. The only filter this module applied was `status !== "cancelled"`,
+ * which removes orders that were unmade and keeps every order that was merely
+ * placed — an abandoned checkout, a declined card, a table whose cash has not
+ * been rung up. `DashboardOrderRow` did not even carry `paymentStatus`, so the
+ * distinction was not available to be got wrong; it was absent. On a probe
+ * store the card read 1 720,00 € against 20,00 € collected. Order COUNTS still
+ * mean orders that happened — that is what an owner is asking when they look
+ * at « Commandes » — and the gap between the two is reported as `uncollected`
+ * rather than left to be inferred.
+ *
  * Pure on purpose: the query in `orders.ts` reads a bounded window and hands the
  * rows here, so every rule below is testable without a database.
  */
@@ -24,10 +35,51 @@
 /** The fields of an order this module reads. Nothing else is needed. */
 export interface DashboardOrderRow {
   status: string
+  /**
+   * A member of the `orders.paymentStatus` union — whether the money arrived.
+   *
+   * WHY IT IS HERE: it was not, and the interface being silent about it made
+   * the defect impossible to see. `revenue` summed every order that was not
+   * `cancelled`, which is every order that was PLACED, not every order that
+   * was PAID: an abandoned checkout, a card that was declined and a cash order
+   * nobody has rung up yet all counted in full. Measured on a probe store, the
+   * dashboard reported 1 720,00 € against 20,00 € actually collected.
+   *
+   * Optional so a caller that genuinely has no payment state — a test fixture,
+   * a future summary row — is not forced to invent one; absent reads as
+   * uncollected, which is the safe direction. Every real caller reads whole
+   * `orders` documents, where the field is required.
+   */
+  paymentStatus?: string
   type: string
   source?: string
   createdAt: number
   total: number
+}
+
+/**
+ * The payment states in which the establishment is holding the money.
+ *
+ * `paid` is the plain case. `refund_pending` is money that is OWED back but
+ * has not moved — the till still holds it, and the day it is actually sent the
+ * row becomes `refunded` and drops out of takings by itself.
+ * `partially_refunded` is here because part of the charge is still held; the
+ * order row cannot say how much came back — that lives on the payment rows —
+ * so the full total is counted and this is the one place these figures round
+ * in the establishment's favour.
+ *
+ * `pending` and `failed` are money that never arrived. `refunded` is money
+ * that arrived and went back. None of the three is revenue.
+ */
+export const COLLECTED_PAYMENT_STATUSES = new Set([
+  "paid",
+  "refund_pending",
+  "partially_refunded",
+])
+
+/** Has the money for this order actually arrived? */
+function isCollected(order: DashboardOrderRow): boolean {
+  return COLLECTED_PAYMENT_STATUSES.has(order.paymentStatus ?? "pending")
 }
 
 /** The boundaries the caller wants its numbers bucketed against. */
@@ -54,14 +106,42 @@ export interface DashboardWindows {
 }
 
 export interface DashboardTotals {
+  /**
+   * Money that actually arrived, over the orders in this window.
+   *
+   * NOT the sum of what was ordered. See `COLLECTED_PAYMENT_STATUSES` — an
+   * order that was placed and never paid for is a real order and no revenue,
+   * and it is counted in `orderCount` and in `uncollected` instead.
+   */
   revenue: number
+  /** Orders that happened. Cancelled ones are not orders any more. */
   orderCount: number
+  /**
+   * Average basket over the orders `revenue` is drawn from — that is,
+   * `revenue / collectedOrderCount`, not `revenue / orderCount`.
+   *
+   * Dividing collected money by every order placed would answer a question
+   * nobody asked and would fall as a service filled up with unpaid orders.
+   * Both halves of the division are on this object so the reader can check it.
+   */
   averageBasket: number
+  /** How many of `orderCount` have actually been collected. */
+  collectedOrderCount: number
+  /**
+   * Money on orders that happened and has not arrived: what was ordered,
+   * minus what was taken.
+   *
+   * Surfaced rather than merely subtracted, because the gap is the number an
+   * owner needs when the two disagree — an abandoned checkout and a table
+   * whose cash has not been rung up look identical from the takings alone.
+   */
+  uncollected: number
 }
 
 export interface DashboardDay {
   /** The boundary this bar starts at — the caller owns the label. */
   dayStart: number
+  /** Collected money only, on the same rule as `DashboardTotals.revenue`. */
   revenue: number
   orders: number
 }
@@ -108,13 +188,33 @@ const ACTIVE_ORDER_WINDOW_MS = 24 * 60 * 60 * 1000
 /** The most day boundaries a caller may ask to be bucketed against. */
 export const MAX_DAY_BUCKETS = 31
 
+/**
+ * The five figures for one window, over the orders that happened in it.
+ *
+ * `orders` are the non-cancelled ones; this function splits them by whether
+ * the money arrived rather than being handed two pre-filtered lists, so the
+ * two counts cannot be computed over different sets by accident.
+ */
 function totals(orders: DashboardOrderRow[]): DashboardTotals {
-  const revenue = orders.reduce((sum, order) => sum + order.total, 0)
-  const orderCount = orders.length
+  let revenue = 0
+  let uncollected = 0
+  let collectedOrderCount = 0
+
+  for (const order of orders) {
+    if (isCollected(order)) {
+      revenue += order.total
+      collectedOrderCount += 1
+    } else {
+      uncollected += order.total
+    }
+  }
+
   return {
     revenue,
-    orderCount,
-    averageBasket: orderCount > 0 ? revenue / orderCount : 0,
+    orderCount: orders.length,
+    averageBasket: collectedOrderCount > 0 ? revenue / collectedOrderCount : 0,
+    collectedOrderCount,
+    uncollected,
   }
 }
 
@@ -194,6 +294,11 @@ export function computeDashboardStats(
 
   // A cancelled order is not takings. It still counts as an order that happened
   // for nobody, which is why it is excluded here and not filtered at the read.
+  //
+  // This is the only filter that used to exist, and on its own it answered the
+  // wrong question: it removes orders that were UNMADE, and says nothing about
+  // orders that were never PAID. `totals` and the chart split what survives by
+  // `paymentStatus`; see `COLLECTED_PAYMENT_STATUSES`.
   const valid = orders.filter((order) => order.status !== "cancelled")
 
   const activeSince = windows.now - ACTIVE_ORDER_WINDOW_MS
@@ -208,7 +313,9 @@ export function computeDashboardStats(
     )
     return {
       dayStart,
-      revenue: ofThatDay.reduce((sum, order) => sum + order.total, 0),
+      revenue: ofThatDay
+        .filter(isCollected)
+        .reduce((sum, order) => sum + order.total, 0),
       orders: ofThatDay.length,
     }
   })

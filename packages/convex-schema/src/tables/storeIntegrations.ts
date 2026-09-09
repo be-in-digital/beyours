@@ -10,6 +10,23 @@ export const storeIntegrationsTable = defineTable({
   storeId: v.id("stores"),
   platform: v.union(v.literal("uberEats"), v.literal("deliveroo")),
   platformStoreId: v.string(), // store ID on the platform
+  /**
+   * This restaurant's own public page on the platform.
+   *
+   * WHY IT IS NOT DERIVED FROM `platformStoreId`. That is an API identifier —
+   * a UUID for Uber Eats, a site id for Deliveroo — and neither platform's
+   * public URL is built from it. There is nothing to derive, which is exactly
+   * how the storefront ended up hard-coding `https://www.ubereats.com` and
+   * `https://www.deliveroo.com`: the platforms' HOME pages, under a
+   * « Commandez aussi sur vos apps » heading and a COMMANDER button, on every
+   * menu page whether or not the restaurant was on either platform. The
+   * restaurant paid for a link that sent its own customers to a marketplace to
+   * be offered somebody else's dinner.
+   *
+   * Optional, and the tile is absent without it. A link that is not this
+   * establishment's is worse than no link.
+   */
+  storefrontUrl: v.optional(v.string()),
   syncMenu: v.boolean(),
   autoAccept: v.boolean(), // deprecated, use orderMode
   orderMode: v.optional(v.union(

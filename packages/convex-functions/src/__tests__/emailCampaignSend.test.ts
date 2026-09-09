@@ -21,32 +21,25 @@ import { createCountingDb } from "./support/countingDb"
 const CAMPAIGN = "campaigns:a"
 const OTHER_CAMPAIGN = "campaigns:b"
 
-/** A ctx whose `emailEvents` table is the array handed in. */
+/**
+ * A ctx whose `emailEvents` table is the array handed in.
+ *
+ * `createCountingDb` rather than a hand-rolled double, and the difference
+ * matters here specifically. The double this replaces accepted
+ * `withIndex("by_anything")` and applied whatever equalities it was given, so
+ * the query could name an index the schema does not declare and still pass —
+ * and it silently ignored the third equality when `alreadySentTo` grew one.
+ * The shared harness reads the real indexes out of `@be-in-digital/convex-schema`
+ * and enforces Convex's own prefix rule, so naming an index wrong fails here
+ * instead of in production.
+ */
 function eventsCtx(events: Array<Record<string, unknown>>) {
-  return {
-    db: {
-      query: () => ({
-        withIndex: (_name: string, fn: (q: unknown) => unknown) => {
-          const captured: Record<string, unknown> = {}
-          const q = {
-            eq: (field: string, value: unknown) => {
-              captured[field] = value
-              return q
-            },
-          }
-          fn(q)
-          return {
-            collect: async () =>
-              events.filter(
-                (e) =>
-                  e.campaignId === captured.campaignId &&
-                  e.subscriberId === captured.subscriberId
-              ),
-          }
-        },
-      }),
-    },
-  }
+  return createCountingDb({
+    emailEvents: events.map((event, index) => ({
+      _id: `emailEvents:${index}`,
+      ...event,
+    })),
+  })
 }
 
 describe("alreadySentTo", () => {

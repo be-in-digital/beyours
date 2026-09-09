@@ -92,11 +92,25 @@ const SIGNED_FIELDS: Record<string, readonly (keyof SnsEnvelope)[]> = {
   ],
 }
 
-/** `SignatureVersion` → the digest SNS used. */
-export function hashAlgorithmFor(version: string | undefined): "sha1" | "sha256" | null {
-  if (version === "1") return "sha1"
-  if (version === "2") return "sha256"
-  return null
+/**
+ * `SignatureVersion` → the digest SNS used.
+ *
+ * VERSION 1 IS REFUSED, and it used to be accepted. It is SHA-1, which has
+ * been a broken hash for collision resistance since 2017; AWS added
+ * SignatureVersion 2 for exactly that reason and lets a topic be pinned to it
+ * (`SignatureVersion` topic attribute, or the console's "Signature version"
+ * setting). Accepting both means the weaker one is the one that matters, since
+ * the sender picks — and here the "sender" of a body we have not yet
+ * authenticated is whoever POSTed it.
+ *
+ * The cost is real and it is one line of setup: a topic still on version 1 has
+ * its notifications rejected as `signature_version` until it is moved to 2.
+ * That is written up in `tasks/webhook-migration-checklist.md`, and it is the
+ * failure to prefer — a rejected notification is a bounce we do not record; an
+ * accepted forgery is a customer's address suppressed by a stranger.
+ */
+export function hashAlgorithmFor(version: string | undefined): "sha256" | null {
+  return version === "2" ? "sha256" : null
 }
 
 /**
@@ -125,6 +139,80 @@ export function buildSnsStringToSign(message: SnsEnvelope): string | null {
     out += `${field}\n${value}\n`
   }
   return out
+}
+
+/**
+ * Which SNS topics this deployment accepts messages from.
+ *
+ * WHY A SIGNATURE IS NOT ENOUGH. The RSA check proves Amazon sent the message.
+ * It does not prove that OUR topic did: every SNS topic in every AWS account
+ * is signed by the same infrastructure, with a certificate on the same
+ * `sns.<region>.amazonaws.com` hosts the URL check allows. So a correctly
+ * signed message from a topic an attacker owns passed every check this module
+ * made, and the handler behind it marks subscribers bounced and complained
+ * from ids in the message body.
+ *
+ * The step that made it self-service was `SubscriptionConfirmation`: the
+ * webhook fetched any `SubscribeURL` on an `sns.*.amazonaws.com` host once the
+ * signature verified, so an attacker pointed their own topic at this endpoint
+ * and the endpoint confirmed the subscription for them. Nothing else was
+ * needed.
+ *
+ * The list is configuration, not code — one deployment per client, each with
+ * its own topic — so it is read from `SES_SNS_TOPIC_ARN` (comma-separated for
+ * the rare deployment with more than one).
+ */
+export const SES_SNS_TOPIC_ARN_ENV = "SES_SNS_TOPIC_ARN"
+
+/** Read the configured topics, or an empty list when none are configured. */
+export function parseAllowedTopicArns(raw: string | undefined | null): string[] {
+  return (raw ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+}
+
+/**
+ * Is this message from a topic this deployment accepts?
+ *
+ * `allowed` empty means the deployment has not been told, and the two answers
+ * that follow from that are deliberately different:
+ *
+ *   a NOTIFICATION is accepted — refusing would silently stop every bounce and
+ *   complaint on every deployment that has not set the variable yet, which
+ *   trades a hardening for an outage. SNS only delivers to a subscription that
+ *   was confirmed, and the confirmation is where the list is enforced.
+ *
+ *   a SUBSCRIPTION CONFIRMATION is refused — see `mayConfirmSubscription`.
+ *
+ * A `TopicArn` compared with `===`: an ARN is an exact identifier, and prefix
+ * or `includes` matching on one is how `arn:aws:sns:eu-west-1:111:beyours` is
+ * satisfied by `arn:aws:sns:eu-west-1:999:beyours-evil`.
+ */
+export function isAllowedTopic(
+  topicArn: string | undefined,
+  allowed: readonly string[]
+): boolean {
+  if (allowed.length === 0) return true
+  return typeof topicArn === "string" && allowed.includes(topicArn)
+}
+
+/**
+ * May this deployment confirm a subscription by fetching its `SubscribeURL`?
+ *
+ * ONLY for a topic that is named in the configuration. Confirming a
+ * subscription is what turns "a stranger pointed their topic at us" into "a
+ * stranger can publish to us", and it is a once-per-deployment operation that
+ * an operator can also do from the AWS console. A deployment with no
+ * configured topic confirms nothing and says so in its log, which is a setup
+ * step; the alternative default cost the endpoint its authenticity.
+ */
+export function mayConfirmSubscription(
+  topicArn: string | undefined,
+  allowed: readonly string[]
+): boolean {
+  if (allowed.length === 0) return false
+  return typeof topicArn === "string" && allowed.includes(topicArn)
 }
 
 /** Everything that must be present before a signature check is even possible. */

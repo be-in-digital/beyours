@@ -16,6 +16,10 @@ import {
   affiliateStandingRefusal,
   isUngrandfathered,
 } from "./affiliateStanding";
+import {
+  REFERRAL_SCAN_LIMIT,
+  summariseReferrals,
+} from "./referralTotals";
 
 /* ── Internal queries ── */
 
@@ -366,49 +370,17 @@ export const getMyStats = query({
       .unique();
     if (!affiliate) return null;
 
+    /* One bound and one set of sums, shared with the admin console — see
+       ./referralTotals.ts. This read used to stop at 200 while the console's
+       stopped at 500, so an affiliate with 205 paid commissions was shown
+       100 000 € here and 102 500 € there, and neither screen said a figure had
+       been cut short. `+ 1` is how the truncation is detected. */
     const referrals = await ctx.db
       .query("referrals")
       .withIndex("by_referrerId", (q) => q.eq("referrerId", affiliate._id))
-      .take(200);
+      .take(REFERRAL_SCAN_LIMIT + 1);
 
-    const totalReferrals = referrals.length;
-    const pendingCount = referrals.filter(
-      (r) => r.status === "pending",
-    ).length;
-    /* `paying` counts with the commissions still owed, not with the paid ones:
-       the transfer is claimed but unconfirmed, and a failed run puts the row
-       back to `payable`. Leaving it out of both sets — which is what happens if
-       these filters are not told about it — makes an affiliate's earnings
-       silently drop by one commission for as long as a payout is in flight. */
-    const validatedCount = referrals.filter(
-      (r) =>
-        r.status === "validated" ||
-        r.status === "payable" ||
-        r.status === "paying" ||
-        r.status === "paid",
-    ).length;
-    const paidCount = referrals.filter((r) => r.status === "paid").length;
-    const totalEarned = referrals
-      .filter((r) => r.status === "paid")
-      .reduce((sum, r) => sum + r.commissionCents, 0);
-    const totalPending = referrals
-      .filter(
-        (r) =>
-          r.status === "pending" ||
-          r.status === "validated" ||
-          r.status === "payable" ||
-          r.status === "paying",
-      )
-      .reduce((sum, r) => sum + r.commissionCents, 0);
-
-    return {
-      totalReferrals,
-      pendingCount,
-      validatedCount,
-      paidCount,
-      totalEarned,
-      totalPending,
-    };
+    return summariseReferrals(referrals);
   },
 });
 

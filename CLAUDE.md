@@ -589,6 +589,14 @@ EMAIL_PROVIDER=               # "ses" (default) | "resend"
 RESEND_API_KEY=               # re_...
 RESEND_FROM_EMAIL=            # verified at Resend; falls back to AWS_SES_FROM_EMAIL
 
+# Which SNS topic `/webhooks/ses` accepts, as a full ARN. Set it on the CONVEX
+# deployment — the verifier reads it there. A valid Amazon signature proves
+# Amazon sent the message, not that OUR topic did, and without this the
+# endpoint confirms no subscription at all (it logs the ARN it refused, which
+# is the value to paste in). The topic must also be on SignatureVersion 2:
+# version 1 is SHA-1 and is refused. See tasks/webhook-migration-checklist.md.
+SES_SNS_TOPIC_ARN=
+
 # Payments — SumUp and PayPal are OAuth client pairs, not single API keys
 STRIPE_SECRET_KEY=            # sk_...
 STRIPE_WEBHOOK_SECRET=        # whsec_...

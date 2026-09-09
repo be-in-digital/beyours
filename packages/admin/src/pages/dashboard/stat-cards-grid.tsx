@@ -13,18 +13,22 @@ import {
 } from "lucide-react"
 import { cn } from "../../lib/utils"
 
-interface TodayStats {
+interface Totals {
+  /** Money that ARRIVED, not money that was ordered. */
   revenue: number
+  /** Orders placed. Deliberately a wider set than `revenue` is drawn from. */
   orderCount: number
   averageBasket: number
+  collectedOrderCount: number
+  /** Ordered and not yet collected — the gap between the two figures above. */
+  uncollected: number
+}
+
+interface TodayStats extends Totals {
   activeOrders: number
 }
 
-interface YesterdayStats {
-  revenue: number
-  orderCount: number
-  averageBasket: number
-}
+type YesterdayStats = Totals
 
 interface StatCardsGridProps {
   today: TodayStats
@@ -74,6 +78,15 @@ export function StatCardsGrid({ today, yesterday }: StatCardsGridProps) {
       todayValue: today.revenue,
       yesterdayValue: yesterday.revenue,
       showTrend: true,
+      /* The card used to sum every order that was not cancelled, so an
+         abandoned checkout and a table nobody has rung up were takings. It now
+         sums what arrived — and says what is missing, because "encaissé" and
+         "commandé" differing by 1 700 € with nothing on screen to explain it
+         is the more alarming of the two screens. */
+      note:
+        today.uncollected > 0
+          ? `dont ${formatPrice(today.uncollected)} en attente d'encaissement`
+          : null,
     },
     {
       title: "Commandes",
@@ -82,6 +95,10 @@ export function StatCardsGrid({ today, yesterday }: StatCardsGridProps) {
       todayValue: today.orderCount,
       yesterdayValue: yesterday.orderCount,
       showTrend: true,
+      note:
+        today.collectedOrderCount < today.orderCount
+          ? `${today.collectedOrderCount} encaissée${today.collectedOrderCount > 1 ? "s" : ""}`
+          : null,
     },
     {
       title: "Panier moyen",
@@ -90,6 +107,9 @@ export function StatCardsGrid({ today, yesterday }: StatCardsGridProps) {
       todayValue: today.averageBasket,
       yesterdayValue: yesterday.averageBasket,
       showTrend: true,
+      /* Over the collected orders, which is what makes it divide into the
+         first card rather than into the second. */
+      note: null,
     },
     {
       title: "À traiter (24h)",
@@ -98,6 +118,7 @@ export function StatCardsGrid({ today, yesterday }: StatCardsGridProps) {
       todayValue: today.activeOrders,
       yesterdayValue: 0,
       showTrend: false,
+      note: null,
     },
   ]
 
@@ -123,6 +144,11 @@ export function StatCardsGrid({ today, yesterday }: StatCardsGridProps) {
                     <TrendIndicator current={card.todayValue} previous={card.yesterdayValue} />
                   )}
                 </div>
+                {card.note && (
+                  <p className="text-muted-foreground text-[11px] tabular-nums">
+                    {card.note}
+                  </p>
+                )}
               </div>
               <div className="rounded-lg bg-muted/50 p-2">
                 <card.icon className="h-4 w-4 text-muted-foreground" />

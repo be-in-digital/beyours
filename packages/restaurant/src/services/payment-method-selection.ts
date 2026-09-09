@@ -40,6 +40,54 @@ export interface PaymentMethodContext {
   isDelivery: boolean
   /** Cash requires an account, so the till knows who to call. */
   isAuthenticated: boolean
+  /**
+   * What this order actually owes, in MINOR units. `undefined` while the
+   * basket is still being priced — treated as "no objection", so a caller that
+   * does not pass it keeps the previous behaviour exactly.
+   *
+   * WHY THE TILES CARE. A card provider will not take any amount: Stripe's
+   * floor in EUR is 0,50 €, and a 100 % coupon takes an order to zero. Neither
+   * was asked about anywhere, so the tile was offered, the diner chose it, and
+   * the session create threw an SDK error that Convex redacts to "Server
+   * Error" — on an order no retry could ever settle.
+   */
+  amountDue?: number
+  /**
+   * The smallest amount a card provider will take, in MINOR units — supplied
+   * rather than derived so this package stays dependency-free. The value lives
+   * in `@be-in-digital/convex-functions/cardChargeFloor`, which is also what
+   * the three money paths enforce, so the tile and the refusal cannot drift.
+   *
+   * `undefined` means the caller has not said, and no floor is applied.
+   */
+  cardMinimum?: number
+}
+
+/**
+ * This order owes nothing at all — a 100 % coupon, usually.
+ *
+ * A distinct state, not a small payment. There is no card to take, no
+ * provider to call and no minimum to clear; the order simply needs placing.
+ * `cash` is the branch that does that, so it is the one offered, and its own
+ * gates do not apply: they are about who is trusted to hand over money and
+ * where, and nobody is handing over any.
+ */
+export function nothingIsDue(context: PaymentMethodContext): boolean {
+  return context.amountDue === 0
+}
+
+/**
+ * Would a card provider take this amount?
+ *
+ * True when the caller has not priced the basket yet — an unknown total is not
+ * a refusal, and greying every tile while the quote loads would be worse than
+ * the defect this guards.
+ */
+function clearsCardFloor(context: PaymentMethodContext): boolean {
+  if (context.amountDue === undefined || context.cardMinimum === undefined) {
+    return true
+  }
+  return context.amountDue >= context.cardMinimum
 }
 
 /**
@@ -50,6 +98,10 @@ export interface PaymentMethodContext {
  * owner's decision and hides the tile; the second is configuration and greys
  * it. Folding them together is what left a cash-only establishment with a
  * pre-selected tile it could never honour (#376).
+ *
+ * A third fact was missing from all of them: what the order costs. Below a
+ * provider's floor there is no card payment to be had however well the
+ * deployment is configured, and at zero there is no payment at all.
  */
 export function isPaymentMethodSelectable(
   method: CheckoutPaymentMethod,
@@ -57,11 +109,20 @@ export function isPaymentMethodSelectable(
 ): boolean {
   switch (method) {
     case "card":
-      return context.cardOffered !== false && context.cardAvailable !== false
+      return (
+        clearsCardFloor(context) &&
+        context.cardOffered !== false &&
+        context.cardAvailable !== false
+      )
     case "paypal":
-      return context.paypalEnabled
+      // PayPal has its own floor and it is at or above the card one, so the
+      // same test serves. It cannot take a zero-value order either.
+      return clearsCardFloor(context) && context.paypalEnabled
     case "cash":
-      return context.cashEnabled && !context.isDelivery && context.isAuthenticated
+      return (
+        nothingIsDue(context) ||
+        (context.cashEnabled && !context.isDelivery && context.isAuthenticated)
+      )
   }
 }
 

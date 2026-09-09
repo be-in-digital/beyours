@@ -138,11 +138,33 @@ new `whsec_…`; the old value will not verify. Both Stripe flows, both secrets.
 > trailing slash on `CONVEX_SITE_URL` yields `redirect_uri_mismatch` and the
 > connection cannot be established at all.
 
-> ⚠️ **`/webhooks/ses` does not verify the SNS signature.** It only checks the
-> shape of `SigningCertURL` (`emailHttpHandlers.ts:178-207`), so anyone who
-> learns the URL can post fake bounces and get real subscribers suppressed.
-> Re-subscribing the SNS topic is the natural moment to fix it — tracked as S3-3
-> in `sprint-durcissement-reference.md:766`.
+> ✅ **`/webhooks/ses` verifies the SNS signature** (`sesWebhookVerify.ts`).
+> The warning that stood here — that it only checked the shape of
+> `SigningCertURL`, so anyone who learnt the URL could post fake bounces — is
+> fixed.
+>
+> ⚠️ **Two things to set when the SNS topic is (re-)subscribed**, and until they
+> are, subscribing is a manual step:
+>
+> 1. **`SignatureVersion` must be 2** on the topic (SNS console → topic →
+>    Edit → *Signature version*, or the `SignatureVersion` topic attribute).
+>    Version 1 is SHA-1 and is now REFUSED — the verifier answers
+>    `signature_version` and the notification is dropped. The sender picks the
+>    version, so accepting both meant the weaker one was the one that counted.
+>
+> 2. **`SES_SNS_TOPIC_ARN` must name the topic**, on the Convex deployment
+>    (`pnpm env:sync` carries it). A valid signature proves *Amazon* sent the
+>    message, not that *our* topic did: every SNS topic in every AWS account is
+>    signed by the same infrastructure with a certificate on the same hosts. And
+>    the endpoint used to confirm any subscription whose `SubscribeURL` was on an
+>    Amazon host — so a stranger could point their own topic at it and have it
+>    subscribe itself, after which their forged bounces carried a genuine
+>    signature.
+>
+>    With the variable unset the endpoint **confirms no subscription** and logs
+>    the ARN it refused; paste that value in and re-send the confirmation from
+>    the SNS console. Notifications on an already-confirmed subscription keep
+>    working either way, so this is a hardening step and not a migration.
 
 ## 3. Links already in the wild
 
@@ -213,7 +235,8 @@ Found while compiling this. Worth correcting alongside the migration.
       Also visible in those logs: `[Better Auth] Base URL is not set`. The deployment still has no `BETTER_AUTH_URL` / `SITE_URL`, so auth callbacks and redirects are not yet trustworthy there.
 - [ ] Per client — Uber Eats, Uber Direct, Deliveroo ×3, Stripe, Stripe BID
 - [ ] Per client — the four `/connect/*` redirect URIs, Uber's checked for a trailing slash
-- [ ] SNS subscription for SES bounces repointed (and signature verification considered)
+- [ ] SNS subscription for SES bounces repointed — topic on **SignatureVersion 2**,
+      and `SES_SNS_TOPIC_ARN` set on the Convex deployment before confirming it
 - [ ] Both Stripe secrets rotated into the deployment env, not copied between accounts
 - [ ] Retention decided for the old deployment, so unsubscribe links keep resolving
 - [ ] Delivery history checked on each provider before retiring the old endpoints

@@ -149,3 +149,46 @@ describe("error boundaries", () => {
     expect(source).not.toContain("@/lib/error-boundary");
   });
 });
+
+/**
+ * A 404 on beyours.fr has to be a page, in French, with somewhere to go.
+ *
+ * There was no `not-found.tsx` in this app — nor in either of the other two —
+ * so every unmatched address rendered Next's built-in default: a black page
+ * reading "404 — This page could not be found." in English, with no navbar and
+ * no link back. On a commercial site that is a visitor lost at the first stale
+ * link.
+ */
+const NOT_FOUND_PAGES = [
+  { file: "not-found.tsx", load: () => import("../app/not-found"), testId: "root-not-found" },
+  {
+    file: "(landing)/not-found.tsx",
+    load: () => import("../app/(landing)/not-found"),
+    testId: "landing-not-found",
+  },
+  {
+    file: "admin/not-found.tsx",
+    load: () => import("../app/admin/not-found"),
+    testId: "admin-not-found",
+  },
+] as const;
+
+describe("not-found pages", () => {
+  it.each(NOT_FOUND_PAGES)("$file exists", ({ file }) => {
+    expect(existsSync(join(APP_ROOT, file))).toBe(true);
+  });
+
+  it.each(NOT_FOUND_PAGES)("$file renders French and a way out", async ({
+    load,
+    testId,
+  }) => {
+    const mod = (await load()) as { default: () => React.ReactElement };
+    const html = renderToStaticMarkup(createElement(mod.default));
+
+    expect(html).toContain(`data-testid="${testId}"`);
+    expect(html).toContain("Cette page n&#x27;existe pas");
+    // The English default this replaces.
+    expect(html).not.toContain("This page could not be found");
+    expect(html).toMatch(/<a href="\/[^"]*"/);
+  });
+});

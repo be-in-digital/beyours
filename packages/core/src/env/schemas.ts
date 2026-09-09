@@ -133,6 +133,26 @@ const siteOptionalShape = {
     z.string().min(32, 'Must be at least 32 characters — generate with: openssl rand -base64 32')
   ),
 
+  /*
+    Which SNS topic `/webhooks/ses` accepts, as a full ARN — comma-separated
+    for the rare deployment with more than one.
+
+    WHY IT EXISTS. The webhook verified Amazon's RSA signature and stopped
+    there. That proves AMAZON sent the message; it does not prove OUR topic
+    did, because every SNS topic in every AWS account is signed by the same
+    infrastructure with a certificate on the same hosts. And the endpoint
+    confirmed any subscription whose `SubscribeURL` was on an Amazon host, so
+    an attacker pointed their own topic at it and it subscribed itself — after
+    which their messages carried a genuine signature and could mark any
+    subscriber bounced or complained.
+
+    Unset means no subscription is auto-confirmed (the endpoint logs what to
+    set, and an operator can confirm from the AWS console); notifications on an
+    already-confirmed subscription keep working, so setting it is a hardening
+    step and not a migration. Convex-side: the verifier reads it there.
+  */
+  SES_SNS_TOPIC_ARN: opt(z.string().min(1)),
+
   // AWS S3 media URLs. The bucket is private — see
   // apps/docs/deployment/s3-bucket-policy.md. Set this to the CDN that fronts
   // it (CloudFront with an origin access control); leave it unset and media is

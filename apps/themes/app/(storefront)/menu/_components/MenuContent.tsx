@@ -35,6 +35,29 @@ import { ProductDetailClient } from "@/components/storefront/product-detail-clie
 import { MenuPagination } from "@/components/storefront/menu-pagination"
 import { toast } from "sonner"
 
+/**
+ * How each delivery platform is presented, when this establishment is on it.
+ *
+ * The copy and the brand colours only; the LINK comes from the store's own
+ * integration row. Keeping them apart is the point — a tile that can render
+ * without a URL is how the two marketplace home pages ended up hard-coded on
+ * every menu page in the product.
+ */
+const DELIVERY_PLATFORMS = {
+  uberEats: {
+    name: "Uber Eats",
+    headline: "Livraison rapide",
+    blurb: "Recevez vos plats préférés directement chez vous",
+    background: "bg-[#06C167]",
+  },
+  deliveroo: {
+    name: "Deliveroo",
+    headline: "À votre porte",
+    blurb: "Commandez et faites-vous livrer en quelques minutes",
+    background: "bg-[#00CCBC]",
+  },
+} as const
+
 const ITEMS_PER_PAGE = 12
 
 function MenuContent() {
@@ -42,6 +65,14 @@ function MenuContent() {
   const searchParams = useSearchParams()
   const { storeId } = useStoreId()
   const { isOpen, timeZone } = useStoreStatus(storeId)
+
+  // The platforms this establishment is actually listed on, with its own page
+  // on each. Empty — and the whole section absent — until an owner fills them
+  // in on the store's integration card.
+  const deliveryLinks = useQuery(
+    api.storeIntegrations.publicLinks,
+    storeId ? { storeId: storeId as Id<"stores"> } : "skip"
+  )
 
   const addItem = useCartStore((s) => s.addItem)
   const cartStoreId = useCartStore((s) => s.storeId)
@@ -351,7 +382,21 @@ function MenuContent() {
         />
       </section>
 
-      {/* ─── DELIVERY APPS SECTION ─── */}
+      {/* ─── DELIVERY APPS SECTION ───
+          Rendered ONLY for the platforms this establishment is actually
+          listed on, and linked to its OWN page there.
+
+          It used to be two tiles hard-coded to `https://www.ubereats.com` and
+          `https://www.deliveroo.com` — the marketplaces' home pages, not this
+          restaurant — shown unconditionally under « Commandez aussi sur vos
+          apps » with a COMMANDER button, whether or not the store had either
+          integration. A restaurant's own site was routing its own customers
+          into a marketplace to be shown the competition, and paying commission
+          on anything they ordered there.
+
+          `storeIntegrations.publicLinks` answers with the enabled integrations
+          that carry a URL the owner typed; nothing else can produce a tile. */}
+      {deliveryLinks && deliveryLinks.length > 0 && (
       <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto mb-24">
         <div className="text-center mb-16">
           <Badge className="bg-primary/10 text-accent-foreground border-primary/20 px-4 py-1.5 rounded-full mb-6 font-black tracking-widest uppercase text-[10px]">
@@ -363,46 +408,34 @@ function MenuContent() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <a
-            href="https://www.ubereats.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group relative overflow-hidden rounded-[3rem] p-12 flex flex-col items-center text-center transition-all shadow-2xl shadow-primary/10 bg-[#06C167] hover:-translate-y-2 duration-300"
-          >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:scale-150 transition-transform duration-700" />
-            <div className="h-24 w-full relative mb-8 flex items-center justify-center">
-              <div className="text-black text-4xl font-black tracking-tighter uppercase italic">Uber Eats</div>
-            </div>
-            <h3 className="text-2xl font-black text-black mb-4">Livraison rapide</h3>
-            <p className="text-black font-medium mb-8 max-w-xs">
-              Recevez vos plats préférés directement chez vous
-            </p>
-            <Button className="h-14 px-8 rounded-2xl bg-card border-none font-black uppercase tracking-widest text-xs shadow-xl group-hover:px-10 transition-all text-foreground">
-              Commander <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </a>
-
-          <a
-            href="https://www.deliveroo.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group relative overflow-hidden rounded-[3rem] p-12 flex flex-col items-center text-center transition-all shadow-2xl shadow-primary/10 bg-[#00CCBC] hover:-translate-y-2 duration-300"
-          >
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:scale-150 transition-transform duration-700" />
-            <div className="h-24 w-full relative mb-8 flex items-center justify-center">
-              <div className="text-black text-4xl font-black tracking-tighter uppercase italic">Deliveroo</div>
-            </div>
-            <h3 className="text-2xl font-black text-black mb-4">À votre porte</h3>
-            <p className="text-black font-medium mb-8 max-w-xs">
-              Commandez et faites-vous livrer en quelques minutes
-            </p>
-            <Button className="h-14 px-8 rounded-2xl bg-card border-none font-black uppercase tracking-widest text-xs shadow-xl group-hover:px-10 transition-all text-foreground">
-              Commander <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </a>
+        <div className={`grid grid-cols-1 gap-8 ${deliveryLinks.length > 1 ? "md:grid-cols-2" : "max-w-2xl mx-auto"}`}>
+          {deliveryLinks.map((link) => {
+            const platform = DELIVERY_PLATFORMS[link.platform]
+            return (
+              <a
+                key={link.platform}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`group relative overflow-hidden rounded-[3rem] p-12 flex flex-col items-center text-center transition-all shadow-2xl shadow-primary/10 ${platform.background} hover:-translate-y-2 duration-300`}
+              >
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:scale-150 transition-transform duration-700" />
+                <div className="h-24 w-full relative mb-8 flex items-center justify-center">
+                  <div className="text-black text-4xl font-black tracking-tighter uppercase italic">
+                    {platform.name}
+                  </div>
+                </div>
+                <h3 className="text-2xl font-black text-black mb-4">{platform.headline}</h3>
+                <p className="text-black font-medium mb-8 max-w-xs">{platform.blurb}</p>
+                <Button className="h-14 px-8 rounded-2xl bg-card border-none font-black uppercase tracking-widest text-xs shadow-xl group-hover:px-10 transition-all text-foreground">
+                  Commander <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </a>
+            )
+          })}
         </div>
       </section>
+      )}
 
       {/* ─── CTA SECTION ─── */}
       <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto mb-24">

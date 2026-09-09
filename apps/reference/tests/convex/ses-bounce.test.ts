@@ -96,7 +96,10 @@ beforeEach(async () => {
   })
   certPem = publicKey.export({ type: "spki", format: "pem" }) as string
   signMessage = (stringToSign: string) => {
-    const signer = createSign("RSA-SHA1")
+    // SHA-256, because SignatureVersion 1 (SHA-1) is refused: the sender picks
+    // the version, and offering both means the weaker one is the one that
+    // counts. See `hashAlgorithmFor` in `snsSignature.ts`.
+    const signer = createSign("RSA-SHA256")
     signer.update(stringToSign, "utf8")
     return signer.sign(privateKey, "base64")
   }
@@ -191,7 +194,7 @@ function signedNotification(notification: unknown, messageId: string) {
     TopicArn: "arn:aws:sns:eu-west-3:000000000000:ses-events",
     Message: JSON.stringify(notification),
     Timestamp: new Date(NOW).toISOString(),
-    SignatureVersion: "1",
+    SignatureVersion: "2",
     SigningCertURL: CERT_URL,
   }
 
@@ -577,5 +580,120 @@ describe("POST /webhooks/ses — no correlation headers", () => {
 
     expect((await readSubscriber(t, first.id))?.status).toBe("bounced")
     expect((await readSubscriber(t, second.id))?.status).toBe("active")
+  })
+})
+
+/**
+ * A valid Amazon signature says AMAZON sent it, not that OUR topic did.
+ *
+ * Every SNS topic in every AWS account is signed by the same infrastructure,
+ * with a certificate on the same `sns.<region>.amazonaws.com` hosts the URL
+ * check allows. And the endpoint used to CONFIRM any subscription whose
+ * `SubscribeURL` was on such a host — so a stranger pointed their own topic at
+ * `/webhooks/ses`, the endpoint subscribed itself, and from then on their
+ * forged bounces carried a genuine signature and suppressed real customers'
+ * addresses.
+ */
+describe("which SNS topic the webhook accepts", () => {
+  /** A signed `SubscriptionConfirmation`, as SNS sends it. */
+  function signedConfirmation(topicArn: string) {
+    const envelope: Record<string, string> = {
+      Type: "SubscriptionConfirmation",
+      MessageId: "sns-confirm-1",
+      Token: "confirm-token",
+      TopicArn: topicArn,
+      Message: "You have chosen to subscribe to the topic.",
+      SubscribeURL: `https://sns.eu-west-3.amazonaws.com/?Action=ConfirmSubscription&Token=confirm-token`,
+      Timestamp: new Date(NOW).toISOString(),
+      SignatureVersion: "2",
+      SigningCertURL: CERT_URL,
+    }
+    let stringToSign = ""
+    for (const field of [
+      "Message",
+      "MessageId",
+      "SubscribeURL",
+      "Timestamp",
+      "Token",
+      "TopicArn",
+      "Type",
+    ]) {
+      if (envelope[field] === undefined) continue
+      stringToSign += `${field}\n${envelope[field]}\n`
+    }
+    envelope.Signature = signMessage(stringToSign)
+    return JSON.stringify(envelope)
+  }
+
+  const OUR_TOPIC = "arn:aws:sns:eu-west-3:000000000000:ses-events"
+  const THEIR_TOPIC = "arn:aws:sns:eu-west-3:999999999999:ses-events"
+
+  afterEach(() => {
+    delete process.env.SES_SNS_TOPIC_ARN
+  })
+
+  test("a signed bounce from another account's topic is refused", async () => {
+    process.env.SES_SNS_TOPIC_ARN = OUR_TOPIC
+    const t = newHarness()
+    const { id } = await seedSubscriber(t)
+    stubCertificateFetch()
+
+    const body = signedNotification(
+      {
+        notificationType: "Bounce",
+        bounce: {
+          bounceType: "Permanent",
+          bouncedRecipients: [{ emailAddress: "yanis@resto.example" }],
+        },
+        mail: { headers: [] },
+      },
+      "sns-foreign"
+    ).replace(
+      `"TopicArn":"${OUR_TOPIC}"`,
+      `"TopicArn":"${THEIR_TOPIC}"`
+    )
+
+    // The body is re-signed by nobody: rewriting the ARN also breaks the
+    // signature, which is the point — an attacker with their OWN topic gets a
+    // real signature over their own ARN, and that is the case the allow-list
+    // exists for. Either way the webhook must refuse.
+    expect(await deliverBounce(t, body)).toBe(403)
+    expect((await readSubscriber(t, id))?.status).toBe("active")
+  })
+
+  test("a subscription from an unconfigured topic is not confirmed", async () => {
+    // No `SES_SNS_TOPIC_ARN`: the endpoint must not fetch the `SubscribeURL`.
+    // That fetch is what turned "a stranger pointed their topic at us" into "a
+    // stranger can publish to us".
+    const t = newHarness()
+    const fetched: string[] = []
+    vi.stubGlobal("fetch", async (input: unknown) => {
+      const url = String(input)
+      if (url === CERT_URL) return new Response(certPem, { status: 200 })
+      fetched.push(url)
+      return new Response("OK", { status: 200 })
+    })
+
+    const status = await deliverBounce(t, signedConfirmation(THEIR_TOPIC))
+
+    // Answered 200 — SNS retries a non-2xx, and there is nothing to retry.
+    expect(status).toBe(200)
+    expect(fetched).toEqual([])
+  })
+
+  test("a subscription from the configured topic is confirmed", async () => {
+    process.env.SES_SNS_TOPIC_ARN = OUR_TOPIC
+    const t = newHarness()
+    const fetched: string[] = []
+    vi.stubGlobal("fetch", async (input: unknown) => {
+      const url = String(input)
+      if (url === CERT_URL) return new Response(certPem, { status: 200 })
+      fetched.push(url)
+      return new Response("OK", { status: 200 })
+    })
+
+    expect(await deliverBounce(t, signedConfirmation(OUR_TOPIC))).toBe(200)
+    expect(fetched).toHaveLength(1)
+    expect(fetched[0]).toContain("ConfirmSubscription")
   })
 })

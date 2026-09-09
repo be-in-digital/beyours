@@ -103,6 +103,23 @@ export default function AdminApporteursPage() {
         </div>
       )}
 
+      {/*
+        Every figure above stopped at a read cap. It is said out loud because
+        the alternative was measured: this dashboard summed 500 referrals while
+        an affiliate's own portal summed 200, so one set of commissions
+        produced two euro totals and nothing on either screen admitted it.
+      */}
+      {stats?.truncated && (
+        <p
+          role="status"
+          className="rounded-lg border border-warning-border bg-warning-soft px-4 py-3 text-sm text-warning-strong"
+        >
+          Il y a plus d&apos;apporteurs ou de parrainages que cette page
+          n&apos;en lit en une fois : les montants ci-dessus sont des minimums,
+          pas des totaux.
+        </p>
+      )}
+
       <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="apporteurs">Apporteurs</TabsTrigger>

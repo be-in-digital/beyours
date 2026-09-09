@@ -22,6 +22,7 @@ import {
   StripeChargeRouteError,
   type StripeConnectionState,
 } from "../stripeChargeRouting"
+import { resolveCardPaymentAvailability } from "../globalSettings"
 
 function connection(over: Partial<StripeConnectionState> = {}): StripeConnectionState {
   return { status: "onboarding_complete", merchantId: "acct_1234", ...over }
@@ -106,6 +107,38 @@ describe("resolveStripeCharge", () => {
   })
 })
 
+const SCHEMA = join(
+  __dirname,
+  "../../../convex-schema/src/tables/paymentConnections.ts"
+)
+
+/** The literals of the `status:` union, read out of the table definition. */
+function declaredStatuses(): string[] {
+  const source = readFileSync(SCHEMA, "utf8")
+  const open = source.indexOf("status: v.union(")
+  if (open === -1) return []
+
+  // Walk to the parenthesis that closes `v.union(`. Stopping at the first
+  // `),` instead reads only as far as the first literal, which is how the
+  // first version of this returned an empty list and passed nothing.
+  let depth = 0
+  let end = open
+  for (let i = source.indexOf("(", open); i < source.length; i += 1) {
+    if (source[i] === "(") depth += 1
+    else if (source[i] === ")") {
+      depth -= 1
+      if (depth === 0) {
+        end = i
+        break
+      }
+    }
+  }
+
+  return [...source.slice(open, end).matchAll(/v\.literal\("([^"]+)"\)/g)].map(
+    (m) => m[1]
+  )
+}
+
 describe("the status union this rule is written against", () => {
   /**
    * Guards the guard, against the schema rather than against itself.
@@ -116,37 +149,6 @@ describe("the status union this rule is written against", () => {
    * routed elsewhere" would be the original defect all over again. So the
    * decision is measured against the schema's own text.
    */
-  const SCHEMA = join(
-    __dirname,
-    "../../../convex-schema/src/tables/paymentConnections.ts"
-  )
-
-  /** The literals of the `status:` union, read out of the table definition. */
-  function declaredStatuses(): string[] {
-    const source = readFileSync(SCHEMA, "utf8")
-    const open = source.indexOf("status: v.union(")
-    if (open === -1) return []
-
-    // Walk to the parenthesis that closes `v.union(`. Stopping at the first
-    // `),` instead reads only as far as the first literal, which is how the
-    // first version of this returned an empty list and passed nothing.
-    let depth = 0
-    let end = open
-    for (let i = source.indexOf("(", open); i < source.length; i += 1) {
-      if (source[i] === "(") depth += 1
-      else if (source[i] === ")") {
-        depth -= 1
-        if (depth === 0) {
-          end = i
-          break
-        }
-      }
-    }
-
-    return [...source.slice(open, end).matchAll(/v\.literal\("([^"]+)"\)/g)].map(
-      (m) => m[1]
-    )
-  }
 
   const REFUSED = ["connected"]
   const ALLOWED = ["onboarding_complete", "disconnected", "error"]
@@ -169,5 +171,60 @@ describe("the status union this rule is written against", () => {
         expect(resolveStripeCharge({ status })).toEqual({ mode: "platform" })
       }
     }
+  })
+})
+
+/**
+ * The tile and the charge path answer the same question, or the diner pays for
+ * the disagreement.
+ *
+ * `resolveCardPaymentAvailability` greys the card tile and
+ * `assertChargeableOnPlatform` refuses the charge, and each reaches
+ * `resolveStripeCharge` by its own route. Its docblock has always said "keep
+ * the two in step — a tile offered here and refused there is this defect
+ * again", and nothing checked it: a connection state added to one and not the
+ * other pre-selects a tile whose only outcome is a redacted "Server Error".
+ *
+ * Driven over every status the schema declares, so a new one cannot be added
+ * to the union and answered by only one of them.
+ */
+describe("the storefront tile agrees with the charge path", () => {
+  function moneyPathRefuses(status: string): boolean {
+    try {
+      resolveStripeCharge({ status })
+      return false
+    } catch {
+      return true
+    }
+  }
+
+  it("greys the tile for every state the charge path refuses", () => {
+    for (const status of declaredStatuses()) {
+      const armed = resolveCardPaymentAvailability({
+        cardProvider: "stripe",
+        // Everything else in order, so the connection state is the only thing
+        // that can move the answer.
+        stripeSecretKeyPresent: true,
+        connection: { status },
+        providerHealth: { provider: "stripe", usable: true },
+      })
+
+      expect(
+        { status, armed },
+        `card tile and charge path disagree about "${status}"`
+      ).toEqual({ status, armed: !moneyPathRefuses(status) })
+    }
+  })
+
+  it("still arms the tile when there is no connection row at all", () => {
+    // The fresh deployment. Refusing on the mere ABSENCE of Connect would take
+    // card payments away from every establishment on day one.
+    expect(
+      resolveCardPaymentAvailability({
+        cardProvider: "stripe",
+        stripeSecretKeyPresent: true,
+        connection: null,
+      })
+    ).toBe(true)
   })
 })

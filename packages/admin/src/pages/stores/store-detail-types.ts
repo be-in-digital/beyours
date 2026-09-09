@@ -29,6 +29,8 @@ type StoreIntegration = {
   storeStatus?: "ONLINE" | "PAUSED" | "OFFLINE"
   prepTime?: number
   brandId?: string
+  /** This restaurant's own public page on the platform. */
+  storefrontUrl?: string
   menuSyncStatus?: "idle" | "syncing" | "success" | "error"
   menuSyncError?: string
   lastMenuSyncAt?: number
