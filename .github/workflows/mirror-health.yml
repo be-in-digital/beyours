@@ -238,14 +238,36 @@ jobs:
           set -euo pipefail
           node scripts/publish-mirror.mjs --check 2>&1 | tee /tmp/mirror-check.log
 
-      - name: Say what is stale
+      # THE TITLE IS DECIDED BY WHAT WAS MEASURED, and it has to be.
+      #
+      # This step opened one issue titled "the boilerplate is behind apps/themes"
+      # for BOTH outcomes — the drift it measured, and the check that never
+      # finished. Its own body then said the opposite of its title: "`--check`
+      # did not finish, so whether the mirror is current is unknown — this is
+      # not a drift report." A person triaging from a list of issue titles is
+      # told a fact the body denies, and #424's pull request predicted exactly
+      # this case before it happened.
+      #
+      # So the title is computed first, from the log, and the two outcomes get
+      # two different issues: they need different people and different actions.
+      # Drift is "run Publish mirror"; a check that could not run is "this job
+      # cannot reach the mirror", which no amount of re-running fixes.
+      - name: Say what is stale, or that we could not tell
         if: failure() && steps.drift.outcome == 'failure'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TITLE: "Publish mirror: the boilerplate is behind apps/themes"
+          DRIFT_TITLE: "Publish mirror: the boilerplate is behind apps/themes"
+          UNKNOWN_TITLE: "Mirror health: the staleness check cannot reach the mirror"
         run: |
           set -uo pipefail
+
+          if grep -q "drift detected between apps/themes and the mirror" /tmp/mirror-check.log; then
+            TITLE="$DRIFT_TITLE"
+          else
+            TITLE="$UNKNOWN_TITLE"
+          fi
+
           {
             if grep -q "drift detected between apps/themes and the mirror" /tmp/mirror-check.log; then
               echo "\`scripts/publish-mirror.mjs --check\` found drift between"
@@ -258,12 +280,23 @@ jobs:
               echo "filter in \`publish-mirror.yml\` enumerates what triggers one."
             else
               echo "\`scripts/publish-mirror.mjs --check\` **did not finish**, so whether"
-              echo "the mirror is current is unknown — this is not a drift report."
+              echo "the mirror is current is unknown. **This is not a drift report** — the"
+              echo "mirror may be perfectly current. Nothing here says it is behind."
               echo
-              echo "The likeliest cause on a first run is the clone: this job carries no"
+              echo "The likeliest cause is the clone: this job carries no"
               echo "\`MIRROR_PUSH_TOKEN\` on purpose (see the workflow comment), so it"
               echo "clones \`be-in-digital/beyours-boilerplate\` anonymously, which works"
-              echo "only if that repository is public. The log below says which."
+              echo "only if that repository is public. It is not, so this job has never"
+              echo "been able to answer its own question. The log below confirms which"
+              echo "failure this run hit."
+              echo
+              echo "**This needs a decision, not a re-run.** Either give this job a"
+              echo "read-only token for the mirror — a NEW secret, not"
+              echo "\`MIRROR_PUSH_TOKEN\`, which \`workflow-publish-gates.test.ts\`"
+              echo "correctly refuses to any job that is not gated on CI — or accept that"
+              echo "staleness is detected only by the observer half of this workflow,"
+              echo "which watches \`Publish mirror\` conclusions and does not need to"
+              echo "clone anything."
             fi
             echo
             echo '```'

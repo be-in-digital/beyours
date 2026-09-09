@@ -36,6 +36,12 @@ jobs:
   check:
     name: Check the store answers
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # So this workflow can say something where somebody reads it. Without
+      # this it could only go red in a tab nobody opens, which is the state it
+      # was in for every run it ever made.
+      issues: write
     env:
       # Same two gates as ci.yml, for the same reason: a step's `if:` cannot
       # read `secrets`, a job's `env:` can. Without them this workflow would go
@@ -78,7 +84,22 @@ jobs:
           sudo apt-get install -y infisical
           infisical --version
 
+      # `id` and `continue-on-error`, because THIS is the step that has been
+      # failing. Two scheduled runs, two failures, both here:
+      #
+      #   error: unable to authenticate with universal auth
+      #   [err=APIError: CallUniversalAuthLogin unsuccessful response
+      #   [POST https://app.infisical.com/api/v1/auth/universal-auth/login]
+      #   [status-code=401] [message="Invalid credentials"]]
+      #
+      # A step that aborts the job takes every later step with it, including any
+      # reporting — so the workflow built to say the secrets store is
+      # unreachable was, itself, unable to say anything. It failed silently from
+      # the day it landed. The grading step below is gated on this outcome and
+      # the reporter at the end runs either way.
       - name: Log in as the CI machine identity
+        id: login
+        continue-on-error: true
         if: vars.INFISICAL_ENABLED == 'true' && env.HAS_INFISICAL == 'true'
         env:
           INFISICAL_CLIENT_ID: ${{ secrets.INFISICAL_CLIENT_ID }}
@@ -109,7 +130,20 @@ jobs:
       # so this job is a checkout, a node and a CLI. `report.txt` holds key
       # names, not values — `check` throws every value away unread.
       - name: Ask the store, and grade the answer
-        if: vars.INFISICAL_ENABLED == 'true' && env.HAS_INFISICAL == 'true'
+        id: grade
+        continue-on-error: true
+        # `shell: bash` is load-bearing now that this step has an `id` another
+        # condition reads. GitHub's default `run:` shell on Linux is `bash -e`
+        # WITHOUT `-o pipefail`, so `node … | tee report.txt` would report
+        # *tee's* status as the step's. The `case` below happens to decide the
+        # exit code from `PIPESTATUS[0]`, which is correct — but a guard cannot
+        # see that, and neither can the next person to edit this block.
+        # `mirror-staleness-watch.test.ts` holds the rule, having been written
+        # after exactly this mistake made `mirror-health.yml` a no-op.
+        shell: bash
+        if: >-
+          vars.INFISICAL_ENABLED == 'true' && env.HAS_INFISICAL == 'true'
+            && steps.login.outcome == 'success'
         run: |
           set +e
           node scripts/infisical-bootstrap.mjs check --env="$INFISICAL_ENV_SLUG" | tee report.txt
@@ -140,3 +174,103 @@ jobs:
               exit 1
               ;;
           esac
+
+      # ── Say it where somebody reads it ──────────────────────────────────────
+      #
+      # WHY THIS EXISTS. This workflow has failed EVERY run it has ever made —
+      # 2026-09-08 and 2026-09-09, both `schedule`, both at the login step with
+      # a 401 — and told nobody. It carried no `if: failure()` step, no
+      # `gh issue create`, nothing. A daily check that goes red into an empty
+      # room is not a check; the secrets store the whole fleet model depends on
+      # could not be authenticated by CI, and the thing built to say so was
+      # itself silent.
+      #
+      # `mirror-health.yml` already does exactly this — it is how #426 and #439
+      # exist — so the pattern was in the repository and this workflow simply
+      # did not use it. Same shape, same `continue-on-error` for the same
+      # reason: if the organisation forbids Actions from opening issues, the
+      # step summary is still written and the job is still red, and the fallback
+      # must never be the thing that hides the finding.
+      #
+      # `if: always()` rather than `failure()`: the grading step is
+      # `continue-on-error`, so the job does not fail on its own, and this step
+      # decides the outcome from the two step outcomes instead.
+      - name: Say that the store could not be reached
+        if: >-
+          always() && vars.INFISICAL_ENABLED == 'true' && env.HAS_INFISICAL == 'true'
+            && (steps.login.outcome != 'success' || steps.grade.outcome != 'success')
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LOGIN_OUTCOME: ${{ steps.login.outcome }}
+          GRADE_OUTCOME: ${{ steps.grade.outcome }}
+          AUTH_TITLE: "Env store health: CI cannot authenticate to the secrets store"
+          CHECK_TITLE: "Env store health: the store did not answer"
+        run: |
+          set -uo pipefail
+
+          # Two failures, two issues: they need different people. A 401 is a
+          # credential to rotate; a failing `check` is a store to look at.
+          if [ "${LOGIN_OUTCOME}" != "success" ]; then
+            TITLE="$AUTH_TITLE"
+          else
+            TITLE="$CHECK_TITLE"
+          fi
+
+          {
+            if [ "${LOGIN_OUTCOME}" != "success" ]; then
+              echo "\`infisical login --method=universal-auth\` failed for the CI machine"
+              echo "identity, so this workflow could not ask the store anything at all."
+              echo
+              echo "**This is not an Infisical outage** — it is our credential. The"
+              echo "observed error is \`[status-code=401] [message=\"Invalid credentials\"]\`,"
+              echo "which means \`INFISICAL_CLIENT_ID\` / \`INFISICAL_CLIENT_SECRET\` are"
+              echo "wrong, revoked, or belong to an identity that has expired."
+              echo
+              echo "**Why it matters:** the chain that propagates a rotated credential to"
+              echo "every client deployment runs through this store. While CI cannot"
+              echo "authenticate, \`tasks/secret-rotation-runbook.md\` A.1 cannot be"
+              echo "carried out, and nothing else in this repository would notice."
+              echo
+              echo "**To fix:** mint a new universal-auth identity in Infisical and update"
+              echo "both repository secrets. Then run this workflow from the Actions tab"
+              echo "to confirm, rather than waiting for tomorrow's schedule."
+            else
+              echo "The machine identity authenticated, and"
+              echo "\`scripts/infisical-bootstrap.mjs check\` did not come back clean."
+              echo
+              echo "The job summary on the run below carries the exit code and the key"
+              echo "names — exit 1 is an incomplete store (a backlog item), exit 3 is the"
+              echo "store or the session being down (an incident)."
+            fi
+            echo
+            echo "This check has been failing since it landed and reported nothing,"
+            echo "because it had no failure-reporting step. It has one now, which is why"
+            echo "you are reading this."
+            echo
+            echo "[This run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+          } > /tmp/env-store-health.md
+
+          cat /tmp/env-store-health.md >> "$GITHUB_STEP_SUMMARY"
+
+          # One issue, commented on rather than duplicated: this runs daily, and
+          # thirty identical issues for one unrotated credential is how a signal
+          # gets muted.
+          existing=$(gh issue list --state open --search "in:title \"$TITLE\"" \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file /tmp/env-store-health.md
+          else
+            gh issue create --title "$TITLE" --body-file /tmp/env-store-health.md
+          fi
+
+      # The job's own verdict, after the reporting above has run. Without this
+      # the `continue-on-error` on the two steps would leave a broken store
+      # showing green in the Actions tab.
+      - name: Fail the run when the store could not be reached
+        if: >-
+          always() && vars.INFISICAL_ENABLED == 'true' && env.HAS_INFISICAL == 'true'
+            && (steps.login.outcome != 'success' || steps.grade.outcome != 'success')
+        run: |
+          echo "::error title=Env store unhealthy::login=${{ steps.login.outcome }} check=${{ steps.grade.outcome }} — see the issue this run opened."
+          exit 1
