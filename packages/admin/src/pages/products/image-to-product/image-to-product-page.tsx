@@ -39,7 +39,7 @@ export function ImageToProductPage() {
   const getUploadUrl = useAction(api?.storageUpload?.getPresignedUploadUrl)
 
   const categories = useQuery(
-    api?.categories?.list,
+    api?.categories?.listAll,
     storeId ? { storeId } : "skip"
   )
 

@@ -205,8 +205,7 @@ export function AllergenField({
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon-sm"
-                    className="h-4 w-4"
+                    size="icon-xs"
                     onClick={() => onChange(removeAllergenValue(value, entry.raw))}
                     disabled={disabled}
                     aria-label={`Retirer la mention ${entry.raw}`}

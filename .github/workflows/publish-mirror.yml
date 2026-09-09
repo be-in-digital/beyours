@@ -200,6 +200,13 @@ jobs:
     permissions:
       contents: read
       packages: read
+    outputs:
+      # What the sync actually did — `pushed`, `current`, `drift` or, when the
+      # step never ran at all, empty. `report` below turns it into the run's
+      # conclusion. See `record()` in scripts/publish-mirror.mjs.
+      outcome: ${{ steps.sync.outputs.mirror_outcome }}
+      ran: ${{ steps.sync.outcome }}
+      can_push: ${{ steps.gate.outputs.can_push }}
     steps:
       - name: Check the push secret
         id: gate
@@ -286,6 +293,7 @@ jobs:
           cache: "pnpm"
 
       - name: Sync
+        id: sync
         # On `workflow_run`, only for a Release that published — see above.
         # Every other trigger reaches here having passed `verify` and `e2e`.
         if: github.event_name != 'workflow_run' || steps.released.outputs.published == 'true'
@@ -301,3 +309,93 @@ jobs:
           else
             node scripts/publish-mirror.mjs --check
           fi
+
+  # WHAT A GREEN RUN MEANS.
+  #
+  # Every exit from `publish-mirror.mjs` is 0 or 1, and three different things
+  # exit 0: a push happened, the mirror was already identical, and a `--check`
+  # that pushed nothing by design. On top of that, the `Sync` step is skipped
+  # entirely when a Release published nothing, and the whole `publish` job is
+  # skipped when its `if:` does not hold — a manual dispatch from a branch, for
+  # one. GitHub reports a skipped job as a green run.
+  #
+  # So "Publish mirror ✓" covered both "the client repository now has your
+  # change" and "nothing happened", with nothing in the history to tell them
+  # apart. That is the state the mirror was in for twelve days.
+  #
+  # This job gives every run a stated outcome and makes the ones that were
+  # SUPPOSED to push and did not go red. It does not invent failures: a
+  # deliberate `--check` dispatch, and the deliberate stand-down after a
+  # Release that published nothing, both pass — with a summary line saying so,
+  # which is the part that was missing.
+  report:
+    name: What this run did
+    needs: [verify, e2e, publish]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Grade the run
+        env:
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+          SYNC_RAN: ${{ needs.publish.outputs.ran }}
+          OUTCOME: ${{ needs.publish.outputs.outcome }}
+          CAN_PUSH: ${{ needs.publish.outputs.can_push }}
+          CHECK_ONLY: ${{ inputs.check_only }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          say() { echo "$1" >> "$GITHUB_STEP_SUMMARY"; }
+          say "## Publish mirror"
+          say ""
+
+          # A deliberate dry run. It reports drift and pushes nothing, and
+          # saying so is the whole of its job.
+          if [ "$EVENT" = "workflow_dispatch" ] && [ "$CHECK_ONLY" = "true" ]; then
+            say "**Dry run** — drift reported, nothing pushed. This is what \`check_only\` asks for."
+            echo "::notice title=Dry run::No push was attempted."
+            exit 0
+          fi
+
+          case "$OUTCOME" in
+            pushed)
+              say "**Pushed.** The boilerplate now carries this commit's \`apps/themes\`."
+              echo "::notice title=Mirror synced::The boilerplate was updated."
+              exit 0
+              ;;
+            current)
+              say "**Nothing to push.** The mirror was already byte-identical to \`apps/themes\`."
+              echo "::notice title=Mirror already current::No files differed."
+              exit 0
+              ;;
+          esac
+
+          # Past here, no sync happened and none was explicitly requested to be
+          # skipped. Say which of the ways it was, then fail — a run that was
+          # meant to deliver and did not must not read as a delivery.
+          if [ "$EVENT" = "workflow_run" ] && [ "$SYNC_RAN" = "skipped" ]; then
+            # The one designed stand-down: a Release that published nothing.
+            # The push path owns any template change and is gated; this path
+            # exists only for the pinned versions moving.
+            say "**Stood down.** That Release published nothing, so there were no pinned versions to carry."
+            say ""
+            say "Any template change is owned by the \`push\` run for the same commit, which waits for the E2E suite."
+            echo "::notice title=Nothing to carry::The Release published no packages."
+            exit 0
+          fi
+
+          if [ "$PUBLISH_RESULT" = "skipped" ]; then
+            say "**No sync ran.** The \`publish\` job's conditions were not met — it is limited to \`main\`, and requires \`Verify\` and \`Verify E2E\` to have passed."
+          elif [ "$CAN_PUSH" != "true" ]; then
+            say "**No sync ran.** \`MIRROR_PUSH_TOKEN\` is not set, so the job could only dry-run. Client sites are not receiving this commit."
+            say ""
+            say "Create the token (a fine-grained PAT with \`contents: write\` on \`beyours-boilerplate\`) and re-run."
+          else
+            say "**No sync ran**, and the reason is not one this job knows how to name. Read the \`Sync\` step: outcome \`${OUTCOME:-none}\`, step \`${SYNC_RAN:-none}\`, job \`${PUBLISH_RESULT}\`."
+          fi
+          say ""
+          say "This run is red because a green one means the client repository was updated."
+          echo "::error title=Mirror not synced::No push happened on a run that was expected to publish. See the summary."
+          exit 1

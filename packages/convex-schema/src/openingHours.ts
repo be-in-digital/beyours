@@ -25,6 +25,45 @@ import { restaurantClock, parseClockTime } from "./timeWindow"
 import type { BusinessHours } from "./types"
 
 /**
+ * What an unwritten `useGlobalHours` means — declared once, for both ends.
+ *
+ * THE DISAGREEMENT THIS SETTLES. `useGlobalHours` is `v.optional(v.boolean())`,
+ * so a store written before the field existed carries no value at all. The
+ * dashboard read that as `?? true` and drew the switch ON — "this location
+ * follows the deployment-wide week". `resolveStoreHours` read it as a falsy
+ * `&&` and served the store's OWN week. So an owner could edit the global
+ * hours, watch the screen agree that this location follows them, and have the
+ * order path enforce something else entirely. Neither side was wrong on its
+ * own; there were simply two answers, and no one place to change.
+ *
+ * FALSE IS THE ANSWER, and it is chosen for what it does not do. This is a
+ * live product where the wrong week means orders refused during service, or a
+ * kitchen ticket at four in the morning. `false` is what the order path has
+ * always enforced, so adopting it changes no establishment's actual opening
+ * hours — it only stops the dashboard claiming otherwise. `true` would have
+ * silently moved every legacy store onto the global week.
+ *
+ * It costs nothing going forward: `stores.create` writes `useGlobalHours: true`
+ * explicitly, so a store made through the product never reaches this default,
+ * and the first save from the hours screen writes the flag either way. The
+ * default is only ever consulted for rows that predate the field.
+ */
+export const FOLLOWS_GLOBAL_HOURS_BY_DEFAULT = false
+
+/**
+ * Does this establishment follow the deployment-wide week?
+ *
+ * The single reading of the flag. The screen and the order path both call it,
+ * so they cannot answer the question differently again — which is what went
+ * wrong, rather than either answer being indefensible.
+ */
+export function followsGlobalHours(
+  store: { useGlobalHours?: boolean | null } | null | undefined
+): boolean {
+  return store?.useGlobalHours ?? FOLLOWS_GLOBAL_HOURS_BY_DEFAULT
+}
+
+/**
  * Which hours actually govern an establishment.
  *
  * `useGlobalHours` is a per-store flag the dashboard writes: on, the location
@@ -41,7 +80,7 @@ export function resolveStoreHours(
 ): BusinessHours[] {
   if (!store) return []
   const globalHours = globalSettings?.hours
-  if (store.useGlobalHours && globalHours && globalHours.length > 0) {
+  if (followsGlobalHours(store) && globalHours && globalHours.length > 0) {
     return globalHours
   }
   return store.hours ?? []

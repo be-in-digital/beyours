@@ -172,7 +172,7 @@ export function StoreDeliverooCard({
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="text-muted-foreground hover:text-foreground transition-colors"
+                      className="inline-flex size-6 items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
                       aria-label="Comment trouver votre Store ID Deliveroo"
                     >
                       <HelpCircle className="h-4 w-4" />
