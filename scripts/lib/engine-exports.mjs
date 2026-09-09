@@ -40,9 +40,13 @@
  * fixture tarball, without a registry.
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs"
+import { execFileSync } from "node:child_process"
+import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { gunzipSync } from "node:zlib"
+
+import { REGISTRY } from "./registry.mjs"
 
 const SCOPE = "@be-in-digital/"
 
@@ -282,6 +286,50 @@ function resolvedEntry(map, subpath) {
  * Handles the one wildcard form Node supports, `"./x/*"`, which matches a
  * single `*` standing for any remaining path.
  */
+/**
+ * What the version a client would actually install carries: its `exports` map
+ * and its file list, both read from the published TARBALL.
+ *
+ * Not from `npm view`: GitHub Packages omits `exports` from the abbreviated
+ * packument that command reads, so the lookup answered empty for every engine
+ * package, the emptiness was taken for "declares no exports → legacy → any
+ * path allowed", and the gate flagged nothing while `admin@8.0.0` shipped
+ * without the `./game` the template imports (#380). The tarball is what a
+ * client installs and the registry cannot abbreviate it, so `npm pack` it and
+ * read the archive inside.
+ *
+ * Three answers, kept distinct on purpose:
+ *   - a map (or string) — checked subpath by subpath, target by target;
+ *   - `undefined` — the manifest genuinely declares no `exports`, which Node
+ *     resolves legacily: any path allowed, nothing to verify;
+ *   - `EXPORTS_UNKNOWN` — the tarball could not be fetched or read. That is a
+ *     question with no answer, not an answer. Callers must refuse rather than
+ *     pass, because conflating "could not read the map" with "has no map" is
+ *     exactly the defect this replaces.
+ *
+ * `dir` is where the tarball is unpacked. `publish-mirror.mjs` passes its own
+ * work directory so the one `finally` at the bottom of that script sweeps
+ * these up with the clone; callers that pass nothing get a temp directory
+ * removed here.
+ */
+export function publishedTarball(pkg, version, { registry = REGISTRY, dir } = {}) {
+  const scratch = mkdtempSync(join(dir ?? tmpdir(), "pack-"))
+  try {
+    execFileSync(
+      "npm",
+      ["pack", `${pkg}@${version}`, `--registry=${registry}`, "--pack-destination", scratch],
+      { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    )
+    const tarball = readdirSync(scratch).find((name) => name.endsWith(".tgz"))
+    if (!tarball) throw new Error(`npm pack wrote no tarball for ${pkg}@${version}`)
+    return tarballContents(join(scratch, tarball))
+  } catch {
+    return { exports: EXPORTS_UNKNOWN, files: undefined }
+  } finally {
+    rmSync(scratch, { recursive: true, force: true })
+  }
+}
+
 export function exportsResolve(map, subpath) {
   if (map === EXPORTS_UNKNOWN) return false
   if (map === undefined || map === null) {

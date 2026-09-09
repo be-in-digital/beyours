@@ -60,6 +60,14 @@ export default function LandingPage() {
     // from the image optimizer on every homepage without a hero upload. An
     // absent image is drawn as the empty frame it is.
     const heroImage = hero.field("image").mediaUrl
+    // The CMS media field carries an `altText` the owner fills in (the admin
+    // even offers to generate one), and this page ignored it in favour of the
+    // literal "Hero" — one English word, identical on every storefront, saying
+    // nothing about the dish in the picture. Read what they wrote. With
+    // nothing written the image is marked decorative rather than mislabelled:
+    // the h1 beside it already carries the meaning, and inventing a
+    // description of an establishment's own photograph is not ours to do.
+    const heroImageAlt = hero.field("image").altText ?? ""
     const heroCtaLabel = hero.field("ctaLabel").text ?? "Voir le Menu"
     const fb1Title = hero.field("floatingBadge1Title").text ?? "Top Rated"
     const fb1Subtitle = hero.field("floatingBadge1Subtitle").text ?? "Gourmet Choice"
@@ -93,6 +101,7 @@ export default function LandingPage() {
     const ctaTitle = cta.field("title").text ?? "Prêt à {commander} ?"
     const ctaSubtitle = cta.field("subtitle").text ?? "Découvrez notre menu complet et commandez vos plats préférés en quelques clics."
     const ctaButtonText = cta.field("buttonText").text ?? "Explorer le Menu"
+    const ctaBgImageAlt = cta.field("backgroundImage").altText ?? ""
     const ctaBgImage = cta.field("backgroundImage").mediaUrl ?? "https://images.unsplash.com/photo-1504674900247-0877df9cc836?q=80&w=2070&auto=format&fit=crop"
 
 
@@ -148,7 +157,7 @@ export default function LandingPage() {
                             {heroImage && (
                                 <Image
                                     src={heroImage}
-                                    alt="Hero"
+                                    alt={heroImageAlt}
                                     fill
                                     className="object-contain drop-shadow-[0_45px_45px_rgba(0,0,0,0.6)] z-20 scale-125"
                                     priority
@@ -275,7 +284,7 @@ export default function LandingPage() {
                                 >
                                     <Image
                                         src={ctaBgImage}
-                                        alt="Healthy Gourmet Food"
+                                        alt={ctaBgImageAlt}
                                         fill
                                         className="object-cover group-hover:scale-110 transition-all duration-1000"
                                     />

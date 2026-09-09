@@ -28,13 +28,15 @@ export function EditProductPage({ params }: EditProductPageProps) {
 
   // Fetch the product
   const product = useQuery(
-    api?.products?.getById,
+    // The edit screen has to open a draft; `getById` is the storefront's
+    // read and answers `null` for anything not on sale.
+    api?.products?.getAnyById,
     productId ? { id: productId } : "skip"
   )
 
   // Fetch categories for the form
   const categories = useQuery(
-    api?.categories?.list,
+    api?.categories?.listAll,
     storeId ? { storeId } : "skip"
   )
 

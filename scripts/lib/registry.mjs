@@ -43,16 +43,61 @@ export const REGISTRY = "https://npm.pkg.github.com"
  * dependency to nothing is fatal there and merely informative here.
  */
 export function publishedVersion(pkg) {
+  return lookupPublishedVersion(pkg).version
+}
+
+/**
+ * The same lookup, with the distinction `publishedVersion` throws away.
+ *
+ * `npm view` fails for two unrelated reasons and the wrapper above returns
+ * `null` for both: the registry answering "no such package", and the registry
+ * not answering at all — no token, no network, a 500. A caller that treats the
+ * second as the first reports a clean bill of health for a check it never ran,
+ * which is the failure this repository keeps having to fix (see the
+ * `EXPORTS_UNKNOWN` note in `engine-exports.mjs`, written after exactly that).
+ *
+ * `known: false` means the question got no answer. Refuse, or say so; never
+ * pass.
+ */
+export function lookupPublishedVersion(pkg, { ask = askRegistry } = {}) {
+  let answer
   try {
-    return (
-      execFileSync("npm", ["view", pkg, "version", `--registry=${REGISTRY}`], {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      }) ?? ""
-    ).trim()
-  } catch {
-    return null
+    answer = { stdout: ask(pkg) }
+  } catch (error) {
+    answer = { failure: `${error?.stderr ?? ""}\n${error?.stdout ?? ""}` }
   }
+  return classifyLookup(answer)
+}
+
+/** The one call that touches the network. Replaced in tests. */
+function askRegistry(pkg) {
+  return execFileSync("npm", ["view", pkg, "version", `--registry=${REGISTRY}`], {
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  })
+}
+
+/**
+ * What npm's answer means, as a pure function of its output.
+ *
+ * Separated from the call so it can be tested without a registry. The first
+ * version of the test asked npm for a name nobody has published and asserted
+ * the 404; run alone it passed, and inside a full `pnpm test` it failed after
+ * 140 seconds because a loaded runner got a timeout rather than a 404. A guard
+ * about "did the registry answer" must not itself depend on the registry
+ * answering.
+ */
+export function classifyLookup(answer) {
+  if (answer.failure === undefined) {
+    const version = (answer.stdout ?? "").trim()
+    return { version: version || null, known: true }
+  }
+  // A 404 IS an answer: the registry has no such package. Everything else —
+  // ENEEDAUTH, E401, E403, a socket error, a timeout — is the registry
+  // declining to say, and must never read as "nothing to check".
+  if (/\bE404\b|404 Not Found/.test(answer.failure)) return { version: null, known: true }
+  const reason = answer.failure.split("\n").map((line) => line.trim()).filter(Boolean).pop()
+  return { version: null, known: false, reason: reason ?? "npm view failed" }
 }
 
 /**

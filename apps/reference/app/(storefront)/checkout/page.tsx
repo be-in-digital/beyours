@@ -43,6 +43,16 @@ import { OrderSummary } from "@/components/storefront/order-summary"
 import { SignInDialog } from "@/components/storefront/sign-in-dialog"
 import { toast } from "sonner"
 
+/**
+ * What the customer is asked to do about an address we cannot price.
+ *
+ * Declared once because it is said in two places — beside the delivery line as
+ * soon as we know, and again in the toast if they submit anyway — and two
+ * wordings for one problem read as two problems.
+ */
+const ADDRESS_NEEDS_REENTRY =
+  "Merci de resaisir votre adresse dans le champ de recherche : nous en avons besoin pour calculer les frais de livraison."
+
 interface AppliedPromo {
   id: string
   code: string
@@ -277,7 +287,20 @@ export default function CheckoutPage() {
     if (!needsQuote || uberQuote) return
     const lat = deliveryCoords?.latitude
     const lng = deliveryCoords?.longitude
-    if (lat === undefined || lng === undefined) return
+    if (lat === undefined || lng === undefined) {
+      // An address with no coordinates — saved before quoting existed, or
+      // typed over the autocomplete instead of chosen from it. This used to
+      // return silently: no quote arrived, so the summary fell through to its
+      // last branch and read "Calculée à la validation", and at validation the
+      // order was refused with "merci de resaisir votre adresse". The customer
+      // was told to carry on and then stopped, having filled in the whole form.
+      //
+      // Only once an address has actually been entered: before that the
+      // summary already says "Renseignez votre adresse", and an error over an
+      // empty field is noise.
+      if (deliveryCoords !== null) setQuoteError(ADDRESS_NEEDS_REENTRY)
+      return
+    }
 
     let cancelled = false
     getDeliveryQuote({
@@ -482,9 +505,8 @@ export default function CheckoutPage() {
       })
 
       if (decision.kind === "address-incomplete") {
-        toast.error(
-          "Merci de resaisir votre adresse dans le champ de recherche : nous en avons besoin pour calculer les frais de livraison."
-        )
+        toast.error(ADDRESS_NEEDS_REENTRY)
+        setQuoteError(ADDRESS_NEEDS_REENTRY)
         setIsSubmitting(false)
         return
       }
@@ -700,6 +722,7 @@ export default function CheckoutPage() {
                 onApplyPromo={handleApplyPromo}
                 onRemovePromo={handleRemovePromo}
                 deliveryFee={estimatedDeliveryFee}
+                deliveryFeeUnavailable={quoteError !== null}
                 hasDeliveryAddress={hasDeliveryAddress}
                 taxRatePercent={resolveTaxRatePercent({
                   globalTaxRate: globalSettings?.taxRate,
