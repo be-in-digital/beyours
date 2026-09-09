@@ -132,15 +132,8 @@ function readEventPayload() {
 
 const exists = (rev) => git(["rev-parse", "--verify", "--quiet", `${rev}^{commit}`]) !== null
 
-/** True when the command exits 0. `git()` returns "" for that, which is falsy. */
-const execOk = (args) => {
-  try {
-    execFileSync("git", args, { cwd: ROOT, stdio: "ignore" })
-    return true
-  } catch {
-    return false
-  }
-}
+/** `git()` answers null when a command failed, and "" when it succeeded silently. */
+const succeeds = (args) => git(args) !== null
 
 /** Refs stay readable, 40-character shas do not. */
 const short = (rev) => (/^[0-9a-f]{40}$/i.test(rev) ? rev.slice(0, 8) : rev)
@@ -194,7 +187,7 @@ function resolveScope(argvRange) {
     // guessing a base from local refs is how a check ends up comparing a branch
     // with itself and reporting a pass over nothing. Local runs, which have no
     // event to be wrong about, fall through to the base branch below.
-    if (mustHaveCommits && usable.length === 0) {
+    if (mustHaveCommits) {
       return {
         args: null,
         label: null,
@@ -280,7 +273,7 @@ if (commits === null) {
 const alreadyMerged = () => {
   const at = args.indexOf("--not")
   if (at === -1) return false
-  return args.slice(at + 1).some((ref) => execOk(["merge-base", "--is-ancestor", "HEAD", ref]))
+  return args.slice(at + 1).some((ref) => succeeds(["merge-base", "--is-ancestor", "HEAD", ref]))
 }
 
 if (commits.length === 0 && mustHaveCommits && alreadyMerged()) {
