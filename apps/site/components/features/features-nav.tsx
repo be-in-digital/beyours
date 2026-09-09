@@ -79,7 +79,7 @@ export function FeaturesNav() {
             }}
             className={`rounded-lg px-2.5 py-1.5 text-left text-[11px] font-medium leading-tight transition-all duration-200 ${
               activeId === item.id
-                ? "border border-[color:var(--border-accent)] bg-primary/10 text-primary"
+                ? "border border-[color:var(--border-accent)] bg-primary/10 text-primary-ink"
                 : "border border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >

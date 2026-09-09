@@ -50,7 +50,7 @@ export function ReferralCodeInput() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-primary">
+              <span className="text-xs font-medium text-primary-ink">
                 Code appliqué
               </span>
               <span className="text-xs font-mono text-foreground">

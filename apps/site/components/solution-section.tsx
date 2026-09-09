@@ -11,7 +11,7 @@ export function SolutionSection() {
       />
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6">
         <FadeIn>
-          <p className="text-sm font-semibold text-primary">La plateforme</p>
+          <p className="text-sm font-semibold text-primary-ink">La plateforme</p>
           <h2 className="mt-3 max-w-2xl font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-balance sm:text-4xl lg:text-[2.75rem]">
             Tout votre restaurant, réuni en ligne.
           </h2>
@@ -33,7 +33,7 @@ export function SolutionSection() {
         >
           {/* A — Site & commande (hero) */}
           <StaggerItem className="bento-card bento-card--hero flex flex-col p-6 md:col-span-2 lg:row-span-2 lg:p-7">
-            <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+            <span className="text-xs font-semibold uppercase tracking-wider text-primary-ink">
               Vitrine & vente directe
             </span>
             <h3 className="mt-2 font-display text-xl font-semibold text-foreground">
@@ -70,7 +70,7 @@ export function SolutionSection() {
 
           {/* B — Centralisation */}
           <StaggerItem className="bento-card flex flex-col p-6 md:col-span-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+            <span className="text-xs font-semibold uppercase tracking-wider text-primary-ink">
               Opérations
             </span>
             <h3 className="mt-2 font-display text-lg font-semibold text-foreground">
@@ -117,7 +117,7 @@ export function SolutionSection() {
                   {s.name}
                   {s.tag ? (
                     <span
-                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${s.soon ? "bg-surface-2 text-muted-foreground" : "bg-primary/12 text-primary"}`}
+                      className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${s.soon ? "bg-surface-2 text-muted-foreground" : "bg-primary/12 text-primary-ink"}`}
                     >
                       {s.tag}
                     </span>
@@ -132,7 +132,7 @@ export function SolutionSection() {
 
           {/* C — Menu management */}
           <StaggerItem className="bento-card flex flex-col p-6">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary-ink">
               <UtensilsCrossed className="h-5 w-5" strokeWidth={1.8} />
             </span>
             <h3 className="mt-4 font-display text-base font-semibold text-foreground">
@@ -170,7 +170,7 @@ export function SolutionSection() {
 
           {/* D — Dashboard */}
           <StaggerItem className="bento-card flex flex-col p-6">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary-ink">
               <LayoutDashboard className="h-5 w-5" strokeWidth={1.8} />
             </span>
             <h3 className="mt-4 font-display text-base font-semibold text-foreground">
@@ -189,7 +189,7 @@ export function SolutionSection() {
                   />
                 ))}
               </div>
-              <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-primary">
+              <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-primary-ink">
                 <TrendingUp className="h-3.5 w-3.5" strokeWidth={2.2} /> +24 % ce
                 mois
               </p>
@@ -198,7 +198,7 @@ export function SolutionSection() {
 
           {/* E — Loyalty */}
           <StaggerItem className="bento-card flex flex-col p-6 md:col-span-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-primary">
+            <span className="text-xs font-semibold uppercase tracking-wider text-primary-ink">
               Engagement
             </span>
             <h3 className="mt-2 font-display text-lg font-semibold text-foreground">
@@ -213,7 +213,7 @@ export function SolutionSection() {
               {/* The game + the reward */}
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary-ink">
                     <Sparkles className="h-4 w-4" strokeWidth={1.8} />
                   </span>
                   <div className="leading-tight">

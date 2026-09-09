@@ -158,7 +158,7 @@ export function ImageUploader({
         <button
           type="button"
           onClick={() => setShowUrlInput(!showUrlInput)}
-          className="text-[11px] text-muted-foreground hover:text-primary"
+          className="text-[11px] text-muted-foreground hover:text-primary-ink"
         >
           {showUrlInput ? "Masquer" : "Coller une URL"}
         </button>
@@ -205,7 +205,7 @@ export function ImageUploader({
 
         {state === "uploading" ? (
           <>
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <Loader2 className="h-6 w-6 animate-spin text-primary-ink" />
             <p className="text-xs text-muted-foreground">Upload en cours...</p>
             <div className="w-full max-w-[120px] h-1.5 rounded-full bg-muted overflow-hidden">
               <div
@@ -246,7 +246,7 @@ export function ImageUploader({
       <button
         type="button"
         onClick={() => setShowUrlInput(!showUrlInput)}
-        className="text-[11px] text-muted-foreground hover:text-primary"
+        className="text-[11px] text-muted-foreground hover:text-primary-ink"
       >
         {showUrlInput ? "Masquer" : "Coller une URL"}
       </button>

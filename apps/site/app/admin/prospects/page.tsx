@@ -91,7 +91,7 @@ export default function AdminProspectsPage() {
                       </p>
                       <a
                         href={`mailto:${p.email}`}
-                        className="inline-flex items-center gap-1 truncate text-xs text-muted-foreground transition-colors hover:text-primary"
+                        className="inline-flex items-center gap-1 truncate text-xs text-muted-foreground transition-colors hover:text-primary-ink"
                       >
                         <Mail className="size-3" />
                         {p.email}
@@ -176,7 +176,7 @@ export default function AdminProspectsPage() {
                           <p className="font-medium text-foreground">{lead.name}</p>
                           <a
                             href={`mailto:${lead.email}`}
-                            className="inline-flex items-center gap-1 truncate text-xs text-muted-foreground transition-colors hover:text-primary"
+                            className="inline-flex items-center gap-1 truncate text-xs text-muted-foreground transition-colors hover:text-primary-ink"
                           >
                             <Mail className="size-3" />
                             {lead.email}

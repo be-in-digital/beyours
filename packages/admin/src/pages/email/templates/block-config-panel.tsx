@@ -391,7 +391,7 @@ export function BlockConfigPanel() {
                 const newLinks = [...block.links, { platform: "instagram", url: "" }]
                 update({ links: newLinks })
               }}
-              className="text-xs text-primary hover:underline"
+              className="text-xs text-primary-ink hover:underline"
             >
               + Ajouter un lien
             </button>

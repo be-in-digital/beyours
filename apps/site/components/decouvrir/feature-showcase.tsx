@@ -375,12 +375,12 @@ function LangPanel() {
                 <p className="truncate text-xs text-muted-foreground">
                   {cur.desc}
                 </p>
-                <p className="mt-0.5 text-xs font-semibold text-primary">24 €</p>
+                <p className="mt-0.5 text-xs font-semibold text-primary-ink">24 €</p>
               </motion.div>
             </AnimatePresence>
           </div>
           <p className="mt-3 flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
-            <Languages className="h-3.5 w-3.5 text-primary" />
+            <Languages className="h-3.5 w-3.5 text-primary-ink" />
             Traduit automatiquement à l&apos;ajout de la langue.
           </p>
         </div>
@@ -441,7 +441,7 @@ const FEATURE_ICONS: Record<string, typeof Store> = {
 function AllFeaturesGrid() {
   return (
     <div className="mt-16">
-      <p className="text-center text-sm font-semibold uppercase tracking-widest text-primary">
+      <p className="text-center text-sm font-semibold uppercase tracking-widest text-primary-ink">
         Inclus dans l&apos;offre Essentielle, sauf mention contraire
       </p>
       <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -469,7 +469,7 @@ function AllFeaturesGrid() {
                   "grid h-10 w-10 shrink-0 place-items-center rounded-xl",
                   soon
                     ? "bg-[color:var(--info)]/15 text-[color:var(--info)]"
-                    : "bg-primary/10 text-primary",
+                    : "bg-primary/10 text-primary-ink",
                 )}
               >
                 <Icon className="h-5 w-5" />

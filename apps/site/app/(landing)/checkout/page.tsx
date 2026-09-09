@@ -16,7 +16,7 @@ export default function CheckoutPage() {
           <SectionBadge text="Paiement" />
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-[-0.02em] mt-4">
             Finalisez votre{" "}
-            <span className="text-primary">commande</span>
+            <span className="text-primary-ink">commande</span>
           </h1>
           <p className="mt-3 text-sm sm:text-base text-muted-foreground max-w-md mx-auto">
             Renseignez vos informations et choisissez votre mode de paiement.

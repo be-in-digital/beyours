@@ -183,7 +183,7 @@ export default function DecouvrirPage() {
                 <p className="mt-1 text-xs text-muted-foreground">
                   1re année incluse, puis renouvellement annuel
                 </p>
-                <p className="mt-4 self-start rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                <p className="mt-4 self-start rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary-ink">
                   Offre fondateurs : création offerte pour les 10 premiers
                 </p>
                 <div className="mt-6 flex flex-col gap-3">
@@ -236,7 +236,7 @@ export default function DecouvrirPage() {
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-primary underline-offset-4 hover:underline"
+                className="text-primary-ink underline-offset-4 hover:underline"
               >
                 {label}
               </a>

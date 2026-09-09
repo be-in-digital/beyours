@@ -60,10 +60,10 @@ export function OrderSummary({
         )}
         {discount > 0 && (
           <div className="flex justify-between">
-            <span className="text-primary">
+            <span className="text-primary-ink">
               Réduction parrainage (-{discountPercent}%)
             </span>
-            <span className="text-primary">-{formatEur(discount)} €</span>
+            <span className="text-primary-ink">-{formatEur(discount)} €</span>
           </div>
         )}
         <div className="flex justify-between">
@@ -109,7 +109,7 @@ export function OrderSummary({
           </>
         )}
       </div>
-      <div className="mt-4 flex items-center gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs font-medium text-primary">
+      <div className="mt-4 flex items-center gap-2 rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs font-medium text-primary-ink">
         <BadgeCheck className="h-4 w-4 shrink-0" strokeWidth={1.8} />
         Votre site en direct, 0 % de commission sur vos commandes.
       </div>

@@ -292,7 +292,7 @@ function AdminInvoiceLink({ referralId }: { referralId: Id<"referrals"> }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-xs font-medium text-primary underline underline-offset-2 hover:opacity-80"
+      className="text-xs font-medium text-primary-ink underline underline-offset-2 hover:opacity-80"
     >
       Voir
     </a>

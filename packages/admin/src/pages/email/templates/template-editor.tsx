@@ -426,7 +426,7 @@ export function TemplateEditor({ template, onBack }: TemplateEditorProps) {
                           <button
                             type="button"
                             onClick={() => duplicateBlock(block.id)}
-                            className="inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:text-primary"
+                            className="inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:text-primary-ink"
                             title="Dupliquer"
                           >
                             <Copy className="h-3 w-3" />
@@ -449,7 +449,7 @@ export function TemplateEditor({ template, onBack }: TemplateEditorProps) {
                       <PopoverTrigger asChild>
                         <button
                           type="button"
-                          className="flex items-center gap-1.5 rounded-full border border-dashed border-muted-foreground/40 px-3 py-1.5 text-xs text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                          className="flex items-center gap-1.5 rounded-full border border-dashed border-muted-foreground/40 px-3 py-1.5 text-xs text-muted-foreground hover:border-primary hover:text-primary-ink transition-colors"
                         >
                           <Plus className="h-3.5 w-3.5" />
                           Ajouter un bloc

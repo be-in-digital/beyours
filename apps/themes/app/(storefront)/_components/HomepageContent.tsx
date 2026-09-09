@@ -311,7 +311,7 @@ export default function LandingPage() {
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-primary-hover/80 via-transparent to-transparent" />
 
-                                    <button className="absolute inset-0 m-auto h-24 w-24 rounded-full bg-white/20 backdrop-blur-xl flex items-center justify-center text-primary-foreground border border-white/30 hover:bg-card hover:text-accent-foreground transition-all shadow-2xl group/play">
+                                    <button type="button" aria-label="Lire la vidéo de présentation" className="absolute inset-0 m-auto h-24 w-24 rounded-full bg-white/20 backdrop-blur-xl flex items-center justify-center text-primary-foreground border border-white/30 hover:bg-card hover:text-accent-foreground transition-all shadow-2xl group/play">
                                         <Play className="h-10 w-10 fill-current translate-x-1 group-hover/play:scale-110 transition-transform" />
                                         <div className="absolute inset-0 rounded-full bg-card animate-ping opacity-20 group-hover:opacity-0" />
                                     </button>

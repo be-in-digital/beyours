@@ -31,8 +31,19 @@
   --popover-foreground: #221c15;
 
   /* Primary — Terracotta */
-  --primary: #c5542c;
-  --primary-foreground: #ffffff; /* blanc pur : contraste AA (≈4.5:1) sur terracotta */
+  /* Terracotta. #c5542c carried a white label at 4.489:1 — the comment beside
+     it said "≈4.5:1", and ≈ was doing real work: it is BELOW the floor, so
+     every primary button label and every word in `text-primary` missed AA.
+     One point of lightness closes it at 4.515:1, which is the same colour to
+     the eye and a pass to a measurement. */
+  --primary: #c4542c;
+  --primary-foreground: #ffffff; /* blanc pur : 4.515:1 sur terracotta, mesuré */
+  /* The brand colour a WORD is written in, as opposed to the one a BUTTON is
+     filled with — the same split `apps/themes` has carried since #410. The
+     fill measured 4.162:1 as an ink on --background, so every word in
+     `text-primary` missed AA while the button it named passed. 4.612:1 on the
+     three surfaces a word lands on here: --background, --card and --accent. */
+  --primary-ink: #ab4926;
 
   /* Primary scale — terracotta */
   --primary-50: #fbf1ea;
@@ -71,7 +82,16 @@
   --border-subtle: rgba(34, 28, 21, 0.08);
   --border-contrast: rgba(34, 28, 21, 0.16);
   --border-accent: rgba(197, 84, 44, 0.28);
-  --input: #ece0cf;
+  /* The boundary of every form field, which WCAG 1.4.11 asks 3:1 of because a
+     user has to FIND the field. #ece0cf measured 1.20:1 against this
+     background — the same defect the engine's own `globals.css` had already
+     found and fixed for `apps/themes`, in a comment that says what it costs:
+     "the product was, to a low-vision user, a rectangle that was not there".
+     #a58253 is 3.27:1 and stays inside the warm sand palette.
+
+     `--border` is deliberately left at #e6d8c4: it is a decorative separator
+     between blocks, not a control boundary, and 1.4.11 does not reach it. */
+  --input: #a58253;
   --ring: #c5542c;
 
   /* Text tiers */
@@ -151,6 +171,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-ink: var(--primary-ink);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -601,9 +622,15 @@ body {
   --accent-foreground: #f2ece0;
   --border: #2c2519;
   --border-contrast: rgba(242, 236, 224, 0.14);
-  --input: #2c2519;
+  /* Same rule as the light palette above: 1.4.11 wants 3:1 of a field's edge.
+     #2c2519 measured 1.25:1 on this console's #131009. #786a55 is 3.61:1. */
+  --input: #786a55;
   --primary: #e2724a;
   --primary-foreground: #1a120c;
+  /* Already 4.873:1 on this console's surfaces, so the ink is the fill here.
+     Declared rather than inherited: without it `text-primary-ink` would fall
+     through to the light palette's #ab4926 on a near-black ground. */
+  --primary-ink: #e2724a;
   --ring: #e2724a;
   --success: #3ac489;
   --success-soft: rgba(58, 196, 137, 0.14);

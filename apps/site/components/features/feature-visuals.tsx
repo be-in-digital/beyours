@@ -67,7 +67,7 @@ function BrowserBar({ url }: { url: string }) {
         <span className="h-2.5 w-2.5 rounded-full bg-surface-4" />
       </div>
       <div className="mx-auto flex items-center gap-1.5 rounded-full bg-background/70 px-3 py-1 text-[10px] font-medium text-muted-foreground">
-        <MapPin className="h-3 w-3 text-primary" strokeWidth={2.2} />
+        <MapPin className="h-3 w-3 text-primary-ink" strokeWidth={2.2} />
         {url}
       </div>
     </div>
@@ -99,7 +99,7 @@ function SiteWebVisual() {
             Trattoria Nonna
           </p>
           <p className="mt-1 flex items-center gap-1.5 text-[11px] text-white/85">
-            <Star className="h-3 w-3 fill-primary text-primary" />
+            <Star className="h-3 w-3 fill-primary text-primary-ink" />
             4,9 · Cuisine italienne · Bordeaux
           </p>
         </div>
@@ -124,7 +124,7 @@ function SiteWebVisual() {
           </p>
           <p className="mt-1 flex items-center gap-1.5 font-display text-lg font-semibold tabular-nums text-foreground">
             Top 3
-            <TrendingUp className="h-4 w-4 text-primary" strokeWidth={2.4} />
+            <TrendingUp className="h-4 w-4 text-primary-ink" strokeWidth={2.4} />
           </p>
           <div className="mt-2 flex items-end gap-1">
             {[40, 62, 55, 78, 88].map((h, i) => (
@@ -173,7 +173,7 @@ function CommandeVisual() {
         <span className="rounded-full border border-[color:var(--border)] bg-background px-3 py-1.5 text-[11px] font-medium text-secondary-foreground">
           Livraison
         </span>
-        <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+        <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary-ink">
           <Clock className="h-3 w-3" strokeWidth={2.4} /> 20 min
         </span>
       </div>
@@ -198,7 +198,7 @@ function CommandeVisual() {
               <p className="truncate text-[11px] text-muted-foreground">
                 {it.desc}
               </p>
-              <p className="mt-0.5 text-xs font-semibold tabular-nums text-primary">
+              <p className="mt-0.5 text-xs font-semibold tabular-nums text-primary-ink">
                 {it.price}
               </p>
             </div>
@@ -221,7 +221,7 @@ function CommandeVisual() {
 
       {/* Barre panier — 0 % commission */}
       <div className="flex items-center justify-between gap-3 border-t border-[color:var(--border)] bg-secondary/50 px-4 py-3">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary-ink">
           0 % de commission
         </span>
         <span className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">
@@ -263,7 +263,7 @@ function MobileAppVisual() {
               Le Petit Bistrot
             </p>
           </div>
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/10 text-primary-ink">
             <Bell className="h-4 w-4" strokeWidth={2} />
           </span>
         </div>
@@ -301,7 +301,7 @@ function MobileAppVisual() {
               }`}
             >
               <p
-                className={`text-[11px] font-semibold ${c.primary ? "text-primary" : "text-foreground"}`}
+                className={`text-[11px] font-semibold ${c.primary ? "text-primary-ink" : "text-foreground"}`}
               >
                 {c.label}
               </p>
@@ -319,7 +319,7 @@ function MobileAppVisual() {
 
         {/* Nav bar */}
         <div className="flex items-center justify-around border-t border-[color:var(--border)] px-4 py-2.5">
-          <UtensilsCrossed className="h-4 w-4 text-primary" strokeWidth={2} />
+          <UtensilsCrossed className="h-4 w-4 text-primary-ink" strokeWidth={2} />
           <ShoppingBag className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
           <Star className="h-4 w-4 text-muted-foreground" strokeWidth={2} />
         </div>
@@ -365,7 +365,7 @@ function CentralisationVisual() {
         <p className="text-xs font-semibold text-foreground">
           Commandes en direct
         </p>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-semibold text-primary-ink">
           <span className="h-1.5 w-1.5 rounded-full bg-primary" />1 flux unifié
         </span>
       </div>
@@ -424,10 +424,10 @@ function CentralisationVisual() {
       {/* Pied — compteur */}
       <div className="flex items-center justify-between border-t border-[color:var(--border)] bg-background px-4 py-3">
         <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-          <Bell className="h-3.5 w-3.5 text-primary" strokeWidth={2.2} />
+          <Bell className="h-3.5 w-3.5 text-primary-ink" strokeWidth={2.2} />
           Alerte à chaque commande
         </span>
-        <span className="font-display text-sm font-semibold tabular-nums text-primary">
+        <span className="font-display text-sm font-semibold tabular-nums text-primary-ink">
           156 aujourd&apos;hui
         </span>
       </div>
@@ -466,7 +466,7 @@ function IntegrationVisual() {
           <p className="text-xs font-semibold text-foreground">
             Canaux de commande
           </p>
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[9px] font-semibold text-primary">
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[9px] font-semibold text-primary-ink">
             Unification à 70 %
           </span>
         </div>
@@ -492,7 +492,7 @@ function IntegrationVisual() {
                 <p className="text-[10px] text-muted-foreground">{r.detail}</p>
               </div>
               {r.live ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[9px] font-semibold text-primary">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[9px] font-semibold text-primary-ink">
                   <Check className="h-3 w-3" strokeWidth={2.6} /> Certifié
                 </span>
               ) : (
@@ -539,7 +539,7 @@ function FideliteVisual() {
       <div className="flex items-center justify-between border-b border-[color:var(--border)] bg-secondary/50 px-4 py-3">
         <p className="text-xs font-semibold text-foreground">Jeu à table</p>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-background px-2.5 py-1 text-[10px] font-medium text-secondary-foreground">
-          <QrCode className="h-3 w-3 text-primary" strokeWidth={2.2} /> Table 12
+          <QrCode className="h-3 w-3 text-primary-ink" strokeWidth={2.2} /> Table 12
         </span>
       </div>
 
@@ -551,7 +551,7 @@ function FideliteVisual() {
               key={s.label}
               className="rounded-xl border border-[color:var(--border)] bg-background px-2 py-2.5 text-center"
             >
-              <span className="mx-auto grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary">
+              <span className="mx-auto grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary-ink">
                 <s.Icon className="h-3.5 w-3.5" strokeWidth={2} />
               </span>
               <p className="mt-1.5 text-[10px] font-semibold text-foreground">
@@ -581,7 +581,7 @@ function FideliteVisual() {
               Lot gagné : dessert offert
             </p>
           </div>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[9px] font-semibold text-primary">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-[9px] font-semibold text-primary-ink">
             <Ticket className="h-3 w-3" strokeWidth={2.4} /> QR envoyé
           </span>
         </div>
@@ -590,7 +590,7 @@ function FideliteVisual() {
         <div className="mt-2.5 rounded-xl border border-[color:var(--border)] bg-background p-3">
           <div className="flex items-center justify-between text-[11px] font-medium text-secondary-foreground">
             <span>Taux de gain</span>
-            <span className="font-semibold tabular-nums text-primary">30 %</span>
+            <span className="font-semibold tabular-nums text-primary-ink">30 %</span>
           </div>
           <div className="relative mt-2 h-2 rounded-full bg-surface-3">
             <div className="h-full w-[30%] rounded-full bg-primary" />
@@ -624,7 +624,7 @@ function AnalyticsVisual() {
       <div className="flex items-center justify-between border-b border-[color:var(--border)] bg-secondary/50 px-4 py-3">
         <p className="text-xs font-semibold text-foreground">Performances</p>
         <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border)] bg-background px-2.5 py-1 text-[10px] font-medium text-secondary-foreground">
-          <BarChart3 className="h-3 w-3 text-primary" strokeWidth={2.2} /> 30
+          <BarChart3 className="h-3 w-3 text-primary-ink" strokeWidth={2.2} /> 30
           jours
         </span>
       </div>
@@ -657,7 +657,7 @@ function AnalyticsVisual() {
             <p className="text-[11px] font-medium text-muted-foreground">
               Chiffre d&apos;affaires
             </p>
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary">
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary-ink">
               <TrendingUp className="h-3.5 w-3.5" strokeWidth={2.4} /> +24 %
             </span>
           </div>

@@ -94,7 +94,7 @@ export function Navbar() {
                     className={cn(
                       "relative text-sm whitespace-nowrap transition-colors duration-200",
                       isActive
-                        ? "text-primary font-medium"
+                        ? "text-primary-ink font-medium"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                     aria-current={isActive ? "page" : undefined}
@@ -155,7 +155,7 @@ export function Navbar() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Une question ? Écrivez-nous sur WhatsApp"
-              className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary transition-colors duration-200 hover:bg-primary/20"
+              className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary-ink transition-colors duration-200 hover:bg-primary/20"
             >
               <WhatsAppIcon />
             </a>
@@ -197,7 +197,7 @@ export function Navbar() {
                     className={cn(
                       "text-sm transition-colors",
                       isActive
-                        ? "text-primary font-medium"
+                        ? "text-primary-ink font-medium"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                     onClick={() => setMobileOpen(false)}

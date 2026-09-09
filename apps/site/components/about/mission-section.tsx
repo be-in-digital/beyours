@@ -44,7 +44,7 @@ export function MissionSection() {
           <div className="mx-auto mt-6 mb-16 max-w-3xl text-center lg:mb-20">
             <h2 className="font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-balance text-foreground sm:text-4xl lg:text-5xl">
               Donner aux restaurants les{" "}
-              <span className="text-primary">armes digitales</span> qu&apos;ils
+              <span className="text-primary-ink">armes digitales</span> qu&apos;ils
               méritent
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -64,7 +64,7 @@ export function MissionSection() {
             return (
               <StaggerItem key={pillar.title}>
                 <div className="group h-full rounded-2xl border border-[color:var(--border)] bg-surface-1 p-8 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] transition-transform duration-300 hover:-translate-y-1">
-                  <span className="mb-5 inline-grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <span className="mb-5 inline-grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary-ink">
                     <Icon className="h-6 w-6" strokeWidth={1.8} />
                   </span>
                   <h3 className="mb-3 font-display text-lg font-semibold text-foreground">

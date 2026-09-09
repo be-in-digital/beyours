@@ -119,10 +119,10 @@ export function PricingPlans({
         {/* Optional section header (used on homepage) */}
         {showHeader && (
           <FadeIn className="text-center mb-10">
-            <p className="text-sm font-semibold text-primary">Tarification</p>
+            <p className="text-sm font-semibold text-primary-ink">Tarification</p>
             <h2 className="font-display text-3xl sm:text-4xl lg:text-[2.9rem] font-semibold tracking-[-0.02em] leading-[1.1] mt-3">
               Des offres pensées pour{" "}
-              <span className="text-primary">votre croissance</span>
+              <span className="text-primary-ink">votre croissance</span>
             </h2>
             <p className="mt-5 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
               Un investissement clair, sans surprise. Chaque offre inclut la
@@ -157,7 +157,7 @@ export function PricingPlans({
             Annuel
           </span>
           {billing === "yearly" && (
-            <span className="text-xs text-primary font-medium bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs text-primary-ink font-medium bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full">
               -2 mois offerts
             </span>
           )}
@@ -227,7 +227,7 @@ export function PricingPlans({
                     </div>
                     <div className="flex items-baseline gap-1">
                       <span
-                        className={`text-3xl sm:text-4xl font-bold tracking-tight ${plan.comingSoon ? "text-muted-foreground/50" : creationPrice === 0 ? "text-primary" : "text-foreground"}`}
+                        className={`text-3xl sm:text-4xl font-bold tracking-tight ${plan.comingSoon ? "text-muted-foreground/50" : creationPrice === 0 ? "text-primary-ink" : "text-foreground"}`}
                       >
                         {creationPrice === 0
                           ? "Offerte"
@@ -322,7 +322,7 @@ export function PricingPlans({
                     {plan.features.map((feature) => (
                       <li key={feature} className="flex items-start gap-2.5">
                         <svg
-                          className={`w-4 h-4 mt-0.5 shrink-0 ${plan.comingSoon ? "text-muted-foreground/40" : plan.featured ? "text-primary" : "text-primary/70"}`}
+                          className={`w-4 h-4 mt-0.5 shrink-0 ${plan.comingSoon ? "text-muted-foreground/40" : plan.featured ? "text-primary-ink" : "text-primary-ink/70"}`}
                           viewBox="0 0 16 16"
                           fill="none"
                         >
@@ -420,7 +420,7 @@ export function PricingPlans({
             </p>
             <p className="mt-2.5 text-sm sm:text-base text-muted-foreground leading-relaxed max-w-3xl mx-auto">
               Les mêmes commandes sur votre propre site&nbsp;:{" "}
-              <span className="text-primary font-medium">
+              <span className="text-primary-ink font-medium">
                 {formatPrice(
                   (foundersLive
                     ? FOUNDERS_OFFER.creationCents / 100
@@ -448,7 +448,7 @@ export function PricingPlans({
                 key={note.label}
                 className="flex items-start gap-2.5 bg-surface-1 px-4 py-3"
               >
-                <span className="mt-px shrink-0 text-primary/70">
+                <span className="mt-px shrink-0 text-primary-ink/70">
                   {note.icon}
                 </span>
                 <span>{note.label}</span>

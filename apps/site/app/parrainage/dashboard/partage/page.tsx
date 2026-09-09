@@ -139,7 +139,7 @@ export default function PartagePage() {
 
             <div className="flex items-center gap-3 mb-4">
               <div className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-primary/10 border border-primary/20">
-                <span className="text-2xl font-mono font-bold text-primary tracking-wider">
+                <span className="text-2xl font-mono font-bold text-primary-ink tracking-wider">
                   {code}
                 </span>
               </div>
@@ -155,7 +155,7 @@ export default function PartagePage() {
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
-                className="text-sm text-primary hover:text-primary/80 transition-colors"
+                className="text-sm text-primary-ink hover:text-primary-ink/80 transition-colors"
               >
                 Personnaliser mon code
               </button>
@@ -170,7 +170,7 @@ export default function PartagePage() {
                     onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
                     placeholder="MONCODE"
                     maxLength={20}
-                    className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground font-mono uppercase focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                    className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground font-mono uppercase focus:outline-none focus:ring-2 focus-visible:ring-ring transition-all"
                   />
                 </div>
                 {error && (
@@ -254,7 +254,7 @@ export default function PartagePage() {
                   {...(s.blank
                     ? { target: "_blank", rel: "noopener noreferrer" }
                     : {})}
-                  className="flex items-center justify-center gap-2 h-11 rounded-xl bg-surface-1 border border-border text-foreground text-sm font-medium hover:bg-surface-3 hover:border-border-contrast transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="flex items-center justify-center gap-2 h-11 rounded-xl bg-surface-1 border border-border text-foreground text-sm font-medium hover:bg-surface-3 hover:border-border-contrast transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span
                     aria-hidden

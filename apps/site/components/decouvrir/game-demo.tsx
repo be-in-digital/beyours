@@ -251,7 +251,7 @@ export function GameDemo() {
             exit={{ opacity: 0, x: -16 }}
             transition={{ duration: 0.35 }}
           >
-            <p className="mt-8 text-sm font-semibold uppercase tracking-widest text-primary">
+            <p className="mt-8 text-sm font-semibold uppercase tracking-widest text-primary-ink">
               Étape {caption.step} / 6
             </p>
             <h3 className="mt-3 font-display text-2xl font-semibold leading-tight tracking-[-0.01em] sm:text-3xl">

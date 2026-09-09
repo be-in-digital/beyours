@@ -24,7 +24,7 @@ export function PricingHero() {
         <FadeIn delay={0.1}>
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-[-0.02em] leading-[1.06] mt-4">
             Des tarifs clairs,{" "}
-            <span className="text-primary">sans surprise</span>
+            <span className="text-primary-ink">sans surprise</span>
           </h1>
         </FadeIn>
 

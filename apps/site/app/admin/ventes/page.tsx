@@ -319,7 +319,7 @@ export default function VentesPage() {
             <SectionTitle className="mb-0">Top restaurants</SectionTitle>
             <Link
               href="/admin/flotte"
-              className="text-xs font-medium text-primary hover:underline"
+              className="text-xs font-medium text-primary-ink hover:underline"
             >
               Toute la flotte
             </Link>

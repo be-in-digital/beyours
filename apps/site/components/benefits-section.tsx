@@ -26,13 +26,13 @@ export function BenefitsSection() {
           <StaggerItem className="lg:col-span-3 bento-card bento-card--hero group">
             <div className="p-6 lg:p-8 h-full flex flex-col">
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary-ink">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M7 7h10v10" />
                     <path d="M7 17 17 7" />
                   </svg>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] text-primary font-semibold uppercase tracking-wider">
+                <span className="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] text-primary-ink font-semibold uppercase tracking-wider">
                   Sans commission
                 </span>
               </div>
@@ -48,7 +48,7 @@ export function BenefitsSection() {
                   <span className="text-[10px] text-muted-foreground/60 uppercase tracking-wider">
                     Commandes directes
                   </span>
-                  <span className="text-xs font-bold text-primary tabular-nums">
+                  <span className="text-xs font-bold text-primary-ink tabular-nums">
                     +<NumberTicker value={47} suffix="%" />
                   </span>
                 </div>
@@ -94,7 +94,7 @@ export function BenefitsSection() {
           <StaggerItem className="lg:col-span-3 bento-card group">
             <div className="p-6 lg:p-8 h-full flex flex-col">
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary-ink">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
                     <path d="m9 12 2 2 4-4" />
@@ -130,7 +130,7 @@ export function BenefitsSection() {
                         <div className="text-[9px] text-white/50 font-medium leading-none">
                           {item.label}
                         </div>
-                        <div className="text-[8px] text-primary/40 mt-0.5">
+                        <div className="text-[8px] text-primary-ink/40 mt-0.5">
                           {item.status}
                         </div>
                       </div>
@@ -144,7 +144,7 @@ export function BenefitsSection() {
           {/* ═══ Meilleure image ═══ */}
           <StaggerItem className="lg:col-span-2 bento-card group">
             <div className="p-6 h-full flex flex-col">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary mb-4">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary-ink mb-4">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
                 </svg>
@@ -176,12 +176,12 @@ export function BenefitsSection() {
           <StaggerItem className="lg:col-span-2 bento-card group">
             <div className="p-6 h-full flex flex-col">
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary-ink">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                   </svg>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] text-primary font-semibold uppercase tracking-wider">
+                <span className="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] text-primary-ink font-semibold uppercase tracking-wider">
                   Automatisé
                 </span>
               </div>
@@ -201,12 +201,12 @@ export function BenefitsSection() {
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.04]"
                   >
                     <div className="w-4 h-4 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-primary/60">
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-primary-ink/60">
                         <path d="M20 6 9 17l-5-5" />
                       </svg>
                     </div>
                     <span className="text-[10px] text-white/40 flex-1">{t.task}</span>
-                    <span className="text-[9px] text-primary/40 font-medium">{t.time}</span>
+                    <span className="text-[9px] text-primary-ink/40 font-medium">{t.time}</span>
                   </div>
                 ))}
               </div>
@@ -216,7 +216,7 @@ export function BenefitsSection() {
           {/* ═══ Stronger customer loyalty ═══ */}
           <StaggerItem className="lg:col-span-2 bento-card group">
             <div className="p-6 h-full flex flex-col">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary mb-4">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary-ink mb-4">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
                 </svg>
@@ -229,7 +229,7 @@ export function BenefitsSection() {
                   Nothing accumulates, so nothing here counts up. */}
               <div className="mt-auto rounded-lg bg-gradient-to-br from-primary/[0.04] to-transparent border border-primary/10 p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[9px] text-primary/40 uppercase tracking-wider font-medium">
+                  <span className="text-[9px] text-primary-ink/40 uppercase tracking-wider font-medium">
                     Jeu à table
                   </span>
                   <span className="text-[9px] text-white/20">Taux de gain 30 %</span>
@@ -244,7 +244,7 @@ export function BenefitsSection() {
                     <div key={s.label} className="flex items-center gap-1.5">
                       <div className="flex flex-col items-center gap-1">
                         <div className="w-6 h-6 rounded-full border bg-primary/15 border-primary/30 flex items-center justify-center">
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary/60">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary-ink/60">
                             <path d={s.path} />
                           </svg>
                         </div>
@@ -257,7 +257,7 @@ export function BenefitsSection() {
                   ))}
                 </div>
                 <div className="flex items-center gap-1.5 mt-2.5">
-                  <span className="text-[9px] text-primary/40 font-medium">
+                  <span className="text-[9px] text-primary-ink/40 font-medium">
                     Lot par email en QR code
                   </span>
                   <span className="text-[9px] text-white/15">•</span>
@@ -275,7 +275,7 @@ export function BenefitsSection() {
               <div className="lg:grid lg:grid-cols-2 lg:gap-8 items-center">
                 <div>
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary">
+                    <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary-ink">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="3" y="3" width="7" height="7" rx="1" />
                         <rect x="14" y="3" width="7" height="7" rx="1" />
@@ -283,7 +283,7 @@ export function BenefitsSection() {
                         <rect x="3" y="14" width="7" height="7" rx="1" />
                       </svg>
                     </div>
-                    <span className="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] text-primary font-semibold uppercase tracking-wider">
+                    <span className="px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] text-primary-ink font-semibold uppercase tracking-wider">
                       1 plateforme
                     </span>
                   </div>
@@ -325,13 +325,13 @@ export function BenefitsSection() {
                     <circle cx="48" cy="48" r="7" fill="rgba(82,207,175,0.08)" />
                   </svg>
                   {/* Mobile arrow */}
-                  <svg className="sm:hidden w-6 h-6 text-primary/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <svg className="sm:hidden w-6 h-6 text-primary-ink/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                     <path d="M12 5v14M5 12l7 7 7-7" />
                   </svg>
 
                   {/* Hub */}
                   <div className="w-full sm:w-auto rounded-xl bg-primary/[0.06] border border-primary/15 p-3 shrink-0">
-                    <div className="text-[8px] text-primary/50 uppercase tracking-wider font-medium mb-1.5">
+                    <div className="text-[8px] text-primary-ink/50 uppercase tracking-wider font-medium mb-1.5">
                       Hub unifié
                     </div>
                     <div className="space-y-1">

@@ -201,7 +201,7 @@ export function StoreDeliverooCard({
                           <li>L&apos;identifiant est affiché dans la section informations ou visible dans l&apos;URL</li>
                         </ol>
                         <div className="bg-muted rounded-md px-3 py-2 font-mono text-xs break-all">
-                          restaurant-hub.deliveroo.net/restaurants/<span className="text-primary font-bold">123456</span>/...
+                          restaurant-hub.deliveroo.net/restaurants/<span className="text-primary-ink font-bold">123456</span>/...
                         </div>
                       </div>
 

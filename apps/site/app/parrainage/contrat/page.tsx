@@ -256,7 +256,7 @@ export default function ContratPage() {
                   value={firstName}
                   onChange={setField("firstName")}
                   required
-                  className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                  className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
                 />
               </div>
               <div>
@@ -271,7 +271,7 @@ export default function ContratPage() {
                   value={lastName}
                   onChange={setField("lastName")}
                   required
-                  className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                  className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
                 />
               </div>
             </div>
@@ -289,7 +289,7 @@ export default function ContratPage() {
                 onChange={setField("address")}
                 required
                 placeholder="Numéro et nom de rue"
-                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
               />
             </div>
 
@@ -307,7 +307,7 @@ export default function ContratPage() {
                   onChange={setField("postalCode")}
                   required
                   placeholder="75001"
-                  className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                  className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
                 />
               </div>
               <div>
@@ -323,7 +323,7 @@ export default function ContratPage() {
                   onChange={setField("city")}
                   required
                   placeholder="Paris"
-                  className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                  className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
                 />
               </div>
             </div>
@@ -342,7 +342,7 @@ export default function ContratPage() {
                 required
                 type="tel"
                 placeholder="06 12 34 56 78"
-                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
               />
             </div>
 
@@ -360,7 +360,7 @@ export default function ContratPage() {
                 required
                 inputMode="numeric"
                 placeholder="123 456 789 00012"
-                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
               />
               <p className="mt-1.5 text-xs text-muted-foreground">
                 Programme réservé aux apporteurs professionnels. Pas encore de
@@ -382,29 +382,29 @@ export default function ContratPage() {
 
             {/* Contract summary */}
             <div className="mb-4 p-4 rounded-xl bg-primary/5 border border-primary/10">
-              <h3 className="text-sm font-medium text-primary mb-2">
+              <h3 className="text-sm font-medium text-primary-ink mb-2">
                 Points clés du contrat
               </h3>
               <ul className="text-sm text-muted-foreground space-y-1.5">
                 <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">&#x2022;</span>
+                  <span className="text-primary-ink mt-0.5">&#x2022;</span>
                   Commission de 500 € par client signé (barème en vigueur),
                   versée après une période de validation de 14 jours
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">&#x2022;</span>
+                  <span className="text-primary-ink mt-0.5">&#x2022;</span>
                   Vous agissez en tant qu&apos;intermédiaire indépendant
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">&#x2022;</span>
+                  <span className="text-primary-ink mt-0.5">&#x2022;</span>
                   Aucun pouvoir d&apos;encaissement au nom de Be in Digital
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">&#x2022;</span>
+                  <span className="text-primary-ink mt-0.5">&#x2022;</span>
                   Attribution via votre lien ou code de parrainage
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">&#x2022;</span>
+                  <span className="text-primary-ink mt-0.5">&#x2022;</span>
                   Signature électronique simple, horodatée et journalisée
                 </li>
               </ul>
@@ -436,7 +436,7 @@ export default function ContratPage() {
                 type="checkbox"
                 checked={consented}
                 onChange={(e) => setConsented(e.target.checked)}
-                className="mt-0.5 h-5 w-5 shrink-0 rounded border-border accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="mt-0.5 h-5 w-5 shrink-0 rounded border-border accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <span className="text-sm text-foreground/85">
                 J&apos;ai lu et j&apos;accepte les termes du contrat
@@ -457,7 +457,7 @@ export default function ContratPage() {
                 onChange={(e) => setSignatureNameOverride(e.target.value)}
                 placeholder="Prénom Nom"
                 autoComplete="name"
-                className="w-full h-12 px-4 rounded-xl bg-surface-1 border border-border text-foreground font-display text-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="w-full h-12 px-4 rounded-xl bg-surface-1 border border-border text-foreground font-display text-lg focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
               />
             </div>
 
@@ -494,7 +494,7 @@ export default function ContratPage() {
               !consented ||
               signatureName.trim().length < 3
             }
-            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-base hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             {saving ? "Signature en cours…" : "Signer le contrat"}
           </button>

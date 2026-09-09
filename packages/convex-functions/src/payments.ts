@@ -846,6 +846,31 @@ export const settleFromChargeEvent = {
       status: order.status,
       paymentStatus: order.paymentStatus,
     })
+    // THE LEDGER FIRST, THEN THE ORDER — the same order `stripeWebhook.ts`
+    // states at its own settlement, and for the same reason.
+    //
+    // These are separate transactions. Marking the order paid first COMMITS
+    // that, and `settlePayment` can still refuse afterwards — a second
+    // collection against a charge already settled by another provider, an
+    // amount that no longer binds. The order was then left reading « Payé »
+    // with no payment row against it: the money is not on the ledger, the
+    // invoice is minted, the confirmation mail is on its way, and nothing
+    // records that a collection was refused. Probed on the bench: 2 400 c
+    // taken, 1 200 c on the ledger, `FA-2026-000001` issued, zero
+    // `payment_collection_refused` rows.
+    //
+    // Settling first is safe in the other direction: `settlePayment` reads
+    // nothing about the order's status, and a settlement that succeeds is
+    // exactly the case in which the status write is wanted.
+    const settled = await settlePayment.handler(ctx, {
+      storeId: payment.storeId,
+      orderId: payment.orderId,
+      amount: payment.amount,
+      currency: payment.currency,
+      provider: payment.provider,
+      externalId,
+    })
+
     let confirmation: OrderConfirmationDispatch | null = null
     if (next) {
       // Through `recordPaymentStatus`, not a bare patch.
@@ -863,15 +888,6 @@ export const settleFromChargeEvent = {
         paymentStatus: next,
       })
     }
-
-    const settled = await settlePayment.handler(ctx, {
-      storeId: payment.storeId,
-      orderId: payment.orderId,
-      amount: payment.amount,
-      currency: payment.currency,
-      provider: payment.provider,
-      externalId,
-    })
 
     return {
       status: "settled",

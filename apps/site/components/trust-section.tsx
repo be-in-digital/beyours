@@ -104,7 +104,7 @@ export function TrustSection() {
           <div className="text-center max-w-3xl mx-auto mt-6 mb-16 lg:mb-20">
             <h2 className="font-display text-3xl sm:text-4xl lg:text-[2.9rem] font-semibold tracking-[-0.02em] leading-[1.1]">
               Pensé pour la restauration.{" "}
-              <span className="text-primary">Construit pour durer.</span>
+              <span className="text-primary-ink">Construit pour durer.</span>
             </h2>
             <p className="mt-5 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
               Nous ne partons pas d&apos;un produit générique à adapter. Chaque
@@ -304,7 +304,7 @@ function CentralSeal({ keyword }: { keyword: string | null }) {
             </span>
             {/* Keyword of the hovered pillar — only visible while hovering a card */}
             <span
-              className={`mt-3 rounded-full border border-[color:var(--border-accent)] bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-all duration-300 ${
+              className={`mt-3 rounded-full border border-[color:var(--border-accent)] bg-primary/10 px-3 py-1 text-xs font-semibold text-primary-ink transition-all duration-300 ${
                 keyword ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0"
               }`}
             >
@@ -346,7 +346,7 @@ function ProofCard({ proof, index, hovered, onHover, side }: ProofCardProps) {
         <div
           className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 transition-all duration-300 ${
             isActive
-              ? "bg-primary/15 border border-primary/25 text-primary"
+              ? "bg-primary/15 border border-primary/25 text-primary-ink"
               : "bg-secondary border border-[color:var(--border)] text-muted-foreground"
           }`}
         >

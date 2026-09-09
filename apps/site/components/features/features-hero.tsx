@@ -57,7 +57,7 @@ export function FeaturesHero() {
           <FadeIn delay={0.1}>
             <h1 className="mt-4 font-display text-3xl font-semibold leading-[1.08] tracking-[-0.03em] text-balance sm:text-4xl lg:text-5xl xl:text-6xl">
               Tout ce qu&apos;il faut pour{" "}
-              <span className="text-primary">digitaliser</span>
+              <span className="text-primary-ink">digitaliser</span>
               <br className="hidden sm:block" /> votre restaurant
             </h1>
           </FadeIn>
@@ -81,7 +81,7 @@ export function FeaturesHero() {
                   key={key}
                   className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-surface-1 px-4 py-2 text-sm text-secondary-foreground shadow-[0_6px_18px_-14px_rgba(112,60,34,0.4)]"
                 >
-                  <Icon className="h-4 w-4 text-primary" strokeWidth={1.8} />
+                  <Icon className="h-4 w-4 text-primary-ink" strokeWidth={1.8} />
                   <span>{pillars[key].label}</span>
                 </div>
               );
@@ -101,7 +101,7 @@ export function FeaturesHero() {
             return (
               <FadeIn key={key} delay={0.1 * i}>
                 <div className="h-full rounded-2xl border border-[color:var(--border)] bg-surface-1 p-4 text-center shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
-                  <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary-ink">
                     <Icon className="h-5 w-5" strokeWidth={1.8} />
                   </div>
                   <div className="text-sm font-semibold text-foreground">

@@ -10,12 +10,12 @@ export default function ParrainagePage() {
           className="bg-hero-radial pointer-events-none absolute inset-x-0 -top-16 h-72"
         />
         <div className="relative">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary-ink text-sm font-medium mb-6">
             Programme Apporteur d&apos;Affaires
           </div>
           <h1 className="font-display text-balance text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight mb-4">
             Gagnez{" "}
-            <span className="text-primary">500 &euro;</span>{" "}
+            <span className="text-primary-ink">500 &euro;</span>{" "}
             par client converti
           </h1>
           <p className="text-lg text-foreground/75 max-w-2xl mx-auto mb-8 text-pretty">
@@ -26,13 +26,13 @@ export default function ParrainagePage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href="/parrainage/inscription"
-              className="inline-flex items-center justify-center h-12 px-8 rounded-xl bg-primary text-primary-foreground font-semibold glow-primary hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="inline-flex items-center justify-center h-12 px-8 rounded-xl bg-primary text-primary-foreground font-semibold glow-primary hover:bg-primary/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               Devenir apporteur
             </Link>
             <Link
               href="/parrainage/connexion"
-              className="inline-flex items-center justify-center h-12 px-8 rounded-xl bg-surface-1 border border-border text-foreground font-medium hover:bg-surface-3 hover:border-border-contrast transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="inline-flex items-center justify-center h-12 px-8 rounded-xl bg-surface-1 border border-border text-foreground font-medium hover:bg-surface-3 hover:border-border-contrast transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               J&apos;ai déjà un compte
             </Link>
@@ -70,7 +70,7 @@ export default function ParrainagePage() {
               key={item.step}
               className="relative p-6 rounded-2xl bg-surface-1 border border-border"
             >
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary font-bold text-lg mb-4">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary-ink font-bold text-lg mb-4">
                 {item.step}
               </div>
               <h3 className="font-display text-lg font-semibold mb-2">{item.title}</h3>
@@ -106,7 +106,7 @@ export default function ParrainagePage() {
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="3"
-                  className="text-primary"
+                  className="text-primary-ink"
                 >
                   <polyline points="20 6 9 17 4 12" />
                 </svg>

@@ -196,7 +196,7 @@ export default function AdminOverviewPage() {
           <Card className="p-5">
             <SectionTitle
               action={
-                <Link href="/admin/incidents" className="text-xs font-medium text-primary hover:underline">
+                <Link href="/admin/incidents" className="text-xs font-medium text-primary-ink hover:underline">
                   Tous
                 </Link>
               }

@@ -14,13 +14,13 @@ function FeatureNode({ feature }: { feature: Feature }) {
     <div className="group relative h-full">
       <div className="relative h-full overflow-hidden rounded-2xl border border-[color:var(--border)] bg-surface-1 p-4 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] transition-all duration-300 group-hover:-translate-y-1 group-hover:border-[color:var(--border-accent)] lg:p-5">
         {/* Large watermark number */}
-        <span className="pointer-events-none absolute -right-1 -top-3 select-none font-display text-[72px] font-black leading-none text-primary/[0.06] transition-colors duration-500 group-hover:text-primary/[0.10] lg:text-[80px]">
+        <span className="pointer-events-none absolute -right-1 -top-3 select-none font-display text-[72px] font-black leading-none text-primary-ink/[0.06] transition-colors duration-500 group-hover:text-primary-ink/[0.10] lg:text-[80px]">
           {feature.tag}
         </span>
 
         {/* Number badge */}
         <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-[color:var(--border-accent)] bg-primary/10 transition-transform duration-300 group-hover:scale-110">
-          <span className="text-sm font-bold text-primary">{feature.tag}</span>
+          <span className="text-sm font-bold text-primary-ink">{feature.tag}</span>
         </div>
 
         {/* Title */}
@@ -84,13 +84,13 @@ export function EcosystemRecap() {
         {/* Header */}
         <FadeIn>
           <div className="mb-14 text-center lg:mb-16">
-            <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.25em] text-primary">
+            <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.25em] text-primary-ink">
               Écosystème complet
             </p>
             <h2 className="font-display text-2xl font-semibold leading-tight tracking-[-0.03em] sm:text-3xl lg:text-5xl">
               Une plateforme,{" "}
               <span className="relative inline-block">
-                <span className="text-primary">10 fonctionnalités</span>
+                <span className="text-primary-ink">10 fonctionnalités</span>
                 <span
                   aria-hidden="true"
                   className="absolute -bottom-1.5 left-0 right-0 h-px"
@@ -149,7 +149,7 @@ export function EcosystemRecap() {
                 <span className="grid h-5 w-5 place-items-center rounded-md bg-primary text-primary-foreground">
                   <UtensilsCrossed className="h-3 w-3" strokeWidth={2} />
                 </span>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-primary-ink">
                   BeYours
                 </span>
                 <span className="h-2 w-2 rounded-full bg-primary" />
@@ -192,13 +192,13 @@ export function EcosystemRecap() {
                 {/* Card */}
                 <div className="relative overflow-hidden rounded-xl border border-[color:var(--border)] bg-surface-1 p-4 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)]">
                   {/* Watermark */}
-                  <span className="pointer-events-none absolute right-2 top-1 select-none font-display text-[48px] font-black leading-none text-primary/[0.06]">
+                  <span className="pointer-events-none absolute right-2 top-1 select-none font-display text-[48px] font-black leading-none text-primary-ink/[0.06]">
                     {feature.tag}
                   </span>
 
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[color:var(--border-accent)] bg-primary/10">
-                      <span className="text-xs font-bold text-primary">
+                      <span className="text-xs font-bold text-primary-ink">
                         {feature.tag}
                       </span>
                     </div>

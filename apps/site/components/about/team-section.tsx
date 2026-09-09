@@ -57,7 +57,7 @@ export function TeamSection() {
           <div className="mx-auto mt-6 mb-16 max-w-3xl text-center lg:mb-20">
             <h2 className="font-display text-3xl font-semibold leading-[1.1] tracking-[-0.02em] text-balance text-foreground sm:text-4xl lg:text-5xl">
               Des experts.{" "}
-              <span className="text-primary">Une seule mission.</span>
+              <span className="text-primary-ink">Une seule mission.</span>
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
               On ne croit pas aux stars solo. BeYours, c&apos;est une
@@ -72,7 +72,7 @@ export function TeamSection() {
           <div className="relative mb-16 overflow-hidden rounded-2xl border border-[color:var(--border-accent)] bg-surface-1 p-8 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] sm:p-10">
             <div className="relative z-10 mx-auto max-w-3xl text-center">
               <Quote
-                className="mx-auto mb-4 h-8 w-8 text-primary/40"
+                className="mx-auto mb-4 h-8 w-8 text-primary-ink/40"
                 strokeWidth={1.8}
               />
               <p className="font-display text-xl font-medium leading-relaxed text-foreground sm:text-2xl">
@@ -80,7 +80,7 @@ export function TeamSection() {
                 compétences. Ce qui compte, c&apos;est ce qu&apos;on construit
                 ensemble pour nos clients.
               </p>
-              <p className="mt-4 text-sm font-medium text-primary">
+              <p className="mt-4 text-sm font-medium text-primary-ink">
                 L&apos;équipe BeYours
               </p>
             </div>
@@ -98,11 +98,11 @@ export function TeamSection() {
               <StaggerItem key={item.area}>
                 <div className="group h-full rounded-2xl border border-[color:var(--border)] bg-surface-1 p-6 shadow-[0_10px_30px_-20px_rgba(112,60,34,0.35)] transition-transform duration-300 hover:-translate-y-1 sm:p-7">
                   <div className="flex items-start gap-5">
-                    <span className="inline-grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <span className="inline-grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary-ink">
                       <Icon className="h-5 w-5" strokeWidth={1.8} />
                     </span>
                     <div>
-                      <h3 className="mb-2 font-display text-base font-semibold text-foreground transition-colors duration-300 group-hover:text-primary sm:text-lg">
+                      <h3 className="mb-2 font-display text-base font-semibold text-foreground transition-colors duration-300 group-hover:text-primary-ink sm:text-lg">
                         {item.area}
                       </h3>
                       <p className="text-sm leading-relaxed text-muted-foreground">
@@ -121,7 +121,7 @@ export function TeamSection() {
           <div className="mt-16 grid grid-cols-2 gap-8 border-t border-[color:var(--border)] pt-12 sm:grid-cols-4">
             {stats.map((stat) => (
               <div key={stat.label} className="text-center">
-                <div className="font-display text-2xl font-bold text-primary sm:text-3xl lg:text-4xl">
+                <div className="font-display text-2xl font-bold text-primary-ink sm:text-3xl lg:text-4xl">
                   {stat.value}
                 </div>
                 <div className="mt-2 text-xs text-muted-foreground sm:text-sm">

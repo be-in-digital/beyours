@@ -243,7 +243,11 @@ export default function CartContent() {
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <AlertDialogTrigger asChild>
-                                    <button className="p-1 text-muted-foreground transition-colors hover:text-destructive">
+                                    <button
+                                      type="button"
+                                      aria-label={`Retirer ${item.name} de la Box`}
+                                      className="p-1 text-muted-foreground transition-colors hover:text-destructive"
+                                    >
                                       <X className="h-4 w-4" />
                                     </button>
                                   </AlertDialogTrigger>

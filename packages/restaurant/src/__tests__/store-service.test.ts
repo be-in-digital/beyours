@@ -333,8 +333,17 @@ describe('Store Service', () => {
       ).toEqual(storeHours)
     })
 
-    it('treats a store without the flag as having its own hours', () => {
-      // Rows written before the flag existed. Absent is not "follow global".
+    it('treats a store without the flag as keeping its own hours', () => {
+      // `FOLLOWS_GLOBAL_HOURS_BY_DEFAULT` is `false`, declared once in
+      // `openingHours.ts` and read by the dashboard switch as well as by this
+      // resolver — which is the whole point, since the two used to disagree.
+      //
+      // This branch first made it `true`, on the grounds that every other layer
+      // read an absent flag that way. #446 chose `false` and it is the safer
+      // reading: `false` is what the order path has always enforced, so it
+      // changes no establishment's real hours and only stops the screen
+      // claiming otherwise. `true` would have moved every legacy store onto the
+      // deployment-wide week without anyone asking for it.
       expect(
         resolveStoreHours({ hours: storeHours }, { hours: globalHours })
       ).toEqual(storeHours)

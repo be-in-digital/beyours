@@ -70,7 +70,7 @@ export function AnalysisLoading({ className, onCancel }: AnalysisLoadingProps) {
                         </motion.div>
                       ) : isActive ? (
                         <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-primary">
-                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                          <Loader2 className="h-4 w-4 animate-spin text-primary-ink" />
                         </div>
                       ) : (
                         <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-muted-foreground/30">
@@ -85,7 +85,7 @@ export function AnalysisLoading({ className, onCancel }: AnalysisLoadingProps) {
                     <span
                       className={`text-sm transition-colors duration-300 ${
                         isCompleted
-                          ? "font-medium text-primary"
+                          ? "font-medium text-primary-ink"
                           : isActive
                             ? "font-medium text-foreground"
                             : "text-muted-foreground"

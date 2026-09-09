@@ -117,7 +117,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
             désignez le premier administrateur.
           </p>
           <div className="flex items-center justify-center gap-4 text-sm">
-            <a href="/setup" className="font-medium text-primary underline underline-offset-4">
+            <a href="/setup" className="font-medium text-primary-ink underline underline-offset-4">
               Configurer le déploiement
             </a>
             <a href={STOREFRONT} className="text-muted-foreground underline underline-offset-4">

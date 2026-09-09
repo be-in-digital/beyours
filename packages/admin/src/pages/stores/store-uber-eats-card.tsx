@@ -198,7 +198,7 @@ export function StoreUberEatsCard({
                           <li>Copiez l&apos;identifiant UUID qui apparaît après <code className="bg-muted px-1 py-0.5 rounded text-xs">/home/</code></li>
                         </ol>
                         <div className="bg-muted rounded-md px-3 py-2 font-mono text-xs break-all">
-                          merchants.ubereats.com/manager/home/<span className="text-primary font-bold">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span>
+                          merchants.ubereats.com/manager/home/<span className="text-primary-ink font-bold">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span>
                         </div>
                       </div>
 

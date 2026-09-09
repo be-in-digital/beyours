@@ -137,7 +137,7 @@ export default function IncidentDetailPage() {
                   {deployment ? (
                     <Link
                       href={`/admin/flotte/${deployment._id}`}
-                      className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                      className="inline-flex items-center gap-1 font-medium text-primary-ink hover:underline"
                     >
                       {deployment.restaurantName}
                       <ExternalLink className="size-3.5" />

@@ -108,7 +108,7 @@ export function SocialProofSection() {
               className="text-balance text-3xl sm:text-4xl lg:text-5xl font-medium tracking-[-0.03em] leading-[1.08]"
             >
               La meilleure preuve&nbsp;?{" "}
-              <span className="font-serif italic text-primary">Le produit.</span>
+              <span className="font-serif italic text-primary-ink">Le produit.</span>
             </h2>
             <p className="mt-5 text-base sm:text-lg text-muted-foreground leading-relaxed max-w-2xl mx-auto">
               Pas de longs discours&nbsp;: regardez exactement ce que vous
@@ -147,7 +147,7 @@ export function SocialProofSection() {
                   <span className="text-sm font-medium text-white/90">
                     {mood.label}
                   </span>
-                  <span className="inline-flex items-center gap-1 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <span className="inline-flex items-center gap-1 text-xs text-primary-ink opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     Voir le template
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M5 12h14M12 5l7 7-7 7" />
@@ -169,7 +169,7 @@ export function SocialProofSection() {
           {proofs.map((proof) => (
             <StaggerItem key={proof.title} className="h-full">
               <MagicCard className="h-full p-6 sm:p-7 flex flex-col">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 mb-5 [&>svg]:w-5 [&>svg]:h-5 [&>svg]:text-primary">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 mb-5 [&>svg]:w-5 [&>svg]:h-5 [&>svg]:text-primary-ink">
                   {proof.icon}
                 </div>
 
@@ -184,7 +184,7 @@ export function SocialProofSection() {
                   {proof.onClick ? (
                     <button
                       onClick={() => openBooking()}
-                      className="group inline-flex items-center gap-2 text-sm font-medium text-primary hover:brightness-110 transition-all cursor-pointer"
+                      className="group inline-flex items-center gap-2 text-sm font-medium text-primary-ink hover:brightness-110 transition-all cursor-pointer"
                     >
                       {proof.cta}
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-0.5">
@@ -194,7 +194,7 @@ export function SocialProofSection() {
                   ) : (
                     <Link
                       href={proof.href!}
-                      className="group inline-flex items-center gap-2 text-sm font-medium text-primary hover:brightness-110 transition-all"
+                      className="group inline-flex items-center gap-2 text-sm font-medium text-primary-ink hover:brightness-110 transition-all"
                     >
                       {proof.cta}
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-0.5">

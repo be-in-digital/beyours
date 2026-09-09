@@ -210,7 +210,7 @@ export function Orbit3D() {
               className="absolute left-1/2 top-1/2 cursor-pointer rounded-2xl will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
             >
               <span className="flex h-20 w-20 flex-col items-center justify-center gap-1.5 rounded-2xl border border-[color:var(--border)] bg-surface-1 px-2 shadow-[0_14px_32px_-18px_rgba(112,60,34,0.5)] transition-colors duration-200 hover:border-[color:var(--border-accent)]">
-                <Icon className="h-5 w-5 text-primary" strokeWidth={1.8} />
+                <Icon className="h-5 w-5 text-primary-ink" strokeWidth={1.8} />
                 <span className="text-center text-[9px] font-semibold uppercase tracking-wide leading-none text-muted-foreground">
                   {orbitLabels[key]}
                 </span>
@@ -242,7 +242,7 @@ export function Orbit3D() {
               aria-label={`Aller à : ${feature.title}`}
               className="absolute left-1/2 top-1/2 cursor-pointer rounded-xl will-change-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
             >
-              <span className="grid h-11 w-11 place-items-center rounded-xl border border-[color:var(--border)] bg-surface-1 text-primary shadow-[0_10px_24px_-14px_rgba(112,60,34,0.55)] transition-colors duration-200 hover:border-[color:var(--border-accent)] hover:bg-primary/5">
+              <span className="grid h-11 w-11 place-items-center rounded-xl border border-[color:var(--border)] bg-surface-1 text-primary-ink shadow-[0_10px_24px_-14px_rgba(112,60,34,0.55)] transition-colors duration-200 hover:border-[color:var(--border-accent)] hover:bg-primary/5">
                 <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} />
               </span>
             </button>
@@ -252,7 +252,7 @@ export function Orbit3D() {
         {/* Label of the hovered node */}
         <div className="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center">
           <span
-            className={`rounded-full border border-[color:var(--border-accent)] bg-surface-1 px-4 py-1.5 text-xs font-semibold text-primary shadow-[0_10px_24px_-14px_rgba(112,60,34,0.5)] transition-all duration-300 ${
+            className={`rounded-full border border-[color:var(--border-accent)] bg-surface-1 px-4 py-1.5 text-xs font-semibold text-primary-ink shadow-[0_10px_24px_-14px_rgba(112,60,34,0.5)] transition-all duration-300 ${
               hoverLabel ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
             }`}
           >

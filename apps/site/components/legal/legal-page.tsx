@@ -55,7 +55,7 @@ export function LegalPage({ title, subtitle, lastUpdated, children }: LegalPageP
             "[&_ul]:mb-4 [&_ul]:mt-1 [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5",
             "[&_ol]:mb-4 [&_ol]:mt-1 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5",
             "[&_li]:text-[15px] [&_li]:leading-[1.7] [&_li]:text-muted-foreground",
-            "[&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/40 [&_a]:underline-offset-2 hover:[&_a]:decoration-primary",
+            "[&_a]:font-medium [&_a]:text-primary-ink [&_a]:underline [&_a]:decoration-primary/40 [&_a]:underline-offset-2 hover:[&_a]:decoration-primary",
             "[&_strong]:font-semibold [&_strong]:text-foreground",
             "[&_address]:not-italic",
           ].join(" ")}

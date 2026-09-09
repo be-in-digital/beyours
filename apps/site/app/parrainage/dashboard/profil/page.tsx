@@ -152,7 +152,7 @@ export default function ProfilPage() {
             href={signedContract.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-secondary border border-border text-sm font-medium hover:bg-surface-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            className="inline-flex items-center gap-2 h-10 px-5 rounded-xl bg-secondary border border-border text-sm font-medium hover:bg-surface-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <svg
               width="16"
@@ -190,7 +190,7 @@ export default function ProfilPage() {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
-                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
               />
             </div>
             <div>
@@ -205,7 +205,7 @@ export default function ProfilPage() {
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
-                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+                className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
               />
             </div>
           </div>
@@ -237,7 +237,7 @@ export default function ProfilPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               type="tel"
-              className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+              className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
             />
           </div>
 
@@ -255,7 +255,7 @@ export default function ProfilPage() {
               required
               inputMode="numeric"
               placeholder="123 456 789 00012"
-              className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all"
+              className="w-full h-11 px-4 rounded-xl bg-surface-1 border border-border text-foreground focus:outline-none focus:ring-2 focus-visible:ring-ring focus:border-primary/50 transition-all"
             />
             <p className="mt-1.5 text-xs text-muted-foreground">
               Requis pour percevoir vos commissions (programme réservé aux

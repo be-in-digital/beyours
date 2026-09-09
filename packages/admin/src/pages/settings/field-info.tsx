@@ -47,7 +47,7 @@ export function FieldInfo({ title, description, steps, links, note }: FieldInfoP
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                  className="flex items-center gap-1.5 text-sm text-primary-ink hover:underline"
                 >
                   <ExternalLink className="h-3 w-3 shrink-0" />
                   {link.label}

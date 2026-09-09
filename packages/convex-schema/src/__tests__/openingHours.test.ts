@@ -29,10 +29,44 @@ describe("resolveStoreHours", () => {
   const globalWeek = week("08:00", "16:00")
   const storeWeek = week("11:00", "23:00")
 
-  it("takes the establishment's own week by default", () => {
+  it("keeps the establishment's own week when the flag was never written", () => {
+    // THE DEFAULT IS DECLARED ONCE, in `FOLLOWS_GLOBAL_HOURS_BY_DEFAULT`, and
+    // it is `false`. This branch originally made it `true` — every other layer
+    // read an absent flag that way, and the observed failure was a storefront
+    // serving 09:00-22:00 while the store screen stated the global 02:00-03:00.
+    //
+    // #446 landed the opposite choice on `main` and it is the better one, for
+    // a reason this branch had under-weighted: `false` is what the ORDER PATH
+    // has always enforced, so adopting it changes no establishment's actual
+    // hours — it only stops the dashboard claiming otherwise, which #446 also
+    // fixed by having the switch read `followsGlobalHours` too. `true` would
+    // have silently moved every legacy store onto the deployment-wide week,
+    // which on a narrow global week means a restaurant that quietly stops
+    // taking orders.
+    //
+    // The disagreement was never about which week is right; it was that the
+    // screen and the order path answered differently. One reading settles it.
     expect(
       resolveStoreHours({ hours: storeWeek }, { hours: globalWeek })
     ).toEqual(storeWeek)
+  })
+
+  it("keeps the establishment's own week when the flag is explicitly off", () => {
+    expect(
+      resolveStoreHours(
+        { hours: storeWeek, useGlobalHours: false },
+        { hours: globalWeek }
+      )
+    ).toEqual(storeWeek)
+  })
+
+  it("falls back to the location's own week when the flag is absent and no global week exists", () => {
+    // The conservative half of the same choice. An empty result reads as "no
+    // schedule declared" to `isWithinBusinessHoursAt`, which is permission to
+    // serve at any hour — so an unsaved store with no global week keeps its own
+    // rather than becoming a restaurant that is never shut.
+    expect(resolveStoreHours({ hours: storeWeek }, { hours: [] })).toEqual(storeWeek)
+    expect(resolveStoreHours({ hours: storeWeek }, null)).toEqual(storeWeek)
   })
 
   it("takes the global week when the location follows it", () => {

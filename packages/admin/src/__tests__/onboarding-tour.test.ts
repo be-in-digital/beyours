@@ -572,10 +572,25 @@ describe("onboarding tour — remembering that it was offered", () => {
  * "1 / 28" read at 7.86:1 while the sentence beside it did not.
  *
  * WHY THE APP-LEVEL CONTRAST SWEEP DOES NOT COVER THIS. `contrast-scan.ts`
- * resolves `className` strings; this is an inline `style={{}}` object handed to
- * a third-party provider, and its own header says so — "inline style={{}} never
- * read". That is a real limit of a static class sweep, not an oversight, and it
- * is why the pairing is asserted here at the one place that renders it.
+ * resolved `className` strings and nothing else; this is an inline `styles={{}}`
+ * map handed to a third-party provider, so the pairing is asserted here at the
+ * one place that renders it.
+ *
+ * THAT IS NO LONGER THE WHOLE STORY, and the difference matters. The
+ * assertions below are about the SHAPE of the style object — that both members
+ * of the pair are set, and which tokens the popover takes them from. They do no
+ * arithmetic, which an audit demonstrated rather than argued: painting the
+ * badge `--primary` on `--primary` gives a pair measuring EXACTLY 1.000:1 and
+ * satisfies every assertion here, because the pair is present and both halves
+ * come from tokens.
+ *
+ * `contrast-scan.ts` now reads `style={{}}` and `styles={{}}` as well as
+ * `className`, so the app-level sweep MEASURES this file's pairs. These
+ * assertions stay because they say something that sweep cannot: not just that
+ * the numbers work out today, but that the pair comes from
+ * `--popover`/`--popover-foreground` — so a theme moves both together and a
+ * future palette cannot silently make one of them a literal that happens to
+ * pass.
  */
 describe("onboarding tour — the popover can be read", () => {
   const provider = read(path.join(ADMIN_SRC, "components/onboarding/tour-provider.tsx"))

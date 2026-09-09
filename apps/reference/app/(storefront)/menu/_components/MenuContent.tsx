@@ -258,6 +258,7 @@ function MenuContent() {
               </div>
               <input
                 type="text"
+                aria-label="Rechercher un plat"
                 placeholder="Rechercher un plat..."
                 className="flex-1 h-14 bg-transparent border-none outline-none text-lg font-bold placeholder:text-muted-foreground text-foreground"
                 value={search}
@@ -266,6 +267,8 @@ function MenuContent() {
               />
               {search && (
                 <button
+                  type="button"
+                  aria-label="Effacer la recherche"
                   onClick={() => {
                     setSearch("")
                     updateSearchParams("q", null)

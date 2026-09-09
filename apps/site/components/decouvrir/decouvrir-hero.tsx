@@ -16,7 +16,7 @@ export function DecouvrirHero() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-accent)] bg-primary/[0.06] px-3.5 py-1.5 text-xs font-medium text-primary"
+            className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border-accent)] bg-primary/[0.06] px-3.5 py-1.5 text-xs font-medium text-primary-ink"
           >
             <MousePointerClick className="h-3.5 w-3.5" />
             Démonstration interactive
@@ -89,7 +89,7 @@ export function DecouvrirHero() {
           className="relative"
         >
           <StorefrontPreview />
-          <div className="pointer-events-none absolute -right-3 -top-4 hidden rotate-6 rounded-2xl border border-[color:var(--border-accent)] bg-surface-1 px-3 py-2 text-xs font-semibold text-primary shadow-[0_10px_30px_-14px_rgba(112,60,34,0.5)] sm:block">
+          <div className="pointer-events-none absolute -right-3 -top-4 hidden rotate-6 rounded-2xl border border-[color:var(--border-accent)] bg-surface-1 px-3 py-2 text-xs font-semibold text-primary-ink shadow-[0_10px_30px_-14px_rgba(112,60,34,0.5)] sm:block">
             Site à votre marque
           </div>
         </motion.div>

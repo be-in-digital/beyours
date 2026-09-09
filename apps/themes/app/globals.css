@@ -101,7 +101,12 @@
      * so it carries text and has to clear AA both ways: 38% reads at 4.58:1 on
      * `--muted` and takes a white label at 5.75:1. At 53% it was 2.65:1.
      */
-    --accent-solid: 24 90% 38%;
+    /* Darkened for the 51 templates. A template overrides --muted and not this
+       token, so a fixed ink met a shifted surface: 4.03-4.41:1 across the
+       catalogue against the 4.5 AA asks, worst on poulet-wingsclub. 34% clears
+       every template surface at 4.693 and improves its own white label from
+       5.028 to 5.997. */
+    --accent-solid: 24 90% 34%;
     --accent-solid-foreground: 0 0% 100%;
     --secondary: 220 14% 96%;
     --secondary-foreground: 224 71% 4%;
@@ -121,12 +126,24 @@
      * 47% clears both (4.60:1 and 6.29:1).
      */
     /*
-     * 44%, not 47%, and for the same reason as `--success` above: the status
-     * chip `bg-destructive/10 text-destructive` measured 4.18:1 at 47%. Every
-     * other pairing improves — a white label on the fill goes from 5.4:1 to
-     * 6.0:1, and the fill's own separation from the page rises with it.
+     * 42%, and it has to satisfy two independent measurements — take the
+     * darker, because a tint of the ink under the ink is the surface least
+     * forgiving of it and both of these are that shape.
+     *
+     * #447 measured the engine's own light admin: `bg-destructive/10
+     * text-destructive` at 47% gives 4.18:1, and 44% clears it.
+     * This branch measured the 51 shipped templates, where a template
+     * overrides --card, --background and --muted and NOT this token, so a
+     * fixed ink meets a shifted surface: `bg-destructive/5` composited over
+     * fast-food-grill77 measured 4.176:1, and 42% is what clears all 51.
+     *
+     * 42% is the darker, so it clears the admin chip too. Every other pairing
+     * improves with it: a white label on the fill goes from 5.4:1 to 6.2:1,
+     * and the fill's own separation from the page rises with it. Do not
+     * lighten this back to 44% — that is the admin-only answer, and it puts
+     * the templates back under AA.
      */
-    --destructive: 0 84% 44%;
+    --destructive: 0 84% 42%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 93%;
     /*
@@ -158,14 +175,17 @@
      * See #168.
      */
     /*
-     * 27%, not 28%. One more point, for the same reason the last one was
-     * taken: `bg-success/10 text-success` is how this codebase paints a status
-     * chip — a tint of the ink under the ink — and at 28% that pair measured
-     * 4.43:1 on the light admin. A tint of a colour is the surface least
-     * forgiving of it, so clearing 4.5 there clears everything else the token
-     * lands on.
+     * 25%, chosen the same way and for the same reason as --destructive above.
+     *
+     * #447 measured `bg-success/10 text-success` on the light admin: 4.43:1 at
+     * 28%, cleared at 27%. This branch measured the same token against the 51
+     * templates, whose shifted surfaces put `bg-success/10` at 4.081:1 on
+     * fast-food-grill77; 25% is what clears all 51.
+     *
+     * 25% is the darker of the two, so it clears the admin chip as well. Do
+     * not lighten it back to 27%.
      */
-    --success: 142 76% 27%;
+    --success: 142 76% 25%;
     --success-foreground: 0 0% 100%;
     /*
      * 30%, and the label inverts with it. At 50% this amber measured 2.09:1 on
@@ -175,7 +195,12 @@
      * why moving it costs nothing. 30 rather than 31 so it also clears its own
      * `bg-warning/10` tint, which is how a warning banner is painted.
      */
-    --warning: 38 92% 30%;
+    /* Darkened for the 51 templates, not for the engine's own page: a template
+       overrides --card, --background and --muted and NOT this token, so a fixed
+       ink met a shifted surface. `bg-warning/10` composites this colour over that
+       surface, and the same colour written on the result measured 4.260:1 on
+       fast-food-grill77 against the 4.5 AA asks. Solved across all 51. */
+    --warning: 38 92% 28%;
     --warning-foreground: 0 0% 100%;
     /* 45%: at 60% a white label on it measured 3.63:1. */
     --info: 217 91% 45%;
@@ -235,7 +260,12 @@
     --success-foreground: 224 71% 4%;
     --warning: 38 92% 50%;
     --warning-foreground: 224 71% 4%;
-    --info: 217 91% 64%;
+    /* Darkened for the 51 templates, not for the engine's own page: a template
+       overrides --card, --background and --muted and NOT this token, so a fixed
+       ink met a shifted surface. `bg-info/10` composites this colour over that
+       surface, and the same colour written on the result measured 4.5 in dark on
+       fast-food-grill77 against the 4.5 AA asks. Solved across all 51. */
+    --info: 217 91% 72%;
     --info-foreground: 224 71% 4%;
 
     /* Order status colors - dark mode */
@@ -379,7 +409,11 @@
      * this orange measured 2.78:1. One point deeper than the engine's own
      * because `--muted` here is the engine's `220 14% 96%` and this hue is a
      * shade lighter — 38% measured 4.39:1 on it. */
-    --accent-solid: 25 95% 37%;
+    /* Same correction as the engine scope above, for the same reason: a template
+       shifts --muted underneath a token it does not declare. 4.03-4.44:1 across
+       the catalogue; 34% clears at 4.511 and takes its own white label from
+       5.036 to 5.765. */
+    --accent-solid: 25 95% 34%;
     --accent-solid-foreground: 0 0% 100%;
   }
 

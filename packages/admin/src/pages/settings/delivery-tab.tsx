@@ -256,7 +256,7 @@ export function DeliveryTab({
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Frais client ({deliveryPercentage}%)</span>
-                    <span className="font-medium text-primary">{centsToEuros(simulationResult.clientFee).toFixed(2)} €</span>
+                    <span className="font-medium text-primary-ink">{centsToEuros(simulationResult.clientFee).toFixed(2)} €</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">

@@ -46,7 +46,7 @@ export function TemplatesHero() {
           <h1 className="mt-8 font-display text-4xl font-semibold leading-[1.08] tracking-[-0.02em] text-foreground text-balance sm:text-5xl lg:text-6xl xl:text-7xl">
             Un design premium pour
             <br className="hidden sm:block" />{" "}
-            <span className="text-primary">chaque type de cuisine</span>
+            <span className="text-primary-ink">chaque type de cuisine</span>
           </h1>
         </FadeIn>
 

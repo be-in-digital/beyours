@@ -17,7 +17,7 @@ export default function CheckoutSuccessPage() {
 
           <div className="mt-6 w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto">
             <svg
-              className="w-8 h-8 text-primary"
+              className="w-8 h-8 text-primary-ink"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -31,7 +31,7 @@ export default function CheckoutSuccessPage() {
 
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-[-0.02em] mt-6">
             Merci pour votre{" "}
-            <span className="text-primary">confiance</span>
+            <span className="text-primary-ink">confiance</span>
           </h1>
 
           <p className="mt-4 text-sm sm:text-base text-muted-foreground max-w-md mx-auto leading-relaxed">
