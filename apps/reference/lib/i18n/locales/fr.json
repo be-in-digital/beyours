@@ -209,5 +209,8 @@
   "product.addNamedToCart": "Ajouter {name} au panier",
   "product.addToFavorites": "Ajouter {name} aux favoris",
   "product.removeFromFavorites": "Retirer {name} des favoris",
-  "store.choose": "Choisir {name}"
+  "store.choose": "Choisir {name}",
+  "accessibility.cartStatus": "Box : {count} articles, total {total}",
+  "accessibility.cartEmptied": "Votre Box est vide",
+  "accessibility.openBoxWithCount": "Ouvrir la Box, {count} articles"
 }

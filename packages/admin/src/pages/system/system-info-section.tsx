@@ -37,7 +37,7 @@ export function SystemInfoSection({
         </CardHeader>
         <CardContent>
           {versionMismatch ? (
-            <p className="text-xs text-amber-500 flex items-center gap-1">
+            <p className="text-xs text-warning flex items-center gap-1">
               <AlertTriangleIcon className="h-3 w-3" />
               Snapshot DB : {info.deployedAppVersion}
             </p>
@@ -90,11 +90,11 @@ export function SystemInfoSection({
           <CardDescription>Verrou système</CardDescription>
           <CardTitle className="text-2xl">
             {info.isLockActive ? (
-              <span className="flex items-center gap-2 text-amber-500">
+              <span className="flex items-center gap-2 text-warning">
                 <LockIcon className="h-5 w-5" /> Verrouille
               </span>
             ) : (
-              <span className="flex items-center gap-2 text-emerald-500">
+              <span className="flex items-center gap-2 text-success">
                 <UnlockIcon className="h-5 w-5" /> Libre
               </span>
             )}

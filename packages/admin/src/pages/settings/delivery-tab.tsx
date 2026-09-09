@@ -262,7 +262,7 @@ export function DeliveryTab({
                     <span className="text-muted-foreground">
                       {simulationResult.restaurantLoss > 0 ? "Perte restaurant" : "Marge restaurant"}
                     </span>
-                    <span className={simulationResult.restaurantLoss > 0 ? "text-destructive" : "text-green-600"}>
+                    <span className={simulationResult.restaurantLoss > 0 ? "text-destructive" : "text-success"}>
                       {centsToEuros(simulationResult.restaurantLoss).toFixed(2)} €
                     </span>
                   </div>

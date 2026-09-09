@@ -6,7 +6,9 @@
  * Usage:
  *   node scripts/check-source-drift.mjs [--warn-only]
  *
- *   --warn-only   report as ::warning:: and exit 0
+ *   --warn-only        report drift as ::warning:: and exit 0
+ *   --no-registry      skip the subpath half, which needs a token
+ *   --fail-waiting     also fail on a package whose release has not been cut
  *
  * WHY IT GATES, where `check:pending-release` only reports. A changeset that
  * exists and is waiting is the intended workflow — batching a few fixes into
@@ -25,6 +27,22 @@
  * exists for that and is the honest answer: it records that the source moved
  * and that nobody owed a release note, which is a different statement from
  * silence.
+ *
+ * "COVERED" WAS NOT "RELEASED", and the table said the first while everyone
+ * read the second. A package with a waiting changeset was printed as `covered`
+ * beside `clean`, closed with "Every package with source changes since its last
+ * release carries a changeset.", and exited 0 — while `publish-mirror --check`
+ * exited 1 on that same package, because the registry was still serving the
+ * build made before those files moved. Both were right about their own
+ * question. Only one of them was being read as an answer to the other.
+ *
+ * So the state is `waiting` now, its row says what the registry is serving, and
+ * the run emits a `::notice::` naming the packages. It still does not GATE:
+ * batching a few fixes into one release is the intended workflow, and
+ * `lib/pending-release.mjs` sets out at length why failing the Release run
+ * would stop the mirror this is reporting on. `--fail-waiting` makes it
+ * blocking for whoever decides otherwise; nothing passes it today, which is the
+ * same escape hatch `check-pending-release.mjs` keeps in `--fail`.
  *
  * SHALLOW CLONES. `actions/checkout` fetches depth 1, where a bump older than
  * the tip has no commit to find. The check then reports `unknown` rather than
@@ -61,13 +79,21 @@ import { join } from "node:path"
 import { EXPORTS_UNKNOWN, exportsResolve, publishedTarball } from "./lib/engine-exports.mjs"
 import { CHANGESET_DIR, isChangesetFile, parseChangeset } from "./lib/pending-release.mjs"
 import { lookupPublishedVersion, publishablePackages, REPO_ROOT } from "./lib/registry.mjs"
-import { describeDrift, formatSummary, formatTable, summariseDrift } from "./lib/source-drift.mjs"
+import {
+  describeDrift,
+  describeWaiting,
+  formatSummary,
+  formatTable,
+  formatWaitingSummary,
+  summariseDrift,
+} from "./lib/source-drift.mjs"
 
 const warnOnly = process.argv.includes("--warn-only")
 const skipRegistry = process.argv.includes("--no-registry")
+const failWaiting = process.argv.includes("--fail-waiting")
 
 for (const arg of process.argv.slice(2)) {
-  if (arg !== "--warn-only" && arg !== "--no-registry") {
+  if (arg !== "--warn-only" && arg !== "--no-registry" && arg !== "--fail-waiting") {
     console.error(`::error::Unknown argument "${arg}".`)
     process.exit(2)
   }
@@ -137,7 +163,7 @@ const entries = publishablePackages().map((pkg) => {
   return { ...pkg, since, changed: since === null ? [] : changedSince(since, pkg.dir) }
 })
 
-const { rows, drifted, unknown } = summariseDrift(entries, covered)
+const { rows, drifted, waiting, unknown } = summariseDrift(entries, covered)
 
 console.log(formatTable(rows))
 console.log("")
@@ -149,6 +175,15 @@ if (unknown.length > 0) {
     `::notice::${unknown.length} package(s) could not be checked — no version bump in this clone's ` +
       "history. Fetch full history (actions/checkout with fetch-depth: 0) for this check to mean anything."
   )
+}
+
+if (waiting.length > 0) {
+  // Reported at every run, including the green ones — this IS the green one's
+  // finding. Exit 0 used to be the whole message, and "has a changeset" was
+  // read as "a client has the code".
+  console.log(`::${failWaiting ? "error" : "notice"}::${describeWaiting(waiting)}`)
+  const waitingSummary = process.env.GITHUB_STEP_SUMMARY
+  if (waitingSummary) appendFileSync(waitingSummary, `${formatWaitingSummary(waiting)}\n\n`)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -290,7 +325,13 @@ if (subpathSummary && subpathProblems.length > 0) {
 }
 
 if (drifted.length === 0 && blocking.length === 0) {
-  console.log("Every package with source changes since its last release carries a changeset.")
+  console.log(
+    waiting.length === 0
+      ? "Every package with source changes since its last release carries a changeset, and every " +
+          "changeset has been released."
+      : `Every package with source changes carries a changeset — but ${waiting.length} of them are ` +
+          "still waiting for a release, so no client site has that code yet."
+  )
   // Only claimed for the packages actually compared. Saying "every declared
   // subpath exists" after reading nine tarballs of ten and failing on all nine
   // is the same lie this check was extended to stop telling.
@@ -316,10 +357,10 @@ if (drifted.length === 0 && blocking.length === 0) {
         `(${subpathChecked} package(s) compared).`
     )
   }
-  process.exit(0)
+  process.exit(failWaiting && waiting.length > 0 ? 1 : 0)
 }
 
-if (drifted.length === 0) process.exit(warnOnly ? 0 : 1)
+if (drifted.length === 0) process.exit(warnOnly && !(failWaiting && waiting.length > 0) ? 0 : 1)
 
 
 const level = warnOnly ? "warning" : "error"
@@ -336,4 +377,4 @@ console.log(
     "Run `pnpm changeset` (or `pnpm changeset --empty` if nothing is owed a release note)."
 )
 
-process.exit(warnOnly ? 0 : 1)
+process.exit(warnOnly && !(failWaiting && waiting.length > 0) ? 0 : 1)

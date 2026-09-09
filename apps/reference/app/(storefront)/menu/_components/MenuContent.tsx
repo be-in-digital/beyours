@@ -323,10 +323,31 @@ function MenuContent() {
           <div>
             <h2 className="text-2xl font-black tracking-tighter text-foreground uppercase">
               Affichage : <span className="text-accent-foreground">{activeCategoryName}</span>
-              <span className="ml-2 text-muted-foreground">
+              {/* `aria-hidden` because the sentence below says the same thing
+                  properly. A bare "(7)" read out after a heading is not an
+                  answer to "how many dishes match what I just typed". */}
+              <span aria-hidden="true" className="ml-2 text-muted-foreground">
                 ({filteredProducts?.length ?? 0})
               </span>
             </h2>
+            {/*
+              How many dishes the search, the category chips and the
+              availability filter just left.
+
+              The number is rendered in the heading above and a heading is not
+              a live region: a diner using a screen reader typed into the
+              search box and heard nothing at all, on the one control whose
+              entire purpose is to change this count. Polite and atomic, so the
+              whole sentence is read once the typing stops rather than a digit
+              at a time.
+            */}
+            <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+              {filteredProducts === undefined
+                ? ""
+                : `${filteredProducts.length} ${
+                    filteredProducts.length === 1 ? "plat" : "plats"
+                  } — ${activeCategoryName}`}
+            </p>
           </div>
 
           <div className="flex items-center gap-4">

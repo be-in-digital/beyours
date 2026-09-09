@@ -54,6 +54,8 @@ export const assertAdmin = internalQuery({
 
 /* ── Queries ── */
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const getStats = query({
   args: {},
   handler: async (ctx) => {
@@ -97,6 +99,8 @@ export const getStats = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const listAffiliates = query({
   args: {},
   handler: async (ctx) => {
@@ -156,6 +160,8 @@ export const REFERRAL_STATUS_VALIDATOR = v.union(
   v.literal("blocked"),
 );
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const listReferrals = query({
   args: {
     status: v.optional(REFERRAL_STATUS_VALIDATOR),
@@ -194,6 +200,8 @@ export const listReferrals = query({
 
 /* ── Mutations ── */
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const updateAffiliateStatus = mutation({
   args: {
     affiliateUserId: v.id("affiliateUsers"),
@@ -209,6 +217,8 @@ export const updateAffiliateStatus = mutation({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const updateSettings = mutation({
   args: {
     defaultCommissionCents: v.number(),
@@ -253,6 +263,8 @@ export const updateSettings = mutation({
  * with a reversal of the transfer is the path for a paid commission, and the
  * error says so rather than leaving the operator to guess.
  */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const blockReferralPayout = mutation({
   args: {
     referralId: v.id("referrals"),
@@ -288,6 +300,8 @@ export const blockReferralPayout = mutation({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const unblockReferralPayout = mutation({
   args: {
     referralId: v.id("referrals"),
@@ -306,6 +320,8 @@ export const unblockReferralPayout = mutation({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const resetAffiliateStripeConnect = mutation({
   args: { affiliateUserId: v.id("affiliateUsers") },
   handler: async (ctx, args) => {

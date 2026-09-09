@@ -45,7 +45,7 @@ export function CategoryMapper({
         <label className="text-xs font-medium text-muted-foreground">Catégorie</label>
         <AiFieldBadge source={suggestedSource} />
         {isNewCategory && (
-          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-500 text-amber-600">
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-warning text-warning">
             <Plus className="h-2.5 w-2.5 mr-0.5" />
             Nouvelle
           </Badge>
@@ -69,7 +69,7 @@ export function CategoryMapper({
                 className="text-xs"
               >
                 <span className="flex items-center gap-1.5">
-                  <Plus className="h-3 w-3 text-amber-600" />
+                  <Plus className="h-3 w-3 text-warning" />
                   Creer "{suggestedName}"
                 </span>
               </SelectItem>
@@ -83,7 +83,7 @@ export function CategoryMapper({
         </p>
       )}
       {isNewCategory && (
-        <p className="text-[10px] text-amber-600">
+        <p className="text-[10px] text-warning">
           La categorie "{newCategoryName}" sera creee automatiquement
         </p>
       )}

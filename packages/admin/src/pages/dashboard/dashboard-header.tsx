@@ -34,7 +34,7 @@ export function DashboardHeader() {
       <p className="text-muted-foreground mt-0.5 text-sm">
         {getFormattedDate()}
         {currentStore?.name && (
-          <span className="text-foreground/50"> · {currentStore.name}</span>
+          <span className="text-muted-foreground"> · {currentStore.name}</span>
         )}
       </p>
     </div>

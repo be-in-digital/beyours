@@ -209,5 +209,8 @@
   "product.addNamedToCart": "Añadir {name} a la cesta",
   "product.addToFavorites": "Añadir {name} a favoritos",
   "product.removeFromFavorites": "Quitar {name} de favoritos",
-  "store.choose": "Elegir {name}"
+  "store.choose": "Elegir {name}",
+  "accessibility.cartStatus": "Box: {count} artículos, total {total}",
+  "accessibility.cartEmptied": "Tu Box está vacía",
+  "accessibility.openBoxWithCount": "Abrir la Box, {count} artículos"
 }

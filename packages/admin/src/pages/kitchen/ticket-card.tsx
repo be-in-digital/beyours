@@ -243,7 +243,7 @@ export function TicketCard({ ticket }: TicketCardProps) {
 
         {/* Print stuck warning */}
         {printStuck && (
-          <div className="flex items-center gap-1 text-xs text-amber-600 font-medium">
+          <div className="flex items-center gap-1 text-xs text-warning font-medium">
             <span>Non imprimée</span>
           </div>
         )}

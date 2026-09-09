@@ -150,7 +150,7 @@ export function ImageUploader({
           <button
             type="button"
             onClick={handleRemove}
-            className="absolute top-1.5 right-1.5 inline-flex size-6 items-center justify-center rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute top-1.5 right-1.5 inline-flex size-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -236,7 +236,7 @@ export function ImageUploader({
           <>
             <Upload className="h-6 w-6 text-muted-foreground" />
             <p className="text-xs text-muted-foreground text-center">{placeholder}</p>
-            <p className="text-[10px] text-muted-foreground/70">
+            <p className="text-[10px] text-muted-foreground">
               JPEG, PNG, WebP, SVG, GIF — Max {maxSizeMB}MB
             </p>
           </>

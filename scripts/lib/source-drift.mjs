@@ -22,6 +22,20 @@
  * itself: a pending changeset is released by the next release, and a missing
  * one is released by nothing, ever.
  *
+ * AND WHAT "COVERED" USED TO MEAN, WHICH WAS NOT WHAT IT SAID. A package whose
+ * source had moved and whose changeset was waiting was printed as `covered`,
+ * next to `clean`, under a closing line reading "Every package with source
+ * changes since its last release carries a changeset." — and exit 0. All of
+ * that is true and none of it is "released". A changeset is by construction an
+ * UNCONSUMED release: `changeset version` deletes the file when it cuts one, so
+ * a changeset that still exists is proof the release has not happened. The
+ * registry therefore still serves the pre-change build under the same version
+ * number the workspace carries — #209's "published 2.0.2 and workspace 2.0.2
+ * were two different sets of code" — which is why `publish-mirror --check`
+ * exits 1 on a package this check called covered. The state is now named
+ * `waiting`, its detail says what the registry is serving, and the closing
+ * lines state both facts rather than the reassuring half.
+ *
  * WHAT COUNTS AS A CHANGE. Only `src/`, and not its tests. A published tarball
  * is built from `src`; a test file changes nothing a client installs, and
  * demanding a version bump for one would make the check noise rather than a
@@ -58,17 +72,24 @@ export function summariseDrift(entries, covered) {
   const rows = entries.map((entry) => {
     const changed = (entry.changed ?? []).filter(isReleasableSource)
     const state =
-      entry.since === null ? "unknown" : changed.length === 0 ? "clean" : covered.has(entry.name) ? "covered" : "drifted"
+      entry.since === null
+        ? "unknown"
+        : changed.length === 0
+          ? "clean"
+          : covered.has(entry.name)
+            ? "waiting"
+            : "drifted"
 
     return { ...entry, changed, state }
   })
 
-  const rank = { drifted: 0, unknown: 1, covered: 2, clean: 3 }
+  const rank = { drifted: 0, unknown: 1, waiting: 2, clean: 3 }
   rows.sort((a, b) => rank[a.state] - rank[b.state] || a.name.localeCompare(b.name))
 
   return {
     rows,
     drifted: rows.filter((row) => row.state === "drifted"),
+    waiting: rows.filter((row) => row.state === "waiting"),
     unknown: rows.filter((row) => row.state === "unknown"),
   }
 }
@@ -86,7 +107,12 @@ export function formatTable(rows) {
         ? "history too shallow to tell"
         : row.changed.length === 0
           ? "no source change"
-          : `${row.changed.length} source file(s) changed`
+          : row.state === "waiting"
+            ? // Spelled out because `covered` used to sit here and read as
+              // "shipped". The registry serves ${row.version} — the build from
+              // BEFORE these files moved — until someone cuts the release.
+              `${row.changed.length} file(s) changed; registry still serves the ${row.version} built before them`
+            : `${row.changed.length} source file(s) changed`
     lines.push(`  ${row.name.padEnd(width)}  ${row.version.padEnd(8)}  ${row.state.padEnd(8)}  ${detail}`)
   }
 
@@ -107,6 +133,44 @@ export function formatSummary(drifted) {
     ...drifted.map((row) => `| \`${row.name}\` | ${row.version} | ${row.changed.length} |`),
     "",
     "Run `pnpm changeset` and describe the change.",
+  ].join("\n")
+}
+
+/**
+ * The `waiting` set, as one line for a CI annotation.
+ *
+ * Not an error and not silence. `check:source-drift` gates on `drifted` and
+ * must not gate on this — batching a few fixes into one release is the
+ * intended workflow, and `check-pending-release.mjs` already says at length why
+ * failing the Release run would stop the mirror it is reporting on. What was
+ * missing is that the run said NOTHING: exit 0, a table reading `covered`, and
+ * a closing line that answered a question nobody asked.
+ */
+export function describeWaiting(waiting) {
+  const files = waiting.reduce((total, row) => total + row.changed.length, 0)
+  return (
+    `${waiting.length} package(s) have source a release has not carried yet: ${files} file(s) across ` +
+    `${waiting.map((row) => `${row.name}@${row.version}`).join(", ")}. ` +
+    "Each has a changeset, so the next release carries it; until then the registry serves the build " +
+    "made before these files moved, and a client site installs that one."
+  )
+}
+
+/** The `waiting` rows as a markdown block, for $GITHUB_STEP_SUMMARY. */
+export function formatWaitingSummary(waiting) {
+  return [
+    "### Engine source waiting on a release",
+    "",
+    "These packages have a changeset, so a release will carry them. Until one is",
+    "cut, `changeset publish` leaves the registry serving the build made BEFORE",
+    "these files moved — under the same version number the workspace carries.",
+    "That is the state `publish-mirror --check` exits 1 on.",
+    "",
+    "| Package | Version on the registry | Files changed since |",
+    "| --- | --- | --- |",
+    ...waiting.map((row) => `| \`${row.name}\` | ${row.version} | ${row.changed.length} |`),
+    "",
+    "Run `pnpm version-packages`, commit, and merge to release them.",
   ].join("\n")
 }
 

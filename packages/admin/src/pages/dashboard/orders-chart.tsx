@@ -44,7 +44,7 @@ export function OrdersChart({ data }: OrdersChartProps) {
       <CardContent>
         {!hasData ? (
           <div className="flex h-[240px] flex-col items-center justify-center gap-2">
-            <BarChart3 className="text-muted-foreground/30 h-10 w-10" />
+            <BarChart3 className="text-muted-foreground h-10 w-10" />
             <p className="text-muted-foreground text-xs">
               Aucune donnée sur les 7 derniers jours
             </p>

@@ -577,7 +577,7 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                     return (
                       <span
                         key={id}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary-ink text-xs font-medium"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-xs font-medium"
                       >
                         {p?.name ?? "…"}
                         <button
@@ -655,7 +655,7 @@ export function PromotionForm({ promotion, onSuccess, onCancel }: PromotionFormP
                     return (
                       <span
                         key={id}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary-ink text-xs font-medium"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent text-accent-foreground text-xs font-medium"
                       >
                         {c?.name ?? "…"}
                         <button

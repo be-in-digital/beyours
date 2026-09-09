@@ -95,7 +95,7 @@ import {
 } from "./lib/mirror-typecheck.mjs"
 // The same lookup `publish-plan.mjs` gates the release on. One copy, so the
 // mirror cannot pin a version the gate never asked about.
-import { publishedVersion, REGISTRY } from "./lib/registry.mjs"
+import { lookupPublished, REGISTRY, UNREACHABLE } from "./lib/registry.mjs"
 
 /**
  * Every package named by a changeset waiting in `.changeset/`.
@@ -204,9 +204,21 @@ function resolveVersions(deps) {
   const engineDeps = Object.keys(deps).filter((k) => k.startsWith("@be-in-digital/"))
   const resolved = {}
   for (const pkg of engineDeps) {
-    const v = publishedVersion(pkg)
-    if (!v) fail(`${pkg} not found on ${REGISTRY}. Is NODE_AUTH_TOKEN set, and the package published?`)
-    resolved[pkg] = `^${v}`
+    // Both failures are fatal here — the mirror cannot pin a dependency to a
+    // version nobody could read — but they need different fixes, and one
+    // message covering both sent every reader to check the token first. `E401`
+    // is the token; `E404` is a package that has genuinely never been
+    // published, which no token will conjure.
+    const { version, state, code } = lookupPublished(pkg)
+    if (state === UNREACHABLE) {
+      fail(
+        `${REGISTRY} did not answer for ${pkg}${code ? ` (npm ${code})` : ""}. ` +
+          "The lookup failed, so nothing is known about what is published — check NODE_AUTH_TOKEN " +
+          "has `read:packages`."
+      )
+    }
+    if (!version) fail(`${pkg} is not published on ${REGISTRY}. Cut a release before syncing the mirror.`)
+    resolved[pkg] = `^${version}`
   }
   return resolved
 }

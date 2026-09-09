@@ -36,6 +36,9 @@ import {
  * `lastContactAt` stays in the schema because it is the field that sentence
  * names, and a future authenticated path — or an operator — may advance it.
  */
+// @public-by-design: the waiting-list form on beyours.fr, filled in by a
+//   restaurateur who has no account yet; field-length caps and two rate
+//   limits stand in for a session
 export const join = mutation({
   args: {
     firstName: v.string(),

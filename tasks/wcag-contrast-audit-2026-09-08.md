@@ -62,16 +62,20 @@ of which had invented dozens of failures:
    pairs the hovered ink with the resting surface. Each state is resolved whole.
 
 **What it deliberately does not judge.** A pair whose surface is painted by a
-component in *another* file — the storefront header over the hero image, a game
-screen inside its shell — is reported with `surfaceKnown: false` and excluded
-from the guard. No static reading can say what colour an image is. In
-`apps/themes` that is 310 of 794 pairs; they are for a person to check, not for
-CI to fail on.
+component in *another* file is reported with `surfaceKnown: false`. No static
+reading can say what colour an image is.
+
+That exclusion used to be unbounded, and see **The 150** below for what it cost.
+A region can now DECLARE the surface a shell paints behind it — a hex for a
+literal, a token name for a shell that paints one — and the set of files still
+unresolved is asserted to be exactly the five that render over the hero
+photograph. Anything else that cannot be resolved fails.
 
 WCAG floors applied: **4.5:1** for body text, **3:1** for large text (≥24px, or
 ≥18.66px at weight 700 or more) and for non-text elements that have to be seen.
-Inactive controls are exempt per 1.4.3 — `disabled:`, `aria-disabled` and this
-codebase's `pointer-events-none opacity-50` idiom are skipped.
+Inactive controls are exempt per 1.4.3 — `disabled:`, `aria-disabled`,
+`cursor-not-allowed`, and this codebase's `pointer-events-none opacity-50`
+idiom are skipped.
 
 ---
 
@@ -329,3 +333,103 @@ package keeps failing fast at the default. The same squeeze passes afterwards.
 
 The grid was **not** coarsened. That sweep exists because an earlier version of
 it was chosen where it could not fail.
+
+---
+
+## The 150 — 2026-09-09
+
+The sweep above ended with a guarded count of **zero**. It reported 150 failing
+pairs in `apps/themes` and dropped all 150 for an unresolved surface, so the
+suite was green and had measured nothing. That is a worse state than a red one:
+a green check is read as an answer.
+
+Resolving the surfaces the scanner could not:
+
+| | pairs | what they were |
+| --- | --- | --- |
+| the QR-game screens | 51 | opaque `bg-[#120d1a]`, painted by `game/game-shell.tsx` |
+| the kitchen display | 4 | `background: #0f172a` on `.display-root`, in a stylesheet no `.tsx` mentions |
+| the admin | 83 | rendered on `bg-background`, painted by `SidebarInset` |
+| over a photograph | 12 | the storefront header and what sits inside it |
+
+Only the last row is genuinely unknowable. `scanContrast` regions therefore take
+an optional `surface` — a hex for a literal shell, a **token name** for one that
+paints `bg-background`, since the admin's surface differs between the two colour
+schemes and a hex cannot say that. Both apps' tests declare theirs, each read
+from the source that paints it rather than transcribed, so repainting the arena
+fails the read rather than silently measuring against a colour that has moved.
+
+That left **89 real failures the guard had never been allowed to see.** Two were
+scanner faults and are fixed there: `cursor-not-allowed` is the other spelling
+of "inactive" beside `pointer-events-none` and was not exempted, and the
+`store-hours-tab` row dimmed its « Fermé » switch along with the inputs it was
+meant to grey — a control an owner needs in order to re-open the day, at 1.99:1.
+The rest were the same four habits:
+
+- **a raw Tailwind hue where a token exists** — `text-green-600` (9), `text-amber-500`
+  (5), `text-red-500` (4), `text-emerald-500` (4), `text-orange-600` (3),
+  `text-yellow-400`, `text-gray-500`, `text-slate-500`. All now `--success`,
+  `--warning`, `--destructive` or `--muted-foreground`, which the token matrix
+  already holds at AA in both schemes and which follow an establishment's
+  branding.
+- **an opacity modifier on text** — `text-muted-foreground/30` (6), `/50` (8),
+  `/60` (4), `/70` (2), `text-foreground/50` (4). The header of this document
+  already said never to do it; the modifier multiplies the ratio down silently,
+  which is how the storefront footer once reached 1.07:1.
+- **a chip tinted with its own ink** — `bg-amber-500/10 text-amber-500` at
+  1.95:1, `bg-emerald-500/10 text-emerald-500` at 2.20:1. A pale wash under a
+  bright letter of the same hue: no tuning of the tint fixes it, because the two
+  are the same colour.
+- **a light-only palette pair in dark mode** — the four inventory tiles,
+  `bg-orange-50/50` over a near-black page compositing to a mid grey, with
+  `text-orange-600` on it at **1.109:1**.
+
+Two tokens moved with them, both in the improving direction and both for the
+`bg-X/10 text-X` idiom, which is the least forgiving surface a token lands on:
+`--success` 28% → 27% (4.43:1 → 4.66:1) and `--destructive` 47% → 44% (4.18:1 →
+4.62:1) in light mode. Every other pairing they appear in gains.
+
+**Where it stands now:** 0 unguarded failures, 12 unresolved pairs across the
+five named files, and 94.2% of every pair the sweep resolves is guarded. The
+suite asserts all three — the failures are zero, the unresolved FILES are
+exactly that list, and the unresolved share stays under 8% — so the way this
+went wrong the first time cannot recur quietly.
+
+**Still not done:** the game arena is measured against a declared literal rather
+than tokenised. A `[data-game-arena]` block in `globals.css` beside
+`.storefront-theme` remains the structural fix, and the 51 template
+stylesheets still target `:root`/`.dark` instead of `.storefront-theme` (see
+above). Neither is a contrast failure today.
+
+### What the merge with #446 found
+
+#446 landed the same day and taught the scanner to read inline `style` — "a
+component that set its ink or its surface inline was invisible to it". On its
+own that found nothing here; combined with the admin surface declared above, it
+resolved a tree neither change could reach alone: **`block-preview.tsx`, the
+email template editor's preview.**
+
+The component draws an EMAIL and painted no ground of its own, so every block
+rendered on `--background` — near-black in dark mode. That is not what a
+recipient sees, and the blocks' colours are chosen for the white canvas an email
+client actually provides: the social-link labels fall back to `#333`, 1.60:1 on
+the dark admin page and 12.6:1 on the white one they land on. The preview was
+wrong precisely where a preview must not be.
+
+It paints `bg-white` now, on its own element, with the theme tokens inside it
+converted to fixed greys — a token that inverts with the admin cannot be read on
+a surface that does not. Three defaults moved with them, and all three reach the
+delivered email, not just the preview:
+
+- the hero scrim, `rgba(0,0,0,0.4)` → `0.6`. It is the only thing between a
+  white title and whatever photograph an owner uploads; at 40 % over a light
+  image it composites to `#999` and the title reads **2.85:1**. Measured against
+  white because white is the worst case.
+- the price accent, `#FF5722` → `#C2410C` (3.10:1 → 5.18:1 on the canvas).
+- the divider glyphs, `#d4d4d8` → `#71717B` (1.45:1 → 4.83:1).
+
+Two structural changes came out of it. The hero overlay was a *sibling* of the
+text it darkens, so nothing — no reader, no sweep — could see the two belonged
+together; it wraps the text now, rendering identically. And a region may name a
+single **file**, which is what let this one component declare its canvas without
+dragging its neighbours in the same directory onto it.

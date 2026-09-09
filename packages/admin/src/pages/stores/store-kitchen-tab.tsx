@@ -293,7 +293,7 @@ export function StoreKitchenTab({
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <span
-                className={`text-xs ${printConfig.enabled ? "text-green-600" : "text-muted-foreground"}`}
+                className={`text-xs ${printConfig.enabled ? "text-success" : "text-muted-foreground"}`}
               >
                 {printConfig.enabled ? "Activée" : "Coupée"}
               </span>
@@ -644,7 +644,7 @@ export function StoreKitchenTab({
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span
-                      className={`text-xs ${setting.enabled ? "text-green-600" : "text-muted-foreground"}`}
+                      className={`text-xs ${setting.enabled ? "text-success" : "text-muted-foreground"}`}
                     >
                       {setting.enabled ? "Activé" : "Coupé"}
                     </span>
@@ -734,7 +734,7 @@ export function StoreKitchenTab({
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <span
-                className={`text-xs ${displayConfig.autoDismissEnabled ? "text-green-600" : "text-muted-foreground"}`}
+                className={`text-xs ${displayConfig.autoDismissEnabled ? "text-success" : "text-muted-foreground"}`}
               >
                 {displayConfig.autoDismissEnabled ? "Activé" : "Coupé"}
               </span>

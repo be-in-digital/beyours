@@ -90,8 +90,28 @@ export interface ContrastFailure {
 export interface ScanOptions {
   /** Directory holding the app: its `app/globals.css` and `node_modules`. */
   appDir: string
-  /** Subdirectories to walk, each with the token scope it renders under. */
-  regions: Array<{ dir: string; scope: string }>
+  /**
+   * Subdirectories to walk, each with the token scope it renders under.
+   *
+   * `surface` is for a tree whose background is painted by a shell in ANOTHER
+   * file — the one thing a per-file reading cannot see, and the reason 51 of
+   * the 150 pairs this scanner reported were false. The QR-game screens sit on
+   * an opaque `#120d1a` from `game/game-shell.tsx`; the kitchen display sits on
+   * `#0f172a` from a `.display-root` rule in a stylesheet no `.tsx` mentions.
+   * Both were reported `surfaceKnown: false` and dropped, so eleven screens
+   * were measured by nothing at all.
+   *
+   * It is an ASSERTION, not a hint: whoever writes it has read the shell and
+   * is saying what colour it paints. A wrong one produces wrong ratios in the
+   * confident direction, which is why each is named with its source in the
+   * app's own test rather than guessed at here.
+   *
+   * A hex (`#120d1a`) for a literal, or a TOKEN name (`background`) for a
+   * shell that paints one — `SidebarInset` is `bg-background`, and the admin's
+   * surface therefore differs between the two colour schemes, which a hex
+   * cannot express.
+   */
+  regions: Array<{ dir: string; scope: string; surface?: string }>
   /** Extra scope selectors to read out of `globals.css`. */
   scopes?: string[]
   /**
@@ -593,7 +613,27 @@ class Resolver {
     // `pointer-events-none opacity-50` is how this codebase spells "inactive"
     // on a control that is not a <button disabled>. WCAG 1.4.3 exempts it for
     // the same reason it exempts `disabled:`.
-    if (classes.includes("pointer-events-none") && classes.some((c) => /^opacity-\d+$/.test(splitVariants(c).base))) {
+    //
+    // `cursor-not-allowed` is the other spelling, and leaving it out made the
+    // sweep report the DISABLED branch of a ternary as a failure: the Uber
+    // Direct fee tile in `settings/delivery-tab.tsx` is
+    // `cursor-not-allowed border-border/50 opacity-50` when the integration is
+    // off, and its `text-muted-foreground` label was measured through that
+    // half-opacity at 1.99:1 — text nobody is being asked to read, on a
+    // control nobody can press. Both utilities are declarations of the same
+    // fact and neither is decoration; either one beside an `opacity-*` is the
+    // exemption.
+    const bases = classes.map((c) => splitVariants(c).base)
+    // `cursor-not-allowed` on its own is enough, and `pointer-events-none` is
+    // not. The first is only ever written about a control somebody cannot use
+    // — the QR game's locked « Jouer » button is
+    // `cursor-not-allowed bg-white/10 text-white/35`, dimmed by the alpha on
+    // the ink rather than by an `opacity-*`, and there is no other reason to
+    // write it. The second is also how a decorative icon inside an input is
+    // kept out of the way, and that icon's text IS read, so it still has to be
+    // paired with the dimming before it means "inactive".
+    if (bases.includes("cursor-not-allowed")) return reading
+    if (bases.includes("pointer-events-none") && bases.some((b) => /^opacity-\d+$/.test(b))) {
       return reading
     }
 
@@ -675,6 +715,17 @@ interface Context {
 }
 
 function sources(root: string): string[] {
+  // A region may name one FILE rather than a directory, which is what lets a
+  // single component declare the surface it paints for itself: the email
+  // template preview draws a white email canvas, and the blocks that land on
+  // it are returned from a closure, so no walk of the JSX can connect the two.
+  // Directory granularity would drag its neighbours onto that canvas with it.
+  try {
+    if (statSync(root).isFile()) return extname(root) === ".tsx" ? [root] : []
+  } catch {
+    return []
+  }
+
   const out: string[] = []
   const walk = (dir: string): void => {
     let entries: string[]
@@ -715,7 +766,17 @@ export function scanContrast(options: ScanOptions): ContrastFailure[] {
   const reported = new Set<string>()
   const visited = new Set<string>()
 
-  for (const { dir, scope } of regions) {
+  for (const { dir, scope, surface } of regions) {
+    /* A hex, if the region named one. A token name is resolved per mode
+       below, since `--background` is a different colour in each. A value that
+       is neither is a mistake worth stopping on: silently falling back to the
+       page background would restore exactly the blind spot the field exists to
+       remove. */
+    const declaredHex = surface?.startsWith("#") ? parseHex(surface) : null
+    if (surface?.startsWith("#") && !declaredHex) {
+      throw new Error(`region ${dir}: surface "${surface}" is not a hex colour`)
+    }
+
     for (const file of sources(join(appDir, dir))) {
       if (visited.has(file)) continue
       visited.add(file)
@@ -838,14 +899,29 @@ export function scanContrast(options: ScanOptions): ContrastFailure[] {
           node.forEachChild((child) => visit(child, next))
         }
 
+        /* A token name is resolved in THIS mode and scope, so a shell
+           painting `bg-background` is dark in dark mode and light in light —
+           which a literal could not say. An unknown name stops the sweep for
+           the same reason a bad hex does. */
+        let declared = declaredHex
+        if (surface && !declaredHex) {
+          const token = resolver.colour(surface, mode, scope)
+          if (!token) throw new Error(`region ${dir}: no --${surface} token to paint the surface with`)
+          declared = token.rgb
+        }
+
+        const root = declared ?? page
         visit(source, {
-          surface: page,
-          surfaceCls: "<page>",
+          surface: root,
+          surfaceCls: surface ?? "<page>",
           // The page surface is an assumption until some element paints one:
           // a component can be composed onto a hero image, a game shell or a
-          // dialog, none of which is this file's `--background`.
-          surfaceKnown: false,
-          backdrop: page,
+          // dialog, none of which is this file's `--background`. A region that
+          // DECLARES its surface has answered that question for its whole
+          // tree — somebody read the shell — so those pairs are measured and
+          // guarded like any other.
+          surfaceKnown: declared !== null,
+          backdrop: root,
           groupAlpha: 1,
           sizePx: 16,
           weight: 400,

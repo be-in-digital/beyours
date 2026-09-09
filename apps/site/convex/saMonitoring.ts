@@ -246,6 +246,8 @@ export function convexTarget(convexUrl: string | undefined): string | null {
 
 /* ── Read surface (the console) ── */
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const overview = query({
   args: {},
   handler: async (ctx) => {
@@ -325,6 +327,8 @@ export const overview = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const recentChecks = query({
   args: {
     deploymentId: v.optional(v.id("saDeployments")),
@@ -662,6 +666,8 @@ export const runProbes = internalAction({
  * runs the very same check — `ctx.runQuery` carries the caller's identity, so
  * this is the admin gate, not a weaker copy of it.
  */
+// @guarded-inline: an action, so no ctx.db: it resolves the caller through
+//   ctx.runQuery(internal.…) and refuses when that answers nothing
 export const probeNow = action({
   args: { deploymentId: v.optional(v.id("saDeployments")) },
   handler: async (ctx, args): Promise<ProbeRoundResult> => {

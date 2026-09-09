@@ -135,7 +135,7 @@ export function AuditLogSection() {
                         {entry.result === "success" ? (
                           <Badge
                             variant="secondary"
-                            className="bg-emerald-500/10 text-emerald-500"
+                            className="bg-success/10 text-success"
                           >
                             <CheckCircle2Icon className="h-3 w-3 mr-1" />
                             Succes
@@ -143,7 +143,7 @@ export function AuditLogSection() {
                         ) : (
                           <Badge
                             variant="secondary"
-                            className="bg-red-500/10 text-red-500"
+                            className="bg-destructive/10 text-destructive"
                           >
                             <XCircleIcon className="h-3 w-3 mr-1" />
                             Échec

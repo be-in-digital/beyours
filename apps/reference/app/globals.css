@@ -125,11 +125,24 @@
      * At 60% it was 3.45:1 on `--muted` and its own white label was 3.78:1;
      * 47% clears both (4.60:1 and 6.29:1).
      */
-    /* Darkened for the 51 templates, not for the engine's own page: a template
-       overrides --card, --background and --muted and NOT this token, so a fixed
-       ink met a shifted surface. `bg-destructive/5` composites this colour over that
-       surface, and the same colour written on the result measured 4.176:1 on
-       fast-food-grill77 against the 4.5 AA asks. Solved across all 51. */
+    /*
+     * 42%, and it has to satisfy two independent measurements — take the
+     * darker, because a tint of the ink under the ink is the surface least
+     * forgiving of it and both of these are that shape.
+     *
+     * #447 measured the engine's own light admin: `bg-destructive/10
+     * text-destructive` at 47% gives 4.18:1, and 44% clears it.
+     * This branch measured the 51 shipped templates, where a template
+     * overrides --card, --background and --muted and NOT this token, so a
+     * fixed ink meets a shifted surface: `bg-destructive/5` composited over
+     * fast-food-grill77 measured 4.176:1, and 42% is what clears all 51.
+     *
+     * 42% is the darker, so it clears the admin chip too. Every other pairing
+     * improves with it: a white label on the fill goes from 5.4:1 to 6.2:1,
+     * and the fill's own separation from the page rises with it. Do not
+     * lighten this back to 44% — that is the admin-only answer, and it puts
+     * the templates back under AA.
+     */
     --destructive: 0 84% 42%;
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 93%;
@@ -161,11 +174,17 @@
      * 5.18:1 on white and 4.72:1 on `--muted`, the two surfaces it lands on.
      * See #168.
      */
-    /* Darkened for the 51 templates, not for the engine's own page: a template
-       overrides --card, --background and --muted and NOT this token, so a fixed
-       ink met a shifted surface. `bg-success/10` composites this colour over that
-       surface, and the same colour written on the result measured 4.081:1 on
-       fast-food-grill77 against the 4.5 AA asks. Solved across all 51. */
+    /*
+     * 25%, chosen the same way and for the same reason as --destructive above.
+     *
+     * #447 measured `bg-success/10 text-success` on the light admin: 4.43:1 at
+     * 28%, cleared at 27%. This branch measured the same token against the 51
+     * templates, whose shifted surfaces put `bg-success/10` at 4.081:1 on
+     * fast-food-grill77; 25% is what clears all 51.
+     *
+     * 25% is the darker of the two, so it clears the admin chip as well. Do
+     * not lighten it back to 27%.
+     */
     --success: 142 76% 25%;
     --success-foreground: 0 0% 100%;
     /*
@@ -565,10 +584,37 @@ body:has(.pac-container:not(:empty)) [data-slot="dialog-overlay"] {
   pointer-events: none;
 }
 
-/* Respect user motion preferences */
+/* Respect user motion preferences.
+
+   This block used to name `.animate-in` and nothing else — one occurrence in
+   the whole app, in `app/(storefront)/account/page.tsx`. Everything else that
+   moves went untouched: `animate-pulse` and `animate-spin` on the loading
+   states, the `live-dot` pulse on the kitchen display, every CSS transition,
+   and the smooth scrolling. A preference honoured for one element is not a
+   preference honoured.
+
+   The universal selector is the right instrument here: the rule is not "this
+   animation is unwanted", it is "this person asked for no motion", and any
+   animation the product grows afterwards is covered without anyone
+   remembering to add it. `0.01ms` rather than `none` so an `animationend`
+   listener still fires — a handler that never runs is a component stuck
+   half-rendered.
+
+   It cannot reach framer-motion, which writes inline `style` per frame and is
+   beyond any stylesheet. `<MotionConfig reducedMotion="user">` in
+   `app/providers.tsx` is that half. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-in {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html {
+    scroll-behavior: auto;
   }
 }
