@@ -61,7 +61,13 @@ import { join } from "node:path"
 import { EXPORTS_UNKNOWN, exportsResolve, publishedTarball } from "./lib/engine-exports.mjs"
 import { CHANGESET_DIR, isChangesetFile, parseChangeset } from "./lib/pending-release.mjs"
 import { lookupPublishedVersion, publishablePackages, REPO_ROOT } from "./lib/registry.mjs"
-import { describeDrift, formatSummary, formatTable, summariseDrift } from "./lib/source-drift.mjs"
+import {
+  bumpedAhead as versionIsAhead,
+  describeDrift,
+  formatSummary,
+  formatTable,
+  summariseDrift,
+} from "./lib/source-drift.mjs"
 
 const warnOnly = process.argv.includes("--warn-only")
 const skipRegistry = process.argv.includes("--no-registry")
@@ -218,7 +224,12 @@ if (!skipRegistry) {
     // package that has never been published. Not a check that passed.
     if (Array.isArray(result)) continue
     subpathChecked += 1
-    if (result.missing.length > 0) subpathProblems.push({ ...pkg, ...result })
+    if (result.missing.length > 0) {
+      // `result.version` is the PUBLISHED version and shadows `pkg.version`,
+      // which is the one in the working tree. Both are needed below, so the
+      // workspace one is kept under its own name before the spread buries it.
+      subpathProblems.push({ ...pkg, workspaceVersion: pkg.version, ...result })
+    }
   }
 }
 
@@ -254,8 +265,34 @@ if (subpathUnknown.length > 0) {
  *                             the mirror is deadlocked the moment it merges,
  *                             and the fix is one command on this pull request.
  */
-const blocking = subpathProblems.filter((row) => !covered.has(row.name))
-const announced = subpathProblems.filter((row) => covered.has(row.name))
+
+/**
+ * Is this package's version ALREADY ahead of what the registry serves?
+ *
+ * Lives in `lib/source-drift.mjs` so it can be tested without a registry; the
+ * reasoning for why this third answer has to exist is in its docblock there.
+ */
+const bumpedAhead = (row) => versionIsAhead(row.workspaceVersion, row.version)
+
+const bumped = subpathProblems.filter((row) => bumpedAhead(row))
+const blocking = subpathProblems.filter(
+  (row) => !covered.has(row.name) && !bumpedAhead(row)
+)
+const announced = subpathProblems.filter(
+  (row) => covered.has(row.name) && !bumpedAhead(row)
+)
+
+for (const row of bumped) {
+  const paths = row.missing.map((p) => `\`${p}\``).join(", ")
+  console.log(
+    `::notice file=${row.dir}/package.json::${row.name} declares ${paths}, absent from ` +
+      `${row.version} (what the registry serves). The version is already bumped to ` +
+      `${row.workspaceVersion} in this tree, so the release that carries it is written ` +
+      `rather than merely promised — \`changeset publish\` pushes it on merge. The mirror ` +
+      `cannot sync until that publish lands.`
+  )
+}
+
 
 for (const row of announced) {
   const paths = row.missing.map((p) => `\`${p}\``).join(", ")
@@ -282,7 +319,11 @@ const subpathSummary = process.env.GITHUB_STEP_SUMMARY
 if (subpathSummary && subpathProblems.length > 0) {
   const line = (row) =>
     `- \`${row.name}\` declares ${row.missing.join(", ")}, absent from ${row.version}` +
-    (covered.has(row.name) ? " (a changeset is waiting)" : " — **no changeset**")
+    (bumpedAhead(row)
+      ? ` (already bumped to ${row.workspaceVersion} here — the release is cut)`
+      : covered.has(row.name)
+        ? " (a changeset is waiting)"
+        : " — **no changeset**")
   appendFileSync(
     subpathSummary,
     `### Subpaths not in the published version\n\n${subpathProblems.map(line).join("\n")}\n\n`
