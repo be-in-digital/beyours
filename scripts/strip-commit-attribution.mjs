@@ -1,0 +1,72 @@
+#!/usr/bin/env node
+/**
+ * The working half of `.githooks/commit-msg`: removes AI attribution from a
+ * commit message before git records it.
+ *
+ * It strips rather than refuses, deliberately. The lines this removes are not
+ * typed by a person who could be asked to stop — they are appended by an agent
+ * harness that was told to append them, so refusing the commit only produces a
+ * second attempt with the same trailer. Removing them ends the loop, and the
+ * removal is announced on stderr so nobody discovers it later from a diff.
+ *
+ * `scripts/check-commit-attribution.mjs` is the layer that refuses. This one is
+ * the convenience; that one is the guarantee.
+ *
+ * Usage: node scripts/strip-commit-attribution.mjs <path-to-message-file>
+ *        (git passes that path to the commit-msg hook as $1)
+ */
+
+import fs from "node:fs"
+
+import { runSelfTest, splitAtScissors, stripAttribution } from "./lib/commit-attribution.mjs"
+
+const file = process.argv[2]
+if (!file) {
+  console.error("commit-msg: no message file given; nothing to check.")
+  process.exit(0)
+}
+
+let original
+try {
+  original = fs.readFileSync(file, "utf8")
+} catch (error) {
+  console.error(`commit-msg: cannot read ${file} (${error.message}); leaving the message alone.`)
+  process.exit(0)
+}
+
+// A broken detector must not block every commit in the repository — the person
+// hitting it may be the one repairing it. It is reported here and REFUSED in
+// CI, where `scripts/check-commit-attribution.mjs` exits 1 on the same failure.
+const broken = runSelfTest()
+if (broken.length) {
+  console.error(`commit-msg: the attribution detector is failing ${broken.length} of its own cases:`)
+  for (const failure of broken) console.error(`  ${failure}`)
+  console.error("commit-msg: continuing anyway — the Lint job will refuse this.")
+}
+
+const { message, removed } = stripAttribution(original)
+if (removed.length === 0) process.exit(0)
+
+/** Whether anything git would keep survived the strip. */
+const hasContent = (text) =>
+  splitAtScissors(text)
+    .head.split("\n")
+    .some((line) => line.trim().length > 0 && !line.trimStart().startsWith("#"))
+
+if (!hasContent(message)) {
+  console.error(`\ncommit-msg: this message is nothing but AI attribution, which is not allowed`)
+  console.error(`  in anything that reaches Git (CLAUDE.md rule 10). Write a subject line`)
+  console.error(`  describing the change and commit again.\n`)
+  process.exit(1)
+}
+
+try {
+  fs.writeFileSync(file, message)
+} catch (error) {
+  console.error(`commit-msg: cannot rewrite ${file} (${error.message}); the message is unchanged.`)
+  console.error(`  The Lint job will refuse this commit — see CLAUDE.md rule 10.`)
+  process.exit(1)
+}
+
+console.error(`commit-msg: removed ${removed.length} attribution line(s) — CLAUDE.md rule 10.`)
+for (const line of removed) console.error(`  ${line.text}`)

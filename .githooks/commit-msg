@@ -1,0 +1,38 @@
+#!/usr/bin/env sh
+#
+# Removes AI attribution from a commit message before git records it.
+#
+# This directory is TRACKED, and that is the whole point. husky keeps its hooks
+# in `.husky/_`, which husky's own generator gitignores (`.husky/_/.gitignore`
+# holds `*`), so the directory `core.hooksPath` names exists only where somebody
+# has run `pnpm install`. Git resolves a relative `core.hooksPath` against each
+# working tree, and when it resolves to nothing git says nothing — every commit
+# simply succeeds. Measured on this repository, 09/09/2026: hooks path
+# `.husky/_` configured, `commit-msg` present in the main checkout, and a commit
+# from a linked worktree exiting 0 with no hook run and no warning. That is #409.
+#
+# A tracked directory arrives with the checkout, in every worktree, so the path
+# cannot resolve to nothing. `scripts/install-git-hooks.mjs` (the `prepare`
+# script) points `core.hooksPath` here and verifies this file is where it says.
+#
+# The hard guarantee is not here: a hook can be skipped with --no-verify and is
+# absent until somebody installs it. `pnpm check:attribution`, in the required
+# `Lint` job, is what actually refuses.
+
+set -e
+
+hook_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 0
+stripper="$(dirname -- "$hook_dir")/scripts/strip-commit-attribution.mjs"
+
+if [ ! -f "$stripper" ]; then
+  echo "commit-msg: $stripper is missing; message left unchecked." >&2
+  exit 0
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "commit-msg: node is not on PATH; message left unchecked." >&2
+  echo "  The Lint job checks the same thing and will refuse an attributed commit." >&2
+  exit 0
+fi
+
+exec node "$stripper" "$1"
