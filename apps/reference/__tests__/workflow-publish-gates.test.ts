@@ -727,3 +727,73 @@ describe("two workflows called by one caller cannot share a concurrency slot", (
     },
   )
 })
+
+/**
+ * A caller must grant every permission the workflow it calls asks for.
+ *
+ * GitHub refuses to START a run whose called workflow requests more than the
+ * calling job was granted, and the refusal is a `startup_failure`: no jobs, no
+ * steps, no logs, and no failing check to read. That is what makes it worth a
+ * test rather than a review note — nothing about the run says what went wrong,
+ * or even that anything ran.
+ *
+ * It cost three releases. #446 added `packages: read` to `ci.yml`'s `lint` job,
+ * so the subpath half of `check:source-drift` could read published tarballs.
+ * Both callers — `release.yml`'s and `publish-mirror.yml`'s `verify` — still
+ * granted `contents: read` alone, so from e5394e5 onward EVERY `Release` and
+ * every `Publish mirror` ended in `startup_failure`. No package published
+ * across #446, #447 and #448, and the mirror stayed frozen the whole time.
+ *
+ * `ci.yml`'s own `push` and `pull_request` runs stayed green throughout, which
+ * is precisely why nobody saw it: a reusable workflow is only narrowed when it
+ * is CALLED, so the failure is invisible from the file that causes it.
+ */
+describe("a called workflow never asks for more than its caller grants", () => {
+  type Perms = Record<string, string>
+
+  const asMap = (p: unknown): Perms | null =>
+    p && typeof p === "object" && !Array.isArray(p) ? (p as Perms) : null
+
+  /** Every `uses: ./.github/workflows/x.yml` in this repo, with its caller. */
+  const localCalls = WORKFLOW_FILES.flatMap((file) => {
+    const wf = readWorkflow(file)
+    return Object.entries(wf.jobs ?? {})
+      .filter(([, job]) => typeof job.uses === "string" && job.uses.startsWith("./.github/workflows/"))
+      .map(([jobName, job]) => ({
+        file,
+        jobName,
+        called: (job.uses as string).replace("./.github/workflows/", ""),
+        granted: asMap(job.permissions),
+      }))
+  })
+
+  test("there are local reusable-workflow calls to check", () => {
+    // If this ever hits zero the suite below is vacuous and would pass forever.
+    expect(localCalls.length).toBeGreaterThan(0)
+  })
+
+  test.each(localCalls)(
+    "$file job $jobName calling $called",
+    ({ called, granted }) => {
+      const callee = readWorkflow(called)
+      const needed = new Map<string, string>()
+      for (const [, job] of Object.entries(callee.jobs ?? {})) {
+        for (const [scope, level] of Object.entries(asMap(job.permissions) ?? {})) {
+          // `write` outranks `read`; anything already recorded as write stays.
+          if (needed.get(scope) !== "write") needed.set(scope, level)
+        }
+      }
+
+      for (const [scope, level] of needed) {
+        // `none` asks for nothing, so a caller need not name it.
+        if (level === "none") continue
+        expect(
+          granted?.[scope],
+          `${called} requests \`${scope}: ${level}\`, but ${granted === null ? "the caller sets no permissions block" : `the calling job grants ${JSON.stringify(granted)}`}. ` +
+            `GitHub will refuse to start the run — a startup_failure with no jobs and no logs.`,
+        ).toBeDefined()
+        if (level === "write") expect(granted?.[scope]).toBe("write")
+      }
+    },
+  )
+})
