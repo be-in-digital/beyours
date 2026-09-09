@@ -94,17 +94,23 @@ the list of sites is not in it either.
 
 ## 3. Verifying one site
 
-From the client repo:
+Ask the licence API directly. **This is the only verification that works** —
+note the host is beyours.fr's own deployment, `famous-wildcat-229`, not the
+client's:
 
 ```bash
-pnpm update:engine --check
+curl -s "https://famous-wildcat-229.convex.site/maintenance/status?key=bys_…"
 ```
 
-It prints the contract's state and pulls nothing. Or ask directly:
-
-```bash
-curl -s "https://<deployment>.convex.site/maintenance/status?key=bys_…"
-```
+**Do not use `pnpm update:engine --check` for this.** This section used to say
+it "prints the contract's state and pulls nothing". It prints package versions
+and nothing about the licence: `--check` returns at
+`apps/themes/scripts/update-engine.mjs:91`, *before* the
+`assertMaintenanceCurrent` gate at `:93-95` — deliberately, so a client whose
+maintenance has lapsed can still list what they are missing. It also exits 1 at
+`:88` when the registry is unreachable, which is what an operator without
+`NODE_AUTH_TOKEN` gets, and which reads like a licence failure but is not.
+Corrected 2026-09-09.
 
 `"found": true` means the key is registered. `"found": false` means no
 deployment holds it — a typo, or a key from another environment.
@@ -115,8 +121,19 @@ Today an unknown key answers `entitled: true`. Setting one environment variable
 on the beyours.fr Convex deployment makes it answer `entitled: false`:
 
 ```bash
-npx convex env set BEYOURS_LICENSE_ENFORCEMENT strict
+# from apps/site — `--prod` is not optional
+npx convex env set BEYOURS_LICENSE_ENFORCEMENT strict --prod
 ```
+
+**`--prod` matters more here than anywhere else in this document.** Without it
+the variable lands on a dev deployment, the production gate stays open, and
+nothing tells you: the command succeeds, and the only way to notice is that
+enforcement never changes. Confirm with `npx convex env list --prod` and check
+it says `famous-wildcat-229`. (This block omitted `--prod` until 2026-09-09.)
+
+Only the exact string `strict` closes the gate — a typo forgives, on purpose
+(`apps/site/convex/maintenance.ts:73-77`): the worst case of a fumbled flag must
+be an open gate, not a paying client whose updates are bricked.
 
 Reverting is the same command with `unset`, takes effect immediately, and needs
 no deploy.

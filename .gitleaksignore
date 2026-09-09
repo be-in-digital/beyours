@@ -34,11 +34,24 @@
 # Also corrected: `c0f09cb` is reachable from 35 LOCAL refs and from ZERO remote
 # refs, so the claim that CI's checkout fetches it is not true today.
 #
-# The Deliveroo secret has never had a fingerprint entry in this file. It was
-# not suppressed — it was simply never detected, because no rule matched a bare
-# 52-character base36 token. Two rules now do: see `.gitleaks.toml`. Once a
-# scan runs with them, this file will need a decision on the finding rather
-# than continuing to be silent about it.
+# CORRECTED 2026-09-09. The three paragraphs above were written before #337 and
+# are kept only because the reasoning around them still holds. Two of their
+# statements no longer do:
+#
+#   - "The Deliveroo secret has never had a fingerprint entry in this file."
+#     It has four, at the bottom of this file, added by #337 on 2026-09-04.
+#     Until then it was genuinely never detected, because no rule matched a bare
+#     52-character base36 token; two rules in `.gitleaks.toml` now do.
+#   - "this file will need a decision on the finding." That decision was taken
+#     in #337 and is recorded at the entry itself: accept the four known
+#     findings by fingerprint so a FIFTH leak is visible, and remove them when
+#     Part B rewrites the history. Nothing about it makes the secret safe.
+#
+#   - The blast-radius figures below (393 commits on `main`, 8 remote branches,
+#     59 of 60 tags, 0 open PRs) were measured on 2026-09-04 and have grown.
+#     Re-measured 2026-09-09 on a full clone: 472 commits on `main`, 72 remote
+#     branches, 75 tags, and 2 open draft PRs (#420, #421). The authoritative
+#     table is in `tasks/secret-rotation-runbook.md`, Part B.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Better Auth convex_jwt captured in a Playwright storageState fixture.

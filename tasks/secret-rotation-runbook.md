@@ -54,9 +54,12 @@ Two things follow:
    deliberately NOT in `.gitleaks.toml`, which stays reserved for values that
    were never credentials.
 
-   The consequence has to be said plainly: **Gitleaks is now green while the
-   history is still dirty.** The Deliveroo secret above is undetected by the
-   scanner and still unrotated. Read this runbook, not the check.
+   The consequence has to be said plainly: **Gitleaks is green while the history
+   is still dirty.** The Deliveroo secret above is *detected* — item 1's two
+   rules match it — and then accepted by fingerprint, and it is still unrotated.
+   Read this runbook, not the check. (This paragraph used to say the secret was
+   "undetected by the scanner", which stopped being true with #315 and is
+   contradicted by item 1 above. Corrected 2026-09-09.)
 
    Purging was deferred rather than rejected: Part B rewrites every SHA and
    would invalidate the 14 pull requests open at the time. Do it once the queue
@@ -288,14 +291,14 @@ execution:
 | | 2026-08-16 | **2026-09-04** |
 |---|---|---|
 | Commits across all local refs | 387 | **699** |
-| Commits reachable from origin | — | **470** |
-| Commits on `main` (all rewritten) | — | **393** |
+| Commits reachable from origin | — | **680** (was 470 on 4 Sep) |
+| Commits on `main` (all rewritten) | — | **472** (was 393 on 4 Sep) |
 | Commits containing the secret, all refs | — | **137** |
 | …of those, ancestors of `main` (published) | 18 (claimed) | **41** |
 | …local-only, never pushed | — | **96** |
-| Remote branches carrying the leak | 4 | **8 — every one** |
-| Remote tags carrying the leak | 10 of 35 | **59 of 60** |
-| Open PRs invalidated | 14 | **0** |
+| Remote branches carrying the leak | 4 | **72 — every one** (was 8 on 4 Sep) |
+| Remote tags carrying the leak | 10 of 35 | **75** (was 59 of 60); 63 are `@be-in-digital/*` release anchors |
+| Open PRs invalidated | 14 | **2** (#420, #421 — drafts, 9 Sep; a draft's SHAs die like any other) |
 
 Two of these change the decision rather than just the arithmetic:
 
@@ -332,13 +335,21 @@ Validated over all 7,459 blobs in the object store: the two rules match 3 blobs
 and yield exactly one distinct token — the secret. No false positives at HEAD
 (2,655 tracked files) or anywhere in history.
 
-**Consequence: the `Gitleaks (secret scan)` job will now FAIL on `main`** until
-the credential is rotated and Part B is executed. That job is **not** one of the
-five required status checks (Lint, Type Check, Test, Build, E2E Status), so the
-red does not block merges — it makes a real finding visible instead of hiding
-it. Do not silence it in `.gitleaksignore`: per that file's own policy an entry
-records a credential accepted as *no longer exploitable*, and this one has not
-been rotated yet.
+**Consequence, and how it was settled.** Those rules made the `Gitleaks (secret
+scan)` job fail on `main` itself on every run. **#337 (merged 4 Sep 2026)
+accepted the four findings by fingerprint** — commit, file, rule and line — so
+that a *fifth* leak is visible instead of arriving as one more line in a
+permanently red list. See item 1 above and the entry in `.gitleaksignore`, which
+states in the same breath that the secret remains unrotated. The job is **not**
+one of the five required status checks (Lint, Type Check, Test, Build, E2E
+Status), so neither red nor green has ever blocked a merge.
+
+The four lines come out when Part B rewrites the history. Until then: a green
+Gitleaks run is not proof this history is clean, and this runbook — not the
+check — is the source of truth for A.1.
+
+*(This paragraph previously instructed "do not silence it in `.gitleaksignore`",
+which #337 reversed. Corrected 2026-09-09.)*
 
 Then: tell the team to **re-clone** (old clones keep the leaked history), and
 rebase / close-reopen the open PRs if needed. GitHub can keep cached views for a

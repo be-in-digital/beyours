@@ -10,13 +10,25 @@ It doubles as the ClickUp description and the GitHub issue body.
 - **`TECH` — 12 cards.** P1 findings grouped by domain.
 - **`LAUNCH` — 10 cards.** Operator actions and product decisions, outside the repo.
 
-Six further build-vs-remove decisions, measured on 7 Sep 2026 and deliberately
-left undecided, are in [`b10-owner-decisions.md`](./b10-owner-decisions.md):
-the dead `cms*` tables (#330), menus/formules (#352), the Clients page (#364),
-the three sales metrics (#365), the automations editor (#270) and the platform
-connect/accept screen (#274).
+Everything that ends in a decision or a console rather than in a commit lives in
+[`owner-decisions.md`](./owner-decisions.md) — ten items, re-measured 9 Sep 2026,
+and **none of them is now waiting on a build-vs-remove call**. The last three were
+settled that day: the automations editor (#270) and the platform integrations
+screen (#274) are both **build**; the dead `cms*` tables (#330) are **held** until
+someone confirms no live client deployment holds rows in them, since a removal is
+irreversible against live data. Three more were decided **build** on 5 Sep and are
+merely unbuilt — menus/formules (#352), the Clients page (#364), the three sales
+metrics (#365) — each still owing one product answer (VAT across a mixed-rate
+*formule*; the customer-identity key, shared by #364 and #365; the definition of
+« taux de retour »). The remaining four are owner actions, not decisions: #172,
+#173, #181 and the #95–#112 umbrella pass.
 
-Domain issues #94–113 stay open and act as parents.
+Domain issues **#95–#112 are open and act as parents**; **#94 and #113 are closed**
+(PR #246, 29 Aug; PR #250, 30 Aug), so the range this line used to give was wrong at
+both ends. All twenty were opened on **27 August 2026**, not 18 August. None of them
+carries a GitHub sub-issue link — `get_sub_issues` returns empty for all twenty — so
+the parentage exists only as a `**Parent:** #NN` line inside each child and in this
+file. **This file is the only map of it.** Re-measured 2026-09-09.
 `apps/reference/…` paths are the engine; every client app cloned from `apps/themes/`
 has the same file in the same place unless stated otherwise.
 
@@ -1858,18 +1870,41 @@ default and after `|| "` in TypeScript, neither of which the stock generic-api-k
 as an assignment. Validated across all 7,459 blobs in the object store — 3 matching blobs, one
 distinct token, zero false positives at HEAD (2,655 files) or in history.
 
-**Consequence: the `Gitleaks (secret scan)` job now fails on `main`.** It is not one of the five
-required checks (Lint, Type Check, Test, Build, E2E Status), so it does not block merges. Do
-**not** silence it in `.gitleaksignore`: that file's own policy is that an entry records a
-credential accepted as *no longer exploitable*, and this one has not been rotated.
+**Scan posture — settled in #337, merged 4 Sep 2026.** #315 made the job red on `main` itself
+on every run. #337 then accepted the four findings *by fingerprint* — commit, file, rule and
+line — so a **fifth** leak shows up instead of arriving as one more line in a permanently red
+list. Scoped that narrowly on purpose: a new secret in either file, or on another line, still
+fails the scan. The job is not one of the five required checks (Lint, Type Check, Test, Build,
+E2E Status), so neither red nor green ever blocked a merge — which is what makes this a
+question about signal, not about gating.
+
+**A green Gitleaks run is still not evidence the history is clean.** The four entries are the
+scanner's memory of a leak nobody has cleaned; `.gitleaksignore` says so at the entry, and they
+come out when Part B rewrites the history.
+
+An earlier version of this card said "do **not** silence it in `.gitleaksignore`". It was
+written in #315 eighteen hours before #337 reversed it, and was never updated. Corrected
+2026-09-09.
 
 Mandatory order, unchanged: regenerate in the Deliveroo portal → propagate
 (`npx convex env set … --prod`) → re-verify → revoke the old one. Then part B of
 `tasks/secret-rotation-runbook.md` (history rewrite).
 
-Cost of the rewrite, re-measured: **393 commits on `main`, 8 remote branches, 59 of 60 remote
-tags** — the tags being the `@be-in-digital/*` release anchors. The blocker that deferred it
-last time has expired: **0 open PRs** (was 14).
+Cost of the rewrite, re-measured 2026-09-09 on a full (un-shallowed) clone: **472 commits on
+`main`, 72 remote branches, 75 tags** — 63 of the tags being the `@be-in-digital/*` release
+anchors. That is up from the 393 / 8 / 59-of-60 recorded on 4 Sep, and it grows every week the
+decision waits. The blocker that deferred it last time has mostly expired: **2 open PRs**
+(#420, #421 — both drafts opened 2026-09-09), down from 14. A draft PR's SHAs are invalidated
+by a rewrite exactly like a ready one, which is why this number is tracked at all, so land or
+close those two before Part B rather than treating the queue as empty.
+
+Two figures worth keeping straight, both measured today rather than inherited:
+`7cf4d41` **is** an ancestor of `origin/main`, and **41 commits on `origin/main`** carry a bare
+52-character base36 token in one of the two leaked paths — 41 via
+`scripts/deliveroo-menu-scenarios.sh`, 9 via `apps/restaurant-theme/e2e/deliveroo/test-config.ts`.
+The 41 is exact and confirms the 4 Sep count. But `c0f09cb`, which carries two of the *JWT*
+fingerprints above, does not exist in `origin` at all — so those two lines are inert against
+any fresh clone.
 
 ## LAUNCH-02 · Create the founders coupon and the 4 maintenance prices in Stripe — **urgent**
 Without them the **first Essentielle sale is refused by the code** —
@@ -1887,8 +1922,16 @@ others if it is one sitting — but the urgent pair is Essentielle's. Creating
 Premium's prices does **not** reopen the plan; only
 `planAvailability.premium = "open"` does, and that belongs in the commit that
 ships the application.
-While there, fix `tasks/production-checklist.md`, which instructs setting six
-`STRIPE_BID_PRICE_*` variables that no code reads.
+**Do not act on the instruction this line used to carry.** It said to fix
+`tasks/production-checklist.md`, "which instructs setting six `STRIPE_BID_PRICE_*`
+variables that no code reads". That is inverted, and acting on it would have
+unset live variables: all six **are** read.
+`packages/convex-functions/src/bidSubscription.ts:36-41` declares them and
+`buildPriceMap` (`:45-51`) maps each to a plan; `apps/*/convex/bidSubscription.ts:70`
+and `:267` feed them from `process.env`. A grep under `apps/*/convex` misses them
+because they are never named there — which is how the claim was formed.
+`tasks/production-checklist.md:72-76` already carries the correction, "**do not
+prune them**", verified 2026-09-03. Re-verified 2026-09-09.
 
 ## LAUNCH-03 · Settle the VAT regime — **urgent**
 Product decision that gates P0-03. French B2C requires tax-inclusive display; the code

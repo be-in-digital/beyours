@@ -271,9 +271,13 @@ Three silent order-loss paths. A restaurant connecting Deliveroo lost orders on 
 - [ ] **#172** 🔴 — **Owner action, deliberately left open.** The repo half is done: two Gitleaks
       rules now match the credential (validated over all 7,459 blobs — 3 matches, one distinct
       token, zero false positives), and the false claims in `.gitleaksignore` are corrected.
-      Rotating the secret and rewriting the history are the account owner's calls. **The
-      `Gitleaks (secret scan)` job will now fail on `main`** — it is not one of the five required
-      checks, so it does not block merges; it makes a real finding visible instead of hiding it.
+      Rotating the secret and rewriting the history are the account owner's calls. **The scan
+      posture was settled in #337 (merged 4 Sep 2026)**: the four known findings are accepted
+      by fingerprint — commit, file, rule and line — so a *fifth* leak is visible rather than
+      buried in a permanently red list. The job is not one of the five required checks, so
+      neither red nor green ever blocked a merge. A green run still proves nothing about the
+      history. (This line previously said the job "will now fail on `main`", which #337
+      reversed eighteen hours after it was written. Corrected 2026-09-09.)
 
 > **Closed when.** An order from each platform reaches the kitchen with the right price and notes; a cancellation removes it; a failed accept is visible instead of swallowed. — **Met**, and covered by tests that stay in the repo: `uber-eats-webhook.test.ts` and `deliveroo-webhook.test.ts` in both apps, `platform-webhook-failures.test.ts`, and `platformWebhook.test.ts` in the package. Each drives the signed HTTP endpoint, and each was proven red against the unfixed code.
 
