@@ -81,7 +81,12 @@ const CartItem = React.forwardRef<HTMLDivElement, CartItemProps>(
         ref={ref}
         className={cn(
           "flex gap-4 border-b py-4 last:border-0",
-          disabled && "opacity-50",
+          // `pointer-events-none` beside the dimming, not instead of it. A
+          // line at half opacity that can still be clicked is a control that
+          // looks inactive and is not, and its `text-muted-foreground` reads
+          // 1.99:1 through that opacity — which WCAG 1.4.3 exempts only for a
+          // component that really is inactive. Saying so makes it true.
+          disabled && "pointer-events-none opacity-50",
           className
         )}
         {...props}

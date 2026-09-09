@@ -44,6 +44,8 @@ function adminName(a: { firstName?: string; lastName?: string }): string {
   return `${a.firstName ?? "Admin"}${a.lastName ? " " + a.lastName : ""}`;
 }
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const list = query({
   args: {
     status: v.optional(incidentStatus),
@@ -78,6 +80,8 @@ export const list = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const get = query({
   args: { incidentId: v.id("saIncidents") },
   handler: async (ctx, args) => {
@@ -97,6 +101,8 @@ export const get = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const stats = query({
   args: {},
   handler: async (ctx) => {
@@ -151,6 +157,8 @@ export const stats = query({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const create = mutation({
   args: {
     title: v.string(),
@@ -212,6 +220,8 @@ export const create = mutation({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const addUpdate = mutation({
   args: {
     incidentId: v.id("saIncidents"),
@@ -256,6 +266,8 @@ export const addUpdate = mutation({
   },
 });
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const assign = mutation({
   args: {
     incidentId: v.id("saIncidents"),

@@ -89,7 +89,7 @@ export function IntegrationsTab({
               />
             </div>
             <div className="flex items-center gap-2">
-              <span className={`text-xs ${uberDirectEnabled ? "text-green-600" : "text-muted-foreground"}`}>
+              <span className={`text-xs ${uberDirectEnabled ? "text-success" : "text-muted-foreground"}`}>
                 {uberDirectEnabled ? "Activé" : "Désactivé"}
               </span>
               <Switch
@@ -165,7 +165,7 @@ export function IntegrationsTab({
               <FieldInfo {...HELP.uberEats.general} />
             </div>
             <div className="flex items-center gap-2">
-              <span className={`text-xs ${uberEatsEnabled ? "text-green-600" : "text-muted-foreground"}`}>
+              <span className={`text-xs ${uberEatsEnabled ? "text-success" : "text-muted-foreground"}`}>
                 {uberEatsEnabled ? "Activé" : "Désactivé"}
               </span>
               <Switch
@@ -212,7 +212,7 @@ export function IntegrationsTab({
               <FieldInfo {...HELP.deliveroo.general} />
             </div>
             <div className="flex items-center gap-2">
-              <span className={`text-xs ${deliverooEnabled ? "text-green-600" : "text-muted-foreground"}`}>
+              <span className={`text-xs ${deliverooEnabled ? "text-success" : "text-muted-foreground"}`}>
                 {deliverooEnabled ? "Activé" : "Désactivé"}
               </span>
               <Switch

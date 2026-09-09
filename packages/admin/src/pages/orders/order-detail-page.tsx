@@ -538,7 +538,7 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
                 {order.discountAmount !== undefined && order.discountAmount > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Réduction</span>
-                    <span className="text-emerald-600">-{formatPrice(order.discountAmount)}</span>
+                    <span className="text-success">-{formatPrice(order.discountAmount)}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-base font-semibold border-t border-border/50 pt-2">
@@ -686,7 +686,7 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               {primaryPayment?.refundedAmount && primaryPayment.refundedAmount > 0 && (
                 <div>
                   <div className="text-xs text-muted-foreground">Montant remboursé</div>
-                  <div className="text-sm font-medium text-orange-600">
+                  <div className="text-sm font-medium text-warning">
                     {formatPrice(primaryPayment.refundedAmount, primaryPayment.currency)}
                   </div>
                 </div>

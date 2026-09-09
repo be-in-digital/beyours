@@ -29,6 +29,8 @@ export async function recordSaActivity(
   });
 }
 
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const recent = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {

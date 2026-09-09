@@ -40,8 +40,7 @@ export const verify = internalAction({
       isAllowedTopic,
       isValidSigningCertUrl,
       mayConfirmSubscription,
-      parseAllowedTopicArns,
-      SES_SNS_TOPIC_ARN_ENV,
+      topicPolicy,
     } = await import("@be-in-digital/convex-functions/snsSignature");
 
     let message: Record<string, unknown>;
@@ -107,11 +106,25 @@ export const verify = internalAction({
     // allows. So the topic is checked too, after the signature has made the
     // `TopicArn` field trustworthy — before it, it is just another string the
     // sender wrote.
-    const allowed = parseAllowedTopicArns(process.env[SES_SNS_TOPIC_ARN_ENV]);
+    //
+    // AN UNCONFIGURED DEPLOYMENT REFUSES. It used to accept, on the grounds
+    // that SNS delivers only to a confirmed subscription and this endpoint
+    // refuses to create one — but nothing here requires a subscription at all.
+    // This is an HTTPS URL that takes a POST from anyone, so an attacker
+    // publishes on their own topic, keeps the signed JSON Amazon hands them,
+    // and replays it here. The two refusals are logged apart because they need
+    // different fixes: `topic_not_configured` means set `SES_SNS_TOPIC_ARN`,
+    // `topic_not_allowed` means this is not one of the topics it names.
+    const { allowed, allowAnyTopic, reason } = topicPolicy(process.env);
     const topicArn =
       typeof message.TopicArn === "string" ? message.TopicArn : undefined;
-    if (!isAllowedTopic(topicArn, allowed)) {
-      return { valid: false, reason: "topic_not_allowed" };
+    if (!isAllowedTopic(topicArn, allowed, allowAnyTopic)) {
+      console.error(
+        `[SES] refusing an SNS message: ${reason} —`,
+        topicArn ?? "(no TopicArn)",
+        "— set SES_SNS_TOPIC_ARN on this deployment to this value."
+      );
+      return { valid: false, reason };
     }
 
     return {

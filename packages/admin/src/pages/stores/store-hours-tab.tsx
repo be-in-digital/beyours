@@ -108,13 +108,29 @@ export function StoreHoursTab({
                   return (
                     <div
                       key={dayNum}
-                      className={`flex flex-wrap items-center gap-x-4 gap-y-2 py-3 ${dayHours.isClosed ? "opacity-50" : ""}`}
+                      className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3"
                     >
                       <span className="w-24 text-sm font-medium shrink-0">
                         {DAY_NAMES[dayNum]}
                       </span>
 
-                      <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                      {/*
+                        The dimming belongs to the two time inputs, which are
+                        `disabled` when the day is closed — not to the whole
+                        row. It was on the row, and the row also holds the
+                        « Fermé » switch and its label: the one control an
+                        owner needs in order to RE-OPEN the day was greyed to
+                        half opacity as if it were unavailable, and its label
+                        measured 1.99:1. `pointer-events-none` is added beside
+                        the opacity here because these inputs really are
+                        inactive, which is the exemption WCAG 1.4.3 grants and
+                        the idiom this codebase already uses for it.
+                      */}
+                      <div
+                        className={`flex items-center gap-2 flex-1 min-w-[200px] ${
+                          dayHours.isClosed ? "pointer-events-none opacity-50" : ""
+                        }`}
+                      >
                         <Input
                           id={`open-${dayNum}`}
                           type="time"

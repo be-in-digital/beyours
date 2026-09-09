@@ -175,15 +175,38 @@ export function parseAllowedTopicArns(raw: string | undefined | null): string[] 
 /**
  * Is this message from a topic this deployment accepts?
  *
- * `allowed` empty means the deployment has not been told, and the two answers
- * that follow from that are deliberately different:
+ * NO LIST MEANS NO. This used to answer `true` on an empty list, and the
+ * argument for it was that SNS delivers only to a confirmed subscription and
+ * `mayConfirmSubscription` refuses to create one — so the fail-open could not
+ * be reached. That reasoning has a hole in it, and the hole is the whole
+ * attack: **nothing here requires a subscription at all.** The endpoint is an
+ * HTTPS URL that accepts a POST from anyone. An attacker publishes a message
+ * on their OWN topic, to a subscription pointing at their own server, keeps
+ * the signed JSON Amazon hands them, and `curl`s it here. The signature is
+ * genuine — Amazon really did sign it — the certificate is on an
+ * `sns.<region>.amazonaws.com` host, and with no list configured the topic
+ * check waved it through. The body is theirs to write, so
+ * `emailHttpHandlers.ts` marked whichever subscribers they named bounced and
+ * complained, suppressing mail to real customers and corrupting campaign
+ * counters. Blocking self-subscription never closed that, because the attack
+ * never needed a subscription.
  *
- *   a NOTIFICATION is accepted — refusing would silently stop every bounce and
- *   complaint on every deployment that has not set the variable yet, which
- *   trades a hardening for an outage. SNS only delivers to a subscription that
- *   was confirmed, and the confirmation is where the list is enforced.
+ * SO IT REFUSES, and the refusal is loud rather than silent: the caller logs
+ * `topic_not_configured` and the ARN it saw, which is the value to paste into
+ * `SES_SNS_TOPIC_ARN`. The cost of refusing is that a deployment which has not
+ * been configured stops recording bounces and complaints — bookkeeping, and
+ * `tasks/webhook-migration-checklist.md` already requires the variable to be
+ * set *before* the subscription is confirmed, so no deployment is meant to be
+ * in that state. The cost of accepting is that anyone on the internet decides
+ * which of a client's customers can be emailed. Those are not comparable, and
+ * an authentication check that answers "yes" when it has not been configured
+ * is not an authentication check.
  *
- *   a SUBSCRIPTION CONFIRMATION is refused — see `mayConfirmSubscription`.
+ * `SES_SNS_ALLOW_ANY_TOPIC` is the escape hatch for an operator who needs the
+ * old behaviour while they configure the real thing — see
+ * `topicPolicy`. It is deliberately a separate variable: restoring a
+ * fail-open should be an act someone performs and can be seen to have
+ * performed, not the default nobody chose.
  *
  * A `TopicArn` compared with `===`: an ARN is an exact identifier, and prefix
  * or `includes` matching on one is how `arn:aws:sns:eu-west-1:111:beyours` is
@@ -191,10 +214,42 @@ export function parseAllowedTopicArns(raw: string | undefined | null): string[] 
  */
 export function isAllowedTopic(
   topicArn: string | undefined,
-  allowed: readonly string[]
+  allowed: readonly string[],
+  /** Set only by an operator who has deliberately re-opened the endpoint. */
+  allowAnyTopic = false
 ): boolean {
-  if (allowed.length === 0) return true
+  if (allowed.length === 0) return allowAnyTopic
   return typeof topicArn === "string" && allowed.includes(topicArn)
+}
+
+/** The variable that re-opens the endpoint to any correctly-signed topic. */
+export const SES_SNS_ALLOW_ANY_TOPIC_ENV = "SES_SNS_ALLOW_ANY_TOPIC"
+
+/**
+ * What a deployment's two SNS variables add up to.
+ *
+ * One place, so the webhook and its tests read the same rule and an operator
+ * reading a log gets the reason rather than a boolean. `reason` is what the
+ * caller reports when a message is refused:
+ *
+ *   `topic_not_configured` — `SES_SNS_TOPIC_ARN` is unset. Set it.
+ *   `topic_not_allowed`    — it is set and this is not one of its topics.
+ *
+ * Only the exact string `"true"` opens the hatch: `"false"`, `"0"` and an
+ * empty string are all somebody trying to turn it off, and a truthiness test
+ * on `process.env` reads every one of them as on.
+ */
+export function topicPolicy(env: Record<string, string | undefined>): {
+  allowed: string[]
+  allowAnyTopic: boolean
+  reason: "topic_not_configured" | "topic_not_allowed"
+} {
+  const allowed = parseAllowedTopicArns(env[SES_SNS_TOPIC_ARN_ENV])
+  return {
+    allowed,
+    allowAnyTopic: env[SES_SNS_ALLOW_ANY_TOPIC_ENV]?.trim().toLowerCase() === "true",
+    reason: allowed.length === 0 ? "topic_not_configured" : "topic_not_allowed",
+  }
 }
 
 /**
@@ -206,6 +261,13 @@ export function isAllowedTopic(
  * an operator can also do from the AWS console. A deployment with no
  * configured topic confirms nothing and says so in its log, which is a setup
  * step; the alternative default cost the endpoint its authenticity.
+ *
+ * `SES_SNS_ALLOW_ANY_TOPIC` does NOT reach here, and that is the point of it
+ * being a separate decision. The hatch exists so a deployment mid-configuration
+ * keeps RECORDING bounces on a subscription an operator already confirmed. It
+ * is not a licence to create new ones: an endpoint that subscribes itself to a
+ * stranger's topic is the original defect, and no environment variable should
+ * be able to put it back.
  */
 export function mayConfirmSubscription(
   topicArn: string | undefined,

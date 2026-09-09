@@ -26,6 +26,8 @@ function isValidSiret(raw: string): boolean {
 
 /* ── Public queries ── */
 
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const me = query({
   args: {},
   handler: async (ctx) => {
@@ -63,6 +65,8 @@ export const me = query({
 
 /* ── Public mutations ── */
 
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const completeProfile = mutation({
   args: {
     firstName: v.string(),
@@ -103,6 +107,8 @@ export const completeProfile = mutation({
   },
 });
 
+// @guarded-inline: reads the caller from the session with getAuthUserId and
+//   answers only about that account
 export const createAfterSignup = mutation({
   args: {},
   handler: async (ctx) => {

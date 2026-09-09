@@ -46,7 +46,7 @@ function TrendIndicator({ current, previous }: { current: number; previous: numb
 
   if (previous === 0) {
     return (
-      <span className="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-0.5 text-[11px] font-medium">
+      <span className="text-success inline-flex items-center gap-0.5 text-[11px] font-medium">
         <ArrowUpRight className="h-3 w-3" />
         Nouveau
       </span>
@@ -60,7 +60,7 @@ function TrendIndicator({ current, previous }: { current: number; previous: numb
     <span
       className={cn(
         "inline-flex items-center gap-0.5 text-[11px] font-medium",
-        isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+        isPositive ? "text-success" : "text-red-600 dark:text-red-400"
       )}
     >
       {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}

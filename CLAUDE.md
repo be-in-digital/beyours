@@ -324,6 +324,27 @@ There is no runtime theme selector, and `themeId` is a schema field with zero
 writers and zero readers. (No predefined-theme package exists either —
 `packages/themes` was an empty stub and has been removed.)
 
+### Accessibility
+Three guards, each measuring rather than asserting a policy:
+
+- **Contrast.** `tests/a11y/contrast.test.ts` in both apps sweeps every `.tsx`
+  they render and fails on any pair below the WCAG 2.1 AA floor. A region may
+  DECLARE the surface a shell in another file paints — a hex for a literal, a
+  token name for one that paints `bg-background` — and the files whose surface
+  is still unresolvable (the storefront header over the hero photograph, and
+  what sits inside it) are pinned by name: a new one fails. It dropped all 150
+  of its findings for want of that and guarded nothing; see
+  `tasks/wcag-contrast-audit-2026-09-08.md` § The 150.
+- **Motion.** `prefers-reduced-motion` is honoured in two places because there
+  are two animation systems: a universal block in `app/globals.css` for CSS,
+  and `<MotionConfig reducedMotion="user">` in `app/providers.tsx` for
+  framer-motion, which writes inline `style` per frame and no stylesheet can
+  reach. Nothing on the buying path animates forever — WCAG 2.2.2 is Level A
+  and there is no pause control on a restaurant hero.
+- **Live regions.** Every cart mutation is announced, by one polite region in
+  `StorefrontShell` — not in the cart sheet, which unmounts, and a live region
+  must be in the document before its contents change.
+
 ### Testing
 - Vitest unit tests. **Coverage is measured on demand, not gated** —
   `pnpm test:coverage` reports it, no config sets a threshold and no workflow
@@ -628,11 +649,19 @@ RESEND_FROM_EMAIL=            # verified at Resend; falls back to AWS_SES_FROM_E
 
 # Which SNS topic `/webhooks/ses` accepts, as a full ARN. Set it on the CONVEX
 # deployment — the verifier reads it there. A valid Amazon signature proves
-# Amazon sent the message, not that OUR topic did, and without this the
-# endpoint confirms no subscription at all (it logs the ARN it refused, which
-# is the value to paste in). The topic must also be on SignatureVersion 2:
-# version 1 is SHA-1 and is refused. See tasks/webhook-migration-checklist.md.
+# Amazon sent the message, not that OUR topic did, so without this the endpoint
+# REFUSES: it confirms no subscription and accepts no notification, logging
+# `topic_not_configured` and the ARN it saw, which is the value to paste in.
+# It used to accept notifications unconfigured; nothing requires a subscription
+# to reach an HTTPS endpoint, so an attacker published on their own topic and
+# replayed the JSON Amazon signed for them. The topic must also be on
+# SignatureVersion 2: version 1 is SHA-1 and is refused.
+# See tasks/webhook-migration-checklist.md.
 SES_SNS_TOPIC_ARN=
+SES_SNS_ALLOW_ANY_TOPIC=       # "true" re-opens notifications to any signed
+                               # topic while the ARN above is still unset. An
+                               # operator's deliberate downgrade; it never lets
+                               # the endpoint confirm a subscription.
 
 # Payments — SumUp and PayPal are OAuth client pairs, not single API keys
 STRIPE_SECRET_KEY=            # sk_...

@@ -496,6 +496,8 @@ async function eraseDataSubjectFor(
 /**
  * Preview an erasure. Admin-guarded, read-only.
  */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const previewErasure = query({
   args: { email: v.string() },
   handler: async (ctx, args): Promise<ErasureReport> => {
@@ -510,6 +512,8 @@ export const previewErasure = query({
  * Public so the ops console can call it with an admin session. The dashboard
  * twin below exists because that is where an operator works today.
  */
+// @guarded-inline: requireAdmin() — resolves the caller with getAuthUserId
+//   and refuses anyone whose affiliateUsers row is not role admin
 export const eraseDataSubject = mutation({
   args: { email: v.string() },
   handler: async (ctx, args): Promise<ErasureReport> => {

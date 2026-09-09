@@ -139,7 +139,7 @@ export function UpdatesSection({
             </p>
             {updateResult.hasUpdate && !updateResult.hasEntitledUpdate && (
               <div className="space-y-2">
-                <p className="text-sm text-amber-500 flex items-center gap-1">
+                <p className="text-sm text-warning flex items-center gap-1">
                   <AlertTriangleIcon className="h-3 w-3" />
                   {updateResult.coveredUntil
                     ? `Version publiée après la fin de votre maintenance (${formatDate(updateResult.coveredUntil)}).`
@@ -192,7 +192,7 @@ export function UpdatesSection({
                       {release.covered ? (
                         <Badge
                           variant="secondary"
-                          className="bg-emerald-500/10 text-emerald-500"
+                          className="bg-success/10 text-success"
                         >
                           <CheckCircle2Icon className="h-3 w-3 mr-1" />
                           Couverte
@@ -200,7 +200,7 @@ export function UpdatesSection({
                       ) : (
                         <Badge
                           variant="secondary"
-                          className="bg-amber-500/10 text-amber-500"
+                          className="bg-warning/10 text-warning"
                         >
                           <LockIcon className="h-3 w-3 mr-1" />
                           Verrouillee

@@ -144,6 +144,13 @@ export const UNGROUPED_OPTIONAL_VARS: readonly string[] = [
     See tasks/webhook-migration-checklist.md.
   */
   'SES_SNS_TOPIC_ARN',
+  /*
+    SES_SNS_ALLOW_ANY_TOPIC — accept a signed notification from ANY SNS topic
+    while SES_SNS_TOPIC_ARN is still unset. An operator's deliberate downgrade,
+    not a setting: "true" opens it, everything else leaves it shut, and it never
+    lets the endpoint confirm a subscription.
+  */
+  'SES_SNS_ALLOW_ANY_TOPIC',
 ]
 
 const GROUP_DECLARATIONS: readonly Omit<EnvManifestGroup, 'requiredTogether'>[] = [
@@ -294,7 +301,9 @@ const CONVEX_KEYS: readonly string[] = [
   'AWS_SES_CONFIGURATION_SET',
   // Read by `convex/sesWebhookVerify.ts`: which SNS topic the SES webhook
   // accepts, checked after the signature has made `TopicArn` trustworthy.
+  // Unset, the endpoint refuses every notification — see the schema.
   'SES_SNS_TOPIC_ARN',
+  'SES_SNS_ALLOW_ANY_TOPIC',
   // Which transport carries the mail. The Convex actions send directly, so
   // setting this on the web side alone would change nothing about where a
   // confirmation, an invitation or a campaign actually goes.

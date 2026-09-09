@@ -52,8 +52,11 @@ describe("SpiceLevelIndicator", () => {
   })
 
   it("fills exactly as many flames as the level", () => {
-    const filled = (html: string) =>
-      (html.match(/fill-orange-500/g) ?? []).length
+    // `fill-warning`, not `fill-orange-500`: the lit flames carry the meaning,
+    // so WCAG 1.4.11 applies to them, and the raw palette orange measured
+    // 2.83:1 on the light page. The token is the design system's own and is
+    // held at AA by the contrast matrix.
+    const filled = (html: string) => (html.match(/fill-warning/g) ?? []).length
     expect(filled(render({ level: 0 }))).toBe(0)
     expect(filled(render({ level: 3 }))).toBe(3)
     expect(filled(render({ level: 5 }))).toBe(5)
