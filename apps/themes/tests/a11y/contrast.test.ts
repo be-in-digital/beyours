@@ -124,6 +124,47 @@ describe("WCAG 2.1 AA contrast", () => {
     })
     expect(seen.length).toBeGreaterThan(500)
   }, SWEEP_BUDGET_MS)
+
+  it("resolves inline style pairs, not only className strings", () => {
+    /**
+     * THE INSTRUMENT GAP THIS CLOSES. This scanner read `className` and nothing
+     * else, and its header said so — "inline style={{}} never read". That was
+     * accurate, and it was load-bearing: the onboarding tour hands a
+     * `styles={{}}` map to a third-party provider, and fourteen more
+     * `style={{ color: … }}` sites live in `packages/admin/src/pages/`.
+     *
+     * The gap was demonstrated rather than argued. Making the tour badge paint
+     * `--primary` on `--primary` produced a pair measuring EXACTLY 1.000:1 —
+     * and BOTH guards stayed green: this sweep because it never looked at
+     * `style`, and `onboarding-tour.test.ts` because its three assertions are
+     * about the SHAPE of the style object (both members set, which tokens the
+     * popover uses) and do no arithmetic. A pair that is present and identical
+     * satisfies every one of them.
+     *
+     * The tour's own colour was fixed at the time; the instrument that could
+     * not see it was not. It can now — re-run with that same edit in place,
+     * this sweep reports `1.000:1 (needs 4.5)`.
+     *
+     * Counted rather than merely exercised: a reader that silently stops
+     * resolving reports no failures, which is the same green as a product with
+     * none. That is the whole failure mode this file exists to prevent.
+     */
+    const resolved = scanContrast({
+      appDir: process.cwd(),
+      scopes: [".storefront-theme"],
+      regions: REGIONS,
+      // Nothing clears 21:1 but black on white, so this reports every pair the
+      // scanner resolved rather than only the failing ones.
+      minimumRatio: 21,
+    }).filter((failure) => /^styles?\./.test(failure.foreground))
+
+    expect(resolved.length).toBeGreaterThan(4)
+    // And both shapes: the DOM `style` attribute, and the `styles` map a
+    // third-party component takes. They are read by different branches, and one
+    // of them going quiet must not look like the other still working.
+    expect(resolved.some((f) => f.foreground.startsWith("style.")), "no style={{}} pair").toBe(true)
+    expect(resolved.some((f) => f.foreground.startsWith("styles.")), "no styles={{}} pair").toBe(true)
+  }, SWEEP_BUDGET_MS)
 })
 
 /**
