@@ -97,7 +97,14 @@ For each package:
 - [ ] `.github/workflows/e2e.yml`:
   - Playwright tests
   - On PR to `main` only
-- [ ] Set up Husky + lint-staged for pre-commit
+- [x] Git hooks — done differently, and husky is deliberately NOT the answer:
+      it keeps its wrappers in `.husky/_`, which it gitignores from inside, so
+      `core.hooksPath` pointed at a directory absent from every fresh worktree
+      and no hook ran at all (#409). The tracked `.githooks/` directory replaced
+      it, installed by `scripts/install-git-hooks.mjs` as the root `prepare`.
+      Re-adding husky would silently switch the commit-msg hook back off.
+      lint-staged is still unwired: that one is an open decision, not an
+      oversight.
 
 #### 1.4 - Development tooling
 

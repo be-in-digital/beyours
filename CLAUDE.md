@@ -634,7 +634,20 @@ When working on tasks:
 7. **i18n**: Use cookies (primary) or localStorage (fallback)
 8. **State**: Zustand for client, Convex for server
 9. **Run tests** before commit: `pnpm test && pnpm test:e2e`
-10. **NEVER mention "Claude Code"** in commit messages (no `Co-Authored-By: Claude`, and no reference to Claude at all)
+10. **NEVER mention "Claude Code"** in commit messages (no `Co-Authored-By: Claude`, and no reference to Claude at all).
+    This rule is now executed rather than merely written. `.githooks/commit-msg`
+    strips the trailers as they are written — `pnpm install` installs it, by
+    pointing `core.hooksPath` at that tracked directory — and `pnpm
+    check:attribution` refuses them in the required `Lint` job, over every
+    commit between the event's base and `HEAD`. Naming `CLAUDE.md` in a commit
+    is not attribution and stays legal; the guard matches co-author trailers,
+    `Claude-*` trailers, session links and "generated with" credits, and it
+    self-tests both directions before it judges anything.
+    It was prose for months, and #409 measured the cost: 17 of the 24 commits in
+    `4e625bde..3a6cb8d1` carry one, permanently, because `core.hooksPath`
+    pointed at husky's `.husky/_` — a directory husky gitignores, so it was
+    absent from every fresh clone and worktree, and git runs no hook and says
+    nothing when its hooks path resolves to nothing.
 11. **English only on GitHub and Git** — see below
 
 ---
