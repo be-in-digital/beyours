@@ -11,17 +11,49 @@ import { v } from "convex/values"
 /**
  * List all categories for a store, ordered by sortOrder
  */
+/**
+ * The categories a diner may be shown.
+ *
+ * Public and unauthenticated, and it had the same defect as `products.list`:
+ * a category the owner had switched off was still served to the carte, the
+ * sitemap and the JSON-LD. Filtered in memory rather than by index — unlike
+ * products and menus, `categoriesTable` declares no `by_storeId_isActive`, and
+ * a restaurant has tens of categories where it has hundreds of dishes, so the
+ * read is bounded either way and a migration to add an index would not pay for
+ * itself.
+ *
+ * Admin screens that need the switched-off ones call `listAll`.
+ */
 export const list = {
   args: { storeId: v.id("stores") },
   handler: async (ctx: any, args: any) => {
-    return await ctx.db
+    const categories = await ctx.db
       .query("categories")
       .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .order("asc")
       .collect()
-      .then((categories: any) =>
-        categories.sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-      )
+    return categories
+      .filter((category: any) => category.isActive === true)
+      .sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+  },
+}
+
+/**
+ * Every category of a store, switched-off ones included.
+ *
+ * For the admin catalogue and the kitchen station mapping, which has to keep
+ * showing a mapping whose category is currently off — otherwise turning a
+ * category off would silently drop the routing rule with it.
+ */
+export const listAll = {
+  args: { storeId: v.id("stores") },
+  handler: async (ctx: any, args: any) => {
+    const categories = await ctx.db
+      .query("categories")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .order("asc")
+      .collect()
+    return categories.sort((a: any, b: any) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
   },
 }
 

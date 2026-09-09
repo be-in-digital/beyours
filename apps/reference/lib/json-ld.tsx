@@ -413,23 +413,64 @@ export function buildBreadcrumbSchema(
 // ---------------------------------------------------------------------------
 
 /**
- * Renders a JSON-LD script tag for embedding in a page.
+ * Serialise a JSON-LD document for embedding inside a `<script>` element.
  *
- * SECURITY NOTE: JSON.stringify does NOT escape the </script> sequence.
- * We sanitize the output to prevent XSS via script tag breakout.
+ * WHY NOT `.replace(/<\/script>/gi, …)`, which is what this did until #445.
+ * That regex matches one spelling of the end tag and an HTML parser accepts
+ * several. Per the HTML standard's script-data state, what closes the element
+ * is `</script` followed by whitespace, `/` or `>` — so `</script >` and
+ * `</script/>` both terminate it and neither matches the pattern. Two of those
+ * spellings survive `JSON.stringify` untouched (it escapes tab, newline and
+ * carriage return, which is why only the space and the solidus get through),
+ * and the breakout was demonstrated as execution rather than injection:
+ *
+ *     {"name":"</script ><script>document.title='PWNED'</script >"}
+ *     document.title after parse === "PWNED"
+ *
+ * It is reachable. A blog title rides `saveDraft` → `publishArticle` →
+ * `article.content.title` into the breadcrumb trail below, and the title is
+ * sanitised nowhere — the body is sanitised twice, the title not at all.
+ * `Role.MANAGER` holds `content:write`, and production CSP grants
+ * `'unsafe-inline'` with no nonce, so a manager account was one draft away
+ * from running script on every visitor's page.
+ *
+ * WHAT REPLACES IT: escaping the characters themselves rather than the
+ * sequences they can spell. `<`, `>` and `&` cannot appear in JSON output
+ * except inside a string literal — every structural character of JSON is one
+ * of `{}[]:,"`, a digit or a bare keyword — so rewriting all three to their
+ * `\uXXXX` form is total, and total is the property a pattern match cannot
+ * have. A JSON parser decodes `\u003c` back to `<`, so the document a
+ * consumer reads is unchanged: this is an encoding, not a sanitiser, and it
+ * removes nothing from the data.
+ *
+ * U+2028 and U+2029 go too. `JSON.stringify` leaves them raw and they are line
+ * terminators to a JavaScript parser, which matters the moment anything reads
+ * this block as a script rather than as `application/ld+json`.
+ *
+ * Exported because the test that guards it has to RUN it. The previous one
+ * asserted `read("lib/json-ld.tsx")).toContain('type="application/ld+json"')`
+ * — a string-containment check against the source file, which says nothing
+ * about escaping and passed throughout the window above.
+ */
+export function serialiseJsonLd(data: JsonLdDocument): string {
+  return JSON.stringify(pruneUndefined(data))
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
+}
+
+/**
+ * Renders a JSON-LD script tag for embedding in a page.
  */
 export function JsonLd({ data }: { data: JsonLdDocument | undefined }) {
   if (!data) return null
 
-  const jsonString = JSON.stringify(pruneUndefined(data)).replace(
-    /<\/script>/gi,
-    "<\\/script>",
-  )
-
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: jsonString }}
+      dangerouslySetInnerHTML={{ __html: serialiseJsonLd(data) }}
     />
   )
 }

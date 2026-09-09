@@ -17,6 +17,22 @@ export const authComponent: ReturnType<typeof createClient<DataModel>> =
   createClient<DataModel>(components.betterAuth);
 
 /**
+ * Origins allowed to make credentialed requests against this deployment.
+ *
+ * Exported so `client-site-trusted-origins.test.ts` can execute it rather than
+ * grep for it: the defect this replaces was visible in the source for anyone
+ * who read three lines past a comment forbidding it, and no test read either.
+ */
+export function buildTrustedOrigins(siteUrl: string | undefined): string[] {
+  const origins = siteUrl ? [siteUrl] : [];
+  // Unset is a development machine or a broken deployment, never a delivered
+  // site: `SITE_URL` is required and the app refuses to start without it.
+  const isLocal = !siteUrl || /^https?:\/\/localhost(:\d+)?\/?$/i.test(siteUrl);
+  if (isLocal) origins.push("http://localhost:3000");
+  return [...new Set(origins)];
+}
+
+/**
  * Post one transactional email to the deployment's own `/api/email/send`.
  *
  * Convex holds no SES credentials — the Next app does — so every mail Better
@@ -150,9 +166,22 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     // espaces de travail se disputent les ports. Un site client n'a aucune
     // raison d'accepter une origine de développement : il tourne sur son
     // domaine. Élargir cette liste ici, c'est l'élargir chez le restaurateur.
-    trustedOrigins: process.env.SITE_URL
-      ? [process.env.SITE_URL, "http://localhost:3000"]
-      : ["http://localhost:3000"],
+    //
+    // The comment above said exactly that, and the code three lines below it
+    // trusted `http://localhost:3000` UNCONDITIONALLY — in both branches, on
+    // every delivered client site. A credentialed origin is permission for a
+    // page on that origin to make authenticated requests with the visitor's
+    // session, so any process able to serve on a restaurant customer's own
+    // port 3000 could act as them against the restaurant's backend.
+    //
+    // The fix takes the signal already required rather than adding one:
+    // `SITE_URL` is in `siteRequiredShape`, a deployment does not boot without
+    // it, and it is `http://localhost:3000` on a developer's machine and the
+    // real domain on a client's. So localhost is trusted exactly while the
+    // site IS localhost, and a delivered site stops trusting it the moment its
+    // domain is configured — no new variable to set, and nothing to remember
+    // at deploy time, which is what made the old shape survive review.
+    trustedOrigins: buildTrustedOrigins(process.env.SITE_URL),
     plugins: [convex({ authConfig })],
   });
 };

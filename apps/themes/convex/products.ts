@@ -4,7 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import * as defs from "@be-in-digital/convex-functions/products";
 import { requireStorePermission } from "@be-in-digital/convex-functions/auth";
 import { touchesTranslatableText } from "@be-in-digital/convex-functions/autoTranslate";
-import { storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
+import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 import { scheduleMenuSync } from "./lib/menuSync";
 import { scheduleTranslation } from "./autoTranslate";
 
@@ -16,6 +16,15 @@ import { scheduleTranslation } from "./autoTranslate";
 export const list = query(defs.list);
 // @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const getById = query(defs.getById);
+// The drafts, for the admin only. `list` above is the diner's view and stops at
+// what is on sale; this is the catalogue manager's, and it is store-scoped and
+// permission-gated because a dish that is not on sale yet is the owner's
+// business and nobody else's (#443).
+export const listAll = storeQuery({
+  permission: "products:read",
+  args: defs.listAll.args,
+  handler: (ctx, args) => defs.listAll.handler(ctx, args),
+});
 // @public-by-design: the catalogue IS the storefront; prices and availability are public
 export const getManualTrending = query(defs.getManualTrending);
 // @public-by-design: the catalogue IS the storefront; prices and availability are public

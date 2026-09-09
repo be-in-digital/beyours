@@ -595,6 +595,65 @@ for NOTIFICATION_TYPE in Bounce Complaint Delivery; do
 done
 log_success "Bounce, Complaint and Delivery notifications publish to the topic, with original headers"
 
+# ── Tell the deployment which topic it is expected to trust ──────────────────
+#
+# BEFORE subscribing, and that order is the whole point of this block.
+#
+# `sesWebhookVerify` refuses to confirm a subscription whose topic is not named
+# in `SES_SNS_TOPIC_ARN` (`mayConfirmSubscription` returns false on an empty
+# list, deliberately: confirming is what turns "a stranger pointed their topic
+# at us" into "a stranger can publish to us"). Nothing set that variable —
+# not this script, not `env:sync`, not `setup-convex-env.sh` — so a client
+# provisioned exactly as instructed got:
+#
+#   `aws sns subscribe` → SNS POSTs a SubscriptionConfirmation → the deployment
+#   refuses it → the subscription stays PendingConfirmation → SNS gives up →
+#   no bounce or complaint ever arrives.
+#
+# Which is #428's original silence moved one step down the chain, and the
+# script's own success line told the operator the opposite ("the deployment
+# confirms it on the first POST"). The documentation had it right and the
+# script is what an operator follows.
+#
+# Written to the Convex env file — the verifier reads it from the CONVEX
+# deployment, not from Next.js — and pushed straight onto the deployment when
+# the CLI can reach one, so a re-run of this script is not needed.
+CONVEX_ENV_FILE="${CONVEX_ENV_FILE:-.env.convex}"
+
+if grep -qE '^SES_SNS_TOPIC_ARN=' "$CONVEX_ENV_FILE" 2>/dev/null; then
+  # Rewrite in place rather than appending a second line: `setup-convex-env.sh`
+  # takes the LAST occurrence, so an append would work by luck and read as a
+  # duplicate to anyone opening the file.
+  tmp_env=$(mktemp)
+  grep -vE '^SES_SNS_TOPIC_ARN=' "$CONVEX_ENV_FILE" > "$tmp_env" || true
+  printf 'SES_SNS_TOPIC_ARN=%s
+' "$SNS_TOPIC_ARN" >> "$tmp_env"
+  mv "$tmp_env" "$CONVEX_ENV_FILE"
+  log_success "SES_SNS_TOPIC_ARN updated in $CONVEX_ENV_FILE"
+else
+  printf 'SES_SNS_TOPIC_ARN=%s
+' "$SNS_TOPIC_ARN" >> "$CONVEX_ENV_FILE"
+  log_success "SES_SNS_TOPIC_ARN written to $CONVEX_ENV_FILE"
+fi
+
+# Push it now if a deployment is reachable. `|| true` because this script is
+# routinely run before `convex dev` has ever created one, and a missing
+# deployment must not fail the AWS provisioning that already succeeded — the
+# file above is the durable record either way.
+if command -v pnpx >/dev/null 2>&1 && [ -n "${CONVEX_DEPLOYMENT:-}" ]; then
+  if pnpx convex env set SES_SNS_TOPIC_ARN "$SNS_TOPIC_ARN" >/dev/null 2>&1; then
+    log_success "SES_SNS_TOPIC_ARN set on the Convex deployment"
+  else
+    log_warn "Could not reach the Convex deployment to set SES_SNS_TOPIC_ARN."
+    log_warn "Run this before the subscription is confirmed:"
+    log_warn "  pnpx convex env set SES_SNS_TOPIC_ARN $SNS_TOPIC_ARN"
+  fi
+else
+  log_warn "No Convex deployment in this shell, so SES_SNS_TOPIC_ARN is only in $CONVEX_ENV_FILE."
+  log_warn "Push it before the subscription below can be confirmed:"
+  log_warn "  pnpm env:sync   # or: pnpx convex env set SES_SNS_TOPIC_ARN $SNS_TOPIC_ARN"
+fi
+
 if [ -n "$SES_WEBHOOK_URL" ]; then
   # Only subscribe once. Re-subscribing the same endpoint leaves a second
   # PendingConfirmation subscription behind for ever, and every notification is
@@ -617,7 +676,14 @@ if [ -n "$SES_WEBHOOK_URL" ]; then
     # a deployed backend confirms without anyone doing anything. A backend that
     # is not up yet leaves the subscription PendingConfirmation, and SNS does
     # not retry indefinitely — re-run this script once it is.
-    log_success "Subscription requested (the deployment confirms it on the first POST)"
+    # Conditional on the variable actually having reached the deployment. The
+    # unconditional version of this line was false whenever it had not, which
+    # is the case it most needed to warn about.
+    log_success "Subscription requested"
+    log_info "The deployment confirms it on the first POST — provided SES_SNS_TOPIC_ARN"
+    log_info "is set there. If the warning above says it is not, set it and re-run:"
+    log_info "  aws sns subscribe --topic-arn $SNS_TOPIC_ARN --protocol https \\"
+    log_info "    --region $REGION --notification-endpoint $SES_WEBHOOK_URL"
   else
     log_success "Already subscribed: $SES_WEBHOOK_URL"
   fi

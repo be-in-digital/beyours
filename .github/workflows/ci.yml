@@ -190,6 +190,40 @@ jobs:
       - name: Check engine source has a release to travel in
         run: pnpm check:source-drift
 
+      # The secret scan, here rather than only in `security.yml`, and for the
+      # reason stated at the top of this block: `Lint` is a context branch
+      # protection requires BY NAME, so a finding blocks a merge without anyone
+      # touching repository settings.
+      #
+      # It was not blocking anything. The required set is `Lint / Type Check /
+      # Test / Build / E2E Status`; `Gitleaks (secret scan)` is not among them,
+      # so the job in `security.yml` was advisory — neither red nor green
+      # decided whether a commit could land, and a pull request adding a
+      # credential could be merged over a red scan by anyone who did not scroll
+      # to it. That is the wrong shape for the one check whose findings are
+      # permanent: a secret that reaches `main` is in the history for good, and
+      # `.gitleaksignore` exists precisely because four such values are still
+      # there and still exploitable (#172).
+      #
+      # `security.yml` keeps its own copy. The two answer different questions —
+      # this one gates the merge, that one runs nightly against already-merged
+      # history and catches a value silenced or newly detected since. Removing
+      # either would lose one of them.
+      #
+      # `--redact` so a finding names the file and line and never prints the
+      # value into a public log. The scan reads `.gitleaks.toml` (values that
+      # were never credentials) and `.gitleaksignore` (findings that were) from
+      # the repository root by default.
+      - name: Install gitleaks
+        run: |
+          GITLEAKS_VERSION=8.21.2
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | sudo tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      - name: Scan history for secrets
+        run: gitleaks detect --source . --redact --verbose --no-banner
+
   type-check:
     name: Type Check
     runs-on: ubuntu-latest

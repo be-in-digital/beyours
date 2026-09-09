@@ -59,6 +59,7 @@ with the code. This table is the index, not the explanation.
 | File | Why the template differs |
 |---|---|
 | `convex/auth.ts` | The bench trusts `localhost:3000-3003` because its workspaces fight over ports. A client site runs on its own domain and has no business accepting a dev origin. |
+| `lib/convex.ts` | The Next.js half of the same seam as `convex/auth.ts`, and deliberate for the same reason. The bench trusts `localhost:3000` and `:3001`; the template trusts localhost only while `BETTER_AUTH_URL` *is* localhost, so a delivered site trusts its own domain and nothing else. Both files used to append a dev origin unconditionally, on every client site — the Convex one directly under a comment forbidding it. Held by `apps/themes/tests/security/client-site-trusted-origins.test.ts` (#445). |
 | `convex/http.ts` | The template keeps the old Next.js `/api/webhooks/*` routes as 410 tombstones, so a client whose provider dashboard still points at the old path gets an explanation instead of a 404. The bench deleted them on 2026-07-18. |
 | `app/layout.tsx` | Metadata, fonts and theme come from the client zone (`site.config.ts`, `site/fonts.ts`, `site/theme.css`). Already documented in the file and in `apps/themes/docs/UPDATES.md`. |
 | `app/(test)/layout.tsx` | Template-only. Sends the `(test)` route group to `notFound()` in production unless `NEXT_PUBLIC_ENABLE_TEST_ROUTES=true`. Playwright harnesses have no business on a client site. |

@@ -52,14 +52,24 @@ export const validate = action({
     // C-01: Authentication check
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
+      return { valid: false, error: "Non authentifié" };
+    }
 
     // Deployment-wide operation with no store to scope against. "Logged in"
     // included every customer account, so the check is by role.
+    //
+    // THIS CALL USED TO SIT INSIDE THE `if (!identity)` BLOCK ABOVE, which is
+    // the branch only unauthenticated callers take — and they were rejected on
+    // the next line regardless. So the permission check ran for nobody: every
+    // signed-in account, including a diner's, reached the platform calls below
+    // and could drive credential probes against the restaurant's own Uber Eats,
+    // Deliveroo and Uber Direct credentials, using the sanitised replies as a
+    // store/brand-id oracle. The `@guarded-inline` marker above was true of the
+    // text and false of the control flow; the lint rule that was supposed to
+    // catch that only matched strings, and now walks the AST (#445).
     await ctx.runQuery(internal.authHelpers.checkPermission, {
       permission: "settings:read",
     });
-      return { valid: false, error: "Non authentifié" };
-    }
 
     // -----------------------------------------------------------------------
     // Uber Direct: validate OAuth credentials by requesting a token

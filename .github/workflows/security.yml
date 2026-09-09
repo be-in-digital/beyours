@@ -18,6 +18,15 @@ permissions:
   contents: read
 
 jobs:
+  # NOT the gate. Since #445 the blocking copy of this scan lives in `ci.yml`'s
+  # `Lint` job, because `Lint` is a context branch protection requires by name
+  # and `Gitleaks (secret scan)` never was — this job was advisory, and a pull
+  # request adding a credential could be merged straight over a red run.
+  #
+  # Kept, because the two answer different questions: `Lint` gates the merge,
+  # and this runs nightly against history that has already merged, catching a
+  # value newly detected by an updated ruleset or one whose `.gitleaksignore`
+  # entry has been removed.
   gitleaks:
     name: Gitleaks (secret scan)
     runs-on: ubuntu-latest

@@ -23,11 +23,70 @@ import { PROGRAM_DISABLED_REASON } from "./affiliateProgram";
 
 /* ── Helpers ── */
 
+/**
+ * The alphabet, unchanged: upper case, no `I`, `O`, `0` or `1`, because these
+ * codes are read off a screen and typed by a stranger.
+ */
+const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/**
+ * How many random characters follow `BID-`.
+ *
+ * Was 5, which is 32^5 ≈ 33.5 million codes. `validateCode` below is a public,
+ * unauthenticated query — it has to be, because an affiliate code is handed to
+ * strangers to type before anybody signs in — so it answers "is this a real
+ * code?" for anyone who asks, as often as they ask. Against a 33.5M space with
+ * a few hundred live codes, the expected number of guesses to hit one is in the
+ * hundreds of thousands: an afternoon.
+ *
+ * 8 characters is 32^8 ≈ 1.1 × 10^12, four and a half orders of magnitude more,
+ * which puts a blind sweep out of reach and leaves the oracle answering a
+ * question nobody can afford to ask.
+ *
+ * ENTROPY RATHER THAN A RATE LIMIT, and the reason is structural rather than a
+ * preference. `apps/site` has a fixed-window limiter in `./rateLimit.ts`, and
+ * every caller of it is a MUTATION: consuming a limit means writing a counter,
+ * and a Convex query cannot write. Making `validateCode` a mutation to buy a
+ * counter would cost the storefront its reactive price preview and still leave
+ * a guessable code guessable. So the code itself is what stops being cheap to
+ * guess. A limiter would be a second layer if one is ever wanted; it is not
+ * what was missing.
+ *
+ * Existing 5-character codes keep working — `isValidCode` accepts 3 to 20
+ * characters and the lookup is by exact match. This lengthens what is MINTED
+ * from here on. Re-minting the short ones is a migration, not a code change,
+ * and it is the follow-up rather than this fix.
+ */
+const CODE_LENGTH = 8;
+
+/**
+ * A referral code, from the platform CSPRNG.
+ *
+ * `Math.random()` is not a random number generator for anything an attacker
+ * benefits from predicting. V8 implements it as xorshift128+, whose internal
+ * state is recoverable from a short run of outputs — and these codes are
+ * PUBLISHED: an affiliate posts theirs, so an attacker collecting a handful of
+ * real codes was collecting samples of the generator's output stream, which is
+ * the exact input that attack needs. `crypto.getRandomValues` is available in
+ * the Convex runtime and has no such structure.
+ *
+ * The modulo is rejection-sampled rather than folded. `byte % 32` over 0..255
+ * is uniform only because 256 is a multiple of 32; that is true today and
+ * silently stops being true the moment somebody adds a character to the
+ * alphabet, at which point the early letters become likelier and nobody finds
+ * out. Rejecting the tail keeps the distribution flat for any alphabet.
+ */
 function generateCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const limit = Math.floor(256 / CODE_ALPHABET.length) * CODE_ALPHABET.length;
   let code = "BID-";
-  for (let i = 0; i < 5; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
+  while (code.length < 4 + CODE_LENGTH) {
+    const bytes = new Uint8Array(CODE_LENGTH);
+    crypto.getRandomValues(bytes);
+    for (const byte of bytes) {
+      if (byte >= limit) continue;
+      code += CODE_ALPHABET[byte % CODE_ALPHABET.length];
+      if (code.length === 4 + CODE_LENGTH) break;
+    }
   }
   return code;
 }

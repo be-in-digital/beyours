@@ -168,7 +168,29 @@ async function assertSectionsInStore(
 /**
  * List all menus for a store
  */
+/**
+ * The menus a diner may be shown.
+ *
+ * Third of the three public catalogue reads that returned switched-off rows.
+ * `menusTable` already declared `by_storeId_isActive` and nothing used it —
+ * the index for the filter was sitting beside the query that did not filter.
+ *
+ * Admin screens call `listAll`.
+ */
 export const list = {
+  args: { storeId: v.id("stores") },
+  handler: async (ctx: any, args: any) => {
+    return await ctx.db
+      .query("menus")
+      .withIndex("by_storeId_isActive", (q: any) =>
+        q.eq("storeId", args.storeId).eq("isActive", true)
+      )
+      .collect()
+  },
+}
+
+/** Every menu of a store, switched-off ones included, for the admin. */
+export const listAll = {
   args: { storeId: v.id("stores") },
   handler: async (ctx: any, args: any) => {
     return await ctx.db

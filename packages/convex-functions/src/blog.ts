@@ -11,7 +11,7 @@
 
 import { v } from "convex/values"
 import { generateSlug, now } from "./helpers"
-import { sanitizeArticleHtml } from "./htmlSanitize"
+import { sanitizeArticleHtml, sanitizePlainText } from "./htmlSanitize"
 
 // ============================================================================
 // Validators (reusable across queries and mutations)
@@ -477,6 +477,25 @@ export async function createArticleCore(
 }
 
 /**
+ * The article fields that are text, never markup.
+ *
+ * Returned as a partial object so a caller can spread it over content it has
+ * already built, and so a field the caller did not send stays absent rather
+ * than being resurrected as `""` — `contentEquals` compares these documents to
+ * decide `hasUnpublishedChanges`, and inventing a key would report an edit
+ * nobody made.
+ */
+export function plainTextFields(content: any): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const field of ["title", "excerpt", "metaTitle", "metaDescription"]) {
+    if (typeof content?.[field] === "string") {
+      out[field] = sanitizePlainText(content[field])
+    }
+  }
+  return out
+}
+
+/**
  * Save draft content for an article.
  * Updates media usage, recalculates hasUnpublishedChanges.
  * If status=scheduled, reverts to draft.
@@ -529,6 +548,14 @@ export async function saveDraftCore(
     ...(typeof args.draftContent?.content === "string"
       ? { content: sanitizeArticleHtml(args.draftContent.content) }
       : {}),
+    // The body was cleaned twice and the SHORT fields not at all, which is
+    // the gap #445 was reported through: `title` rides this spread into
+    // `article.content.title`, into the breadcrumb trail, and into a
+    // `<script type="application/ld+json">` block. The sink escapes properly
+    // now; this is the other half, and it is the half that says a title is
+    // text. `sanitizePlainText` strips tags and keeps the words, so an author
+    // who typed one loses the tag rather than the sentence.
+    ...plainTextFields(args.draftContent),
     slug,
     updatedAt: timestamp,
   }

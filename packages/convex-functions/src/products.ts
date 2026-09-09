@@ -12,9 +12,53 @@ import { WITHDRAWN_PROMOTION_PRODUCT_FIELDS } from "./promotionDiscount"
 // === QUERIES ===
 
 /**
- * List all products for a store
+ * The products a diner may be shown.
+ *
+ * PUBLIC AND UNAUTHENTICATED — this is the storefront carte, and it is meant to
+ * be readable without an account. What it was NOT meant to include is a dish
+ * the owner has not put on sale. `isActive: false` is how a draft, a
+ * discontinued item and a seasonal one out of season all look, and this query
+ * returned all of them at full price:
+ *
+ *     products.list => [{"name":"LIVE"},{"name":"SECRET-DRAFT","isActive":false}]
+ *
+ * #440 closed the same hole in `getManyByIds` and its commit body said the fix
+ * made that query behave "like every other public read of that table". Measured
+ * afterwards, the other public reads did not filter: `list` is the one the
+ * public carte, the sitemap and the JSON-LD all call, so a draft rendered live,
+ * was indexed by search engines through `sitemap.ts`, and was then REFUSED at
+ * checkout — `orderLine.ts:276` rejects an inactive product at order creation.
+ * So the leak was also a broken funnel: the diner picked a dish the shop had
+ * already decided not to sell, and found out at payment.
+ *
+ * `by_storeId_isActive` indexes it rather than filtering after the read, so a
+ * large catalogue does not pay for the rows it is about to discard.
+ *
+ * Admin screens that legitimately need the drafts call `listAll`, which is
+ * store-scoped and asks for `products:read`.
  */
 export const list = {
+  args: { storeId: v.id("stores") },
+  handler: async (ctx: any, args: any) => {
+    return await ctx.db
+      .query("products")
+      .withIndex("by_storeId_isActive", (q: any) =>
+        q.eq("storeId", args.storeId).eq("isActive", true)
+      )
+      .collect()
+  },
+}
+
+/**
+ * Every product of a store, drafts included.
+ *
+ * The half of the old `list` that has a legitimate caller: the admin screens
+ * that manage the catalogue, which must be able to see a dish precisely
+ * because it is not on sale yet. Store-scoped and permission-gated at the app
+ * wrapper (`products:read`), so it is not the same question as the one the
+ * carte asks.
+ */
+export const listAll = {
   args: { storeId: v.id("stores") },
   handler: async (ctx: any, args: any) => {
     return await ctx.db
@@ -26,11 +70,18 @@ export const list = {
 
 /**
  * Get product by ID
+ *
+ * Also public, and it leaked the same rows by a different door: an id is not a
+ * secret — it appears in order lines, in favourites and in the DOM — so
+ * `getById(draftId)` returned the whole draft document, price and all. Now an
+ * inactive product answers `null`, which is what a diner following a stale
+ * link to a withdrawn dish should get anyway.
  */
 export const getById = {
   args: { id: v.id("products") },
   handler: async (ctx: any, args: any) => {
-    return await ctx.db.get(args.id)
+    const product = await ctx.db.get(args.id)
+    return product && product.isActive === true ? product : null
   },
 }
 

@@ -62,10 +62,14 @@ export function useStoreDetail({ params }: { params: Promise<{ storeId: string }
   const store = useQuery(api.stores.getById, { id: storeId as string })
   const globalSettings = useQuery(api.globalSettings.get)
   const storeIntegrations = useQuery(api.storeIntegrations.listByStore, { storeId: storeId as string })
-  // The catalogue the station mapping is drawn against. `api.categories.list`
-  // is the query the product forms already use — the mapping is keyed on
-  // category because that is the unit `orders.resolveStations` reads.
-  const categories = useQuery(api.categories.list, { storeId: storeId as string })
+  // The catalogue the station mapping is drawn against, keyed on category
+  // because that is the unit `orders.resolveStations` reads.
+  //
+  // `listAll` rather than `list` since #443: `list` became the diner's view of
+  // the carte and now stops at `isActive`. A mapping must stay visible for a
+  // category the owner has switched off, or turning one off would silently
+  // drop its routing rule along with it.
+  const categories = useQuery(api.categories.listAll, { storeId: storeId as string })
 
   const updateStore = useMutation(api.stores.update)
   const updateAddressMutation = useMutation(api.stores.updateAddress)

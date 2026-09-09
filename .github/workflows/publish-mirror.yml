@@ -138,9 +138,65 @@ jobs:
     with:
       apps: themes
 
+  # Did the Release this followed actually publish a package?
+  #
+  # A SEPARATE JOB, and that is the entire point of it rather than a tidying.
+  # This decision used to be a STEP inside `publish`, guarding the `Sync` step
+  # with an `if:`. When a Release published nothing, the step was skipped, no
+  # sync happened — and the job still finished **success**, because a skipped
+  # step does not fail a job. The Actions dashboard therefore showed a green
+  # `Publish mirror` for a run that copied nothing at all:
+  #
+  #     4. Did that Release publish anything? -> success
+  #     7. Sync                               -> skipped
+  #
+  # So `main` accumulated green mirror runs while `pushedAt` on the boilerplate
+  # had not moved since 07:34. That is worse than no signal: it is the signal
+  # that stopped anyone looking, and it is what made the failing export gate
+  # (the `push` runs going red beside it) invisible for a day.
+  #
+  # As a job, the answer feeds `publish`'s own `if:`, so a Release that
+  # published nothing leaves `Sync the mirror` **skipped** — grey, not green.
+  # A reader can now tell the two apart at a glance, which is the whole of what
+  # was missing. `Mirror health` covers the other conclusions; it deliberately
+  # does not fire on `success`, so this could never have been caught there.
+  released:
+    name: Did that Release publish?
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      published: ${{ steps.check.outputs.published }}
+    steps:
+      # The commit Release verified, not whatever `main` points at now — the
+      # same reasoning as the checkout in `publish` below, and it has to be
+      # repeated here because a job gets its own workspace.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-tags: true
+
+      # `changeset publish` tags each package it publishes and release.yml
+      # pushes those tags, so tags at this commit mean the Release published —
+      # and a Release that published ran the E2E suite, which is what this path
+      # is allowed to rely on.
+      - name: Look for tags at the released commit
+        id: check
+        run: |
+          set -euo pipefail
+          tags=$(git tag --points-at HEAD)
+          if [ -z "$tags" ]; then
+            echo "::notice::That Release published nothing — no tags at $(git rev-parse --short HEAD). The push path owns any template change, and it waits for the E2E suite. The sync is skipped."
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Released:"; echo "$tags" | sed "s/^/  /"
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          fi
+
   publish:
     name: Sync the mirror
-    needs: [verify, e2e]
+    needs: [verify, e2e, released]
     runs-on: ubuntu-latest
     # A sync is a clone, a file copy, a lockfile and — since the compile gate —
     # an install and a typecheck of the staged tree. Measured warm: 4s and 46s.
@@ -190,7 +246,8 @@ jobs:
         && (
           (github.event_name == 'workflow_run'
             && github.event.workflow_run.conclusion == 'success'
-            && github.event.workflow_run.head_branch == 'main')
+            && github.event.workflow_run.head_branch == 'main'
+            && needs.released.outputs.published == 'true')
           || (github.event_name != 'workflow_run'
             && needs.verify.result == 'success'
             && needs.e2e.result != 'failure'
@@ -230,42 +287,19 @@ jobs:
           # none by default.
           fetch-tags: true
 
-      # The hole the E2E gate would otherwise leave open, and it is not
-      # hypothetical — it is the exact case #307 is about.
+      # The hole the E2E gate would otherwise leave open is now closed one job
+      # earlier — see `released` above. It used to be a step here, and being a
+      # step is precisely what let a run that synced nothing report success.
       #
-      # A merge touching `apps/themes/**` starts BOTH paths. The `push` one
-      # waits for `e2e` (~13 min) and refuses a red suite. The Release it also
-      # started publishes nothing (a template change moves no package version),
-      # goes green in ~5 minutes on `verify` alone, and this `workflow_run` path
-      # then syncs the same tree with no E2E behind it at all. The gate above
-      # would be doing its job while the sync went out beside it.
-      #
-      # So this path is held to what it exists for: a Release that ACTUALLY
-      # published. `changeset publish` tags each package it publishes and
-      # release.yml pushes those tags — the same invariant that workflow's own
-      # last step asserts ("if a version was published, its tag must exist
-      # here"). Tags at this commit therefore mean the Release published, and a
-      # Release that published ran the E2E suite, because `plan` said it would.
-      #
-      # Nothing is lost by stopping otherwise. Every input that changes what a
-      # client receives is in this workflow's `paths:` filter, so a template
-      # change always has a `push` run of its own — a gated one. What stops here
-      # is the second, ungated delivery of a tree that run is already handling.
-      # A `push` run that was cancelled or died can be re-sent with
-      # `workflow_dispatch`.
-      - name: Did that Release publish anything?
-        id: released
-        if: github.event_name == 'workflow_run'
-        run: |
-          set -euo pipefail
-          tags=$(git tag --points-at HEAD)
-          if [ -z "$tags" ]; then
-            echo "::notice::That Release published nothing — no tags at $(git rev-parse --short HEAD). The push path owns any template change, and it waits for the E2E suite. Skipping."
-            echo "published=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "Released:"; echo "$tags" | sed "s/^/  /"
-            echo "published=true" >> "$GITHUB_OUTPUT"
-          fi
+      # What it guards against is unchanged and worth restating: a merge
+      # touching `apps/themes/**` starts BOTH paths. The `push` one waits for
+      # `e2e` (~13 min) and refuses a red suite. The Release it also started
+      # publishes nothing (a template change moves no package version), goes
+      # green in ~5 minutes on `verify` alone, and this `workflow_run` path
+      # would then sync the same tree with no E2E behind it at all. Nothing is
+      # lost by stopping: every input that changes what a client receives is in
+      # this workflow's `paths:` filter, so a template change always has a
+      # gated `push` run of its own.
 
       - uses: pnpm/action-setup@v4
         with:
@@ -286,9 +320,13 @@ jobs:
           cache: "pnpm"
 
       - name: Sync
-        # On `workflow_run`, only for a Release that published — see above.
-        # Every other trigger reaches here having passed `verify` and `e2e`.
-        if: github.event_name != 'workflow_run' || steps.released.outputs.published == 'true'
+        # No `if:` any more, deliberately. It used to read
+        # `github.event_name != 'workflow_run' || steps.released.outputs.published == 'true'`,
+        # and a false there skipped the step inside a job that still went green.
+        # The same condition is now on the JOB (`needs.released.outputs.published`),
+        # so reaching this step means a sync is genuinely going to happen — and
+        # not reaching it is visible as a skipped job rather than a green one.
+        id: sync
         env:
           # Registry read: the packages are published by this repository, so
           # GITHUB_TOKEN is enough with `packages: read`.
@@ -301,3 +339,33 @@ jobs:
           else
             node scripts/publish-mirror.mjs --check
           fi
+
+      # Say what this run did, in words, on the run's own summary page.
+      #
+      # `always()` so it speaks for a failed sync too — the export gate has been
+      # failing every push run since 07:34, and a reader had to open the log to
+      # learn that the mirror had not moved. The conclusion tells you the job
+      # ended; only this tells you whether a client site received anything.
+      - name: Say what happened
+        if: always()
+        env:
+          OUTCOME: ${{ steps.sync.outcome }}
+          CAN_PUSH: ${{ steps.gate.outputs.can_push }}
+          CHECK_ONLY: ${{ inputs.check_only }}
+        run: |
+          set -uo pipefail
+          {
+            if [ "${OUTCOME}" = "success" ]; then
+              if [ "${CAN_PUSH}" = "true" ] && [ "${CHECK_ONLY}" != "true" ]; then
+                echo "**The mirror was synced** from \`${GITHUB_SHA:0:7}\`."
+              else
+                echo "**Dry run — nothing was pushed.** The mirror still carries whatever it carried before."
+                echo "(No \`MIRROR_PUSH_TOKEN\`, or *Dry run* was ticked.)"
+              fi
+            else
+              echo "**Nothing was pushed to the mirror** (sync: \`${OUTCOME}\`)."
+              echo
+              echo "\`be-in-digital/beyours-boilerplate\` still carries whatever it carried"
+              echo "before this run, so every client site is cloning and merging that."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -71,3 +71,35 @@ export function sanitizeArticleHtml(html: string): string {
 export function sanitizeRichTextHtml(html: string): string {
   return sanitizeHtml(html, RICH_TEXT_OPTIONS)
 }
+
+/**
+ * A field that is text and was never meant to be markup — a title, an excerpt,
+ * a meta description.
+ *
+ * These carried no allow-list at all, because nothing rendered them through
+ * `dangerouslySetInnerHTML` and the question looked settled. It was not: a
+ * blog title reaches the breadcrumb JSON-LD, which is serialised into a
+ * `<script>` block, and the escaping there was walked around with
+ * `</script >`. That hole is closed at the sink (`lib/json-ld.tsx`), where it
+ * has to be — but a title is still not a place markup belongs, and storing it
+ * raw means every future sink inherits the same question.
+ *
+ * `allowedTags: []` strips every tag and keeps the text between them, so a
+ * title typed with a stray `<b>` survives as words rather than being rejected.
+ * `disallowedTagsMode: "discard"` drops the tag itself rather than escaping it
+ * into visible `&lt;b&gt;`, which is what an author means by deleting it.
+ *
+ * Entities are decoded rather than left doubled: `sanitize-html` would
+ * otherwise turn a legitimate `Moules & frites` into `Moules &amp; frites`,
+ * which then renders as literal `&amp;` in a `<title>` and in JSON-LD. The
+ * three it re-encodes are decoded back, which is safe precisely because no
+ * consumer of this value is allowed to treat it as markup.
+ */
+export function sanitizePlainText(text: string): string {
+  return sanitizeHtml(text, { allowedTags: [], allowedAttributes: {}, disallowedTagsMode: "discard" })
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+}
