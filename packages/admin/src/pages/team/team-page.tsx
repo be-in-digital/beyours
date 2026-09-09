@@ -59,6 +59,7 @@ import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { resolveStoreSelection } from "../../components/store-selection"
+import { convexErrorMessage } from "../../lib/convex-error"
 
 // === TYPES & CONSTANTS ===
 
@@ -193,8 +194,9 @@ export function TeamPage() {
       await removeMember({ id: deleteMember._id })
       toast.success("Membre supprimé")
       setDeleteMember(null)
-    } catch {
-      toast.error("Échec de la suppression")
+    } catch (error: unknown) {
+      toast.error(convexErrorMessage(error, "Échec de la suppression"))
+      console.error(error)
     }
   }
 

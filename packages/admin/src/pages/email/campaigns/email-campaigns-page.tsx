@@ -63,6 +63,8 @@ import { adminRoutes } from "../../../config/admin-routes"
 import { formatShortDate } from "../../../lib/formatters"
 import { CampaignWizardDialog } from "./campaign-wizard-dialog"
 import { CampaignStatsDialog } from "./campaign-stats-dialog"
+import { RELAUNCHABLE_STATUSES } from "@be-in-digital/convex-functions/emailCampaigns"
+import { convexErrorMessage } from "../../../lib/convex-error"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Campaign = any
@@ -177,7 +179,11 @@ export function EmailCampaignsPage() {
       toast.success("Campagne supprimée")
       setDeletingId(null)
     } catch (error: unknown) {
-      toast.error("Échec de la suppression")
+      // The refusal says this campaign already reached part of the list and
+      // points at « Relancer ». Replacing it with a generic line is how an
+      // owner ends up rebuilding the campaign and mailing those people twice.
+      toast.error(convexErrorMessage(error, "Échec de la suppression"))
+      console.error(error)
     } finally {
       setIsDeleting(false)
     }
@@ -493,8 +499,13 @@ export function EmailCampaignsPage() {
                           )}
                           {/* Resume — while paused, or after a failed send the
                               owner has fixed. The cursor is kept, so it picks
-                              up where it stopped. */}
-                          {["paused", "failed"].includes(campaign.status) && (
+                              up where it stopped.
+
+                              The list comes from the server because the delete
+                              refusal quotes this button by name: two literals
+                              that agree today are how a message ends up naming
+                              a control the screen is not rendering. */}
+                          {RELAUNCHABLE_STATUSES.includes(campaign.status) && (
                             <DropdownMenuItem
                               onClick={() => handleSend(campaign)}
                               disabled={sendingId === campaign._id}

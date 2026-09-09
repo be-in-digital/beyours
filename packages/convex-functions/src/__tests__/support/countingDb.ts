@@ -119,6 +119,86 @@ function assertBoundsFitIndex(
   }
 }
 
+/**
+ * Convex's `FilterBuilder`, as much of it as this product's handlers use.
+ *
+ * A filter expression is built rather than evaluated — `q.eq(q.field("type"),
+ * "sent")` returns a node — so the double must build the same tree and then
+ * apply it per document. Anything not modelled here throws by name rather than
+ * silently returning `undefined`, which would read as "no match" and quietly
+ * make a query look cheaper than it is.
+ */
+export interface FilterExpression {
+  evaluate(doc: MockDoc): unknown
+}
+
+const literal = (value: unknown): FilterExpression => ({ evaluate: () => value })
+
+const asExpression = (value: unknown): FilterExpression =>
+  value !== null && typeof value === "object" && "evaluate" in (value as object)
+    ? (value as FilterExpression)
+    : literal(value)
+
+export interface FilterBuilder {
+  field(name: string): FilterExpression
+  eq(a: unknown, b: unknown): FilterExpression
+  neq(a: unknown, b: unknown): FilterExpression
+  lt(a: unknown, b: unknown): FilterExpression
+  lte(a: unknown, b: unknown): FilterExpression
+  gt(a: unknown, b: unknown): FilterExpression
+  gte(a: unknown, b: unknown): FilterExpression
+  and(...parts: unknown[]): FilterExpression
+  or(...parts: unknown[]): FilterExpression
+  not(part: unknown): FilterExpression
+}
+
+const filterBuilder: FilterBuilder = {
+  field: (name) => ({ evaluate: (doc) => doc[name] }),
+  eq: (a, b) => ({
+    evaluate: (doc) => asExpression(a).evaluate(doc) === asExpression(b).evaluate(doc),
+  }),
+  neq: (a, b) => ({
+    evaluate: (doc) => asExpression(a).evaluate(doc) !== asExpression(b).evaluate(doc),
+  }),
+  lt: (a, b) => ({
+    evaluate: (doc) =>
+      compareValues(asExpression(a).evaluate(doc), asExpression(b).evaluate(doc)) < 0,
+  }),
+  lte: (a, b) => ({
+    evaluate: (doc) =>
+      compareValues(asExpression(a).evaluate(doc), asExpression(b).evaluate(doc)) <= 0,
+  }),
+  gt: (a, b) => ({
+    evaluate: (doc) =>
+      compareValues(asExpression(a).evaluate(doc), asExpression(b).evaluate(doc)) > 0,
+  }),
+  gte: (a, b) => ({
+    evaluate: (doc) =>
+      compareValues(asExpression(a).evaluate(doc), asExpression(b).evaluate(doc)) >= 0,
+  }),
+  and: (...parts) => ({
+    evaluate: (doc) => parts.every((part) => asExpression(part).evaluate(doc)),
+  }),
+  or: (...parts) => ({
+    evaluate: (doc) => parts.some((part) => asExpression(part).evaluate(doc)),
+  }),
+  not: (part) => ({ evaluate: (doc) => !asExpression(part).evaluate(doc) }),
+}
+
+/** Turn a `.filter()` callback into a per-document predicate. */
+function evaluator(
+  expression: (q: FilterBuilder) => FilterExpression
+): (doc: MockDoc) => boolean {
+  const node = expression(filterBuilder)
+  if (node == null || typeof (node as FilterExpression).evaluate !== "function") {
+    throw new Error(
+      "countingDb: filter() must return a FilterBuilder expression, e.g. " +
+        'q.eq(q.field("status"), "sent")'
+    )
+  }
+  return (doc) => Boolean(node.evaluate(doc))
+}
+
 export interface CountingCtx {
   // The handlers under test are typed against Convex's own ctx; the double
   // implements only the surface they touch.
@@ -173,6 +253,7 @@ export function createCountingDb(
     // no index — so it is refused here rather than at `withIndex`.
     indexesFor(table)
     let docs = [...(store[table] ?? [])]
+    const predicates: Array<(doc: MockDoc) => boolean> = []
     let sortFields: string[] = []
     let descending = false
 
@@ -213,46 +294,46 @@ export function createCountingDb(
         return chain
       },
 
-      /** Post-index predicate. Convex still reads every row it scans. */
-      filter: (predicate: (doc: MockDoc) => boolean) => {
-        docs = docs.filter(predicate)
+      /**
+       * Convex's post-scan predicate — and it is NOT free.
+       *
+       * `.filter()` does not narrow what the database reads. The stream still
+       * walks every document of the scanned range and charges each one against
+       * the 16,384-document transaction limit; the predicate only decides what
+       * comes back. So this records the predicate and leaves `docs` alone —
+       * `scan()` below is what counts.
+       *
+       * It takes Convex's own `FilterBuilder` callback, not a plain JavaScript
+       * predicate. That matters twice over: every real handler is written that
+       * way, so a hand-rolled signature made this method unreachable from the
+       * code under test; and a builder expression is what lets the double see
+       * that the narrowing is happening AFTER the scan rather than inside an
+       * index range.
+       */
+      filter: (expression: (q: FilterBuilder) => FilterExpression) => {
+        predicates.push(evaluator(expression))
         return chain
       },
 
-      collect: async () => {
-        const rows = materialise()
-        reads += rows.length
-        return rows
-      },
+      collect: async () => scan(Infinity).matches,
 
-      take: async (n: number) => {
-        const rows = materialise().slice(0, n)
-        reads += rows.length
-        return rows
-      },
+      take: async (n: number) => scan(n).matches,
 
-      first: async () => {
-        const rows = materialise().slice(0, 1)
-        reads += rows.length
-        return rows[0] ?? null
-      },
+      first: async () => scan(1).matches[0] ?? null,
 
       unique: async () => {
-        const rows = materialise().slice(0, 2)
-        reads += rows.length
-        if (rows.length > 1) throw new Error("countingDb: unique() matched more than one document")
-        return rows[0] ?? null
+        const { matches } = scan(2)
+        if (matches.length > 1) throw new Error("countingDb: unique() matched more than one document")
+        return matches[0] ?? null
       },
 
       paginate: async (opts: { numItems: number; cursor: string | null }) => {
-        const rows = materialise()
         const start = opts.cursor ? Number(opts.cursor) : 0
-        const page = rows.slice(start, start + opts.numItems)
-        reads += page.length
-        const end = start + page.length
+        const { matches, examined } = scan(opts.numItems, start)
+        const end = start + examined
         return {
-          page,
-          isDone: end >= rows.length,
+          page: matches,
+          isDone: end >= materialise().length,
           continueCursor: String(end),
         }
       },
@@ -267,6 +348,28 @@ export function createCountingDb(
         return 0
       })
       return descending ? ordered.reverse() : ordered
+    }
+
+    /**
+     * Walk the scanned range, charging one read per document EXAMINED.
+     *
+     * This is the whole point of the double. `wanted` is how many matches the
+     * terminal operator needs before Convex stops pulling from the stream —
+     * `Infinity` for `collect`, `n` for `take`, 1 for `first`. A predicate that
+     * rejects everything therefore costs the whole range and returns nothing,
+     * which is exactly what an unindexed `.filter().first()` does in
+     * production and exactly what the old implementation scored as zero.
+     */
+    function scan(wanted: number, from = 0): { matches: MockDoc[]; examined: number } {
+      const ordered = materialise()
+      const matches: MockDoc[] = []
+      let examined = 0
+      for (let i = from; i < ordered.length && matches.length < wanted; i++) {
+        examined++
+        reads += 1
+        if (predicates.every((predicate) => predicate(ordered[i]))) matches.push(ordered[i])
+      }
+      return { matches, examined }
     }
 
     return chain

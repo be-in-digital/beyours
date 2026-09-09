@@ -37,6 +37,7 @@ import {
   TableRow,
 } from "@be-in-digital/ui"
 import { LoadingState } from "../../components/loading-state"
+import { convexErrorMessage } from "../../lib/convex-error"
 
 interface Language {
   _id: string
@@ -205,7 +206,7 @@ export function LanguagesPage({ uiOverrides }: LanguagesPageProps) {
       await removeLanguage({ id })
       toast.success("Langue supprimée avec succès")
     } catch (error) {
-      toast.error("Échec de la suppression de la langue")
+      toast.error(convexErrorMessage(error, "Échec de la suppression de la langue"))
       console.error(error)
     }
   }

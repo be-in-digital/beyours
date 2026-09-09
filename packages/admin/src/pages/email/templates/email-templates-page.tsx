@@ -42,6 +42,7 @@ import { LoadingState } from "../../../components/loading-state"
 import { DeleteConfirmDialog } from "../../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
+import { convexErrorMessage } from "../../../lib/convex-error"
 import { formatShortDate } from "../../../lib/formatters"
 import { TemplateEditor } from "./template-editor"
 
@@ -177,7 +178,10 @@ export function EmailTemplatesPage() {
       toast.success("Modèle supprimé")
       setDeletingId(null)
     } catch (error: unknown) {
-      toast.error("Échec de la suppression")
+      // The refusal quotes the campaigns and automations still built on this
+      // model, by name. That sentence is the whole point of refusing.
+      toast.error(convexErrorMessage(error, "Échec de la suppression"))
+      console.error(error)
     } finally {
       setIsDeleting(false)
     }

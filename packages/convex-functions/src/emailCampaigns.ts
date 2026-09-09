@@ -5,7 +5,7 @@
  * Stats are incremented in real-time — never aggregated from emailEvents
  */
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 
 const statusValidator = v.union(
   v.literal("draft"),
@@ -148,9 +148,79 @@ export const update = {
   },
 }
 
+/**
+ * The statuses from which the campaigns screen offers « Relancer ».
+ *
+ * It mirrors `email-campaigns-page.tsx`, and it is here rather than there
+ * because the refusal below quotes the control by name: a message that names a
+ * button the screen is not rendering is worse than no message at all.
+ */
+export const RELAUNCHABLE_STATUSES: ReadonlyArray<string> = ["paused", "failed"]
+
+/**
+ * Delete a campaign — unless it has already reached somebody.
+ *
+ * WHAT WENT WRONG (#412 P3-F3). This was a bare `ctx.db.delete(args.id)`, and
+ * the delete button is offered for exactly `draft`, `cancelled` and `failed`.
+ * Two of those three are states a send lands in MID-LIST: `markFailed` refuses
+ * to fire on anything but a campaign that was `sending`, and `cancelled` is
+ * reached from `paused`, which the batch budget sets mid-send. So the campaign
+ * an owner is most likely to delete is the one that has mailed a prefix of
+ * their list and stopped.
+ *
+ * What that prefix is recorded in is `emailEvents` — one `sent` row per
+ * (campaign, subscriber), which `alreadySentTo` reads through
+ * `by_campaignId_subscriberId` to make « Relancer » resume rather than restart.
+ * The rows survive a delete; the KEY does not. Nothing can address them once
+ * the campaign is gone, so the only route left to finish the send is to build
+ * the campaign again — and the copy, with a new `_id`, asks the same question
+ * of the same table and is told nobody has been reached. Everyone who already
+ * had it gets it again. Marketing mail is not recallable.
+ *
+ * So it refuses. What it tells the owner to do depends on what the screen is
+ * offering them: « Relancer » is rendered for `paused` and `failed` only, so a
+ * campaign cancelled mid-list would otherwise be sent after a control that is
+ * not there — undeletable AND unfinishable, which is the dead end this guard
+ * was supposed to avoid. For those two it names the relaunch; for the rest it
+ * says plainly that the campaign stays as the record, which costs a row.
+ *
+ * NOT a cascade. Deleting the events with the campaign would destroy the
+ * establishment's record of what it sent, and those same rows answer the weekly
+ * cap (`sentCountsSince`) and the last-contact date — none of which is the
+ * campaign's to take with it.
+ *
+ * KNOWN AND NOT COVERED BY THIS GUARD: `emailCampaigns` is in `BACKUP_TABLES`
+ * and `emailEvents` is deliberately not, and `importTable` re-inserts under new
+ * ids — so restoring a backup reproduces the double-send from a different
+ * direction. That is a property of the backup format, not of this delete.
+ */
 export const remove = {
   args: { id: v.id("emailCampaigns") },
   handler: async (ctx: any, args: any) => {
+    const campaign = await ctx.db.get(args.id)
+    if (!campaign) throw new Error("Campagne introuvable")
+
+    // `.first()` rather than a count: one row is all a refusal needs, and any
+    // event at all means a message left the building — `sent` is written before
+    // any of the others can happen.
+    const event = await ctx.db
+      .query("emailEvents")
+      .withIndex("by_campaignId", (q: any) => q.eq("campaignId", args.id))
+      .first()
+
+    if (event) {
+      const wayOut = RELAUNCHABLE_STATUSES.includes(String(campaign.status))
+        ? "Utilisez « Relancer » pour reprendre là où l'envoi s'est arrêté."
+        : "Elle reste dans la liste : c'est l'historique de ce qui a été envoyé."
+      throw new ConvexError({
+        code: "campaign_already_sent",
+        message:
+          `« ${campaign.name} » a déjà été envoyée à une partie de votre liste : ` +
+          "la supprimer effacerait la trace de qui l'a reçue, et un nouvel envoi " +
+          `écrirait deux fois aux mêmes personnes. ${wayOut}`,
+      })
+    }
+
     await ctx.db.delete(args.id)
   },
 }

@@ -1,4 +1,4 @@
-import { query } from "./_generated/server";
+import { query, internalMutation } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
@@ -72,7 +72,26 @@ export const remove = storeMutation({
   handler: async (ctx, args) => {
     const storeId = await menuStoreId(ctx, args);
     const result = await defs.remove.handler(ctx, args);
+    // The menu's own name and description, in every language the owner added,
+    // are of no use to anything once the menu is gone. A first batch goes with
+    // it; the rest is drained here.
+    if (result.hasMore) {
+      await ctx.scheduler.runAfter(0, internal.menus.purgeTranslations, {
+        menuId: args.id,
+        storeId,
+      });
+    }
     await scheduleMenuSync(ctx, [storeId]);
     return result;
+  },
+});
+
+export const purgeTranslations = internalMutation({
+  args: defs.purgeTranslations.args,
+  handler: async (ctx, args) => {
+    const { hasMore } = await defs.purgeTranslations.handler(ctx, args);
+    if (hasMore) {
+      await ctx.scheduler.runAfter(0, internal.menus.purgeTranslations, args);
+    }
   },
 });

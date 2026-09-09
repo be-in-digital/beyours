@@ -4,7 +4,7 @@
  * Export plain { args, handler } objects for Convex query/mutation wrappers
  */
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 
 import { RefusalError } from "./refusal"
 import {
@@ -345,27 +345,88 @@ async function deleteUsageBatch(
 }
 
 /**
- * Delete a promotion and the record of its use.
+ * Delete a promotion — unless an order has already been discounted by it.
  *
- * The promotion row goes in this transaction so the offer stops working
- * immediately; the usage rows are cleared a batch at a time. `hasMore` is the
- * caller's signal to schedule the next pass — see `purgeUsages`.
+ * WHAT WENT WRONG (#412 P3-F4). This one was not a bare delete: it cleared the
+ * `promotionUsages` ledger a batch at a time, which is what made deleting a
+ * popular coupon possible at all. The reference it never touched is the one
+ * that matters. `orders.promotionId` is optional and, until `by_promotionId` was
+ * declared for this guard, could not be seeked at all — so a deleted promotion
+ * left every order it discounted naming a row that no longer resolves, and the
+ * order still carries the `discountAmount` it granted.
+ * The order then says «  −3,00 €  » and cannot say what for, on a document that
+ * since #367 issues a numbered invoice in an unbroken fiscal series.
+ * `releasePromotionForOrder` — the path that gives a use back when an order is
+ * cancelled — reads that id, finds nothing, and quietly releases nothing.
+ *
+ * So a promotion that has been redeemed is history, and history is not the
+ * delete button's to rewrite. That is the rule `prizes.remove` and
+ * `games.remove` were given in #400, and the way out is the same one, already
+ * on the screen: `isActive: false` stops the coupon working immediately and
+ * leaves every order it discounted able to say why.
+ *
+ * BOTH SIDES ARE READ, and neither is redundant. `orders.by_promotionId` is the
+ * authoritative one — it is the dangling reference — and it needed a new index,
+ * because the cheap proxy is not equivalent: the retention cron and an art. 17
+ * erasure both clear `promotionUsages` rows, while a paid order is ANONYMISED
+ * and keeps its `promotionId` and its discount. Asking `promotionUsages` alone
+ * would have made a three-year-old coupon deletable again and re-created the
+ * very reference this guard exists to stop. `promotionUsages.promotionId` is
+ * itself REQUIRED, and a usage row can outlive its order — `orderId` is
+ * optional — so it is asked too.
+ *
+ * A promotion nobody ever redeemed still deletes, which is the case an owner
+ * actually meets: a coupon typed wrong, or an offer that never ran.
  */
 export const remove = {
   args: { id: v.id("promotions") },
   handler: async (ctx: any, args: any): Promise<PromotionPurgeResult> => {
-    const result = await deleteUsageBatch(ctx, args.id)
+    const promotion = await ctx.db.get(args.id)
+    if (!promotion) throw new Error("Promotion not found")
+
+    // `.first()` rather than a count: one row is all a refusal needs, on either
+    // side, and a delete must not cost more the longer the coupon has worked.
+    const order = await ctx.db
+      .query("orders")
+      .withIndex("by_promotionId", (q: any) => q.eq("promotionId", args.id))
+      .first()
+
+    const usage =
+      order ??
+      (await ctx.db
+        .query("promotionUsages")
+        .withIndex("by_promotionId", (q: any) => q.eq("promotionId", args.id))
+        .first())
+
+    if (usage) {
+      throw new ConvexError({
+        code: "promotion_in_order",
+        message:
+          `« ${promotion.name ?? promotion.code} » a déjà été utilisée sur des commandes : ` +
+          "la supprimer laisserait ces commandes — et leurs factures — avec une remise " +
+          "que plus rien ne justifie. " +
+          "Désactivez-la : le code cesse aussitôt de fonctionner et l'historique reste lisible.",
+      })
+    }
+
     await ctx.db.delete(args.id)
-    return result
+    return { deleted: 0, hasMore: false }
   },
 }
 
 /**
  * The rest of the sweep, one batch per run, until there is nothing left.
  *
- * Internal only: it takes an id that no longer resolves — the promotion row is
+ * Internal only: it takes an id that no longer resolves — the promotion row was
  * deleted in the first transaction — and it is nobody's to call but the
  * scheduler's.
+ *
+ * KEPT DELIBERATELY, though `remove` no longer schedules it. A promotion with
+ * usages is refused now, so a new delete never leaves a ledger to drain. A
+ * client deployment running the previous `remove` can still have a drain
+ * scheduled, and Convex resolves a scheduled function by NAME at run time:
+ * removing this would fail those jobs on sites we have already shipped to, and
+ * leave exactly the half-cleared ledger it was written to finish.
  */
 export const purgeUsages = {
   args: { promotionId: v.id("promotions") },

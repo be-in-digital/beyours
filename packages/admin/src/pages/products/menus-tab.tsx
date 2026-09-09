@@ -45,6 +45,7 @@ import {
 } from "@be-in-digital/ui"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { MenuFormDialog } from "./menu-form-dialog"
+import { convexErrorMessage } from "../../lib/convex-error"
 
 /** Build page numbers with ellipsis for large page counts */
 function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
@@ -163,7 +164,8 @@ export function MenusTab() {
       setDeleteDialogOpen(false)
       setMenuToDelete(null)
     } catch (error) {
-      toast.error("Échec de la suppression du menu")
+      // The refusal names the prize that gives this formule away.
+      toast.error(convexErrorMessage(error, "Échec de la suppression du menu"))
       console.error(error)
     }
   }
