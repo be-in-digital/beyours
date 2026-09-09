@@ -40,32 +40,26 @@ Built on **Better Auth** + Convex.
 ### Setup
 
 ```typescript
-import { createAuthConfig, Role, hasPermission } from "@be-in-digital/core";
+import { Role, hasPermission } from "@be-in-digital/core/auth/rbac";
 ```
 
-`createAuthConfig` (**not** `authConfig` — no such export) builds a
-`BetterAuthConfig` object from `{ baseUrl, secret, convexUrl, socialProviders? }`:
+**There is no auth configuration in this package.** `createAuthConfig` was
+exported here, together with `authHooks`, `emailTemplates`, `authErrors`,
+`validatePassword`, `validateEmail`, `DEFAULT_SESSION_EXPIRY`,
+`DEFAULT_SESSION_REFRESH` and `MIN_PASSWORD_LENGTH`. Every one of them had zero
+call sites, and the configuration they described contradicted the one that runs:
+`MIN_PASSWORD_LENGTH = 8` against the live `minPasswordLength: 12`, and five
+lifecycle hooks whose entire bodies were a `console.info` and a list of TODOs
+over names like "lock the account after N attempts". They are gone.
 
-```typescript
-import { createAuthConfig } from "@be-in-digital/core";
-
-const config = createAuthConfig({
-  baseUrl: process.env.NEXT_PUBLIC_APP_URL!,
-  secret: process.env.BETTER_AUTH_SECRET!,
-  convexUrl: process.env.NEXT_PUBLIC_CONVEX_URL!,
-});
-```
-
-Its `database` field is the literal `{ type: "convex", url }` — a stand-in for
-the Convex adapter, not the adapter — and its `plugins` array is empty. It has no
-call site in the engine.
+Better Auth is configured where it is instantiated — `apps/*/convex/auth.ts`,
+through `@convex-dev/better-auth`. The session lifetime, the password rule and
+the OAuth providers live there. See the
+[Authentication guide](../guides/authentication.md).
 
 ### Also exported here
 
-`validatePassword`, `validateEmail`, `authHooks`, `emailTemplates`,
-`authRoutes`, `authErrors`, and the constants `DEFAULT_SESSION_EXPIRY`,
-`DEFAULT_SESSION_REFRESH`, `MIN_PASSWORD_LENGTH` — all real. Plus the types
-`AuthUser`, `AuthSession`, `AuthSessionData`, `BetterAuthConfig`,
+The types `AuthUser`, `AuthSession`, `AuthSessionData`, `BetterAuthConfig`,
 `CanAccessProps`, `RoleGateProps` and friends: several React pieces ship as
 **types only**, to be implemented in the app where JSX is available.
 

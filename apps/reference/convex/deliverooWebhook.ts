@@ -6,7 +6,10 @@ import type { ActionCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { toKitchenTicketItemsFromPlatform } from "@be-in-digital/convex-functions/orders";
-import { resolveStoreIntegration } from "@be-in-digital/convex-functions/platformWebhook";
+import {
+  resolveMenuStoreIntegration,
+  resolveStoreIntegration,
+} from "@be-in-digital/convex-functions/platformWebhook";
 
 // ============================================================================
 // Types
@@ -765,21 +768,20 @@ export const processMenuWebhook = internalAction({
         { platform: "deliveroo" }
       )) as StoreIntegrationRecord[];
 
-      // Menu webhooks may include site_id, brand_id, or both
-      let integration = args.siteId
-        ? allIntegrations.find((i) => i.platformStoreId === args.siteId)
-        : undefined;
+      // Menu webhooks may include site_id, brand_id, or both — and the same
+      // refusal policy the order path uses applies to both. A site id that
+      // names nothing used to fall through to the brand, which matches every
+      // location of the chain, so the sync status landed on whichever sibling
+      // sorted first.
+      const resolution = resolveMenuStoreIntegration(
+        allIntegrations,
+        args.siteId,
+        args.brandId
+      );
 
-      // Fallback: match by brandId if siteId not provided or not found
-      if (!integration && args.brandId) {
-        integration = allIntegrations.find(
-          (i) => i.brandId === args.brandId
-        );
-      }
-
-      if (!integration) {
+      if (!resolution.ok) {
         console.error(
-          `No Deliveroo integration found for siteId: ${args.siteId}, brandId: ${args.brandId}`
+          `No Deliveroo integration for siteId "${args.siteId}", brandId "${args.brandId}" (${resolution.reason})`
         );
         return {
           success: false,
@@ -788,7 +790,7 @@ export const processMenuWebhook = internalAction({
         };
       }
 
-      const storeId = integration.storeId;
+      const storeId = resolution.integration.storeId;
 
       if (args.event === "menu.upload_completed") {
         await ctx.runMutation(

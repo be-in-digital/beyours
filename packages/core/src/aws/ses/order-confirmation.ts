@@ -315,15 +315,17 @@ export function fulfilmentLines(input: OrderConfirmationInput): {
  * argument at all. The branch was written in #367, after that ruling, against a
  * field that was already unbacked, and could never have run.
  *
- * KNOWN, AND DELIBERATELY NOT FIXED HERE: the branch that remains does not run
- * either. `orderConfirmation.ts` reads `order.estimatedPrepTime`, while
- * `orders.create` writes the prep time it computes onto the **kitchen ticket**
- * instead (`estimatedPrepTime: summary.estimatedPrepTime`, inside the ticket
- * insert). Nothing writes the field this reads, so for every real order this
- * returns `undefined` and the confirmation email prints no timing row at all.
- * That is a live defect in a customer-facing email, not dead code, and wiring it
- * is a change with its own review — so it is reported under #413 rather than
- * smuggled in under a deletion.
+ * The branch that remains did not run either, until now. `orderConfirmation.ts`
+ * reads `order.estimatedPrepTime`, and `orders.create` wrote the prep time it
+ * computes onto the **kitchen ticket** instead (`estimatedPrepTime:
+ * summary.estimatedPrepTime`, inside the ticket insert) — a different document.
+ * Nothing wrote the field this reads, so for every real order this returned
+ * `undefined` and the confirmation email printed no timing row at all, and never
+ * had. `orders.create` now stamps the longest line's preparation time onto the
+ * order as well, off the products its verification loop already holds.
+ *
+ * Still `undefined` when no product in the basket declares a preparation time,
+ * and that is deliberate: no row is honest, "environ 0 minutes" is not.
  */
 export function timingLine(input: OrderConfirmationInput): string | undefined {
   if (input.estimatedPrepTime && input.estimatedPrepTime > 0) {

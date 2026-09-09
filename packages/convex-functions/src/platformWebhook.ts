@@ -166,6 +166,87 @@ export function resolveStoreIntegration<T extends PlatformStoreIntegration>(
   return { ok: true, integration: only }
 }
 
+/**
+ * A store integration seen through a menu event, which may name a brand
+ * instead of a site.
+ */
+export interface PlatformBrandIntegration extends PlatformStoreIntegration {
+  brandId?: string
+}
+
+/**
+ * Find the integration a MENU event belongs to, or refuse.
+ *
+ * Menu webhooks are the one platform event that may identify their target by
+ * brand rather than by site, and the Deliveroo handler took that as licence to
+ * try both in turn:
+ *
+ * ```ts
+ * let integration = args.siteId
+ *   ? allIntegrations.find(i => i.platformStoreId === args.siteId)
+ *   : undefined
+ * if (!integration && args.brandId) {
+ *   integration = allIntegrations.find(i => i.brandId === args.brandId)
+ * }
+ * ```
+ *
+ * Two defects, both of the class the order path's own comment names.
+ *
+ * **A site id that matches nothing fell through to the brand.** A brand covers
+ * every location of a chain, so the fallback then picked whichever of them
+ * sorted first — and wrote `menuSyncStatus` there. The event said "site 42's
+ * menu failed validation"; the screen said the Boulevard branch's menu had
+ * failed, and the Boulevard branch's owner went looking for an error in a menu
+ * that uploaded cleanly. A named site we do not know is an **unknown** site,
+ * not an invitation to guess a sibling: when the event identifies a site, that
+ * answer is final.
+ *
+ * **The brand match asked "does one match?"** For a single-site client that is
+ * the same question as "does exactly one match?". For every client with two
+ * locations it is not, and that is the client this product is sold to — the
+ * business model is one owner, one to unbounded establishments. `.find()` on a
+ * brand is therefore wrong on exactly the accounts where it matters, silently,
+ * half the time.
+ *
+ * A status written onto the wrong establishment is worse than none: the
+ * failure is invisible on the site that has it and fictional on the site that
+ * does not. Refuse, and let the caller record and retry.
+ */
+export function resolveMenuStoreIntegration<T extends PlatformBrandIntegration>(
+  integrations: readonly T[],
+  siteId: unknown,
+  brandId: unknown
+): StoreResolution<T> {
+  if (integrations.length === 0) {
+    return { ok: false, reason: "no_integrations" }
+  }
+
+  // A site reference is the specific one. Its verdict stands whatever the
+  // brand says — including `unknown_store`.
+  const site = typeof siteId === "string" ? siteId.trim() : ""
+  if (site) {
+    return resolveStoreIntegration(integrations, site)
+  }
+
+  // Same defensive read as the site id: a payload is not a contract.
+  const brand = typeof brandId === "string" ? brandId.trim() : ""
+  if (!brand) {
+    return { ok: false, reason: "unidentified_store" }
+  }
+
+  const [only, ...rest] = integrations.filter((i) => i.brandId === brand)
+  if (!only) {
+    return { ok: false, reason: "unknown_store" }
+  }
+  if (rest.length > 0) {
+    // The normal shape of a chain, not an edge case. One brand, four
+    // restaurants, and nothing in the event to say which.
+    return { ok: false, reason: "ambiguous_store" }
+  }
+
+  return { ok: true, integration: only }
+}
+
 // ---------------------------------------------------------------------------
 // Platform status -> our status
 // ---------------------------------------------------------------------------

@@ -59,7 +59,7 @@ import { tmpdir } from "node:os"
 import { dirname, isAbsolute, join, relative, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
-import { materializeMirror } from "./lib/mirror-tree.mjs"
+import { materializeMirror, trackedFiles } from "./lib/mirror-tree.mjs"
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
 const THEMES = join(ROOT, "apps/themes")
@@ -291,7 +291,14 @@ const mirror = join(work, "mirror")
 
 try {
   log(`→ materialising the mirror tree (tailwind ${tailwindVersion})`)
-  const { copied } = materializeMirror(THEMES, mirror, { prune: false })
+  // `tracked` for the same reason the publisher passes it: this builds the tree
+  // to prove a client gets the stylesheet we think they get, and a checker that
+  // materialises a different set of files from the publisher is proving it
+  // about a tree nobody ships.
+  const { copied } = materializeMirror(THEMES, mirror, {
+    prune: false,
+    tracked: trackedFiles(THEMES),
+  })
   log(`   ${copied.length} file(s)`)
 
   log("→ installing a client-shaped node_modules")

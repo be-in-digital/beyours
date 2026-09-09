@@ -131,8 +131,9 @@ Be honest about these when scoping work:
   inline `fontFamily` and that is the extent of it. The font-pairing table this
   guide used to publish described nothing that existed.
 - **`themeId` is a dead field.** It is declared on `storesTable`, in the
-  validators and in `StoreDoc`, and has zero writers and zero readers — like
-  `printerSettings`. Do not build on it without adding the writer first.
+  validators and in `StoreDoc`, and has zero writers and zero readers — the same
+  shape as the `printerSettings` table, which was removed for it. Do not build
+  on it without adding the writer first.
 - **There are no per-theme component variants.** Every vertical renders the same
   `packages/ui` components. Visual differences between templates come from
   `apps/themes/templates/`, not from a theme object.

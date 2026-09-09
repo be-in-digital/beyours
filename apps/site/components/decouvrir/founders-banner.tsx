@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Flame } from "lucide-react";
 import { FOUNDERS_OFFER } from "@/lib/payment-providers";
+import { formatPrice, plans } from "@/components/pricing/pricing-data";
 
 /* ═══════════════════════════════════════════════
    « Offre fondateurs » banner — deliberately loud.
@@ -30,6 +31,11 @@ export function FoundersBanner() {
           remaining > 1 ? "s" : ""
         } sur ${FOUNDERS_OFFER.totalSlots}`;
 
+  /* The catalogue price the founders offer strikes through. Derived, because
+     `convex/planPrices.ts` is what the checkout charges: a struck-through price
+     that drifts is a discount we never gave. */
+  const essentielleCreation = plans.find((plan) => plan.slug === "essentielle")!.creation;
+
   return (
     <div className="relative mb-6 overflow-hidden rounded-2xl bg-olive px-6 py-5 sm:px-8 sm:py-6">
       <div className="pointer-events-none absolute inset-0 bg-cta-radial opacity-70" />
@@ -44,7 +50,7 @@ export function FoundersBanner() {
               ? "Création offerte"
               : `${foundersPrice.toLocaleString("fr-FR")} € HT`}{" "}
             <span className="text-lg font-normal text-[color:var(--background)]/45 line-through">
-              3 500 €
+              {formatPrice(essentielleCreation)}&nbsp;€
             </span>{" "}
             <span className="text-[color:var(--background)]/90">
               pour les 10 premiers restaurants

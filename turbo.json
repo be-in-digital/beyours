@@ -169,7 +169,27 @@
         "!**/.turbo/**",
         "!**/coverage/**",
         "!**/test-results/**",
-        "!**/playwright-report/**"
+        "!**/playwright-report/**",
+        // The two `apps/themes/**` still dragged in after the list above was
+        // written, both gitignored, both written by a command a developer runs
+        // in that directory every day.
+        //
+        // `.convex-build/` is what `npx convex dev` and `convex codegen` leave
+        // behind — 135 files. `tsconfig.tsbuildinfo` is TypeScript's
+        // incremental state, rewritten by every `pnpm typecheck`. Measured the
+        // same way as the vitest cache above: creating them moved
+        // `@be-in-digital/core#test` from `e7032e63ac4844fe` to
+        // `1da57fb80a3c301f`, and appending one space to the tsbuildinfo alone
+        // moved all thirteen `#test` hashes (`bbaeceabd8549872` →
+        // `ff9e92c128b8dfad`).
+        //
+        // So a `pnpm typecheck` or an `npx convex dev` in `apps/themes` threw
+        // the whole monorepo's test cache away — the same disease #424 named
+        // and for the same reason: an input that is not a function of the
+        // source tree. `turbo-test-inputs.test.ts` asserts on these two by name
+        // rather than on the earlier list alone.
+        "!**/.convex-build/**",
+        "!**/*.tsbuildinfo"
       ],
       // `env`, not `passThroughEnv`, and the difference is the whole point.
       //
@@ -368,7 +388,27 @@
         "!**/.turbo/**",
         "!**/coverage/**",
         "!**/test-results/**",
-        "!**/playwright-report/**"
+        "!**/playwright-report/**",
+        // The two `apps/themes/**` still dragged in after the list above was
+        // written, both gitignored, both written by a command a developer runs
+        // in that directory every day.
+        //
+        // `.convex-build/` is what `npx convex dev` and `convex codegen` leave
+        // behind — 135 files. `tsconfig.tsbuildinfo` is TypeScript's
+        // incremental state, rewritten by every `pnpm typecheck`. Measured the
+        // same way as the vitest cache above: creating them moved
+        // `@be-in-digital/core#test` from `e7032e63ac4844fe` to
+        // `1da57fb80a3c301f`, and appending one space to the tsbuildinfo alone
+        // moved all thirteen `#test` hashes (`bbaeceabd8549872` →
+        // `ff9e92c128b8dfad`).
+        //
+        // So a `pnpm typecheck` or an `npx convex dev` in `apps/themes` threw
+        // the whole monorepo's test cache away — the same disease #424 named
+        // and for the same reason: an input that is not a function of the
+        // source tree. `turbo-test-inputs.test.ts` asserts on these two by name
+        // rather than on the earlier list alone.
+        "!**/.convex-build/**",
+        "!**/*.tsbuildinfo"
       ],
       "env": [
         // The Deliveroo scenario suites under `apps/*/e2e/deliveroo` — Vitest,

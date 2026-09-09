@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react"
 import { formatPrice, formatDate, formatOrderNumber } from "../../lib/formatters"
 import { cn } from "../../lib/utils"
 import { adminRoutes } from "../../config/admin-routes"
+import { ORDER_STATUS_CONFIG, ORDER_TYPE_LABELS } from "../../lib/vocabulary"
 import {
   Card,
   CardHeader,
@@ -52,23 +53,18 @@ const statusColors: Record<OrderStatus, string> = {
   cancelled: "bg-red-500",
 }
 
-const statusLabels: Record<OrderStatus, string> = {
-  pending: "En attente",
-  confirmed: "Confirmée",
-  preparing: "En préparation",
-  ready: "Prête",
-  out_for_delivery: "En livraison",
-  delivered: "Livrée",
-  completed: "Terminée",
-  cancelled: "Annulée",
-}
-
-const typeLabels: Record<OrderType, string> = {
-  delivery: "Livraison",
-  pickup: "À emporter",
-  dine_in: "Sur place",
-}
-
+/* The labels are NOT declared here.
+ *
+ * `lib/vocabulary.ts` says in its own header that "label drift is now
+ * impossible" because every page imports from it — and this file redeclared
+ * both maps, eleven strings, side by side with the ones it claims to be the
+ * only copy of. They happened to agree; that is what makes it a latent defect
+ * rather than a visible one, and it is the exact shape vocabulary.ts was
+ * written after (`two statusConfig twins for orders`).
+ *
+ * `statusColors` above stays local, and legitimately: it is a dot colour for
+ * this table's own layout, not a status LABEL, and vocabulary.ts carries a
+ * badge className rather than a dot. */
 export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
   if (orders.length === 0) {
     return (
@@ -127,7 +123,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
                 </TableCell>
                 <TableCell className="hidden md:table-cell">
                   <Badge variant="outline" className="text-[11px] font-normal">
-                    {typeLabels[order.type]}
+                    {ORDER_TYPE_LABELS[order.type]}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right text-sm font-medium tabular-nums">
@@ -136,7 +132,7 @@ export function RecentOrdersTable({ orders }: RecentOrdersTableProps) {
                 <TableCell>
                   <span className="inline-flex items-center gap-1.5 text-sm">
                     <span className={cn("h-1.5 w-1.5 rounded-full", statusColors[order.status])} />
-                    <span className="text-xs">{statusLabels[order.status]}</span>
+                    <span className="text-xs">{ORDER_STATUS_CONFIG[order.status].label}</span>
                   </span>
                 </TableCell>
                 <TableCell className="text-muted-foreground hidden lg:table-cell text-xs">

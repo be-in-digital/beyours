@@ -3,6 +3,7 @@ import { uberEats } from "@be-in-digital/integrations"
 import {
   classifyUberEvent,
   refusePlatformStatus,
+  resolveMenuStoreIntegration,
   resolveStoreIntegration,
   toWebhookOrderItems,
 } from "../platformWebhook"
@@ -132,6 +133,95 @@ describe("resolveStoreIntegration", () => {
       const res = resolveStoreIntegration(both, input)
       if (res.ok) expect(res.integration.platformStoreId).toBe(input)
     }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Routing a MENU event, which may name a brand instead of a site
+// ---------------------------------------------------------------------------
+
+describe("resolveMenuStoreIntegration", () => {
+  // One owner, one Deliveroo brand, two restaurants. The shape the product is
+  // sold in — "1 restaurant owner = 1-∞ locations".
+  const boulevard = {
+    platformStoreId: "site-boulevard",
+    brandId: "brand-chez-luigi",
+    storeId: "stores:1",
+  }
+  const gare = {
+    platformStoreId: "site-gare",
+    brandId: "brand-chez-luigi",
+    storeId: "stores:2",
+  }
+  const chain = [boulevard, gare]
+
+  it("routes a menu event to the site it names", () => {
+    const res = resolveMenuStoreIntegration(chain, "site-gare", "brand-chez-luigi")
+    expect(res).toEqual({ ok: true, integration: gare })
+  })
+
+  it("REFUSES a site id it does not know instead of falling back to the brand", () => {
+    // The defect. `.find()` on the site returned undefined, the handler then
+    // matched the brand, and `menuSyncStatus: "error"` was written onto the
+    // Boulevard branch for a validation failure on a site Deliveroo named and
+    // we have never heard of. Invisible on the site that has the problem,
+    // fictional on the site that does not.
+    const res = resolveMenuStoreIntegration(chain, "site-we-never-linked", "brand-chez-luigi")
+    expect(res.ok).toBe(false)
+    if (!res.ok) expect(res.reason).toBe("unknown_store")
+  })
+
+  it("REFUSES a brand that covers more than one establishment", () => {
+    // A brand is the chain. Asking "does one match?" picks whichever sorts
+    // first — right half the time, silent either way.
+    const res = resolveMenuStoreIntegration(chain, "", "brand-chez-luigi")
+    expect(res.ok).toBe(false)
+    if (!res.ok) expect(res.reason).toBe("ambiguous_store")
+  })
+
+  it("still answers by brand when the brand names exactly one establishment", () => {
+    // The single-site client, and the case the brand fallback exists for: a
+    // menu event that carries no site reference at all.
+    const solo = { platformStoreId: "site-solo", brandId: "brand-solo", storeId: "stores:7" }
+    expect(resolveMenuStoreIntegration([solo], undefined, "brand-solo")).toEqual({
+      ok: true,
+      integration: solo,
+    })
+  })
+
+  it("refuses a brand it does not recognise", () => {
+    const res = resolveMenuStoreIntegration(chain, null, "brand-somebody-else")
+    expect(res.ok).toBe(false)
+    if (!res.ok) expect(res.reason).toBe("unknown_store")
+  })
+
+  it("refuses an event that identifies neither a site nor a brand", () => {
+    for (const blank of [undefined, null, "", "   "]) {
+      const res = resolveMenuStoreIntegration(chain, blank, blank)
+      expect(res.ok).toBe(false)
+      if (!res.ok) expect(res.reason).toBe("unidentified_store")
+    }
+  })
+
+  it("treats non-string references as absent rather than throwing", () => {
+    for (const hostile of [12345, {}, [], true] as unknown[]) {
+      const res = resolveMenuStoreIntegration(chain, hostile, hostile)
+      expect(res.ok).toBe(false)
+      if (!res.ok) expect(res.reason).toBe("unidentified_store")
+    }
+  })
+
+  it("an integration saved with a blank brand does not swallow a brandless event", () => {
+    const blankBrand = { platformStoreId: "site-x", brandId: "", storeId: "stores:9" }
+    const res = resolveMenuStoreIntegration([blankBrand, boulevard], "", "")
+    expect(res.ok).toBe(false)
+    if (!res.ok) expect(res.reason).toBe("unidentified_store")
+  })
+
+  it("reports the empty case distinctly", () => {
+    const res = resolveMenuStoreIntegration([], "site-gare", "brand-chez-luigi")
+    expect(res.ok).toBe(false)
+    if (!res.ok) expect(res.reason).toBe("no_integrations")
   })
 })
 

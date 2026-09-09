@@ -3,6 +3,7 @@
 import { Check, X, Minus } from "lucide-react";
 import { FadeIn } from "@/components/ui/motion";
 import { cn } from "@/lib/utils";
+import { formatPrice, plans } from "@/components/pricing/pricing-data";
 
 /* ═══════════════════════════════════════════════
    Honest comparison, one business model at a time.
@@ -36,7 +37,15 @@ const ROWS: { label: string; cells: [Cell, Cell, Cell, Cell] }[] = [
       { text: "Aucun, mais dépendance totale", tone: "neutral" },
       { text: "69 à 149 €/mois et +", tone: "bad" },
       { text: "Variable, au forfait", tone: "neutral" },
-      { text: "1 000 €/an de maintenance", tone: "good" },
+      {
+        // Derived, never restated: `convex/planPrices.ts` is what the checkout
+        // charges, and a comparison table quoting a price we do not take is a
+        // claim about a competitor AND about ourselves.
+        text: `${formatPrice(
+          plans.find((plan) => plan.slug === "essentielle")!.maintenanceYearly,
+        )}\u00a0€/an de maintenance`,
+        tone: "good",
+      },
     ],
   },
   {

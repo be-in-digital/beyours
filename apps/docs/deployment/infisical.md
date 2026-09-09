@@ -491,5 +491,18 @@ Left:
    `sourcemaps.disable: !(ORG && PROJECT && AUTH_TOKEN)`, so an unset triple
    disables the upload cleanly rather than failing the build.
 
-   Held by `node scripts/infisical-bootstrap.mjs doc`, which checks every
-   "`KEY` in `/folder`" claim in this file against the spec and needs no store.
+   Held by `node scripts/infisical-bootstrap.mjs doc`, which checks every folder
+   claim in this file against the spec and needs no store.
+
+   It reads a claim in either direction — "`KEY` in `/folder`", and
+   "`/folder` holds `KEY`" with the verbs *holds*, *carries*, *contains*,
+   *declares*, *lists* — and it understands `holds no KEY`, which is checked the
+   other way round: that spelling is satisfied by the key being **absent**.
+   Striking a claim through retracts it, so a correction can quote what it
+   corrects.
+
+   It knew only the first spelling until 09/09/2026, and this document by then
+   used only the second, so it reported `0 folder claim(s) checked` and exited
+   0 — indistinguishable from a document with nothing to check. It now proves
+   its own patterns against a dozen phrasings on every run and refuses to grade
+   anything if they have stopped seeing.

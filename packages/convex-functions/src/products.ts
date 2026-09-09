@@ -71,15 +71,42 @@ export const getBySlug = {
 }
 
 /**
- * Get multiple products by IDs (batch query to avoid N+1)
+ * The most ids `getManyByIds` will look up in one call.
+ *
+ * The query is public and the array comes off the wire, so "the screen only
+ * ever sends a handful" is a statement about the screen, not about the query —
+ * the same distinction `pagination.ts` was written for. One `ctx.db.get` per id
+ * with no ceiling is a caller-chosen read count on an anonymous endpoint, and
+ * past Convex's 16,384-document limit the transaction fails rather than
+ * truncates. Well above any plate of favourites, well below that limit.
+ */
+export const MAX_PRODUCT_ID_LOOKUP = 200
+
+/**
+ * Get multiple products by IDs (batch query to avoid N+1).
+ *
+ * Unpublished products are dropped. This query is public — it is the one the
+ * favourites grid calls, before any sign-in — and it took ids and returned
+ * whole documents with no filter at all, so anything holding an id read the
+ * document behind it whatever its state. `isActive: false` is the owner saying
+ * a dish is not on sale: it is how a draft, a discontinued item and a seasonal
+ * one out of season all look, and every other public read of this table
+ * (`getFeatured`, `getManualTrending`, `getTrending`) already honours it. Ids
+ * are not secret — they appear in order lines, in favourites and in the DOM —
+ * so the filter has to be here rather than in the caller.
+ *
+ * Deliberately NOT scoped to one store. A deployment is one client's, and the
+ * favourites grid reads across the chain on purpose: it splits the answer into
+ * "this establishment" and "your other ones". Adding a `storeId` argument would
+ * take that feature away without closing anything, since a sibling store in the
+ * same deployment belongs to the same owner.
  */
 export const getManyByIds = {
   args: { ids: v.array(v.id("products")) },
   handler: async (ctx: any, args: { ids: string[] }) => {
-    const products = await Promise.all(
-      args.ids.map((id: string) => ctx.db.get(id))
-    )
-    return products.filter((p: unknown) => p !== null)
+    const ids = args.ids.slice(0, MAX_PRODUCT_ID_LOOKUP)
+    const products = await Promise.all(ids.map((id: string) => ctx.db.get(id)))
+    return products.filter((p: any) => p !== null && p.isActive === true)
   },
 }
 

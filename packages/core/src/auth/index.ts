@@ -6,11 +6,16 @@
  *
  * @module auth
  *
- * `@be-in-digital/core/auth` is NOT a resolvable specifier — the package's
- * `exports` map publishes `.`, `./env`, `./sentry`, `./auth/rbac`,
- * `./aws/media-url` and `./aws/folders`, and nothing else. Import RBAC from
- * the `./auth/rbac` subpath (what every call site in the repo does) and the
- * rest from the package root.
+ * `@be-in-digital/core/auth` is NOT a resolvable specifier. The package's
+ * `exports` map is the list of what is, and it has grown since this note said
+ * six: it now publishes twelve — `.`, `./env`, `./email`, `./sentry`,
+ * `./allergens`, `./status-labels`, `./dining`, `./auth/rbac`,
+ * `./aws/ses/order-confirmation`, `./aws/media-url`, `./aws/folders` and
+ * `./email/providers`. Import RBAC from the `./auth/rbac` subpath (what every
+ * call site in the repo does) and the rest from the package root.
+ *
+ * Count it in `package.json` before quoting a number here; the map is the
+ * truth, this sentence is a copy of it.
  *
  * @example
  * ```ts
@@ -67,17 +72,25 @@ export type {
 // ============================================================================
 // Configuration
 // ============================================================================
-export {
-  createAuthConfig,
-  authHooks,
-  emailTemplates,
-  authErrors,
-  validatePassword,
-  validateEmail,
-  DEFAULT_SESSION_EXPIRY,
-  DEFAULT_SESSION_REFRESH,
-  MIN_PASSWORD_LENGTH,
-} from './config';
+//
+// There is none here any more, and there never was one that ran. `./config.ts`
+// exported `createAuthConfig`, `authHooks`, `emailTemplates`, `authErrors`,
+// `validatePassword`, `validateEmail` and three constants; every one of them
+// had zero call sites in the whole repository, and it had been shipped on this
+// package's public API throughout.
+//
+// It was not merely unused, it was WRONG, which is the reason it is gone rather
+// than kept "for later". It declared `MIN_PASSWORD_LENGTH = 8` while the auth
+// that actually runs — `apps/*/convex/auth.ts`, Better Auth through its Convex
+// component — sets `minPasswordLength: 12`; its `authHooks` were five async
+// functions whose entire bodies were a `console.info` and a list of TODOs, over
+// names like "lock the account after N attempts" and "alert on brute-force
+// attacks" that read as though something enforced them. A second, contradictory
+// auth configuration on a published package is a trap for whoever reads it
+// first and believes it.
+//
+// The session lifetime, the password rule and the OAuth providers are Better
+// Auth's, configured where it is instantiated. Do not reintroduce a copy here.
 
 // ============================================================================
 // React client (hooks and components)

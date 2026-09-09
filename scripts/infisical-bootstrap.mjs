@@ -336,12 +336,41 @@ function cmdFolders() {
  * no store and no network — which is the point: this runs even when Infisical
  * is down, and it runs BEFORE requireCli() for exactly that reason.
  *
- * Deliberately narrow. It matches a backticked env-var name (a trailing `*` is
- * a family) followed by "in `/folder`" for a folder this script knows. Anything
- * looser reads ordinary prose as a claim and cries wolf.
+ * Narrow, but not blind to a rewording — which is what it was.
+ *
+ * The rule was one pattern: a backticked env-var name followed by "in
+ * `/folder`". Anything else a person would naturally write —
+ * "put `SENTRY_*` into `/platform`", "`SENTRY_*` goes to `/platform`",
+ * "`/platform` holds no `SENTRY_*` key" — was invisible to it, and the guard
+ * then reported "0 folder claim(s) checked" and exited 0. A checker that
+ * reports zero is indistinguishable from a document with nothing to check, and
+ * this one was in the second state while claiming to be a guard against the
+ * first.
+ *
+ * So: two directions, each with the verbs the document actually uses.
+ *
+ *  - KEY-FIRST — "`X` in/into/under `/folder`", or with a verb between them.
+ *  - FOLDER-FIRST — "`/folder` holds/carries/contains `X`", which is how the
+ *    document states the SENTRY correction it was written about.
+ *
+ * A folder-first sentence may be a NEGATIVE claim ("holds no `SENTRY_*` key"),
+ * and negating it flips what the spec must say: the key must be ABSENT. Read as
+ * a positive claim it would fail on a document that is telling the truth, which
+ * is the way a guard gets deleted.
+ *
+ * Still narrow on both axes: the name must be backticked and shouty-case, the
+ * folder must be one this script knows, and the two must be within a short
+ * distance on one line with no sentence boundary between them.
  */
 const DOC_REL = "apps/docs/deployment/infisical.md"
-const DOC_CLAIM = /`([A-Z][A-Z0-9_]*\*?)`[^.\n]{0,40}? in `(\/[a-z]+)`/g
+
+/** "`SENTRY_DSN` in `/platform`", and the verbs a writer reaches for instead. */
+const DOC_CLAIM_KEY_FIRST =
+  /`([A-Z][A-Z0-9_]*\*?)`[^.\n]{0,40}?\b(?:in|into|under|to|on)\b[^.\n]{0,12}?`(\/[a-z]+)`/g
+
+/** "`/platform` holds no `SENTRY_*` key" — the shape the doc actually uses. */
+const DOC_CLAIM_FOLDER_FIRST =
+  /`(\/[a-z]+)`[^.\n]{0,20}?\b(holds|carries|contains|declares|lists)\b\s*(no\s+)?[^.\n]{0,12}?`([A-Z][A-Z0-9_]*\*?)`/g
 
 /**
  * Blank out `~~struck~~` spans, preserving every newline so line numbers still
@@ -363,33 +392,124 @@ function docFolderClaims() {
   if (!fs.existsSync(file)) return []
   const lines = stripStruck(fs.readFileSync(file, "utf8")).split("\n")
   const claims = []
+  const known = (folderPath) => Object.values(SCOPES).some((s) => s.path === folderPath)
+
   lines.forEach((line, i) => {
-    for (const m of line.matchAll(DOC_CLAIM)) {
-      const folder = Object.values(SCOPES).find((s) => s.path === m[2])
-      if (folder) claims.push({ line: i + 1, name: m[1], path: m[2] })
+    for (const m of line.matchAll(DOC_CLAIM_KEY_FIRST)) {
+      if (known(m[2])) claims.push({ line: i + 1, name: m[1], path: m[2], negated: false })
+    }
+    for (const m of line.matchAll(DOC_CLAIM_FOLDER_FIRST)) {
+      if (known(m[1])) {
+        claims.push({ line: i + 1, name: m[4], path: m[1], negated: Boolean(m[3]) })
+      }
     }
   })
-  return claims
+
+  // One sentence can match both directions — "`/platform` holds no `SENTRY_*`
+  // key, and `SENTRY_*` in `/site` instead" — and the same claim counted twice
+  // reads as two. Keyed on what the claim IS, not on where it was found.
+  const seen = new Set()
+  return claims.filter((c) => {
+    const key = `${c.line}:${c.path}:${c.name}:${c.negated}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+/**
+ * One line of prose, read as folder claims. The pure half of `docFolderClaims`,
+ * so it can be proved without a document.
+ */
+function claimsInLine(line) {
+  const found = []
+  const known = (folderPath) => Object.values(SCOPES).some((s) => s.path === folderPath)
+  for (const m of line.matchAll(DOC_CLAIM_KEY_FIRST)) {
+    if (known(m[2])) found.push({ name: m[1], path: m[2], negated: false })
+  }
+  for (const m of line.matchAll(DOC_CLAIM_FOLDER_FIRST)) {
+    if (known(m[1])) found.push({ name: m[4], path: m[1], negated: Boolean(m[3]) })
+  }
+  return found
+}
+
+/**
+ * The phrasings this guard must see, and the prose it must not read as a claim.
+ *
+ * It runs on every invocation, for the reason `check-commit-attribution.mjs`
+ * self-tests: the whole guard is two regular expressions, and a regular
+ * expression that stops matching does not fail — it reports zero and exits 0.
+ * That is exactly the state this was found in. "0 folder claim(s) checked" is
+ * what a document with nothing to check looks like AND what a blind scanner
+ * looks like, so the scanner has to prove it can still see.
+ */
+const CLAIM_SELF_TEST = [
+  ["`SENTRY_DSN` in `/platform`", 1],
+  ["put `SENTRY_DSN` into `/platform` before the first deploy", 1],
+  ["`STRIPE_SECRET_KEY` belongs in `/site`", 1],
+  ["`STRIPE_SECRET_KEY` goes to `/site`", 1],
+  ["`AWS_REGION` lives under `/themes`", 1],
+  // Folder-first, which is how the document states the correction this guard
+  // was written about — and which the original pattern could not see at all.
+  ["`/platform` holds no `SENTRY_DSN` key, by design", 1],
+  ["`/site` carries `STRIPE_SECRET_KEY`", 1],
+  ["`/themes` contains `AWS_REGION`", 1],
+  // Not claims. A guard that reads these as claims cries wolf and gets deleted.
+  ["`ci.yml`'s build job reads `/platform`, behind `INFISICAL_ENABLED`", 0],
+  ["There was a fifth folder, `/ci`, holding the names GitHub Actions read.", 0],
+  ["`/platform` is 18 keys", 0],
+  // A folder this script does not know is not a claim about anything.
+  ["`SENTRY_DSN` in `/nowhere`", 0],
+]
+
+/** Which self-test cases the patterns currently get wrong. Empty is the only good answer. */
+function claimSelfTestFailures() {
+  const broken = []
+  for (const [line, expected] of CLAIM_SELF_TEST) {
+    const found = claimsInLine(line).length
+    if (found !== expected) broken.push(`${JSON.stringify(line)} — expected ${expected}, found ${found}`)
+  }
+  // And the negation must survive the round trip, or "holds no X" is checked
+  // as "holds X" and the guard fails a document that is telling the truth.
+  const negated = claimsInLine("`/platform` holds no `SENTRY_DSN` key")[0]
+  if (!negated?.negated) broken.push("a `holds no` claim is not being read as negated")
+  return broken
 }
 
 /** Prints every doc claim the spec does not support. Returns how many. */
 function checkDocClaims() {
+  const broken = claimSelfTestFailures()
+  if (broken.length) {
+    console.error(`${DOC_REL}: the claim scanner itself is broken — ${broken.length} self-test failure(s).`)
+    for (const failure of broken) console.error(`  ${failure}`)
+    console.error("  DOC_CLAIM_KEY_FIRST / DOC_CLAIM_FOLDER_FIRST no longer detect what they were written for.")
+    console.error()
+    process.exit(EXIT_INCOMPLETE)
+  }
+
   const claims = docFolderClaims()
   const bad = []
   for (const c of claims) {
     const scopeName = Object.keys(SCOPES).find((n) => SCOPES[n].path === c.path)
     const keys = expectedKeys(scopeName)
-    const ok = c.name.endsWith("*")
+    const present = c.name.endsWith("*")
       ? keys.some((k) => k.startsWith(c.name.slice(0, -1)))
       : keys.includes(c.name)
-    if (!ok) bad.push({ ...c, scopeName })
+    // "holds no X" is satisfied by the key being ABSENT.
+    if (present === c.negated) bad.push({ ...c, scopeName })
   }
   console.log(`${DOC_REL}: ${claims.length} folder claim(s) checked against the spec`)
   for (const b of bad) {
-    console.log(`  WRONG  ${DOC_REL}:${b.line} — sends \`${b.name}\` to ${b.path},`)
-    console.log(`         but ${b.path}'s spec (${SCOPES[b.scopeName].specs.join(", ")}`)
-    console.log(`         ${SCOPES[b.scopeName].add ? "+ its add: list" : ""}) declares no such key.`)
-    console.log(`         An operator who follows the doc gets it reported as "not in any spec".`)
+    const spec = `${SCOPES[b.scopeName].specs.join(", ")}${SCOPES[b.scopeName].add ? " + its add: list" : ""}`
+    if (b.negated) {
+      console.log(`  WRONG  ${DOC_REL}:${b.line} — says ${b.path} holds no \`${b.name}\`,`)
+      console.log(`         but ${b.path}'s spec (${spec}) declares it.`)
+      console.log(`         The document is telling operators to leave out a key the folder needs.`)
+    } else {
+      console.log(`  WRONG  ${DOC_REL}:${b.line} — sends \`${b.name}\` to ${b.path},`)
+      console.log(`         but ${b.path}'s spec (${spec}) declares no such key.`)
+      console.log(`         An operator who follows the doc gets it reported as "not in any spec".`)
+    }
   }
   if (!bad.length && claims.length) console.log("  every claim matches the spec")
   console.log()

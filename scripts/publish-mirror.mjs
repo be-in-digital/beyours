@@ -84,7 +84,7 @@ import {
   missingFromLockfile,
   parseLockfileOverrides,
 } from "./lib/mirror-overrides.mjs"
-import { materializeMirror } from "./lib/mirror-tree.mjs"
+import { materializeMirror, trackedFiles } from "./lib/mirror-tree.mjs"
 // Read only to sharpen the failure message below: which half of a release is
 // missing — the changeset, or the version bump that consumes it.
 import { CHANGESET_DIR, isChangesetFile, parseChangeset } from "./lib/pending-release.mjs"
@@ -391,7 +391,25 @@ try {
   // What is shipped, and what the mirror keeps, is decided in
   // `lib/mirror-tree.mjs` — the same module `check-mirror-css.mjs` builds from,
   // so the tree this pushes is the tree CI proved.
-  const { copied, deleted } = materializeMirror(SOURCE, clone)
+  //
+  // Tracked by git, minus that module's exclusions. The exclusions alone are a
+  // NAME allow-list, which cannot anticipate what a developer leaves lying in
+  // `apps/themes` — and this script documents being run BY HAND, with no CI
+  // gate in front of it, so "what is on disk" is whatever that person's working
+  // tree happened to hold. Measured: one untracked scratch test, duly
+  // materialised into the tree about to be pushed to every client's template.
+  const tracked = trackedFiles(SOURCE)
+  if (!tracked) {
+    fail(
+      `Could not ask git which files under ${SOURCE} are tracked.\n\n` +
+        `  The mirror ships what git tracks, minus the exclusions in\n` +
+        `  scripts/lib/mirror-tree.mjs. Without that answer the only\n` +
+        `  alternative is "everything on disk", which is how an untracked\n` +
+        `  scratch file — or a .env.local — reaches every client's template.\n\n` +
+        `  Run this from inside the repository, with git on PATH.`
+    )
+  }
+  const { copied, deleted } = materializeMirror(SOURCE, clone, { tracked })
   log(`   ${copied.length} file(s) shipped, ${deleted.length} removed`)
 
   log("→ rewriting package.json")
@@ -460,7 +478,10 @@ try {
   const badScript = assertTypecheckScript(JSON.parse(contents).scripts)
   if (badScript) fail(badScript)
   const sandbox = join(work, "typecheck")
-  materializeMirror(SOURCE, sandbox, { prune: false })
+  // The same tree by construction, `tracked` included: a sandbox that compiled
+  // a different set of files from the one being pushed would prove nothing
+  // about the push.
+  materializeMirror(SOURCE, sandbox, { prune: false, tracked })
   writeFileSync(join(sandbox, "package.json"), contents)
   copyFileSync(lockfile, join(sandbox, "pnpm-lock.yaml"))
   const compiled = checkPinnedTree(sandbox)

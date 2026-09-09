@@ -17,7 +17,15 @@ import type { BusinessHours, Address, StoreDoc, StoreHoursStatus } from '../type
  *
  * It moved there with `isWithinBusinessHours`, so `orders.create` can resolve
  * the same week this storefront reads. Re-exported rather than moved outright:
- * `@be-in-digital/restaurant` is where every caller imports it from.
+ * this is where the STOREFRONT's callers import it from — `use-store-status.ts`
+ * and the contact page, in both apps.
+ *
+ * Not "every caller", which this note said. `convex-functions/src/orders.ts`
+ * imports it from `@be-in-digital/convex-schema` directly, and has to: the
+ * Convex runtime loads that package, and routing the import through
+ * `@be-in-digital/restaurant` would pull a React storefront package into an
+ * isolate. The re-export is a convenience for one side, not a chokepoint for
+ * both — and stating it as one invites somebody to "fix" the direct import.
  */
 export { resolveStoreHours }
 
