@@ -342,6 +342,18 @@ export const emailSubscribersTable = defineTable({
   .index("by_storeId_status", ["storeId", "status"])
   .index("by_storeId_email", ["storeId", "email"])
   .index("by_doubleOptInToken", ["doubleOptInToken"])
+  /* Address alone, across every store.
+   *
+   * A bounce or a complaint is a fact about the MAILBOX, and SES reports it by
+   * recipient address: the notification carries `mail.destination`, while the
+   * `X-Store-Id` header that would narrow it is present only when the identity
+   * is configured to include the original headers. Without this index a
+   * notification whose headers are missing matches nobody, so the dead address
+   * stays `active` and is re-mailed on every campaign — and the complaint rate
+   * AWS suspends an account over is per-ACCOUNT, shared by every store an owner
+   * runs. Read by `handleSesWebhook`, in each app's
+   * `convex/emailHttpHandlers.ts`. */
+  .index("by_email", ["email"])
 
 /**
  * Email templates table
