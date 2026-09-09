@@ -85,6 +85,9 @@ import {
   parseLockfileOverrides,
 } from "./lib/mirror-overrides.mjs"
 import { materializeMirror } from "./lib/mirror-tree.mjs"
+// Read only to sharpen the failure message below: which half of a release is
+// missing — the changeset, or the version bump that consumes it.
+import { CHANGESET_DIR, isChangesetFile, parseChangeset } from "./lib/pending-release.mjs"
 import {
   assertTypecheckScript,
   checkPinnedTree,
@@ -93,6 +96,30 @@ import {
 // The same lookup `publish-plan.mjs` gates the release on. One copy, so the
 // mirror cannot pin a version the gate never asked about.
 import { publishedVersion, REGISTRY } from "./lib/registry.mjs"
+
+/**
+ * Every package named by a changeset waiting in `.changeset/`.
+ *
+ * Advisory only — see the call site. A changeset this cannot parse names no
+ * package it can report, which is the safe direction: the message falls back to
+ * "add a changeset", which is wrong-but-harmless, rather than claiming one
+ * exists when none does.
+ */
+function changesetPackages() {
+  let names
+  try {
+    names = readdirSync(CHANGESET_DIR)
+  } catch {
+    return new Set()
+  }
+
+  const covered = new Set()
+  for (const file of names.filter(isChangesetFile)) {
+    const releases = parseChangeset(readFileSync(join(CHANGESET_DIR, file), "utf8"))
+    for (const release of releases ?? []) covered.add(release.name)
+  }
+  return covered
+}
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
 const SOURCE = join(ROOT, "apps/themes")
@@ -351,7 +378,13 @@ try {
     published[pkg] = { version, ...publishedTarball(pkg, version) }
   }
   const unresolvable = unresolvableImports(engineImportsIn(SOURCE), published)
-  if (unresolvable.length > 0) fail(describeUnresolvable(unresolvable))
+  // `changesetPackages()` only changes the WORDING of the failure, never
+  // whether it fails. It is what separates "nobody wrote a changeset" from
+  // "the changeset is written and nothing consumed it" — and it was the second
+  // one, eight syncs in a row, while this gate kept advising the first.
+  if (unresolvable.length > 0) {
+    fail(describeUnresolvable(unresolvable, { covered: changesetPackages() }))
+  }
   log(`   ${Object.keys(published).length} package(s) verified`)
 
   log("→ copying contents")

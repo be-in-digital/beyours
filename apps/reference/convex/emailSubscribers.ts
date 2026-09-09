@@ -195,3 +195,15 @@ export const getByIdInternal = internalQuery({
   args: defs.getById.args,
   handler: (ctx, args) => defs.getById.handler(ctx, args),
 });
+
+/**
+ * Every subscriber holding an address, for the SES feedback webhook.
+ *
+ * Internal only, and it has to stay that way: it takes an address and no store,
+ * so a public twin would let anyone ask which of an owner's stores a given
+ * person has subscribed to.
+ */
+export const listByEmailInternal = internalQuery({
+  args: defs.listByEmail.args,
+  handler: (ctx, args) => defs.listByEmail.handler(ctx, args),
+});

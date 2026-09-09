@@ -190,6 +190,40 @@ export const getByEmail = {
   },
 }
 
+/**
+ * Every subscriber holding this address, whatever store they belong to.
+ *
+ * For SES feedback, and only for it. A bounce or a complaint is a fact about
+ * the MAILBOX: SES reports it by recipient address in `mail.destination`, and
+ * the `X-Store-Id` header that would name one store is present only when the
+ * identity is configured to include the original headers — which nothing
+ * provisioned until `setup-aws.sh` grew a Step 2b. Correlating on the address
+ * is what lets a notification arriving without those headers still suppress the
+ * address instead of being dropped.
+ *
+ * ACROSS STORES ON PURPOSE, and it is the conservative direction rather than
+ * the convenient one. A hard bounce means the mailbox does not exist, which is
+ * equally true of every store that holds it; a complaint means this person
+ * reported the operator for spam, and the rate AWS suspends over is
+ * per-ACCOUNT — one AWS account per client, every store of theirs inside it.
+ * Suppressing the address wherever it appears is what protects the account. The
+ * cost is one subscriber row of a store that did not send the message, which is
+ * a row that would have bounced too.
+ *
+ * Capped rather than unbounded: an address in more than 32 of one owner's
+ * stores is not a case this has to serve, and a webhook handler must not scan
+ * without a ceiling.
+ */
+export const listByEmail = {
+  args: { email: v.string() },
+  handler: async (ctx: any, args: any) => {
+    return await ctx.db
+      .query("emailSubscribers")
+      .withIndex("by_email", (q: any) => q.eq("email", args.email.toLowerCase()))
+      .take(32)
+  },
+}
+
 /** The five states a subscriber can be in, in the order the screens read them. */
 export const SUBSCRIBER_STATUSES = [
   "active",

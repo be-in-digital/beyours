@@ -422,8 +422,21 @@ export function unresolvableImports(imports, published) {
   return problems
 }
 
-/** The failure message, written to be actionable without opening this file. */
-export function describeUnresolvable(problems) {
+/**
+ * The failure message, written to be actionable without opening this file.
+ *
+ * `covered` is the set of package names with a changeset already waiting in
+ * `.changeset/`, and it exists because the advice was wrong in exactly the case
+ * that mattered most. "Add a changeset for the package above" sends a reader to
+ * a step that is already done, and this gate then repeats it on every run: eight
+ * consecutive syncs failed on `@be-in-digital/ui`'s `./contrast` and
+ * `./contrast-scan` and `convex-functions`' `./paymentLedger` while changesets
+ * for all three sat in `.changeset/`, unconsumed, because `changeset version`
+ * had not been run. The changeset was never the missing half — the version bump
+ * was. Pass the set and the message says so; omit it and the message is what it
+ * was.
+ */
+export function describeUnresolvable(problems, { covered = new Set() } = {}) {
   const unread = (p) => p.reason === "exports could not be read from the published tarball"
   const unshipped = (p) => p.reason === "declared but not shipped"
   const behind = (p) => p.reason === "not exported by the published version" || p.version === null
@@ -450,10 +463,47 @@ export function describeUnresolvable(problems) {
       "subpath without a version bump: the workspace link CI builds against has it,",
       "the published tarball does not.",
       "",
-      "Fix by releasing the engine first — add a changeset for the package above,",
-      "merge it, and let Release publish — then re-run this sync. Do not work",
-      "around it by removing the import; the import is correct, the mirror's",
-      "dependency range is what is behind.",
+    )
+
+    // Which half is actually missing. A changeset that already exists makes
+    // "write a changeset" the wrong instruction, and this gate would otherwise
+    // repeat it once per failing run.
+    const behindPackages = [...new Set(problems.filter(behind).map((p) => p.pkg))].sort()
+    const waiting = behindPackages.filter((pkg) => covered.has(pkg))
+
+    if (waiting.length > 0 && waiting.length === behindPackages.length) {
+      lines.push(
+        "The changeset already exists. What is missing is the VERSION BUMP:",
+        `${waiting.join(", ")} ${waiting.length === 1 ? "is" : "are"} named by a changeset`,
+        "waiting in `.changeset/`, and nothing has consumed it. Versioning is a",
+        "human step here — this enterprise forbids Actions from opening the",
+        "\"version packages\" pull request — so `changeset publish` compares",
+        "unchanged versions against the registry, prints `already published`, and",
+        "publishes nothing however long the changeset waits.",
+        "",
+        "Run `pnpm version-packages` on a branch, commit the bumped package.json",
+        "and CHANGELOG.md files, and merge. Release publishes on the merge and",
+        "this sync unblocks itself.",
+      )
+    } else if (waiting.length > 0) {
+      lines.push(
+        `A changeset is already waiting for ${waiting.join(", ")}, so that half is done`,
+        "and needs no second one. For the rest, add a changeset. Then run",
+        "`pnpm version-packages` on a branch, commit and merge — a changeset that",
+        "nothing consumes publishes nothing, however long it waits.",
+      )
+    } else {
+      lines.push(
+        "Fix by releasing the engine first — add a changeset for the package above,",
+        "run `pnpm version-packages`, merge it, and let Release publish — then",
+        "re-run this sync.",
+      )
+    }
+
+    lines.push(
+      "",
+      "Do not work around it by removing the import; the import is correct, the",
+      "mirror's dependency range is what is behind.",
     )
   }
   if (problems.some(unshipped)) {

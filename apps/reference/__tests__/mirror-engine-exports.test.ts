@@ -791,7 +791,25 @@ describe("the publisher runs the guard", () => {
   })
 
   test("it fails the run rather than warning", () => {
-    expect(publisher).toContain("if (unresolvable.length > 0) fail(describeUnresolvable(unresolvable))")
+    // Matched on shape rather than on one line of source: the call gained a
+    // second argument (`covered`, which only sharpens the wording) and a line
+    // break with it, and a test that pins the formatting refuses a change that
+    // did not touch the behaviour.
+    expect(publisher).toMatch(
+      /if \(unresolvable\.length > 0\) \{?\s*fail\(describeUnresolvable\(unresolvable/,
+    )
+  })
+
+  /**
+   * The wording, which is the whole of what `covered` changes. Eight
+   * consecutive syncs failed on `./contrast`, `./contrast-scan` and
+   * `./paymentLedger` and told whoever read them to add a changeset, while
+   * changesets for all three sat unconsumed in `.changeset/`. The advice was
+   * for a step already done.
+   */
+  test("it tells the gate which changesets are already waiting", () => {
+    expect(publisher).toContain("changesetPackages()")
+    expect(publisher).toContain("covered:")
   })
 
   /**
@@ -829,5 +847,78 @@ describe("the publisher runs the guard", () => {
     expect(publisher.indexOf("unresolvableImports(")).toBeLessThan(
       publisher.indexOf("materializeMirror(SOURCE"),
     )
+  })
+})
+
+/**
+ * Which half of a release is missing.
+ *
+ * "Add a changeset for the package above" is right when none exists and wrong
+ * when one does — and it was wrong for the eight consecutive syncs that
+ * deadlocked the distribution chain, because the changesets were written and
+ * `changeset version` had never been run. The gate could not tell the two
+ * apart, so it repeated the wrong instruction once per failing run.
+ */
+describe("describeUnresolvable names the missing half", () => {
+  const behind = [
+    {
+      pkg: "@be-in-digital/ui",
+      subpath: "./contrast",
+      version: "3.1.0",
+      reason: "not exported by the published version",
+    },
+  ]
+
+  test("with no changeset waiting, it asks for one", () => {
+    const message = describeUnresolvable(behind)
+    expect(message).toContain("add a changeset")
+    expect(message).not.toContain("VERSION BUMP")
+  })
+
+  test("omitting `covered` altogether keeps the old message", () => {
+    // The parameter is optional on purpose: every other caller and every
+    // existing test passes one argument.
+    expect(describeUnresolvable(behind)).toBe(describeUnresolvable(behind, { covered: new Set() }))
+  })
+
+  test("with the changeset already written, it asks for the version bump", () => {
+    const message = describeUnresolvable(behind, {
+      covered: new Set(["@be-in-digital/ui"]),
+    })
+
+    expect(message).toContain("VERSION BUMP")
+    expect(message).toContain("pnpm version-packages")
+    // The instruction that was wrong. It must not survive alongside the right
+    // one, or the reader has to guess which applies.
+    expect(message).not.toContain("add a changeset for the package above")
+  })
+
+  test("a mix says which half is done and which is not", () => {
+    const message = describeUnresolvable(
+      [
+        ...behind,
+        {
+          pkg: "@be-in-digital/convex-functions",
+          subpath: "./paymentLedger",
+          version: "5.0.0",
+          reason: "not exported by the published version",
+        },
+      ],
+      { covered: new Set(["@be-in-digital/ui"]) },
+    )
+
+    expect(message).toContain("already waiting for @be-in-digital/ui")
+    expect(message).toContain("For the rest, add a changeset")
+  })
+
+  test("it still says the import is not the thing to remove", () => {
+    // The one line that has to survive every branch: the reflex fix is to
+    // delete the import, and that ships a client a template missing the
+    // feature rather than a template that builds.
+    for (const covered of [new Set<string>(), new Set(["@be-in-digital/ui"])]) {
+      expect(describeUnresolvable(behind, { covered })).toContain(
+        "Do not work around it by removing the import",
+      )
+    }
   })
 })

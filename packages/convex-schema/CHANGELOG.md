@@ -1,5 +1,459 @@
 # Changelog - @be-in-digital/convex-schema
 
+## 5.0.0
+
+### Major Changes
+
+- e4955e7: Stop the confirmation email rendering from a field no order has ever carried
+
+  `orders.scheduledFor` had no writer. Its only one was `uberEatsOrders.saveFromPlatform`,
+  an importer with zero callers deleted with #313, and #363 had already removed the
+  sibling `orders.scheduledAt` on an explicit finding — that customer-facing
+  scheduled ordering is a capability this product does not have, and
+  `orders.create` takes no time argument at all. It took `scheduledAt` and missed
+  `scheduledFor`.
+
+  **What made it worth removing rather than recording is that something read it.**
+  `timingLine` in the confirmation email opened with `if (input.scheduledFor)` and
+  rendered « Prévue pour le 12 mars 2026 à 19:30 ». That branch was written in
+  #367, _after_ #363 had ruled the feature unbacked, against a field that was
+  already unwritten — so it has never run for any order and never could. The
+  field, its Zod line, its three type declarations, the payload mapping and the
+  email branch are gone together.
+
+  **A second, live defect was found underneath it, and is deliberately NOT fixed
+  here.** `timingLine`'s remaining branch reads `order.estimatedPrepTime`, and
+  `orders.create` writes the prep time it computes onto the **kitchen ticket**
+  instead — `estimatedPrepTime: summary.estimatedPrepTime`, inside the ticket
+  insert. Nothing writes the field the email reads. So the confirmation email
+  prints no timing row for any real order and never has: both branches were dead,
+  not one. That is a defect in what a customer-facing email says rather than dead
+  code, and wiring it is a change with its own review, so it is reported under
+  #413 and recorded in `timingLine`'s own docblock instead of being smuggled in
+  under a deletion.
+
+  **The tests that covered this were green throughout, and proved nothing.**
+  `packages/core`'s `timingLine` cases call it with a `scheduledFor` and an
+  `estimatedPrepTime` they supply themselves, so they exercise the rendering and
+  say nothing about whether an order can reach it. The one asserting « Prévue pour
+  le » is gone with its branch; the two that remain now carry a note saying what
+  they do and do not establish.
+
+  `packages/convex-functions/src/__tests__/confirmation-reads-what-orders-write.test.ts`
+  asks the question those tests could not: every field the confirmation payload
+  reads off an order must be written by some `insert("orders", …)` or order
+  `patch`, or be named in an allowlist with its reason. `estimatedPrepTime` is the
+  one entry, carrying the defect above. Writing that test surfaced two ways a
+  scan like it can lie, both now closed in it: a loose key scan sees `orders.ts`'s
+  _kitchen ticket_ literal and reports `estimatedPrepTime` as written — which is
+  the very confusion that caused the bug — and a colon-only key regex misses the
+  shorthand properties (`orderNumber,`, `viewToken,`) that a third of the orders
+  insert uses.
+
+  Two `packages/restaurant` cases ranking a scheduled order's kitchen priority
+  went with the field; what they were really pinning — that being a delivery is
+  what makes an order urgent — is the pair of cases they sat between. The
+  Deliveroo `it.todo` that asked for this field to be written is rewritten rather
+  than deleted: the need behind it is real, but it is a **KDS lateness** concern
+  (an order an hour overdue looks identical to one placed this second), not a
+  diner-facing booking feature, and the todo had gone stale — it still cited
+  `scheduledAt`, deleted three PRs earlier, and two line numbers that had moved.
+
+  **Why `@be-in-digital/core` is a major.** `./aws/ses/order-confirmation` is a
+  first-class entry in that package's `exports` map — `convex-functions` and both
+  apps import it across the package boundary — and this removes `scheduledFor`
+  from the exported `OrderConfirmationInput` interface and drops `timingLine`'s
+  second parameter. Either is a compile break for a consumer pinning a version.
+  An earlier draft called it a minor, which would have been the same field being
+  `major` in `convex-schema` and `minor` in `core` in one changeset.
+
+  **No migration.** The field never had a live writer, so no document should carry
+  it; #363 removed `scheduledAt` on the same reasoning with no migration and the
+  registry in `convex/migrations/index.ts` is still empty. If some deployment does
+  hold a document with the field, Convex refuses the schema push — a loud failure
+  at deploy time, not silent data loss.
+
+### Minor Changes
+
+- 038eb9d: Make the delete refusals reach the owner, and stop five more removes orphaning rows
+
+  #400 gave six deletes a `ConvexError` carrying a French sentence the owner is
+  meant to act on. Four admin screens caught it and showed a fixed line instead —
+  so the owner clicked delete, something went grey, and the reason never appeared.
+  The engine half was right and undelivered. The prize case was the worst of them:
+  the server says _do not retry, deactivate instead_ and the screen said
+  « Suppression impossible — réessayez ».
+
+  **The refusal is now what the screen shows.** `games`, `prizes`, `emailTemplates`
+  and `emailSegments` read it out of the `ConvexError` payload through
+  `convexErrorMessage`, as `products-table` already did. So do the other eleven screen files,
+  because the defect was the class and not the four instances — seventeen call
+  sites across fifteen files, and a source-level case now holds every one of them,
+  including the second delete in the two files that make two. (The first version
+  of that sweep matched one binding per file, which left `catalog-page`'s prize
+  delete and `use-store-detail`'s Deliveroo delete uncovered; reverting either
+  kept the whole admin suite green.)
+
+  **And five more removes were still leaving rows pointing at nothing.**
+  - **A subscriber's rows go with them.** `emailSubscribers.remove` was a bare
+    delete over TWO non-optional foreign keys — `emailEvents.subscriberId` and
+    `emailAutomationRuns.subscriberId` — behind a live button. `privacy.ts` has
+    cleared exactly those two tables, in that order, since the erasure path was
+    written and says why; this delete was the one path that did not call it. It
+    cascades now, a batch at a time, and the subscriber survives every pass but
+    the one that finishes them — a half-drained delete never leaves the two tables
+    promising a row the database no longer has.
+  - **A campaign that has reached somebody is refused.** The delete button is
+    offered for `draft`, `cancelled` and `failed`, and two of those three are
+    states a send lands in mid-list: `markFailed` only fires on a campaign that
+    was `sending`. What that partial send is recorded in is `emailEvents`, one
+    `sent` row per (campaign, subscriber), which is what makes « Relancer » resume
+    instead of restart. The rows survived a delete; the key did not. The only
+    route left to finish the send was to rebuild the campaign — and the copy, with
+    a new id, asks the same question of the same table and is told nobody has been
+    reached, so everyone who already had it gets it again. Marketing mail is not
+    recallable. It refuses and points at « Relancer ». Not a cascade: those rows
+    are also the weekly cap's answer and the establishment's record of what it
+    sent.
+  - **A QR code that has been played is refused**, and can now be deactivated
+    instead. `gamePlays.qrCodeId` has no reader anywhere, which is why nothing
+    crashed and nothing was noticed — and that is the whole damage: a `gamePlays`
+    row is the establishment's evidence under art. 7.1 that it was allowed to
+    record a fingerprint, and `qrCodeId` is the only field saying where the
+    consent was given. `isActive` has been in the schema from the start and the
+    screen offered create and delete and nothing in between, so a refusal would
+    have been a dead end; `gameQRCodes.setActive` and a control on the screen are
+    the way out the refusal names.
+  - **A formule a prize gives away is refused, and its translations go with it.**
+    `menus.remove` was a bare delete. `prizes.menuId` gets the same treatment
+    `products.remove` already gives a dish a prize names. `translations.entityId`
+    is a `v.string()`, so no validator could see it was a foreign key: a menu's own
+    name and description in every language the owner added were cleared by nothing
+    short of deleting the whole establishment.
+  - **A coupon an order was discounted by is refused.** `promotions.remove` was
+    not a bare delete — it cleared the `promotionUsages` ledger in batches, which
+    is what made deleting a popular coupon possible. The reference it never
+    touched is the one that matters: `orders.promotionId` is optional and
+    unindexed, so every order that coupon discounted was left naming a row that no
+    longer resolved, with the discount still on the order and on the numbered
+    invoice issued for it. `releasePromotionForOrder` read that id, found nothing,
+    and quietly released nothing. A redeemed coupon is history now, and
+    deactivation was already on the screen. It asks the order directly, through a
+    new `orders.by_promotionId` — the cheap proxy is not equivalent, because the
+    retention cron and an art. 17 erasure both clear `promotionUsages` while a
+    paid order is ANONYMISED and keeps its `promotionId`, so proxying would have
+    made a three-year-old coupon deletable again and re-created the very
+    reference the guard exists to stop. `promotionUsages` is asked too: its
+    `promotionId` is REQUIRED and its `orderId` is not. `purgeUsages` stays
+    exported and the wrappers no longer schedule it: Convex resolves a scheduled
+    function by name at run time, and a client deployment running the previous
+    `remove` can still have a drain booked.
+  - `emailAutomations.remove` gets the same guard over `emailAutomationRuns`. It
+    has no UI caller; it is live on the API under `marketing:write` all the same.
+
+  **BREAKING.** `emailSubscribers.remove` returns `{ deleted, complete }` and
+  `menus.remove` returns `{ deleted, hasMore }`, both of which the app wrappers
+  must drain — `emailSubscribers.purgeRemoval` and `menus.purgeTranslations` are
+  new internal mutations, wired in both apps. `promotions.remove` no longer
+  deletes usage rows; it refuses instead. `gameQRCodes.setActive` is new. One new
+  index, `orders.by_promotionId`; every other index these guards seek was already
+  declared.
+
+  **And the instrument that measures all of this was reading low.** The
+  read-counting double under-counted the exact unindexed scan it exists to catch.
+  Convex's `.filter()` is a post-scan predicate — the stream reads every document
+  of the scanned range and charges each one against the 16,384-document
+  transaction limit, and the predicate only decides what comes back — but the
+  double narrowed its candidate array inside `filter` and then counted the
+  survivors. `.filter().collect()` over 6,000 rows scored the handful it returned;
+  `.filter().first()` over a table where nothing matched scored **zero** for the
+  most expensive query Convex will run. It caught a live one immediately:
+  `storeIntegrations.getBySiteId` and `getByBrandId` — how both platform webhooks
+  resolve their store on every delivery — were exactly that shape, and now narrow
+  through `by_platform_enabled` first. No new index; the narrowing moved into the
+  one that was already there. That is `dueForSending`'s own defect
+  (#327), and it is what the hand-rolled double this one replaced was thrown out
+  for. It was masked rather than hidden: `filter` took a plain JavaScript
+  predicate while every real handler passes Convex's `FilterBuilder`, so the shape
+  threw `TypeError` instead of under-counting — and the obvious repair would have
+  turned that crash into a silently green full-table scan. It now speaks
+  `FilterBuilder` and charges every document it walks, and eight cases in the
+  double's own guard hold it there.
+
+  The refusal only ever names a control the screen is rendering: « Relancer » is
+  offered for `paused` and `failed`, so a campaign cancelled mid-list is told
+  instead that it stays as the record. A refusal that sends the owner after a
+  button that is not there is the dead end this whole change is about.
+
+  Probes. Three throwaway suites, each reverted against the unfixed code:
+  the games and prizes screen showed « Suppression impossible — réessayez » where
+  the server had said « Désactivez-le pour le retirer du jeu », and the two email
+  screens « Échec de la suppression » where it had named the campaign blocking
+  them; seven of nine backend cases
+  failed and the two controls — a delete that should still work — passed; and the
+  counting cases returned 1 and 0 where Convex charges 6,000. Two tests that were
+  green while blessing the defect are rewritten and named as such: the three
+  `promotions.remove` cases in `queryBounds.test.ts` and the app-level
+  "clears the offer at once and its usage record in batches".
+
+  Closes #412.
+
+- e569498: Stop six bare deletes leaving rows pointing at nothing
+
+  Six handlers were written as `ctx.db.delete(args.id)` against tables other rows
+  reference, and `v.id("table")` validates how an id is ENCODED, not that it still
+  resolves — so no validator, no type and no test ever complained. Each one cost
+  something different, and every one of them shipped to every client site.
+
+  **A diner's won prize could be deleted out from under them (#326.1).**
+  `prizeRedemptions.prizeId` is REQUIRED. Tidying the prize list left the
+  redemption standing at `pending`, holding an id that resolves to nothing, and
+  `redeemByCode` dereferences that column — so the person at the till with a valid
+  code was told their prize did not exist. `games.remove` was the same shape over
+  `gamePlays.gameId`, and worse in one respect: a play carries the diner's consent
+  under art. 7.1, which is the establishment's evidence that it was allowed to
+  record a fingerprint at all. Both now refuse and name the way out, which already
+  existed and is already on the screen — `isActive: false` takes the prize out of
+  the draw and the game off the QR codes immediately, without touching a record. A
+  prize nothing has won still deletes, and the wheel section that named it keeps
+  its label and colour and loses only the dead link.
+
+  **Deleting an email template halted a send; deleting a segment widened one
+  (#326.2).** `emailCampaigns.templateId` is required, so `sendBatch` read the
+  template, found nothing, logged one line and returned: the campaign sat at
+  `sending` for ever while the owner's screen read « En cours ». `segmentId` is
+  optional, and that was worse — the code said "if the segment is there, filter by
+  it", so a deleted segment meant no filter at all and the campaign went to the
+  WHOLE list. Copy written for one slice reached every subscriber, in batches, and
+  marketing mail cannot be recalled. Both deletes now refuse while a campaign that
+  can still send, or any automation step, names them; a campaign that has finished
+  does not block, which is the trade written down in `emailAssetReferences.ts`.
+
+  **And the send no longer holds.** A batch that cannot read its template, its
+  configuration or its segment marks the campaign `failed` with a sentence naming
+  what to fix, shown under the campaign's name. That is a new status and a new
+  `failureReason` column — relaunchable, so the owner fixes the cause and presses
+  « Relancer », which keeps the cursor and resumes rather than mailing the first
+  batch twice. The two defences are not redundant: the refusal covers deletes from
+  now on, the failure covers every template or segment already gone, and every
+  other way one can go missing.
+
+  **A cancelled couponed order burned the diner's one use (#326.3).** The
+  cancellation branch restored tracked stock and left the promotion exactly as
+  checkout had spent it — `promotions.usageCount` still counted it, and the
+  `promotionUsages` row still stood against the customer's email. A one-per-
+  customer code was gone for good on an order the restaurant itself cancelled, and
+  no screen anywhere edits either number. Both are released now, from a shared
+  helper called by BOTH cancellation paths, because `updateFromWebhook` is a
+  separate handler and a rule that lives in one caller is a rule the other skips —
+  which this file has already paid for once, with a kitchen ticket left live on
+  the pass after Uber cancelled the order.
+
+  **`orders.remove` would have taken the invoice (#312).** One line, against a row
+  that `payments.orderId`, `kitchenTickets.orderId` and `invoices.orderId` all
+  reference REQUIRED. No screen calls it, which is the reason to guard it now
+  rather than later: it is live under `orders:delete`, and whoever wires the first
+  button to it will not be reading this file. It refuses on an invoice — a
+  numbered fiscal document in an unbroken series, art. 242 nonies A CGI — and on a
+  payment that moved money or is still in flight; it carries away the kitchen
+  tickets, the dead payment attempts and the spent delivery quote, and releases
+  the promotion. `orderCascade.ts` records which table is on which side and why.
+
+  **The dead Uber Eats importer is gone (#313).** `uberEatsOrders.saveFromPlatform`
+  inserted `paymentStatus: "paid"` with no `releaseToKitchen` — an order paid for
+  and never reaching the pass — and its docblock claimed the webhook action called
+  it. `grep` found zero callers; the live path is `orders.createFromWebhook`.
+  Deleted rather than wired, because keeping it means keeping a second, wrong way
+  to create a marketplace order. It was also the only writer of
+  `orders.scheduledFor`, so `FEATURES.md` now says that field has none at all.
+
+  **Four indexes were added for these guards, and one for the release:**
+  `gamePlays.by_gameId`, `gamePlays.by_prizeId`, `prizeRedemptions.by_prizeId` and
+  `promotionUsages.by_orderId`. Each answers its question in one row rather than
+  by reading an establishment's whole history, so a delete does not get more
+  expensive the longer a restaurant has been trading.
+
+  **BREAKING:** `@be-in-digital/convex-functions` no longer exports
+  `uberEatsOrders`, and the `./uberEatsOrders` subpath is removed. Both apps'
+  wrappers and generated `api.d.ts` are updated here.
+
+  32 new cases. `destructivePaths.test.ts` seeds the referencing row, runs the real
+  handler and asserts BOTH halves — the refusal carries the code a screen switches
+  on, AND neither side of the reference was deleted; 16 of its 21 fail against the
+  code they fix, and the 5 that pass are the controls proving a delete that should
+  still work does. The double is index-faithful, so the four new indexes are proved
+  declared rather than merely spelled correctly. Both apps gain four cases on the
+  campaign state machine.
+
+  Closes #326. Closes #312. Closes #313.
+
+- bdf8012: Close the second double-collection vector, and stop a correct refusal 500-looping
+
+  #378 closed cash-then-card: `assertSettlesOrder` refuses a card settlement on an
+  order the counter has already collected, because the order records WHICH method
+  it is on and the two differ. Two card sessions differ in nothing it can see.
+
+  A diner who opens checkout twice — a stale tab, a back-navigation, a retry —
+  left two live Stripe Checkout Sessions against one order. Both referenced that
+  order, that currency and that total, so the guard passed both; both were `card`,
+  so #378's method check did not separate them; and `settlePayment` deduplicated
+  on `externalId`, which two payment intents never share. Measured on the code as
+  it stood:
+
+  ```
+  [PROBE] order total: 120000  collected: 240000
+  [PROBE] succeeded rows: 2
+  [PROBE] second session refused: false
+  ```
+
+  A 1 200 € order collected 2 400 €, in two `succeeded` rows, each independently
+  refundable, with the order untouched and nothing anywhere saying so (#411).
+
+  **The ledger is where the rule now lives — for every writer, not four of them.**
+  `settlePayment`'s order-level check carried `p.provider !== args.provider`,
+  which read two Stripe charges as one collection. That clause is gone, and it
+  cannot come back: execution only reaches the check when `by_externalId` found no
+  row for THIS charge on THIS order, so every row still standing there belongs to
+  another charge, whoever minted it. Stating it inside `settlePayment` was not
+  enough either — the claim was that this made the invariant "a property of the
+  ledger rather than of five call sites remembering to ask a guard", and two other
+  writers reached the same table without asking anything: `orders.markCashPaid`
+  inserts a `succeeded` row directly, and `payments.create` + `payments.updateStatus`
+  is a public pair under `payments:write` that writes one in two steps. All three
+  now read `collectionOnOrder` from the new `paymentLedger` module.
+
+  `assertSettlesOrder` is unchanged and stays the fast pre-check: it is given one
+  claim and one order and no charges, so it cannot tell a redelivery from a second
+  session, and the two tests that describe it waving one through now say so.
+
+  **A refusal is not a failure, and the two need opposite answers.** The Stripe
+  webhook answered 500 to every throw. A settlement refusal is permanent —
+  retrying delivers the same answer — so Stripe retried for three days, each
+  attempt re-ran the guard to the same refusal, the delivery stayed
+  `processed: false` and was re-admitted as `in_flight` every time, and nobody was
+  told. It now answers 2xx, retires the delivery and RECORDS it: refusing the row
+  keeps the ledger honest but does not make the diner whole, because a provider
+  does not report a charge it did not take. `payment_collection_refused` is a new
+  `systemAuditLog` action, rendered in Dashboard → Système, naming the order, the
+  charge and the reason — the only place a human learns a refund is owed. It takes
+  its ids as strings on purpose: Convex validates arguments before a handler runs,
+  so a `v.id()` there would throw out of the very catch block whose contract is
+  "this can never fail its caller", straight back into the retry loop.
+
+  `deliberateSettlementRefusal` tells the two apart, and reads the error's `data`
+  rather than its class: Convex rebuilds a `ConvexError` across the mutation
+  boundary, so `instanceof` is false at exactly the call site that matters and
+  fails closed into the loop. Its code list is a `Record` over both reason unions,
+  so a ninth reason does not compile rather than silently reading as a failure.
+
+  The settlement is also written BEFORE the order status now. They are two
+  transactions, and writing the status first committed it where a refusal could
+  still follow — leaving an order reading « Payé » with no payment row against it.
+  That was survivable while every refusal answered 500 and the endpoint showed red
+  in Stripe's dashboard; a 200 makes it final and silent.
+
+  **And the second charge is no longer taken at all.** `createCheckoutSession`
+  overwrote the order's stored session id and told Stripe nothing about the old
+  one, which stays payable for about twenty-four hours. It now expires the
+  previous session before the replacement becomes payable, and READS the outcome:
+  Stripe reports "already paid" and "already expired" with the same error, and one
+  of those means the previous session has been completed with its settlement still
+  in flight — the order reads `pending`, so no status gate can see it, and a
+  replacement would collect the same meal twice. All three provider checkouts also
+  refuse outright to open a payment on an order already collected, reading both
+  the order's status (which counts `refunded`, so they agree with
+  `markCashPaid`: a refunded order is closed business) and the ledger (which
+  catches the window between a payment row being written and the status catching
+  up). The refusal is a `ConvexError` — `order_already_paid` — so the diner reads
+  « Cette commande a déjà été réglée » rather than being told to retry a payment
+  they have already made.
+
+  What this does NOT close, and the ledger is why it does not have to: an action
+  is four round trips with no transaction around them, so two checkouts genuinely
+  in flight at once can still open two sessions. They settle through
+  `settlePayment`, which is serializable — one succeeded row, the second refused
+  and recorded.
+
+  **A Stripe key the API rejects no longer arms the card tile.**
+  `cardPaymentAvailability` checked `STRIPE_SECRET_KEY.startsWith("sk_")`, which
+  is a check on the shape of a string: a key that is revoked, rolled or from
+  another account all passed it, so the tile was pre-selected and the
+  `StripeAuthenticationError` thrown by `sessions.create` reached the diner as the
+  redacted "Server Error" #374 was written to remove. Only Stripe can answer
+  whether a key works and a query cannot ask it, so the verdict is recorded when
+  it is learnt — in the new `cardProviderHealth` table, written by the hourly
+  `stripe.verifyStripeKey` and by every checkout that succeeds or is refused — and
+  read back by the availability query.
+
+  Its own table for two reasons, both learnt the hard way from putting it on
+  `globalSettings` first: that document is read by a PUBLIC query before any
+  sign-in, and a provider's refusal message names the key's mode and last four
+  characters; and it is created by exactly one thing, the owner pressing
+  Enregistrer, so a deployment whose owner has never opened that screen — a fresh
+  one, which is what #374 is about — had nothing to write a verdict onto and the
+  fix was inert. The row is written only when the verdict moves, because it is
+  read on the order path and Convex conflicts a write with every concurrent
+  transaction that read it. Hourly rather than nightly because the cron is the
+  only writer that can bring the tile BACK: once a verdict disarms it, no diner
+  can reach the checkout that would report the key working again.
+
+  A credentials refusal, and only that: a declined card, a rate limit or an outage
+  say nothing about the key, and disarming the tile over one would take card
+  payments away from a working establishment.
+
+### Patch Changes
+
+- ecb21a1: Stop `promotions.create` and `promotions.update` accepting the configuration of a withdrawn offer type
+
+  #403 withdrew « Produit offert » and « Offre BOGO » as discount **types** — both
+  alter the item list rather than the order total and no code path builds those
+  items, so `assertHonourableDiscountType` refuses them on create and on update,
+  and the promotion form stopped offering them. It left their five configuration
+  fields on both args validators: `freeProductId`, `bogoTriggerProductId`,
+  `bogoRewardProductId`, `bogoTriggerQuantity`, `bogoRewardQuantity`. Both
+  handlers spread `args` straight into the row, so all five went on reaching the
+  database unexamined for another five commits.
+
+  **One of them was live.** `products.remove` reads the first three to refuse
+  deleting a dish a promotion still points at. Measured against the real
+  mutations: a plain `percentage` promotion given a `freeProductId` made that dish
+  **undeletable**, and the refusal named a promotion that used the product in no
+  way the owner could find — the field is on no form, and `update` has no way to
+  clear an optional field, only to overwrite it with another product. There was no
+  route back short of deleting the promotion.
+
+  The five are gone from both validators. That is the whole guard: a Convex
+  mutation refuses an argument no validator declares — `Validator error:
+Unexpected field \`freeProductId\` in object`— which the tests measure rather
+than assume.`discountTypeValidator`keeps all five **literals** deliberately:`update`reads`existing.discountType` to refuse an edit that would keep a
+  withdrawn type, and that refusal is a French sentence an owner can act on. A
+  narrowed union would turn it into an untranslated validator error.
+
+  **The schema keeps the five as `v.optional`**, because rows written before the
+  withdrawal still hold them — the treatment `stores.integrations` already has.
+  The comments there described a feature that cannot be created ("for discountType
+  === \"free_product\"", "BOGO fields"); they now say that nothing writes these,
+  that one thing reads three of them, and what implementing `bogo` would take.
+  `WITHDRAWN_PROMOTION_CONFIG_FIELDS` lives in `promotionDiscount.ts` next to the
+  withdrawal itself, so the args that must refuse them, the delete guard that
+  still reads them and the tests that hold both name one list.
+
+  **The delete refusal now names an action that exists.** The guard still blocks —
+  a legacy row pointing at a deleted dish is the dangling reference it was written
+  to stop — but « Modifiez ou supprimez cette promotion » was half an instruction
+  nobody could follow. The two references are told apart: `targetProductIds` is
+  the promotion's product scope, which the form renders and the owner can unpick,
+  and keeps that sentence; the three withdrawn fields get their own, saying that
+  the reference is not on the promotion form and cannot be removed there, and that
+  deleting the promotion is what frees the dish. Deactivating does not clear it,
+  so the message does not suggest it.
+
+  `promotion-discount-types.test.ts` asserted the form source held no
+  `bogoTriggerQuantity` and no `bogoRewardQuantity`, and nothing at all about the
+  server — which is exactly how the server half survived the #403 cleanup. It now
+  covers all five names on both ends, against the validator objects rather than a
+  source scan.
+
 ## 4.1.0
 
 ### Minor Changes
