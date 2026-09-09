@@ -1,6 +1,6 @@
 {
   "name": "@be-in-digital/admin",
-  "version": "12.0.0",
+  "version": "13.0.0",
   "publishConfig": {
     "access": "restricted"
   },

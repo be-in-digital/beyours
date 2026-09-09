@@ -1,5 +1,21 @@
 # @be-in-digital/mcp-server
 
+## 1.1.2
+
+### Patch Changes
+
+- Report the versions this release actually cut
+
+  `src/package-versions.ts` is generated from the workspace manifests by
+  `pnpm --filter @be-in-digital/mcp-server sync:versions`, and consuming the
+  pending changesets moved several packages. Regenerated, so the registry answers
+  with the versions a client can install rather than the ones it could yesterday.
+
+  It needs a release of its own to be worth anything: the map ships inside this
+  package, so a correct file sitting unpublished reports the old versions to
+  every consumer exactly as before. `registry.test.ts` compares the generated map
+  against the manifests and is what catches a bump made without the sync.
+
 ## 1.1.1
 
 ### Patch Changes

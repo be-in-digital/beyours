@@ -1,6 +1,6 @@
 {
   "name": "@be-in-digital/convex-schema",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "publishConfig": {
     "access": "restricted"
   },
