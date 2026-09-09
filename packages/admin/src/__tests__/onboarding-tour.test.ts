@@ -552,3 +552,79 @@ describe("onboarding tour — remembering that it was offered", () => {
     expect(hasSeenTour("user_1")).toBe(true)
   })
 })
+
+/**
+ * The tour has to be READABLE, which is not the same as anchored correctly.
+ *
+ * WHAT WAS MEASURED, in Chromium, on the running admin: the popover background
+ * was `rgb(255, 255, 255)` and its text `rgb(249, 250, 251)` — 1.045:1, against
+ * the 4.5:1 AA asks of body text. Twenty-eight steps of white on white. The
+ * first thing a new owner sees, and it was a blank rectangle.
+ *
+ * HOW IT HAPPENED, and why the assertion is shaped this way. `styles.popover`
+ * spread reactour's own `base` — which carries a white background and NO colour
+ * — and then overrode `borderRadius`, `padding`, `maxWidth` and `boxShadow`.
+ * Nothing set `color`, so the text inherited `--foreground` from the admin
+ * above it: near-black in light mode (20.147:1, fine, which is why this went
+ * unseen) and near-WHITE in dark. `app/providers.tsx` is `defaultTheme="system"`,
+ * so every owner whose machine is in dark mode got the blank one. The `badge`
+ * style directly below always set both members of the pair, which is why
+ * "1 / 28" read at 7.86:1 while the sentence beside it did not.
+ *
+ * WHY THE APP-LEVEL CONTRAST SWEEP DOES NOT COVER THIS. `contrast-scan.ts`
+ * resolves `className` strings; this is an inline `style={{}}` object handed to
+ * a third-party provider, and its own header says so — "inline style={{}} never
+ * read". That is a real limit of a static class sweep, not an oversight, and it
+ * is why the pairing is asserted here at the one place that renders it.
+ */
+describe("onboarding tour — the popover can be read", () => {
+  const provider = read(path.join(ADMIN_SRC, "components/onboarding/tour-provider.tsx"))
+
+  /** The body of one entry in the `styles={{ … }}` map. */
+  const styleBlock = (name: string): string => {
+    const at = provider.indexOf(`${name}: (base) => ({`)
+    expect(at, `no \`${name}\` style in tour-provider.tsx`).toBeGreaterThan(-1)
+    const open = provider.indexOf("{", provider.indexOf("=> (", at))
+    let depth = 1
+    let i = open + 1
+    while (i < provider.length && depth > 0) {
+      if (provider[i] === "{") depth++
+      else if (provider[i] === "}") depth--
+      i++
+    }
+    return provider.slice(open, i)
+  }
+
+  it("sets both members of the pair on every surface it paints", () => {
+    // `popover` is the one that was broken; `badge` is the one that was right
+    // all along and is asserted so it cannot drift the other way.
+    for (const surface of ["popover", "badge"] as const) {
+      const block = styleBlock(surface)
+      expect(block, `${surface} paints a background`).toMatch(/backgroundColor:/)
+      expect(block, `${surface} paints the ink on it`).toMatch(/\bcolor:/)
+    }
+  })
+
+  it("takes both from the same token pair, so a theme moves them together", () => {
+    // The literal that fails is the literal that escaped the design system. A
+    // token pair is what makes light and dark both correct without a second
+    // declaration, and `--popover`/`--popover-foreground` is the pair the rest
+    // of the admin already paints popovers with.
+    const block = styleBlock("popover")
+    expect(block).toMatch(/backgroundColor:\s*"hsl\(var\(--popover\)\)"/)
+    expect(block).toMatch(/\bcolor:\s*"hsl\(var\(--popover-foreground\)\)"/)
+  })
+
+  it("never leaves the ink to be inherited from whatever is above it", () => {
+    // The defect in one line: a surface declared without its ink. Spreading
+    // `base` is fine — it carries geometry too — but it must not be the only
+    // thing deciding what colour the sentence is.
+    const block = styleBlock("popover")
+    const spreadsBase = /\.\.\.base/.test(block)
+    const setsColour = /\bcolor:/.test(block)
+    expect(
+      spreadsBase && !setsColour,
+      "popover spreads reactour's white `base` without setting `color` — this is the 1.045:1 defect"
+    ).toBe(false)
+  })
+})

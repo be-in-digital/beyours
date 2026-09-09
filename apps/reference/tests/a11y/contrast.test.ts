@@ -41,6 +41,8 @@
  * which is how the footer got to 1.07:1.
  */
 
+import { readFileSync, readdirSync, type Dirent } from "node:fs"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import { AA_LARGE, AA_TEXT, contrast } from "@be-in-digital/ui/contrast"
 import { formatFailures, loadTokens, scanContrast } from "@be-in-digital/ui/contrast-scan"
@@ -218,5 +220,64 @@ describe("the token matrix itself", () => {
       }
     }
     expect(below).toEqual([])
+  })
+
+  /**
+   * The ring is measured above at FULL opacity. This is what makes that the
+   * right thing to measure.
+   *
+   * `--ring` cleared 1.4.11 in all four scopes and the focus indicator still
+   * did not, because every primitive rendered it as `focus-visible:ring-ring/50`
+   * — shadcn's stylistic default, carried in unexamined. Half the token is not
+   * half as visible: alpha composites toward the page, so 5.03:1 became 2.13:1
+   * in the light admin, 7.83:1 became 2.61:1 in the dark one, and 7.63:1 became
+   * 2.42:1 on the light storefront. Only the dark storefront cleared, at 3.09:1.
+   * A keyboard user could not see where they were, on any screen, in any
+   * template — `pizzeria` measured 2.10:1.
+   *
+   * The fix was to render the token the test already trusted, so this asserts
+   * the two have not drifted apart again. Reach for a `/NN` on a focus ring and
+   * the arithmetic above stops describing the product.
+   *
+   * SCOPE, STATED. This holds the DESIGN SYSTEM — the primitives every admin
+   * and storefront screen composes from. It does not reach the bespoke
+   * `<input className="… focus:ring-primary/20">` written by hand in the
+   * storefront checkout, the auth pages and the affiliate portal: 91 of those
+   * exist, most pair the faded ring with a border or background change that
+   * has to be judged one at a time, and sweeping them blind would be a visual
+   * change nobody measured. They are a separate population and a separate job.
+   */
+  it("renders the focus ring at the opacity measured above", () => {
+    const roots = [
+      "node_modules/@be-in-digital/ui/src/components",
+      "node_modules/@be-in-digital/admin/src",
+    ]
+    const faded: string[] = []
+    const walk = (dir: string): void => {
+      let entries: Dirent[]
+      try {
+        entries = readdirSync(dir, { withFileTypes: true })
+      } catch {
+        return
+      }
+      for (const entry of entries) {
+        const path = join(dir, entry.name)
+        if (entry.isDirectory()) {
+          walk(path)
+        } else if (entry.name.endsWith(".tsx")) {
+          readFileSync(path, "utf8")
+            .split("\n")
+            .forEach((line, index) => {
+              // The focus states only. `aria-invalid:ring-destructive/20` is
+              // emphasis layered over a full-opacity `border-destructive`, not
+              // the thing that says where the keyboard is.
+              const match = line.match(/(?:focus-visible|focus)\]?:ring-ring\/(\d+)/)
+              if (match) faded.push(`${path}:${index + 1} — ring-ring/${match[1]}`)
+            })
+        }
+      }
+    }
+    for (const root of roots) walk(root)
+    expect(faded).toEqual([])
   })
 })
