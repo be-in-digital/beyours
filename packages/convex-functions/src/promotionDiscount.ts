@@ -50,6 +50,38 @@ export const UNHONOURABLE_DISCOUNT_TYPES = [
   "bogo",
 ] as const satisfies readonly PromotionDiscountType[]
 
+/**
+ * The configuration the two withdrawn types carried, and nothing else reads.
+ *
+ * Withdrawing the TYPES left these five fields writable on `promotions.create`
+ * and `promotions.update` for another five commits, and they are not inert: the
+ * product delete guard (`products.remove`) reads the first three. Setting one on
+ * an ordinary `percentage` promotion — which the validators allowed, and which
+ * `PromotionForDiscount` cannot even see — made a dish permanently undeletable,
+ * blamed on a promotion that does not use it in any way an owner can find. The
+ * form does not render these fields, and `update` has no way to CLEAR an
+ * optional one, so there was no route back.
+ *
+ * The list lives here, next to the withdrawal it belongs to, so that the args
+ * that must not accept them, the guard that still reads three of them, and the
+ * tests that hold both, all name the same five. Implement `bogo` in this file
+ * and the fields become part of a type that works, on the same commit.
+ */
+export const WITHDRAWN_PROMOTION_CONFIG_FIELDS = [
+  "freeProductId",
+  "bogoTriggerProductId",
+  "bogoRewardProductId",
+  "bogoTriggerQuantity",
+  "bogoRewardQuantity",
+] as const
+
+/** The three of those five that still point at a product. */
+export const WITHDRAWN_PROMOTION_PRODUCT_FIELDS = [
+  "freeProductId",
+  "bogoTriggerProductId",
+  "bogoRewardProductId",
+] as const satisfies readonly (typeof WITHDRAWN_PROMOTION_CONFIG_FIELDS)[number][]
+
 /** Whether a discount type is one an order can actually be given. */
 export function isHonourableDiscountType(
   discountType: string

@@ -270,8 +270,13 @@ Verified by execution at commit 8d41349:
   doubled), and marking `canceled` on a `delivered` order sends it back to `pending`. Plus
   a table scan per webhook, stock not propagated, and sandbox flags.
 - #172 — The Deliveroo secret in git history. Four artifacts unchanged. Re-measured: the
-  secret appears in 137 commits, of which 41 are ancestors of `main`. `.gitleaksignore`
-  claims 18. A green Gitleaks scan proves nothing about this history.
+  secret appears in 137 commits, of which 41 are ancestors of `main`. A green Gitleaks
+  scan proves nothing about this history.
+  **Corrected 2026-09-09** — this bullet used to end "`.gitleaksignore` claims 18". It
+  does not, and has not since 2026-09-04: that file is where the 18 was *retracted*
+  (`.gitleaksignore:15-27`). The stale 18 lived on in
+  `tasks/secret-rotation-runbook.md`, in three places, and is now gone from there too.
+  Send the next session to the runbook, not to the ignore file.
 
 On #172 specifically: rotating the secret is the account-owner's action and it must happen
 BEFORE any history rewrite, not after. Rewriting `main`'s history is a decision for the

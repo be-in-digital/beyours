@@ -7,6 +7,7 @@
 import { ConvexError, v } from "convex/values"
 import { requireStorePermission } from "./auth"
 import { clampPageSize } from "./pagination"
+import { WITHDRAWN_PROMOTION_PRODUCT_FIELDS } from "./promotionDiscount"
 
 // === QUERIES ===
 
@@ -705,19 +706,67 @@ export const remove = {
       .withIndex("by_storeId", (q: any) => q.eq("storeId", storeId))
       .collect()
 
+    /**
+     * Two references, and only one of them is on a screen.
+     *
+     * `targetProductIds` is the promotion's product scope: the form renders it,
+     * the owner picked the dish there, and they can go and unpick it. The other
+     * three — `freeProductId`, `bogoTriggerProductId`, `bogoRewardProductId` —
+     * belong to « Produit offert » and « Offre BOGO », the two discount types
+     * withdrawn in #403. They are on no form, `promotions.update` has no way to
+     * clear an optional field, and a row still carrying a withdrawn TYPE cannot
+     * be saved at all. So « Modifiez la promotion » was an instruction that
+     * could not be followed, about a promotion that names the dish nowhere the
+     * owner can see.
+     *
+     * The protection stays — a legacy row pointing at a deleted dish is a
+     * dangling reference, which is the whole reason this guard exists — but the
+     * sentence now names the one action that is actually available: delete the
+     * promotion. It is a lame duck either way, since no order can be given a
+     * discount of a withdrawn type. `promotions.remove` refuses a promotion that
+     * has already been redeemed, and that combination — a redeemed promotion
+     * carrying a withdrawn reference — is the one case an owner cannot resolve
+     * alone; it is also the only one where the dish is genuinely still on a
+     * paid order. Deactivating does not clear it, so the message does not
+     * suggest it.
+     */
+    const withdrawnRef = (promotion: any) =>
+      WITHDRAWN_PROMOTION_PRODUCT_FIELDS.some((field) => promotion[field] === args.id)
+
+    const scopedRef = (promotion: any) =>
+      (promotion.targetProductIds ?? []).includes(args.id)
+
     const blockingPromotions = promotions.filter(
-      (promotion: any) =>
-        promotion.freeProductId === args.id ||
-        promotion.bogoTriggerProductId === args.id ||
-        promotion.bogoRewardProductId === args.id ||
-        (promotion.targetProductIds ?? []).includes(args.id)
+      (promotion: any) => withdrawnRef(promotion) || scopedRef(promotion)
     )
 
     if (blockingPromotions.length > 0) {
-      const names = blockingPromotions.map((p: any) => `"${p.name}"`).join(", ")
+      const names = (rows: any[]) => rows.map((p: any) => `"${p.name}"`).join(", ")
+      const scoped = blockingPromotions.filter(scopedRef)
+      // A promotion counted once: scope first, because that is the one the
+      // owner can fix on the promotion screen.
+      const withdrawn = blockingPromotions.filter(
+        (promotion: any) => !scopedRef(promotion) && withdrawnRef(promotion)
+      )
+
+      const sentences: string[] = []
+      if (scoped.length > 0) {
+        sentences.push(
+          `Ce produit est utilisé dans ${scoped.length} promotion${scoped.length > 1 ? "s" : ""} : ${names(scoped)}. ` +
+            `Modifiez ou supprimez ${scoped.length > 1 ? "ces promotions" : "cette promotion"} avant de supprimer le produit.`
+        )
+      }
+      if (withdrawn.length > 0) {
+        sentences.push(
+          `${withdrawn.length} promotion${withdrawn.length > 1 ? "s" : ""} le référence${withdrawn.length > 1 ? "nt" : ""} au titre d'une offre « Produit offert » ou « BOGO » : ${names(withdrawn)}. ` +
+            `Ces offres ne sont plus proposées et aucune remise n'est appliquée. ` +
+            `Cette référence n'apparaît pas dans le formulaire de promotion et ne peut pas y être retirée : supprimez ${withdrawn.length > 1 ? "ces promotions" : "cette promotion"} pour libérer le produit.`
+        )
+      }
+
       throw new ConvexError({
         code: "product_in_promotion",
-        message: `Ce produit est utilisé dans ${blockingPromotions.length} promotion${blockingPromotions.length > 1 ? "s" : ""} : ${names}. Modifiez ou supprimez ${blockingPromotions.length > 1 ? "ces promotions" : "cette promotion"} avant de supprimer le produit.`,
+        message: sentences.join(" "),
       })
     }
 

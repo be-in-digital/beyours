@@ -291,8 +291,18 @@ export const recordInAppSignature = internalMutation({
          In the same transaction as the activation on purpose: an affiliate is
          never activated without their code, and a signature that fails leaves
          neither behind. Idempotent, so re-signing a superseded version keeps
-         the code they already publish. */
-      await mintCodeFor(ctx, affiliate._id);
+         the code they already publish.
+
+         `"skip"`, and this is the whole judgement in this block: a SUSPENDED
+         affiliate signing the contract is a real signature and it is recorded
+         — `status` and `contractStatus` are independent, and the account being
+         suspended says nothing about whether they agreed to the terms. Only
+         the code is withheld. Throwing here would refuse the signature over
+         it, which would be the wrong half to lose. `mintCodeFor` re-reads the
+         row, so it sees the `contractStatus: "active"` patched immediately
+         above rather than the stale `affiliate` in hand: a merely
+         pending-contract affiliate still gets their code on this very call. */
+      await mintCodeFor(ctx, affiliate._id, "skip");
     }
 
     return signatureId;

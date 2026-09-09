@@ -41,6 +41,136 @@
     },
     "test": {
       "dependsOn": ["^build"],
+      // ── What the suite reads that is not in its own package ──────────────
+      //
+      // Turbo's default input set is the package's own git-tracked files. This
+      // task's suites read far outside that, and until this list existed NONE
+      // of it was hashed — so `Test` replayed a cached green over a tree that
+      // had genuinely moved. Measured with `turbo run test --dry=json`, which
+      // prints the hash without running anything: appending one newline to
+      // `.github/workflows/ci.yml`, to the root `package.json`, to
+      // `pnpm-lock.yaml`, to `pnpm-workspace.yaml`, to `CLAUDE.md`, to
+      // `scripts/publish-mirror.mjs`, to `apps/themes/package.json` or to this
+      // very file left `@beyours/reference#test`'s hash byte-for-byte identical.
+      // So did bumping `packages/mcp-server/package.json` to 99.9.9, and so did
+      // adding a changeset — which is #392 exactly: a version bump anywhere
+      // replays a green `Test` over a drifted tree.
+      //
+      // The irony was sharpest one file away: `turbo-test-env.test.ts` reads
+      // this `turbo.json` to keep the `env` list honest, and editing
+      // `turbo.json` did not invalidate the test that reads `turbo.json`.
+      //
+      // `$TURBO_DEFAULT$` keeps the package's own files; everything after it is
+      // added. `../../` is the repository root from any workspace, and that is
+      // structural rather than lucky: `pnpm-workspace.yaml` declares exactly
+      // `packages/*` and `apps/*`, so every workspace sits at depth two. A glob
+      // that matches nothing is ignored, so a workspace added at another depth
+      // would lose these silently — `turbo-test-inputs.test.ts` asserts the
+      // depth rather than trusting it.
+      //
+      // The cost is deliberate. This list is wider than any single suite needs,
+      // because it is one list shared by thirteen workspaces, and an input that
+      // is too wide only re-runs tests that would have passed. One that is too
+      // narrow reports a green for code nobody ran, which is the failure this
+      // repository keeps paying for. `apps/themes/**` is the expensive entry
+      // and it is not optional: `mirror-engine-exports.test.ts` and
+      // `mirror-typecheck.test.ts` walk that tree.
+      //
+      // Not closed by this list, and worth stating rather than implying:
+      // `engine-doc-imports.test.ts` reads every `.ts`/`.tsx` under
+      // `packages/`. For an app those arrive through `dependsOn: ["^build"]`,
+      // which puts each dependency's hash in this one — measured: editing
+      // `packages/ui/src/index.ts` DOES move `@beyours/reference#test`. The
+      // exception is `mcp-server`, which nothing depends on, so it is named
+      // below.
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        // Read by `turbo-test-env.test.ts` and by this task's own definition.
+        "../../turbo.json",
+        // Root manifest, lockfile and workspace globs: `mirror-overrides.test.ts`
+        // parses the lockfile's `overrides` block as TEXT, and
+        // `workflow-publish-gates.test.ts` and `client-stylesheet.test.ts` read
+        // the root manifest. Turbo hashes RESOLVED dependencies from the
+        // lockfile, not the file, so a suite reading the bytes was never covered.
+        "../../package.json",
+        "../../pnpm-lock.yaml",
+        "../../pnpm-workspace.yaml",
+        // `engine-doc-imports.test.ts` compiles the import lines in these.
+        "../../CLAUDE.md",
+        "../../README.md",
+        // `pending-release.test.ts`, through `scripts/lib/pending-release.mjs`,
+        // which resolves `CHANGESET_DIR` from its own URL — a read no scan of
+        // the test source can see.
+        "../../.changeset/**",
+        // `workflow-publish-gates.test.ts` reads every workflow and composite
+        // action; `client-stylesheet.test.ts` asserts on `ci.yml`;
+        // `engine-version-diagnostic.test.ts` reads the template's own CI.
+        "../../.github/**",
+        // `mirror-publisher.test.ts`, `mirror-typecheck.test.ts`,
+        // `mirror-overrides.test.ts`, `publish-plan.test.ts`,
+        // `source-drift.test.ts` and `mirror-engine-exports.test.ts` all read
+        // or import these.
+        "../../scripts/**",
+        // The version bump itself — the headline of #392. Read by
+        // `mirror-engine-exports.test.ts`, `publish-plan.test.ts`,
+        // `client-stylesheet.test.ts`, `mirror-overrides.test.ts`,
+        // `mirror-typecheck.test.ts` and `registry.test.ts`.
+        "../../packages/*/package.json",
+        "../../packages/*/tsup.config.ts",
+        "../../apps/*/package.json",
+        "../../apps/*/tsconfig.json",
+        // Named because nothing depends on it, so `^build` cannot carry it:
+        // `mcp-registry-imports.test.ts` reads the registry source and
+        // `engine-doc-imports.test.ts` walks every `.md` and every `.ts`/`.tsx`
+        // under `packages/`. Sibling packages arrive through
+        // `dependsOn: ["^build"]`; `mcp-server` has no dependents, so it is
+        // spelled out.
+        //
+        // Three globs rather than `mcp-server/**`, and the difference is not
+        // style: a whole-package glob dragged `node_modules/.bin/*` and
+        // `node_modules/.vite/vitest/*/results.json` into the key, and the
+        // negations below could not take them back out. Naming what the suites
+        // read cannot pick up an artefact by accident.
+        "../../packages/mcp-server/src/**",
+        "../../packages/mcp-server/*.md",
+        "../../packages/mcp-server/*.ts",
+        // The tree the mirror publishes. `mirror-engine-exports.test.ts` walks
+        // it whole and `mirror-typecheck.test.ts` compiles it.
+        "../../apps/themes/**",
+        // ── and NOT the artefacts inside those two ────────────────────────────
+        //
+        // An explicit `inputs` glob does not consult `.gitignore`. Turbo's
+        // DEFAULT set does, which is why nobody meets this until the first
+        // explicit glob is written — and then it is a silent disaster rather
+        // than a loud one.
+        //
+        // `apps/themes/**` pulled in `node_modules/.vite/vitest/*/results.json`,
+        // which is Vitest's cache of the PREVIOUS run's per-test durations. So
+        // `pnpm test` rewrote one of its own inputs on every run: three floats
+        // change, thirteen `#test` hashes change, and the cache could never hit
+        // twice. Measured — one duration edited from 545.435 to 999.999 moved
+        // `@be-in-digital/core#test` from `a557b1b5dc87ac53` to
+        // `cfaa28aabb923c1e`. The `node_modules/.bin/*` symlinks came too, which
+        // put resolved transitive versions in the key as a bonus.
+        //
+        // An input that is not a function of the source tree is worse than a
+        // missing one: it does not report a false green, it destroys the cache.
+        //
+        // `**/` rather than `../../apps/themes/...`, and that is measured, not
+        // taste: turbo normalises an input path against the package it is
+        // resolving for, so `../../apps/themes` becomes `../themes` from
+        // `apps/reference` and stays `../../apps/themes` from `packages/core` —
+        // and a negation written in one of those forms silently failed to match
+        // the other. `@be-in-digital/core#test` came out clean while
+        // `@beyours/reference#test` still carried the vitest cache. The rooted
+        // `**/` form has no depth to disagree about.
+        "!**/node_modules/**",
+        "!**/.next/**",
+        "!**/.turbo/**",
+        "!**/coverage/**",
+        "!**/test-results/**",
+        "!**/playwright-report/**"
+      ],
       // `env`, not `passThroughEnv`, and the difference is the whole point.
       //
       // With `globalEnvMode` at its default of `strict`, an undeclared variable
@@ -143,6 +273,98 @@
     // lists are equal, so drift fails rather than being noticed a year later.
     "test:coverage": {
       "dependsOn": ["^build"],
+      // The same list as `test`'s, and duplicated for the same reason its `env`
+      // list is: turbo.json has no way to share one. It runs the same suites,
+      // so an input missing here replays the same false green with a coverage
+      // report attached. `turbo-test-inputs.test.ts` asserts the two are equal.
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        // Read by `turbo-test-env.test.ts` and by this task's own definition.
+        "../../turbo.json",
+        // Root manifest, lockfile and workspace globs: `mirror-overrides.test.ts`
+        // parses the lockfile's `overrides` block as TEXT, and
+        // `workflow-publish-gates.test.ts` and `client-stylesheet.test.ts` read
+        // the root manifest. Turbo hashes RESOLVED dependencies from the
+        // lockfile, not the file, so a suite reading the bytes was never covered.
+        "../../package.json",
+        "../../pnpm-lock.yaml",
+        "../../pnpm-workspace.yaml",
+        // `engine-doc-imports.test.ts` compiles the import lines in these.
+        "../../CLAUDE.md",
+        "../../README.md",
+        // `pending-release.test.ts`, through `scripts/lib/pending-release.mjs`,
+        // which resolves `CHANGESET_DIR` from its own URL — a read no scan of
+        // the test source can see.
+        "../../.changeset/**",
+        // `workflow-publish-gates.test.ts` reads every workflow and composite
+        // action; `client-stylesheet.test.ts` asserts on `ci.yml`;
+        // `engine-version-diagnostic.test.ts` reads the template's own CI.
+        "../../.github/**",
+        // `mirror-publisher.test.ts`, `mirror-typecheck.test.ts`,
+        // `mirror-overrides.test.ts`, `publish-plan.test.ts`,
+        // `source-drift.test.ts` and `mirror-engine-exports.test.ts` all read
+        // or import these.
+        "../../scripts/**",
+        // The version bump itself — the headline of #392. Read by
+        // `mirror-engine-exports.test.ts`, `publish-plan.test.ts`,
+        // `client-stylesheet.test.ts`, `mirror-overrides.test.ts`,
+        // `mirror-typecheck.test.ts` and `registry.test.ts`.
+        "../../packages/*/package.json",
+        "../../packages/*/tsup.config.ts",
+        "../../apps/*/package.json",
+        "../../apps/*/tsconfig.json",
+        // Named because nothing depends on it, so `^build` cannot carry it:
+        // `mcp-registry-imports.test.ts` reads the registry source and
+        // `engine-doc-imports.test.ts` walks every `.md` and every `.ts`/`.tsx`
+        // under `packages/`. Sibling packages arrive through
+        // `dependsOn: ["^build"]`; `mcp-server` has no dependents, so it is
+        // spelled out.
+        //
+        // Three globs rather than `mcp-server/**`, and the difference is not
+        // style: a whole-package glob dragged `node_modules/.bin/*` and
+        // `node_modules/.vite/vitest/*/results.json` into the key, and the
+        // negations below could not take them back out. Naming what the suites
+        // read cannot pick up an artefact by accident.
+        "../../packages/mcp-server/src/**",
+        "../../packages/mcp-server/*.md",
+        "../../packages/mcp-server/*.ts",
+        // The tree the mirror publishes. `mirror-engine-exports.test.ts` walks
+        // it whole and `mirror-typecheck.test.ts` compiles it.
+        "../../apps/themes/**",
+        // ── and NOT the artefacts inside those two ────────────────────────────
+        //
+        // An explicit `inputs` glob does not consult `.gitignore`. Turbo's
+        // DEFAULT set does, which is why nobody meets this until the first
+        // explicit glob is written — and then it is a silent disaster rather
+        // than a loud one.
+        //
+        // `apps/themes/**` pulled in `node_modules/.vite/vitest/*/results.json`,
+        // which is Vitest's cache of the PREVIOUS run's per-test durations. So
+        // `pnpm test` rewrote one of its own inputs on every run: three floats
+        // change, thirteen `#test` hashes change, and the cache could never hit
+        // twice. Measured — one duration edited from 545.435 to 999.999 moved
+        // `@be-in-digital/core#test` from `a557b1b5dc87ac53` to
+        // `cfaa28aabb923c1e`. The `node_modules/.bin/*` symlinks came too, which
+        // put resolved transitive versions in the key as a bonus.
+        //
+        // An input that is not a function of the source tree is worse than a
+        // missing one: it does not report a false green, it destroys the cache.
+        //
+        // `**/` rather than `../../apps/themes/...`, and that is measured, not
+        // taste: turbo normalises an input path against the package it is
+        // resolving for, so `../../apps/themes` becomes `../themes` from
+        // `apps/reference` and stays `../../apps/themes` from `packages/core` —
+        // and a negation written in one of those forms silently failed to match
+        // the other. `@be-in-digital/core#test` came out clean while
+        // `@beyours/reference#test` still carried the vitest cache. The rooted
+        // `**/` form has no depth to disagree about.
+        "!**/node_modules/**",
+        "!**/.next/**",
+        "!**/.turbo/**",
+        "!**/coverage/**",
+        "!**/test-results/**",
+        "!**/playwright-report/**"
+      ],
       "env": [
         // The Deliveroo scenario suites under `apps/*/e2e/deliveroo` — Vitest,
         // not Playwright, and the reason this task needed fixing at all.

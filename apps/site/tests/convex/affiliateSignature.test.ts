@@ -21,6 +21,12 @@ const modules = import.meta.glob("../../convex/**/*.ts");
    printed on the signature certificate was whatever the signer sent. What the
    action takes now is an attestation the NEXT server minted over the address it
    observed, and it records only what verifies against the deployment's secret.
+
+   The MAC alone left the certificate's actual claim open: `/api/signer-ip` read
+   plain `x-forwarded-for`, so a caller who set that header themselves was
+   handed a valid attestation of any address they liked — no forgery required,
+   just a request to the minting oracle. An observation now names the trusted
+   header it came out of, inside the signed bytes.
    See tests/signer-attestation.test.ts for the crypto and
    lib/security/signer-attestation.ts for why the observation has to cross the
    gap this way. */
@@ -42,9 +48,12 @@ async function withSignerIpSecret<T>(
   }
 }
 
-/** What `/api/signer-ip` hands the page for an address it saw. */
+/** What `/api/signer-ip` hands the page for an address the EDGE reported. */
 const observedIp = async (ip: string, secret = SIGNER_IP_SECRET) =>
-  (await mintSignerIpAttestation(ip, { secret, now: Date.now() }))!;
+  (await mintSignerIpAttestation(
+    { ip, source: "x-vercel-forwarded-for" },
+    { secret, now: Date.now() },
+  ))!;
 
 /**
  * Every text-positioning y-coordinate the document actually emits.
@@ -80,12 +89,92 @@ function textYCoordinates(pdfBytes: Buffer): { xs: number[]; ys: number[] } {
 }
 
 
+/**
+ * Every string the document actually draws, as words rather than as glyphs.
+ *
+ * Not decoration on a test: the « Adresse IP constatée » row is the one the
+ * eIDAS note at the foot of the page makes a promise about, so what that row
+ * SAYS has to be measured on the bytes a signatory receives, not inferred from
+ * the variable that fed it.
+ *
+ * The certificate embeds subsetted DejaVu faces (Helvetica is WinAnsi-only and
+ * refuses a Polish or Vietnamese name), so a text run is a string of GLYPH ids
+ * — `<00120009…> Tj` — meaningless without the font. pdf-lib emits a
+ * `beginbfchar` CMap per embedded face, which is exactly the glyph → codepoint
+ * table needed, so both are parsed and every run is decoded under each. Two
+ * faces means one decoding of any run is real and the other is noise, hence
+ * the join: an assertion that a string IS present holds when the real decoding
+ * carries it, and an assertion that one is ABSENT is only made stricter by the
+ * noise.
+ */
+function certificateText(pdfBytes: Buffer): string {
+  const raw = pdfBytes.toString("latin1");
+  const cmaps: Map<string, string>[] = [];
+  const runs: string[] = [];
+
+  const re = /stream\r?\n/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(raw)) !== null) {
+    const start = match.index + match[0].length;
+    const end = raw.indexOf("endstream", start);
+    if (end === -1) continue;
+    let text: string;
+    try {
+      text = inflateSync(
+        Buffer.from(raw.slice(start, end), "latin1"),
+      ).toString("latin1");
+    } catch {
+      continue; // not a Flate stream (a font file, say)
+    }
+
+    if (text.includes("beginbfchar")) {
+      const table = new Map<string, string>();
+      for (const m of text.matchAll(/<([0-9A-Fa-f]{4})>\s*<([0-9A-Fa-f]+)>/g)) {
+        const codepoints =
+          m[2].match(/.{4}/g)?.map((h) => parseInt(h, 16)) ?? [];
+        table.set(m[1].toUpperCase(), String.fromCodePoint(...codepoints));
+      }
+      cmaps.push(table);
+      continue;
+    }
+    for (const m of text.matchAll(/<([0-9A-Fa-f\s]*)>\s*Tj/g)) {
+      runs.push(m[1].replace(/\s+/g, "").toUpperCase());
+    }
+  }
+
+  /* Runs are rejoined with a space and the whitespace collapsed, because the
+     note at the foot of the page is WRAPPED: « …jamais transmis par le » ends
+     one run and « signataire… » begins the next, and a sentence split across
+     two draw calls is still one sentence on the page. */
+  return cmaps
+    .map((table) =>
+      runs
+        .map((run) =>
+          (run.match(/.{4}/g) ?? []).map((c) => table.get(c) ?? "").join(""),
+        )
+        .join(" ")
+        .replace(/\s+/g, " "),
+    )
+    .join("\n");
+}
+
 const CONTRACT_CONTENT =
   "CONTRAT D'APPORTEUR D'AFFAIRES\n\n" +
   "Article 1 — Objet\nLe présent contrat définit les conditions du mandat.\n\n" +
   "Article 2 — Commission\n500 € par client signé, versée sous 14 jours.\n";
 
-async function seed(t: ReturnType<typeof convexTest>) {
+/**
+ * `status` is overridable because the two fields are independent and the mint
+ * turned on exactly that. `admin.updateAffiliateStatus` patches `status` alone
+ * and the contract page gates on `contractStatus` alone, so « suspended, and
+ * their contract is in order » is a state the product produces — not a fixture
+ * contrivance. Every case in this file was seeded `active` before, which is
+ * why nothing caught it.
+ */
+async function seed(
+  t: ReturnType<typeof convexTest>,
+  opts: { status?: "active" | "suspended" | "rejected" } = {},
+) {
   const userId = await t.run((ctx) =>
     ctx.db.insert("users", { email: "jean@test.com" }),
   );
@@ -104,7 +193,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
     ctx.db.insert("affiliateUsers", {
       userId,
       role: "affiliate" as const,
-      status: "active" as const,
+      status: opts.status ?? ("active" as const),
       contractStatus: "pending_contract" as const,
       requiredContractVersionId: contractVersionId,
       stripeConnectStatus: "not_started" as const,
@@ -688,6 +777,165 @@ describe("affiliateSignature — a record the signer cannot write", () => {
     ).toBe("active");
   });
 
+  /* ── An HMAC proves integrity; the certificate claims provenance ──
+     The row is labelled « Adresse IP constatée » — observed — deliberately
+     against « Navigateur déclaré » on the line above it, and the note at the
+     foot of the page states without qualification that the address was
+     « relevé par les serveurs de Be in Digital, jamais transmis par le
+     signataire ». Removing the raw `signerIp` argument made forging the row
+     require a MAC. It did not make that sentence true: `/api/signer-ip` read
+     plain `x-forwarded-for` and signed its client end, so the attacker asked
+     the minting oracle instead of forging anything. Measured before the fix,
+     against the real route, with nothing in front of the request:
+
+         curl -H 'x-forwarded-for: 8.8.8.8' /api/signer-ip
+           -> {"ip":"8.8.8.8","issuedAt":1788914879187,"mac":"7c9d0a71…"}
+           -> Convex verdict {"ip":"8.8.8.8","refusal":null}
+           -> « Adresse IP constatée : 8.8.8.8 »
+
+     These two walk the whole path — the real route handler, then the real
+     action — because the defect lived in the seam between them and neither
+     half is wrong on its own. */
+  const mintedByTheRoute = async (headers: Record<string, string>) => {
+    const { GET } = await import("../../app/api/signer-ip/route");
+    const res = await GET(
+      new Request("https://beyours.fr/api/signer-ip", { headers }),
+    );
+    const { attestation } = (await res.json()) as {
+      attestation:
+        | { ip: string; issuedAt: number; mac: string; source: string }
+        | undefined
+        | null;
+    };
+    return attestation ?? undefined;
+  };
+
+  test("an address the caller put in x-forwarded-for reaches no certificate", async () => {
+    const t = convexTest(schema, modules);
+    const { userId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    const { signatureId } = await withSignerIpSecret(SIGNER_IP_SECRET, async () =>
+      asUser.action(api.affiliateSignature.signAffiliateContract, {
+        fullName: "Jean Dupont",
+        consented: true,
+        signerIpAttestation: await mintedByTheRoute({
+          "x-forwarded-for": "8.8.8.8",
+        }),
+      }),
+    );
+
+    const sig = await t.run((ctx) => ctx.db.get(signatureId));
+    expect(sig!.signerIp).toBeUndefined();
+    // The signature is unaffected: it rests on the account, the consent, the
+    // server clock and the digest, not on the address.
+    expect(sig!.status).toBe("signed");
+
+    // And the document itself — the thing a dispute is fought over.
+    const drawn = certificateText(
+      Buffer.from(
+        await t.run(async (ctx) => {
+          const blob = await ctx.storage.get(
+            sig!.signedDocumentFileId as Id<"_storage">,
+          );
+          return Buffer.from(await blob!.arrayBuffer()).toString("latin1");
+        }),
+        "latin1",
+      ),
+    );
+    expect(drawn).toContain("Adresse IP constatée");
+    expect(drawn).toContain("non établie");
+    expect(drawn).not.toContain("8.8.8.8");
+    // The note the row is read under stays exactly as strong as it was.
+    expect(drawn).toContain("jamais transmis par le signataire");
+  });
+
+  test("an address the platform edge reported does reach it", async () => {
+    /* The other half of the same property: refusing everything would also
+       satisfy the test above, and would quietly delete the audit row this
+       whole mechanism exists to produce. */
+    const t = convexTest(schema, modules);
+    const { userId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    const { signatureId } = await withSignerIpSecret(SIGNER_IP_SECRET, async () =>
+      asUser.action(api.affiliateSignature.signAffiliateContract, {
+        fullName: "Jean Dupont",
+        consented: true,
+        signerIpAttestation: await mintedByTheRoute({
+          "x-vercel-forwarded-for": "203.0.113.42",
+          // The caller shouting over the edge changes nothing.
+          "x-forwarded-for": "8.8.8.8",
+        }),
+      }),
+    );
+
+    const sig = await t.run((ctx) => ctx.db.get(signatureId));
+    expect(sig!.signerIp).toBe("203.0.113.42");
+
+    const drawn = certificateText(
+      Buffer.from(
+        await t.run(async (ctx) => {
+          const blob = await ctx.storage.get(
+            sig!.signedDocumentFileId as Id<"_storage">,
+          );
+          return Buffer.from(await blob!.arrayBuffer()).toString("latin1");
+        }),
+        "latin1",
+      ),
+    );
+    expect(drawn).toContain("203.0.113.42");
+    expect(drawn).not.toContain("8.8.8.8");
+  });
+
+  test("an honest attestation relabelled as edge-observed is refused", async () => {
+    /* The source is inside the MAC, so this is the shape an attacker holding a
+       real attestation would reach for — and it fails as a forgery. */
+    const t = convexTest(schema, modules);
+    const { userId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    const honest = await observedIp("203.0.113.42");
+    const { signatureId } = await withSignerIpSecret(SIGNER_IP_SECRET, async () =>
+      asUser.action(api.affiliateSignature.signAffiliateContract, {
+        fullName: "Jean Dupont",
+        consented: true,
+        signerIpAttestation: { ...honest, ip: "8.8.8.8", source: "x-real-ip" },
+      }),
+    );
+
+    expect(
+      (await t.run((ctx) => ctx.db.get(signatureId)))!.signerIp,
+    ).toBeUndefined();
+  });
+
+  test("a v1 attestation costs the trail a row, never the signature", async () => {
+    /* A browser holding the previous bundle across a deploy sends no `source`.
+       The Convex validator keeps that field optional for exactly this: it
+       degrades to « non établie » instead of failing the signature on an
+       unknown-field error, which would turn a rollover into an onboarding
+       outage. */
+    const t = convexTest(schema, modules);
+    const { userId, affiliateUserId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    const { ip, issuedAt, mac } = await observedIp("203.0.113.42");
+    const { signatureId } = await withSignerIpSecret(SIGNER_IP_SECRET, async () =>
+      asUser.action(api.affiliateSignature.signAffiliateContract, {
+        fullName: "Jean Dupont",
+        consented: true,
+        signerIpAttestation: { ip, issuedAt, mac },
+      }),
+    );
+
+    const sig = await t.run((ctx) => ctx.db.get(signatureId));
+    expect(sig!.signerIp).toBeUndefined();
+    expect(sig!.status).toBe("signed");
+    expect(
+      (await t.run((ctx) => ctx.db.get(affiliateUserId)))!.contractStatus,
+    ).toBe("active");
+  });
+
   test("the action no longer accepts a bare `signerIp`", async () => {
     // Removed rather than ignored: Convex refuses an unknown argument, so a
     // stale bundle still sending one fails loudly instead of being quietly
@@ -925,6 +1173,96 @@ describe("affiliateSignature — signing mints the referral code", () => {
     const active = await asUser.query(api.referralCodes.getMyCode, {});
     expect(active!._id).toBe(custom!._id);
     expect(active!.code).toBe("GIULIA");
+  });
+
+  /* ── Signing is not standing ──
+     The mint moved to the signature and inherited none of the guard it moved
+     away from. `referralCodes.assertMayHoldACode` sat in `generateMyCode`, the
+     caller; `recordInAppSignature`'s only condition was that the version
+     signed was the one required. Measured before the fix, on an account
+     `admin.updateAffiliateStatus` had suspended:
+
+         generateMyCode          throws « Votre compte apporteur n'est pas actif »
+         signAffiliateContract   -> {"status":"suspended",
+                                     "contractStatus":"active",
+                                     "codes":["BID-6FB4B"]}
+
+     Refused at the front door, issued at the side one. `lookupUsableCode`
+     refuses to price it, so no commission accrues — but a suspended apporteur
+     was still handed a live code to publish, and `assertMayHoldACode`'s own
+     docstring claims to close « the other half: minting the code in the first
+     place ». It closed it on one of the two creation paths.
+
+     The signature itself is never in question here: a suspended affiliate who
+     signs has signed, and the row and the activation must both survive. */
+  test.each([
+    ["suspended" as const, "un compte suspendu"],
+    ["rejected" as const, "un compte rejeté"],
+  ])("%s: the signature stands, the code is withheld", async (status) => {
+    const t = convexTest(schema, modules);
+    const { userId, affiliateUserId, contractVersionId } = await seed(t, {
+      status,
+    });
+    const asUser = t.withIdentity({ subject: userId });
+
+    // The sibling path refuses this account by name, and still does.
+    await expect(
+      asUser.mutation(api.referralCodes.generateMyCode, {}),
+    ).rejects.toThrow(/compte apporteur n'est pas actif/i);
+
+    const { signatureId } = await asUser.action(
+      api.affiliateSignature.signAffiliateContract,
+      { fullName: "Jean Suspendu", consented: true },
+    );
+
+    // The signature is real, recorded, and carries its document.
+    const sig = await t.run((ctx) => ctx.db.get(signatureId));
+    expect(sig!.status).toBe("signed");
+    expect(sig!.signerName).toBe("Jean Suspendu");
+    expect(sig!.contractVersionId).toBe(contractVersionId);
+    expect(sig!.signedDocumentFileId).toBeTruthy();
+
+    // The contract is in order; the account is not, and stays that way.
+    const affiliate = await t.run((ctx) => ctx.db.get(affiliateUserId));
+    expect(affiliate!.contractStatus).toBe("active");
+    expect(affiliate!.acceptedContractVersionId).toBe(contractVersionId);
+    expect(affiliate!.status).toBe(status);
+
+    // And no code exists — the assertion that failed before the fix.
+    expect(await t.run((ctx) => ctx.db.query("referralCodes").collect())).toEqual(
+      [],
+    );
+    expect(await asUser.query(api.referralCodes.getMyCode, {})).toBeNull();
+  });
+
+  test("suspension after signing does not let the dashboard mint one either", async () => {
+    /* The recovery button, pressed by an affiliate suspended since they
+       signed. Same rule, same message, from the guard that now lives in
+       `mintCodeFor` as well as in front of it. */
+    const t = convexTest(schema, modules);
+    const { userId, affiliateUserId } = await seed(t);
+    const asUser = t.withIdentity({ subject: userId });
+
+    await asUser.action(api.affiliateSignature.signAffiliateContract, {
+      fullName: "Jean Dupont",
+      consented: true,
+    });
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("referralCodes").collect()) {
+        await ctx.db.delete(row._id);
+      }
+      await ctx.db.patch(affiliateUserId, { status: "suspended" as const });
+    });
+
+    await expect(
+      asUser.mutation(api.referralCodes.generateMyCode, {}),
+    ).rejects.toThrow(/compte apporteur n'est pas actif/i);
+    await expect(
+      asUser.mutation(api.referralCodes.customizeMyCode, { code: "GIULIA" }),
+    ).rejects.toThrow(/compte apporteur n'est pas actif/i);
+    expect(await t.run((ctx) => ctx.db.query("referralCodes").collect())).toEqual(
+      [],
+    );
   });
 
   test("`generateMyCode` still recovers an affiliate left without one", async () => {

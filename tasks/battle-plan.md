@@ -278,6 +278,11 @@ Three silent order-loss paths. A restaurant connecting Deliveroo lost orders on 
       neither red nor green ever blocked a merge. A green run still proves nothing about the
       history. (This line previously said the job "will now fail on `main`", which #337
       reversed eighteen hours after it was written. Corrected 2026-09-09.)
+      Verified by execution rather than by reading, on a synthetic repository reproducing the
+      same two paths and syntactic positions with a fabricated token, using the pinned gitleaks
+      8.21.2: **4 findings with no ignore file (exit 1), 0 with the four fingerprints (exit 0),
+      and 1 when a fifth occurrence is added (exit 1)** — which is the property the posture
+      claims and the reason the entries earn their place.
 
 > **Closed when.** An order from each platform reaches the kitchen with the right price and notes; a cancellation removes it; a failed accept is visible instead of swallowed. — **Met**, and covered by tests that stay in the repo: `uber-eats-webhook.test.ts` and `deliveroo-webhook.test.ts` in both apps, `platform-webhook-failures.test.ts`, and `platformWebhook.test.ts` in the package. Each drives the signed HTTP endpoint, and each was proven red against the unfixed code.
 

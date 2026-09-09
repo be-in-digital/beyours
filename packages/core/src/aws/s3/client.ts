@@ -87,12 +87,22 @@ export interface S3Service {
    * media library kept every byte, and an RGPD erasure request was answered
    * falsely — that is the defect this method exists to close.
    *
-   * The purge enumerates the key's versions and removes each one by id. When
-   * the injected adapter cannot do that — because the IAM policy of a
-   * previously provisioned client predates `s3:DeleteObjectVersion` — it falls
+   * The purge enumerates the key's versions and removes each one by id — but
+   * only when the injected `S3Operations` adapter implements
+   * `listObjectVersions` and `deleteObjectVersion`. **Those two are optional on
+   * the interface, so an adapter that omits them compiles and then never purges
+   * anything.** The adapter in `packages/core/src/aws/README.md` implements
+   * both; copy that one rather than writing the four obvious methods.
+   *
+   * When the adapter has no version operations, or when it has them and the IAM
+   * policy of a previously provisioned client refuses the listing, this falls
    * back to the delete marker and REPORTS that it did, in the returned
    * `outcome`. A caller may then tell the truth about what happened instead of
    * inheriting the old lie.
+   *
+   * Nothing in `apps/*` calls this: the delivered app's media path is
+   * `convex/cmsMediaDelete.ts`, which talks to the AWS SDK directly. This is
+   * the path for a consumer of the package.
    *
    * @param key - S3 key of the file
    * @returns what actually happened, and how many versions went with it

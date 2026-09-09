@@ -1835,13 +1835,13 @@ was proven red against the unfixed code.
 - [ ] **`apps/site` has no security headers** (`next.config.ts` is empty) while hosting
   the ops console and the affiliate portal with electronic signatures. No HSTS, no
   `X-Frame-Options`, no `nosniff`.
-- [ ] **Sentry is dead code.** `@sentry/nextjs` is in no `package.json`, `Sentry.init`
-  appears only in a comment, and there is no `error.tsx` / `global-error.tsx`. Yet
-  `NEXT_PUBLIC_SENTRY_DSN` is in the schema and both `.env.example` files, so the
-  operator configures it and believes monitoring is live. A Saturday-night checkout error
-  is seen by nobody.
-  → install and wire it, **or** delete the module and the variable. Shipping the variable
-  without the integration is worse than shipping neither.
+- [x] ~~**Sentry is dead code.**~~ **Done.** It was true when written: `@sentry/nextjs` was
+  in no `package.json` while `NEXT_PUBLIC_SENTRY_DSN` sat in the schema and both
+  `.env.example` files, so an operator configured monitoring that did not exist. It is now
+  `^10.71.0` in all three apps (`apps/reference`, `apps/themes`, `apps/site`), wired by
+  #368 — which also ruled that a `console.error` into the Convex dashboard's expiring log
+  window is not a failure record, and gave `apps/*/convex/errorReporting.ts` a backend
+  reporter. `apps/docs/deployment/sentry.md` carries the per-client project layout.
 
 ---
 ---
@@ -1885,6 +1885,12 @@ come out when Part B rewrites the history.
 An earlier version of this card said "do **not** silence it in `.gitleaksignore`". It was
 written in #315 eighteen hours before #337 reversed it, and was never updated. Corrected
 2026-09-09.
+
+Verified by execution, not by reading, on a synthetic repository reproducing the same two
+paths and syntactic positions with a fabricated token, under the pinned gitleaks 8.21.2: no
+ignore file → **4** findings, exit 1; the four fingerprints → **0**, exit 0; a fifth
+occurrence added on a new line → **1**, exit 1. That last number is the one that matters —
+it is the claim "a fifth leak still shows up", measured rather than asserted.
 
 Mandatory order, unchanged: regenerate in the Deliveroo portal → propagate
 (`npx convex env set … --prod`) → re-verify → revoke the old one. Then part B of

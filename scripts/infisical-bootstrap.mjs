@@ -324,7 +324,89 @@ function cmdFolders() {
   }
 }
 
+/**
+ * The documentation makes folder claims in prose — "`X` in `/folder`" — and
+ * prose does not type-check. `apps/docs/deployment/infisical.md` told operators
+ * for months to put `SENTRY_*` in `/platform`, which the spec has never
+ * accepted, so `check` reported three keys "not in any spec" into the daily job
+ * summary every morning and the folder never reported `complete`.
+ *
+ * The spec is derived from the committed `.env.example` files and is the only
+ * source of truth. So a claim in the doc is checkable against it, cheaply, with
+ * no store and no network — which is the point: this runs even when Infisical
+ * is down, and it runs BEFORE requireCli() for exactly that reason.
+ *
+ * Deliberately narrow. It matches a backticked env-var name (a trailing `*` is
+ * a family) followed by "in `/folder`" for a folder this script knows. Anything
+ * looser reads ordinary prose as a claim and cries wolf.
+ */
+const DOC_REL = "apps/docs/deployment/infisical.md"
+const DOC_CLAIM = /`([A-Z][A-Z0-9_]*\*?)`[^.\n]{0,40}? in `(\/[a-z]+)`/g
+
+/**
+ * Blank out `~~struck~~` spans, preserving every newline so line numbers still
+ * point at the real line.
+ *
+ * A document has to be able to record a retraction, and the honest way to
+ * retract a folder claim is to strike it and say why. Without this, quoting the
+ * wrong claim in order to correct it reads exactly like making it — the guard
+ * stayed red on the very edit that fixed the defect. Strikethrough is the one
+ * marker that means "this is no longer asserted", so it is the one thing the
+ * scanner skips.
+ */
+function stripStruck(text) {
+  return text.replace(/~~[\s\S]*?~~/g, (m) => m.replace(/[^\n]/g, " "))
+}
+
+function docFolderClaims() {
+  const file = path.join(ROOT, DOC_REL)
+  if (!fs.existsSync(file)) return []
+  const lines = stripStruck(fs.readFileSync(file, "utf8")).split("\n")
+  const claims = []
+  lines.forEach((line, i) => {
+    for (const m of line.matchAll(DOC_CLAIM)) {
+      const folder = Object.values(SCOPES).find((s) => s.path === m[2])
+      if (folder) claims.push({ line: i + 1, name: m[1], path: m[2] })
+    }
+  })
+  return claims
+}
+
+/** Prints every doc claim the spec does not support. Returns how many. */
+function checkDocClaims() {
+  const claims = docFolderClaims()
+  const bad = []
+  for (const c of claims) {
+    const scopeName = Object.keys(SCOPES).find((n) => SCOPES[n].path === c.path)
+    const keys = expectedKeys(scopeName)
+    const ok = c.name.endsWith("*")
+      ? keys.some((k) => k.startsWith(c.name.slice(0, -1)))
+      : keys.includes(c.name)
+    if (!ok) bad.push({ ...c, scopeName })
+  }
+  console.log(`${DOC_REL}: ${claims.length} folder claim(s) checked against the spec`)
+  for (const b of bad) {
+    console.log(`  WRONG  ${DOC_REL}:${b.line} — sends \`${b.name}\` to ${b.path},`)
+    console.log(`         but ${b.path}'s spec (${SCOPES[b.scopeName].specs.join(", ")}`)
+    console.log(`         ${SCOPES[b.scopeName].add ? "+ its add: list" : ""}) declares no such key.`)
+    console.log(`         An operator who follows the doc gets it reported as "not in any spec".`)
+  }
+  if (!bad.length && claims.length) console.log("  every claim matches the spec")
+  console.log()
+  return bad.length
+}
+
+function cmdDoc() {
+  if (checkDocClaims()) {
+    console.error("The documentation disagrees with the spec. Fix one of them.")
+    process.exit(EXIT_INCOMPLETE)
+  }
+}
+
 function cmdCheck() {
+  // Before requireCli(): this half needs no store, and a store outage must not
+  // hide a documentation defect that is checkable from the repo alone.
+  checkDocClaims()
   requireCli()
   let incomplete = 0
   let unreachable = 0
@@ -850,8 +932,9 @@ switch (command) {
   case "seed": cmdSeed(); break
   case "run": cmdRun(); break
   case "scopes": cmdScopes(); break
+  case "doc": cmdDoc(); break
   default:
-    console.error("Usage: infisical-bootstrap.mjs <folders|check|plan|scopes|migrate|seed|run> [--env=dev] [--scope=name]")
+    console.error("Usage: infisical-bootstrap.mjs <folders|check|doc|plan|scopes|migrate|seed|run> [--env=dev] [--scope=name]")
     console.error("")
     console.error(`Exit codes: ${EXIT_OK} complete · ${EXIT_INCOMPLETE} store incomplete · ` +
       `${EXIT_USAGE} usage · ${EXIT_STORE_DOWN} store unreachable`)

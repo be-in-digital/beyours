@@ -2,8 +2,20 @@
 #
 # Distinct from .gitleaks.toml on purpose. That file allowlists values that were
 # NEVER credentials: test fixtures, vendor EXAMPLE keys, documentation
-# placeholders. This file records findings that WERE real credentials and are
-# accepted as no longer exploitable, each with the evidence that makes it so.
+# placeholders. This file records findings that WERE real credentials.
+#
+# There are TWO kinds of entry here, and conflating them is how this file came
+# to contradict itself and the runbook at the same time:
+#
+#   (1) accepted as NO LONGER EXPLOITABLE, with the evidence that makes it so
+#       — the convex_jwt below. Safe, and permanent.
+#   (2) STILL EXPLOITABLE, silenced only so the scanner stays useful — the
+#       Deliveroo client_secret at the bottom. Not safe, and TEMPORARY: it is
+#       deleted by the same change that purges the history.
+#
+# For a long time this header described only (1), which is why
+# tasks/secret-rotation-runbook.md ended up instructing the reader NOT to do
+# what this file had already done. Corrected 2026-09-09, on both sides.
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # An entry here only silences the scanner. It does NOT purge the history: the
@@ -52,6 +64,12 @@
 #     Re-measured 2026-09-09 on a full clone: 472 commits on `main`, 72 remote
 #     branches, 75 tags, and 2 open draft PRs (#420, #421). The authoritative
 #     table is in `tasks/secret-rotation-runbook.md`, Part B.
+#
+#   - And the single source for every commit count is that table, not this
+#     header. If the two ever disagree, the table wins and the disagreement is
+#     itself the bug. Not hypothetical: three "18 commits" claims outlived the
+#     retraction below by five days inside that very runbook — #401 rewrote the
+#     file around them without touching them — and were removed on 2026-09-09.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Better Auth convex_jwt captured in a Playwright storageState fixture.
@@ -66,11 +84,13 @@
 #   - the repository is private, and apps/restaurant-theme/ no longer exists.
 #
 # Accepted rather than purged because Part B rewrites every SHA, which at the
-# time would have invalidated 14 open pull requests. Re-measured 2026-09-04:
-# the queue is EMPTY (0 open PRs), so that reason has expired. What a rewrite
-# now costs is 393 commits on `main`, 8 remote branches and 59 remote tags —
-# the tags being the `@be-in-digital/*` release anchors. See Part B of
-# tasks/secret-rotation-runbook.md; the decision is the account owner's.
+# time would have invalidated 14 open pull requests. That reason has expired.
+# What a rewrite costs is the Blast radius table in Part B of
+# tasks/secret-rotation-runbook.md, and is deliberately NOT restated here — the
+# figures this paragraph used to carry (393 commits, 8 branches, 59 tags, 0 open
+# PRs) were already contradicted by the correction at the top of this same file.
+# A count quoted away from the table goes stale and then gets believed. The
+# decision is the account owner's.
 # Two fingerprints for ONE secret: gitleaks fingerprints per commit, and the
 # same blob was committed twice on 2026-03-11. 7cf4d41 is reachable from main;
 # c0f09cb is reachable from 35 LOCAL refs (34 stale tags plus the local
@@ -117,6 +137,17 @@ c0f09cb0b61eb8b7377e0aa781232057d3274099:apps/restaurant-theme/e2e/.auth/admin.j
 # Scoped per fingerprint — commit, file, rule and line — deliberately. Not by
 # file, not by rule: a NEW secret in either file, or on another line, still
 # fails the scan.
+#
+# That last sentence was an assertion until 2026-09-09; it is now a measurement.
+# Reproduced with the CI-pinned gitleaks 8.21.2 against a throwaway repo holding
+# a FABRICATED 52-char base36 token in these same two paths and the same two
+# syntactic positions (`:-` in a shell default, `|| "` in TypeScript):
+#
+#   no .gitleaksignore                        -> leaks found: 4    exit 1
+#   these four fingerprints present           -> no leaks found    exit 0
+#   + a fifth secret, new line, same file     -> leaks found: 1    exit 1
+#
+# One, not five and not zero. The scoping does what it says.
 #
 # Remove these four lines when Part B rewrites the history. They are the
 # scanner's memory of a leak that has not been cleaned, not a sign it was.

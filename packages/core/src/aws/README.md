@@ -20,7 +20,14 @@ pnpm add @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
 ### Creating the service
 
 ```typescript
-import { S3Client, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3'
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+  ListObjectVersionsCommand,
+} from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { createS3Service } from '@be-in-digital/core'
 import type { S3Operations } from '@be-in-digital/core'
@@ -89,11 +96,71 @@ const s3Operations: S3Operations = {
       metadata: response.Metadata,
     }
   },
+
+  // The two version operations below are what make `delete()` a deletion.
+  // `setup-aws.sh` turns bucket versioning ON, and on a versioned bucket a
+  // DeleteObject with no VersionId deletes nothing: it writes a delete marker
+  // and keeps every prior version, billed and readable by anyone who can name
+  // a version id. An adapter without them still works — `delete()` degrades to
+  // that marker and reports `reason: 'unsupported-adapter'` — but it cannot
+  // answer an erasure request. Write them.
+  async listObjectVersions({ prefix, keyMarker, versionIdMarker }) {
+    const response = await s3Client.send(
+      new ListObjectVersionsCommand({
+        Bucket: config.bucketName,
+        Prefix: prefix,
+        KeyMarker: keyMarker,
+        VersionIdMarker: versionIdMarker,
+      })
+    )
+
+    // Two arrays, and both are versions: `Versions` holds the stored objects,
+    // `DeleteMarkers` the tombstones written over them. Reading only the first
+    // is how a purge leaves the markers behind.
+    const versions = [
+      ...(response.Versions ?? []).map((entry) => ({ entry, isDeleteMarker: false })),
+      ...(response.DeleteMarkers ?? []).map((entry) => ({ entry, isDeleteMarker: true })),
+    ]
+      .filter(({ entry }) => entry.Key && entry.VersionId)
+      .map(({ entry, isDeleteMarker }) => ({
+        key: entry.Key!,
+        versionId: entry.VersionId!,
+        isDeleteMarker,
+      }))
+
+    return {
+      versions,
+      // Only when S3 says the page was cut short. Handing back a marker on a
+      // complete listing makes the purge loop forever.
+      ...(response.IsTruncated
+        ? {
+            nextKeyMarker: response.NextKeyMarker,
+            nextVersionIdMarker: response.NextVersionIdMarker,
+          }
+        : {}),
+    }
+  },
+
+  async deleteObjectVersion({ key, versionId }) {
+    await s3Client.send(
+      new DeleteObjectCommand({
+        Bucket: config.bucketName,
+        Key: key,
+        VersionId: versionId,
+      })
+    )
+  },
 }
 
 // Create the service
 const s3Service = createS3Service(config, s3Operations)
 ```
+
+The IAM user behind that client needs `s3:ListBucketVersions` on the bucket and
+`s3:GetObjectVersion` + `s3:DeleteObjectVersion` on `/*`. `scripts/setup-aws.sh`
+grants all three; a deployment provisioned before it did not, and re-running the
+script is what fixes it. Without them `delete()` falls back to the delete marker
+and returns `reason: 'listing-refused'` rather than throwing.
 
 ### Usage
 
@@ -157,8 +224,17 @@ const exists = await s3Service.exists('products/abc123.jpg')
 // Metadata
 const metadata = await s3Service.getMetadata('products/abc123.jpg')
 
-// Delete
-await s3Service.delete('products/abc123.jpg')
+// Delete — read the outcome, it is not decoration
+const outcome = await s3Service.delete('products/abc123.jpg')
+// { outcome: 'purged', versionsDeleted: 3 }
+//   every version and every delete marker is gone.
+// { outcome: 'delete-marker', versionsDeleted: 0, reason: 'unsupported-adapter' }
+//   the adapter has no version operations — see the one above.
+// { outcome: 'delete-marker', versionsDeleted: 0, reason: 'listing-refused' }
+//   the IAM policy predates s3:ListBucketVersions. Re-run setup-aws.sh.
+//
+// Only 'purged' means the bytes are gone. Anything else and the object is
+// merely hidden, so « définitivement supprimé » may not be said of it.
 ```
 
 ### Validation
