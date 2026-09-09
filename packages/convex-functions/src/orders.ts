@@ -2474,3 +2474,99 @@ export const abandonedCheckoutSession = async (
 
   return sessionId
 }
+
+/**
+ * How far back the ticketless sweep looks.
+ *
+ * Long enough to cover a platform outage and the night after it; short enough
+ * that the sweep never walks a deployment's whole history. A platform order
+ * older than this that still has no slip is not going to be cooked.
+ */
+export const TICKETLESS_LOOKBACK_MS = 24 * 60 * 60 * 1000
+
+/** One sweep's ceiling, so a backlog cannot monopolise the backend. */
+const TICKETLESS_SCAN_LIMIT = 200
+
+/**
+ * Platform orders that reached the kitchen nowhere, given a slip.
+ *
+ * WHY THIS EXISTS. An Uber Eats or Deliveroo order is written to `orders` and a
+ * kitchen ticket is created for it in a SEPARATE step, inside a `try`. When
+ * that step throws — a validation error on one malformed item, a transient
+ * failure — the order exists, the platform got its 200, and there is no slip on
+ * the pass: no screen, no printer, and the accept button unreachable because it
+ * acts on a ticket. The food is never cooked and nobody is told.
+ *
+ * The webhooks now repair this on a redelivery, which is the fast path and the
+ * one that usually fires. This is the backstop for when it does not: a platform
+ * that retries once and gives up, a failure that outlives the retry window, a
+ * handler that returned before the repair. None of the eleven other crons
+ * looked for this — a ticketless order was, until now, permanently invisible.
+ *
+ * ONLY `uber_eats` and `deliveroo`. A `website` order gets its ticket from the
+ * settlement path and a `pos` order from the counter; giving either one a slip
+ * from here would put unpaid orders on the pass.
+ *
+ * CANCELLED ORDERS ARE SKIPPED, and so are orders whose status has already
+ * moved past the kitchen — a slip for something the restaurant has finished
+ * with is worse than none.
+ */
+export const sweepTicketlessPlatformOrders = {
+  args: {},
+  handler: async (
+    ctx: any
+  ): Promise<{ examined: number; repaired: number; failed: number }> => {
+    const since = Date.now() - TICKETLESS_LOOKBACK_MS
+    let examined = 0
+    let repaired = 0
+    let failed = 0
+
+    for (const source of ["uber_eats", "deliveroo"] as const) {
+      const orders = await ctx.db
+        .query("orders")
+        .withIndex("by_source", (q: any) => q.eq("source", source))
+        .order("desc")
+        .take(TICKETLESS_SCAN_LIMIT)
+
+      for (const order of orders) {
+        // The index carries no timestamp, so the window is applied here. Taking
+        // the newest first and stopping at the first one outside the window
+        // keeps this bounded on a busy deployment.
+        if (order.createdAt < since) break
+        if (["cancelled", "completed", "delivered"].includes(order.status)) continue
+        examined++
+
+        const tickets = await ctx.db
+          .query("kitchenTickets")
+          .withIndex("by_orderId", (q: any) => q.eq("orderId", order._id))
+          .take(1)
+        if (tickets.length > 0) continue
+
+        try {
+          await kitchenTicketCreate.handler(ctx, {
+            storeId: order.storeId,
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            orderType: order.type === "dine_in" ? "dine_in" : order.type,
+            items: toKitchenTicketItems(order.items ?? []),
+            priority: "normal" as const,
+            source,
+            // Distinct from the webhook's own token, and it does not need to
+            // match: the token addresses the ticket, and this ticket is new.
+            trackingToken: `rec-${String(order._id).slice(-8)}-${Date.now().toString(36)}`,
+            customerName: order.customerInfo?.name ?? `Client ${source}`,
+            customerPhone: order.customerInfo?.phone,
+            deliveryNotes: order.notes,
+          })
+          repaired++
+        } catch {
+          // Counted rather than thrown: one unmappable order must not stop the
+          // sweep from repairing the rest. The count is what the caller logs.
+          failed++
+        }
+      }
+    }
+
+    return { examined, repaired, failed }
+  },
+}

@@ -413,6 +413,29 @@ covers `products`, `categories` or `menus`.
 > guard, using the shared `toKitchenTicketItemsFromPlatform` so the customer's instruction
 > and allergy survive. Held by `tests/convex/deliveroo-webhook.test.ts` in both apps.
 >
+> **Re-opened and re-resolved 2026-09-09, because "after the `!created` guard" was
+> the defect.** The sentence above describes the fix accurately and the placement was
+> wrong in two ways, both of which reproduced the original outcome by another path:
+>
+> - The ticket creation sat AFTER `if (!created) return`, so a Deliveroo redelivery —
+>   the one event that could repair a ticket whose first creation failed — returned
+>   without ever reaching it.
+> - Its `catch` was a bare `console.error`, in an 854-line file with **zero**
+>   `captureBackendError` calls, while its Uber Eats twin had three, one of them on
+>   this very step. A failed ticket was visible only to whoever thought to open that
+>   client's Convex logs.
+>
+> So an order existed in the database, Deliveroo got its 200, no slip reached the pass,
+> and nothing would ever retry. None of the eleven crons looked for a ticketless order.
+>
+> The ticket block now runs BEFORE the duplicate short-circuit and asks first whether a
+> slip already exists, so a redelivery repairs a missing one without duplicating a
+> present one; the failure is reported through `captureBackendError`; and a twelfth cron,
+> `orders:sweepTicketlessPlatformOrders`, sweeps every fifteen minutes as the backstop
+> for a redelivery that never comes. Four new cases in
+> `tests/convex/deliveroo-webhook.test.ts` cover the redelivery repair, the sweep, the
+> no-double-slip rule and the refusal to put a `website` order on the pass.
+>
 > **The "Fix" below is wrong about accept/reject — do not follow it.** Verified:
 > `TicketCard.tsx:99-104` already called `api.kitchenTickets.acceptTicket` for **both**
 > platforms, and `kitchenTickets.ts:273` already called `deliveroo.acceptOrder`. The accept
