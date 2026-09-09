@@ -508,6 +508,7 @@ export default function AccountPage() {
                       </Avatar>
                       <button
                         type="button"
+                        aria-label="Changer la photo de profil"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploadingAvatar}
                         className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full p-1.5 shadow-lg hover:bg-primary-hover transition-colors disabled:opacity-50"
@@ -617,6 +618,7 @@ export default function AccountPage() {
                             </select>
                             <button
                               type="button"
+                              aria-label="Supprimer ce numéro de téléphone"
                               onClick={() => removePhone(index)}
                               className="shrink-0 h-10 w-10 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-card transition-colors"
                             >
@@ -642,6 +644,7 @@ export default function AccountPage() {
                               </span>
                               <Input
                                 type="tel"
+                                aria-label={`Numéro de téléphone ${index + 1}`}
                                 value={phone.number}
                                 onChange={(e) => updatePhone(index, "number", e.target.value)}
                                 placeholder="6 12 34 56 78"
@@ -761,7 +764,10 @@ export default function AccountPage() {
                 <div className="space-y-5 px-1 pt-2">
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                      <Label className="text-sm font-black text-foreground tracking-tight">
+                      <Label
+                        htmlFor="pref-email-notifications"
+                        className="text-sm font-black text-foreground tracking-tight"
+                      >
                         Notifications email
                       </Label>
                       <p className="text-xs font-medium text-muted-foreground pr-8">
@@ -769,6 +775,7 @@ export default function AccountPage() {
                       </p>
                     </div>
                     <Switch
+                      id="pref-email-notifications"
                       checked={emailNotifs}
                       onCheckedChange={setEmailNotifs}
                       className="data-[state=checked]:bg-primary"

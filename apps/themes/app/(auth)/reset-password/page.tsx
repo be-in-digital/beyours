@@ -185,6 +185,7 @@ function ResetPasswordContent() {
                     />
                     <button
                       type="button"
+                      aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-card-foreground transition-colors"
                       tabIndex={-1}

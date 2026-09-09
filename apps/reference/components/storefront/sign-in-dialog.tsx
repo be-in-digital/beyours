@@ -84,10 +84,14 @@ export function SignInDialog({ trigger }: SignInDialogProps) {
           )}
 
           <div className="space-y-2">
-            <Label className="ml-1 text-[10px] font-black uppercase tracking-widest">
+            <Label
+              htmlFor="sign-in-dialog-email"
+              className="ml-1 text-[10px] font-black uppercase tracking-widest"
+            >
               Email
             </Label>
             <Input
+              id="sign-in-dialog-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -98,11 +102,15 @@ export function SignInDialog({ trigger }: SignInDialogProps) {
           </div>
 
           <div className="space-y-2">
-            <Label className="ml-1 text-[10px] font-black uppercase tracking-widest">
+            <Label
+              htmlFor="sign-in-dialog-password"
+              className="ml-1 text-[10px] font-black uppercase tracking-widest"
+            >
               Mot de passe
             </Label>
             <div className="relative">
               <Input
+                id="sign-in-dialog-password"
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -112,6 +120,7 @@ export function SignInDialog({ trigger }: SignInDialogProps) {
               />
               <button
                 type="button"
+                aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-muted-foreground"
               >

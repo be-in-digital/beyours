@@ -199,6 +199,7 @@ export function OrderSummary({
               </div>
               <button
                 type="button"
+                aria-label="Retirer le code promo"
                 onClick={onRemovePromo}
                 className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-muted-foreground"
               >

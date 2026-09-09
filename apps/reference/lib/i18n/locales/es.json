@@ -204,5 +204,10 @@
   "accessibility.removeItem": "Eliminar artículo",
   "accessibility.productImage": "Imagen del producto",
   "accessibility.skipToContent": "Ir al contenido principal",
-  "accessibility.openBox": "Abrir la Box"
+  "accessibility.openBox": "Abrir la Box",
+  "product.viewDetails": "Ver {name}",
+  "product.addNamedToCart": "Añadir {name} a la cesta",
+  "product.addToFavorites": "Añadir {name} a favoritos",
+  "product.removeFromFavorites": "Quitar {name} de favoritos",
+  "store.choose": "Elegir {name}"
 }
