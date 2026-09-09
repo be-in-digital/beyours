@@ -132,16 +132,24 @@ export function loadTailwindPalette(appDir: string): Map<string, Rgb> {
 }
 
 /**
- * The design tokens each selector in `globals.css` defines.
+ * The design tokens each selector defines, across a stylesheet cascade.
  *
  * Balanced-brace scanning, because a selector appears more than once — `:root`
  * is declared inside `@layer base` and again for the sidebar — and a
  * non-greedy match to the first `}` stops in the middle of the first one.
+ *
+ * `sheets` are concatenated in cascade order and the LAST declaration of a
+ * token wins, which is what the browser does here for both of the reasons it
+ * could: a later rule of equal weight wins, and `app/globals.css` declares its
+ * palette inside `@layer base` while the sheets layered on top of it are
+ * unlayered, so those beat it whatever the order. Reproducing the cascade is
+ * the whole point — see `loadTokens`, which is the only caller and the only
+ * one this package exports.
  */
-export function loadTokens(appDir: string, selectors: string[]): Map<string, Map<string, Rgb>> {
+function parseTokens(sheets: string[], selectors: string[]): Map<string, Map<string, Rgb>> {
   // Comments are stripped first: the anchor below looks for a rule boundary,
   // and every block in `globals.css` is introduced by one.
-  const css = readFileSync(join(appDir, "app/globals.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "")
+  const css = sheets.join("\n").replace(/\/\*[\s\S]*?\*\//g, "")
   const blocks = new Map<string, Map<string, Rgb>>()
   for (const selector of selectors) {
     const tokens = new Map<string, Rgb>()
@@ -173,6 +181,28 @@ export function loadTokens(appDir: string, selectors: string[]): Map<string, Map
     blocks.set(selector, tokens)
   }
   return blocks
+}
+
+/**
+ * The design tokens an app renders, optionally under a template.
+ *
+ * WHY `overlays` EXISTS. `app/layout.tsx` imports `./globals.css` and then
+ * `@/site/theme.css`, and `pnpm template:apply <slug>` overwrites that second
+ * file from `templates/<slug>/theme.css` — 45 to 53 token overrides, one of
+ * the 51 verticals, whichever the client bought. Reading `globals.css` alone
+ * measures the palette NOBODY SHIPS. Measured the day this argument was added:
+ * 50 of the 51 templates carried at least one pair below the WCAG 2.1 AA
+ * floor, every one of them invisible to a sweep of `globals.css` on its own.
+ */
+export function loadTokens(
+  appDir: string,
+  selectors: string[],
+  overlays: string[] = []
+): Map<string, Map<string, Rgb>> {
+  const sheets = [join(appDir, "app/globals.css"), ...overlays].map((file) =>
+    readFileSync(file, "utf8")
+  )
+  return parseTokens(sheets, selectors)
 }
 
 /* -------------------------------------------------------------------------- */

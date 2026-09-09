@@ -166,8 +166,20 @@ export function OnboardingTourProvider({
         handleClose()
       }}
       styles={{
+        // BOTH MEMBERS OF THE PAIR, ALWAYS. `base` is reactour's own default:
+        // a white background and NO colour, so the text fell through to
+        // whatever the admin had set upstream. In dark mode that is
+        // `--foreground`, near-white — measured in Chromium at 1.045:1 on the
+        // white popover, over all 28 steps, for every owner whose machine is
+        // in dark mode (`app/providers.tsx` is `defaultTheme="system"`). The
+        // badge immediately below always set both and always read fine, which
+        // is what made the blank rectangle look like a rendering bug rather
+        // than a missing declaration. Setting a surface without setting the
+        // ink on it is the whole defect; the token pair travels together.
         popover: (base) => ({
           ...base,
+          backgroundColor: "hsl(var(--popover))",
+          color: "hsl(var(--popover-foreground))",
           borderRadius: "12px",
           padding: "20px",
           maxWidth: "360px",
