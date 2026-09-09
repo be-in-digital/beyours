@@ -161,6 +161,16 @@ function resolveScope(argvRange) {
   const fromEvent = exclusionsFromEvent(eventName, readEventPayload())
   if (fromEvent) {
     const usable = fromEvent.refs.filter(exists)
+    const missing = fromEvent.refs.filter((ref) => !usable.includes(ref))
+    // Reported on a PARTIAL resolution too, not only on a total one. Losing
+    // `origin/main` alone leaves the stale `base.sha` as the only exclusion,
+    // which walks main's own attributed commits and fails the pull request over
+    // history nobody may rewrite — and the run would have said nothing.
+    if (missing.length) {
+      console.error(
+        `  Note: ${fromEvent.source} named ${missing.map(short).join(", ")}, which this checkout does not contain.`
+      )
+    }
     if (usable.length) {
       return {
         args: ["HEAD", "--not", ...usable],
@@ -169,12 +179,8 @@ function resolveScope(argvRange) {
         mustHaveCommits,
       }
     }
-    // Reachable when the checkout is shallower than the base, which is a
-    // misconfiguration rather than a clean result: say so, then fall through to
-    // something we can actually see.
-    console.error(
-      `  Note: ${fromEvent.source} named ${fromEvent.refs.map(short).join(", ")}, which this checkout does not contain.`
-    )
+    // Nothing the event named survives here — a checkout shallower than the
+    // base. Fall through to something we can actually see.
   }
 
   // A push carries its own new commits, so subtracting the branch it was pushed

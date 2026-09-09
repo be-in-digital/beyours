@@ -9,8 +9,15 @@
  * second attempt with the same trailer. Removing them ends the loop, and the
  * removal is announced on stderr so nobody discovers it later from a diff.
  *
- * `scripts/check-commit-attribution.mjs` is the layer that refuses. This one is
- * the convenience; that one is the guarantee.
+ * It refuses in two cases, both of which are somebody's prose rather than a
+ * harness's footer: a message that is nothing but attribution, and attribution
+ * sitting inside a sentence — a session link cited mid-body, where deleting the
+ * line would take the sentence with it. Editing a paragraph to enforce a
+ * formatting rule is worse than the rule; the author is told which line and
+ * decides what it should say.
+ *
+ * `scripts/check-commit-attribution.mjs` is the layer that refuses everything.
+ * This one is the convenience; that one is the guarantee.
  *
  * Usage: node scripts/strip-commit-attribution.mjs <path-to-message-file>
  *        (git passes that path to the commit-msg hook as $1)
@@ -44,7 +51,19 @@ if (broken.length) {
   console.error("commit-msg: continuing anyway — the Lint job will refuse this.")
 }
 
-const { message, removed } = stripAttribution(original)
+const { message, removed, blocked } = stripAttribution(original)
+
+// Reported before anything is written, so a message that needs a human decision
+// comes back exactly as it was left.
+if (blocked.length) {
+  console.error(`\ncommit-msg: ${blocked.length} line(s) name an AI assistant inside a sentence:\n`)
+  for (const hit of blocked) console.error(`  line ${hit.line}: ${hit.text}`)
+  console.error(`\n  Removing the line would take the sentence with it, so this is yours to`)
+  console.error(`  reword — CLAUDE.md rule 10 allows no reference to the assistant in`)
+  console.error(`  anything that reaches Git.\n`)
+  process.exit(1)
+}
+
 if (removed.length === 0) process.exit(0)
 
 /** Whether anything git would keep survived the strip. */
