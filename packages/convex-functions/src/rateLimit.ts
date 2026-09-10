@@ -167,6 +167,40 @@ export const RATE_LIMITS = {
    * database and kitchen-ticket noise rather than value extraction.
    */
   orderPerStore: { limit: 300, windowMs: 60 * 60_000, foldSubjectCase: false },
+  /**
+   * Payment sessions opened against ONE order, across every provider.
+   *
+   * WHY THIS EXISTS AT ALL (#430.5). Every public-by-design *mutation* was
+   * bounded; the *actions* were not, because an action has no `ctx.db` and
+   * `consumeRateLimit` reads and writes one — so the limiter was simply never
+   * wired to them. What that left unbounded is the expensive half:
+   * `stripe.createCheckoutSession`, `sumup.createCheckout` and
+   * `paypal.createPayPalOrder` are reachable with no session at all and each
+   * one calls a third party the restaurant pays for or is quota'd by.
+   *
+   * Ten an hour is far outside honest use. A declined card and a retry is two;
+   * a diner who changes their mind about the provider is three. It is the loop
+   * this stops, not the customer.
+   *
+   * Per ORDER rather than per store, deliberately: an action's subject has to
+   * be readable before the expensive work, and the order id is in the args.
+   * The per-store ceiling is already there and one layer down —
+   * `orderPerStore` bounds how many orders can exist to be paid for at all.
+   */
+  paymentSessionPerOrder: { limit: 10, windowMs: 60 * 60_000, foldSubjectCase: false },
+  /**
+   * Delivery quotes asked of Uber Direct for one establishment.
+   *
+   * `uberDirect.getDeliveryQuote` is anonymous by design — a diner has to see
+   * the fee before they have an account — and it costs an Uber API call each
+   * time. Unbounded, a script burns the restaurant's quota until real
+   * deliveries stop being quotable, at no cost to whoever runs it.
+   *
+   * Six hundred an hour is well above a busy service: a quote is one per
+   * address, refreshed when the address changes, so even a hundred diners each
+   * correcting their address twice sits inside it.
+   */
+  deliveryQuotePerStore: { limit: 600, windowMs: 60 * 60_000, foldSubjectCase: false },
 } as const satisfies Record<string, RateLimitRule>
 
 export type RateLimitName = keyof typeof RATE_LIMITS
