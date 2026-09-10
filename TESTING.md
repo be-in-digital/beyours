@@ -275,6 +275,22 @@ calling the `themes` suite alone — it ships `apps/themes` and nothing else. It
 the call on `--check` dispatches, which push nothing, and on the `workflow_run` path,
 where *Release* has already run it on the commit being synced.
 
+**The suites also run once more, outside the workspace.** `Verify the delivered tree`
+runs `pnpm check:mirror-build`, which packs the engine as tarballs, installs them into
+a materialised copy of `apps/themes` and runs the template's own suite there. It gates
+the sync on every path that pushes — including `workflow_run`, unlike the two above,
+because the Release chain never runs it.
+
+That distinction is the whole reason it exists. Everything else runs `apps/themes`
+*inside* this monorepo, with `packages/*` symlinked and `apps/` above it, so a test
+that reads a path only the monorepo has passes here and fails for a client. Four
+shipped test files did exactly that — `packages/`, `apps/docs/`, a hard-coded sibling
+app — and `beyours-boilerplate` was red from 7 September while every required check
+here was green. `tests/lib/repo-layout.ts` is where a suite now asks whether it is
+looking at the engine checkout or at a delivered site, and it answers from the shape
+of the checkout rather than from whether a file happens to be readable: a missing file
+is what a real regression looks like, so a suite that shrugs at one guards nothing.
+
 **A job that fails in ~3 seconds having run zero steps is a billing block, not a
 defect.** The Actions minutes have run out twice; every workflow on every branch dies
 at once and `gh api …/actions/jobs/<id>` shows `steps: []`. Check that signature

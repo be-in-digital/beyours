@@ -152,9 +152,86 @@ jobs:
     with:
       apps: themes
 
+  # The delivered tree, installed and RUN the way a client receives it.
+  #
+  # WHY THIS IS HERE AND NOT IN `ci.yml`. `check:mirror-build` builds the whole
+  # engine, packs nine tarballs, installs them into a materialised copy of
+  # `apps/themes` and then typechecks and tests it — minutes, on every run that
+  # pays for it. Its own header says so and concludes "deliberately NOT wired
+  # into CI: run it before cutting a release, and after publishing one." That
+  # reasoning is about which runs should pay, not about whether anything should:
+  # this workflow IS the delivery, so it is the run that should.
+  #
+  # WHAT IT CATCHES THAT THE GATES ABOVE CANNOT. `verify` and `e2e` run
+  # `apps/themes` inside the workspace — `packages/*` symlinked at HEAD,
+  # `apps/` above it, the monorepo all around it. A client has none of that.
+  # Every check in this repository was green at `a7862e90` while
+  # `beyours-boilerplate` had been red since 7 September, because four shipped
+  # test files reached ABOVE the application root for `packages/`, `apps/docs/`
+  # and the sibling app. Nothing that runs inside the workspace can see a path
+  # that only resolves inside the workspace.
+  #
+  # The check reproduces it exactly — `Test Files 3 failed | 140 passed (143)`,
+  # the boilerplate's own line — so this is a gate with a measured catch, not a
+  # precaution. `CLAUDE.md` rule 9 tells every client to run `pnpm test` before
+  # they commit; until now nothing in this repository ever did.
+  #
+  # It runs on the `workflow_run` path too, unlike `verify` and `e2e`. Those are
+  # skipped there because the Release chain already ran that exact call on that
+  # exact commit. It did not run this one — `release.yml` has no such step — so
+  # skipping here would leave the path that carries newly published versions
+  # with no check of the delivered tree at all. Hence the same `ref:` the
+  # `publish` job uses: a `workflow_run` job checks out the default branch's
+  # current head, and the tree that matters is the SHA the Release ran on.
+  #
+  # Skipped on a `--check` dispatch, for the reason `e2e` is: that path pushes
+  # nothing, so it has nothing to gate.
+  delivered:
+    name: Verify the delivered tree
+    if: inputs.check_only != true
+    runs-on: ubuntu-latest
+    # Measured warm at about four minutes; the ceiling is a stall detector, and
+    # the install of a ~1.1 GB template on a cold store is the slow half.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      # The commit the Release verified on the `workflow_run` path; empty
+      # elsewhere, which leaves the default. Same reasoning as `publish` below.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@be-in-digital"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The engine packages are packed from THIS tree, so the check measures the
+      # code about to be delivered rather than whatever the registry serves
+      # today. Nothing is fetched from GitHub Packages — the materialised tree's
+      # `.npmrc` is emptied and every engine dependency is pinned to a local
+      # tarball — but the token is passed for the same reason the sync passes
+      # it: a dependency that later resolves from the registry must not turn
+      # this into a 401 nobody expected.
+      - name: Build, install and run the tree a client receives
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm check:mirror-build
+
   publish:
     name: Sync the mirror
-    needs: [verify, e2e]
+    needs: [verify, e2e, delivered]
     runs-on: ubuntu-latest
     # A sync is a clone, a file copy, a lockfile and — since the compile gate —
     # an install and a typecheck of the staged tree. Measured warm: 4s and 46s.
@@ -181,6 +258,11 @@ jobs:
     #   push, dispatch → `verify` AND `e2e` above went green on this commit, AND
     #                    the commit is on `main`
     #
+    # `delivered` gates BOTH, because unlike `verify` and `e2e` it runs on both:
+    # the Release chain never ran it, so the `workflow_run` path would otherwise
+    # carry newly published versions to every client with nothing having
+    # installed the delivered tree.
+    #
     # `e2e` is read by what it did NOT do, because `skipped` is a legitimate
     # answer here — a `--check` dispatch skips it deliberately — while `failure`
     # and `cancelled` are not. A suite the concurrency group cancelled has not
@@ -201,6 +283,8 @@ jobs:
     # works.
     if: >-
       ${{ !cancelled()
+        && needs.delivered.result != 'failure'
+        && needs.delivered.result != 'cancelled'
         && (
           (github.event_name == 'workflow_run'
             && github.event.workflow_run.conclusion == 'success'
@@ -370,7 +454,7 @@ jobs:
   # which is the part that was missing.
   report:
     name: What this run did
-    needs: [verify, e2e, publish]
+    needs: [verify, e2e, delivered, publish]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -427,7 +511,7 @@ jobs:
           fi
 
           if [ "$PUBLISH_RESULT" = "skipped" ]; then
-            say "**No sync ran.** The \`publish\` job's conditions were not met — it is limited to \`main\`, and requires \`Verify\` and \`Verify E2E\` to have passed."
+            say "**No sync ran.** The \`publish\` job's conditions were not met — it is limited to \`main\`, and requires \`Verify\`, \`Verify E2E\` and \`Verify the delivered tree\` to have passed."
           elif [ "$CAN_PUSH" != "true" ]; then
             say "**No sync ran.** \`MIRROR_PUSH_TOKEN\` is not set, so the job could only dry-run. Client sites are not receiving this commit."
             say ""

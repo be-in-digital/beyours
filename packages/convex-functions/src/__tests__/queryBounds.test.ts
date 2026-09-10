@@ -180,21 +180,34 @@ describe("orders.dashboardStats", () => {
   })
 
   it("answers with the aggregates rather than the orders", async () => {
-    const now = Date.now()
     const midnight = new Date()
     midnight.setHours(0, 0, 0, 0)
     const todayStart = midnight.getTime()
 
+    // Stamped from TODAY'S MIDNIGHT, not from `Date.now()`.
+    //
+    // These were `now - 60_000` down to `now - 200_000`, which is "today" for
+    // 1436 minutes of the day and yesterday for the other four: run in the
+    // first 3m20s after local midnight, `orders:5` fell into the previous day
+    // and `today.orderCount` came back 2. Measured — it failed at 00:02 and
+    // passed at 00:04 on the same tree, in the `Test` job branch protection
+    // requires. A test that is true almost always is a nightly red nobody can
+    // reproduce in the morning.
+    //
+    // Today's bucket is `[todayStart, todayEnd)` with `todayEnd` at tomorrow's
+    // midnight, so a stamp anchored this way is inside it at every hour — and
+    // deliberately so: `DashboardWindows` documents that an order stamped in
+    // the future still belongs to today's takings.
     const ctx = createCountingDb({
       orders: [
-        { _id: "orders:1", storeId: STORE, status: "completed", paymentStatus: "paid", type: "delivery", source: "website", total: 2_000, createdAt: now - 60_000 },
+        { _id: "orders:1", storeId: STORE, status: "completed", paymentStatus: "paid", type: "delivery", source: "website", total: 2_000, createdAt: todayStart + 200_000 },
         // On the pass and paid for — the card cleared before the kitchen saw it.
-        { _id: "orders:2", storeId: STORE, status: "pending", paymentStatus: "paid", type: "pickup", source: "website", total: 1_000, createdAt: now - 120_000 },
+        { _id: "orders:2", storeId: STORE, status: "pending", paymentStatus: "paid", type: "pickup", source: "website", total: 1_000, createdAt: todayStart + 180_000 },
         // Cancelled: an order that happened for nobody is not takings.
-        { _id: "orders:3", storeId: STORE, status: "cancelled", paymentStatus: "pending", type: "delivery", source: "website", total: 9_999, createdAt: now - 180_000 },
+        { _id: "orders:3", storeId: STORE, status: "cancelled", paymentStatus: "pending", type: "delivery", source: "website", total: 9_999, createdAt: todayStart + 120_000 },
         // Placed and never paid for. It is an order that happened, so it counts
         // on the "Commandes" card; it is not money, so it is not revenue.
-        { _id: "orders:5", storeId: STORE, status: "completed", paymentStatus: "failed", type: "pickup", source: "website", total: 4_500, createdAt: now - 200_000 },
+        { _id: "orders:5", storeId: STORE, status: "completed", paymentStatus: "failed", type: "pickup", source: "website", total: 4_500, createdAt: todayStart + 60_000 },
         // Yesterday.
         { _id: "orders:4", storeId: STORE, status: "completed", paymentStatus: "paid", type: "dine_in", source: "pos", total: 3_000, createdAt: todayStart - 60_000 },
       ],

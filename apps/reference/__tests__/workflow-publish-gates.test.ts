@@ -276,6 +276,18 @@ type Scenario = {
    * exactly what this gate exists to refuse.
    */
   e2e?: JobResult
+  /**
+   * `needs.delivered.result` — publish-mirror.yml's `Verify the delivered
+   * tree`, which installs the packed engine into a materialised copy of
+   * `apps/themes` and runs the template's own suite there.
+   *
+   * Defaults to `success` rather than to `verify`, and the difference is the
+   * point: unlike `verify` and `e2e` this job runs on the `workflow_run` path
+   * too, because the Release chain never ran it. Modelling it as tracking
+   * `verify` would quietly assert it is skipped exactly where it is the only
+   * check left.
+   */
+  delivered?: JobResult
   /** `needs.plan.result` — release.yml only; decides whether E2E runs at all. */
   plan?: JobResult
   releaseConclusion?: ReleaseConclusion
@@ -288,7 +300,12 @@ type Scenario = {
 
 /** Every `needs:` result the scenario implies, for the implicit-success rule. */
 function resultsOf(scenario: Scenario): JobResult[] {
-  return [scenario.verify, scenario.e2e ?? scenario.verify, ...(scenario.plan ? [scenario.plan] : [])]
+  return [
+    scenario.verify,
+    scenario.e2e ?? scenario.verify,
+    scenario.delivered ?? "success",
+    ...(scenario.plan ? [scenario.plan] : []),
+  ]
 }
 
 /**
@@ -318,6 +335,7 @@ function evaluate(expression: string, scenario: Scenario): boolean {
     "github.ref": scenario.ref ?? "refs/heads/main",
     "needs.verify.result": scenario.verify,
     "needs.e2e.result": scenario.e2e ?? scenario.verify,
+    "needs.delivered.result": scenario.delivered ?? "success",
     // Absent from publish-mirror.yml's condition; naming it here anyway costs
     // nothing and lets one evaluator read both chains.
     "needs.plan.result": scenario.plan ?? "success",
@@ -453,7 +471,45 @@ describe("the mirror publishes on exactly the runs that passed CI", () => {
       { event: "workflow_dispatch", verify: "success", e2e: "success", ref: "refs/heads/feature/x" },
       false,
     ],
+    // ── The delivered-tree gate ──────────────────────────────────────────
+    //
+    // `check:mirror-build` packs the engine, installs it into a materialised
+    // copy of `apps/themes` and runs the template's own suite against it. It
+    // existed, was green, and ran nowhere: `grep -rn check:mirror-build
+    // .github/` returned nothing while `beyours-boilerplate` had been red since
+    // 7 September, because four shipped test files reached above the
+    // application root and nothing in this repository ever ran outside the
+    // workspace those paths resolve in.
+    //
+    // `verify` and `e2e` are held green in each case below, so the only thing
+    // deciding the outcome is the delivered tree.
+    [
+      "a push to main whose CI and suite are green but whose delivered tree is red",
+      { event: "push", verify: "success", delivered: "failure" },
+      false,
+    ],
+    [
+      "a push to main whose delivered-tree check was cancelled — not a pass",
+      { event: "push", verify: "success", delivered: "cancelled", cancelled: false },
+      false,
+    ],
+    [
+      // Same reasoning as the `--check` dispatch above: that path pushes
+      // nothing, so the job skips itself and `skipped` must stay legitimate.
+      "a --check dispatch, where the delivered-tree check is skipped on purpose",
+      { event: "workflow_dispatch", verify: "success", e2e: "skipped", delivered: "skipped" },
+      true,
+    ],
     ["a successful Release, where verify is skipped on purpose", afterRelease("success"), true],
+    [
+      // The case the gate is FOR on this path. `verify` and `e2e` are skipped
+      // after a Release because the Release chain already ran them — it did not
+      // run this one, so a red delivered tree here is the last thing standing
+      // between a published engine and every client site.
+      "a successful Release whose delivered tree is red",
+      { ...afterRelease("success"), delivered: "failure" },
+      false,
+    ],
     [
       // `release.yml` triggers on main only today. One trigger line away, this
       // would otherwise sync a branch to every client site.

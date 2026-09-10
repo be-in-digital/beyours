@@ -16,6 +16,23 @@ import {
 import { isWithinBusinessHours } from '@be-in-digital/convex-schema'
 import type { BusinessHours, Address, StoreDoc } from '../types'
 
+/**
+ * The clock a bare `new Date('2024-01-05T23:00:00')` is written on.
+ *
+ * A date literal with no offset is parsed in the ENVIRONMENT's zone, and
+ * `isStoreOpen` used to read a zone-less call on that same clock, so the two
+ * cancelled and these cases were true in any runner. `readingFrame` now falls
+ * back to `DEFAULT_RESTAURANT_TIMEZONE` — the constant `restaurantClock` uses
+ * for the same absence, so the storefront and `orders.create` cannot answer on
+ * two different clocks — and leaving these bare would quietly turn every case
+ * below into a case about Paris.
+ *
+ * They are about the midnight-crossing arithmetic. So they say which clock they
+ * mean, and it is the one their own literals are written in. The cases that ARE
+ * about zones pass a real one and are untouched.
+ */
+const LOCAL = Intl.DateTimeFormat().resolvedOptions().timeZone
+
 describe('Store Service', () => {
   describe('isStoreOpen agrees with the shared rule', () => {
     // `isOpen` is `isWithinBusinessHours` from `@be-in-digital/convex-schema`,
@@ -49,7 +66,7 @@ describe('Store Service', () => {
       // Create a Monday at 12:00
       const monday = new Date('2024-01-01T12:00:00') // 2024-01-01 is a Monday
 
-      const result = isStoreOpen(hours, monday)
+      const result = isStoreOpen(hours, monday, LOCAL)
 
       expect(result.isOpen).toBe(true)
       expect(result.currentPeriod).toEqual({ open: '09:00', close: '18:00' })
@@ -63,7 +80,7 @@ describe('Store Service', () => {
       // Create a Monday at 20:00
       const monday = new Date('2024-01-01T20:00:00')
 
-      const result = isStoreOpen(hours, monday)
+      const result = isStoreOpen(hours, monday, LOCAL)
 
       expect(result.isOpen).toBe(false)
     })
@@ -76,7 +93,7 @@ describe('Store Service', () => {
       // Create a Sunday at 12:00
       const sunday = new Date('2024-01-07T12:00:00') // 2024-01-07 is a Sunday
 
-      const result = isStoreOpen(hours, sunday)
+      const result = isStoreOpen(hours, sunday, LOCAL)
 
       expect(result.isOpen).toBe(false)
     })
@@ -101,7 +118,7 @@ describe('Store Service', () => {
 
     it('is open at 23:00, before midnight', () => {
       // `"23:00" < "02:00"` is false. This read as closed.
-      const result = isStoreOpen(eveningService, new Date('2024-01-05T23:00:00'))
+      const result = isStoreOpen(eveningService, new Date('2024-01-05T23:00:00'), LOCAL)
 
       expect(result.isOpen).toBe(true)
       expect(result.currentPeriod).toEqual({ open: '18:00', close: '02:00' })
@@ -111,20 +128,20 @@ describe('Store Service', () => {
       // `"01:00" >= "18:00"` is false. This read as closed too — and Saturday's
       // own row cannot answer for it: Saturday opens at 18:00. The service
       // still running belongs to Friday.
-      const result = isStoreOpen(eveningService, new Date('2024-01-06T01:00:00'))
+      const result = isStoreOpen(eveningService, new Date('2024-01-06T01:00:00'), LOCAL)
 
       expect(result.isOpen).toBe(true)
       expect(result.currentPeriod).toEqual({ open: '18:00', close: '02:00' })
     })
 
     it('is closed at 03:00, once the night is over', () => {
-      const result = isStoreOpen(eveningService, new Date('2024-01-06T03:00:00'))
+      const result = isStoreOpen(eveningService, new Date('2024-01-06T03:00:00'), LOCAL)
 
       expect(result.isOpen).toBe(false)
     })
 
     it('is closed at 10:00, between two services', () => {
-      const result = isStoreOpen(eveningService, new Date('2024-01-05T10:00:00'))
+      const result = isStoreOpen(eveningService, new Date('2024-01-05T10:00:00'), LOCAL)
 
       expect(result.isOpen).toBe(false)
     })
@@ -132,21 +149,21 @@ describe('Store Service', () => {
     it('closes tomorrow, not today', () => {
       // 23:00 Friday closes at 02:00 *Saturday*. Reported on the wrong day, the
       // banner counts down to a moment eighteen hours in the past.
-      const result = isStoreOpen(eveningService, new Date('2024-01-05T23:00:00'))
+      const result = isStoreOpen(eveningService, new Date('2024-01-05T23:00:00'), LOCAL)
 
       expect(result.nextChange?.getDay()).toBe(6)
       expect(result.nextChange?.getHours()).toBe(2)
     })
 
     it('reports the close time on the day it happens, past midnight', () => {
-      const result = isStoreOpen(eveningService, new Date('2024-01-06T01:00:00'))
+      const result = isStoreOpen(eveningService, new Date('2024-01-06T01:00:00'), LOCAL)
 
       expect(result.nextChange?.getDay()).toBe(6)
       expect(result.nextChange?.getHours()).toBe(2)
     })
 
     it('opens later today when asked between services', () => {
-      const result = isStoreOpen(eveningService, new Date('2024-01-05T10:00:00'))
+      const result = isStoreOpen(eveningService, new Date('2024-01-05T10:00:00'), LOCAL)
 
       expect(result.nextChange?.getDay()).toBe(5)
       expect(result.nextChange?.getHours()).toBe(18)
@@ -161,12 +178,12 @@ describe('Store Service', () => {
         { day: 6, open: '18:00', close: '02:00', isClosed: false },
       ]
 
-      expect(isStoreOpen(fridayClosed, new Date('2024-01-06T01:00:00')).isOpen).toBe(false)
+      expect(isStoreOpen(fridayClosed, new Date('2024-01-06T01:00:00'), LOCAL).isOpen).toBe(false)
     })
 
     it('serves the tail of Saturday night on Sunday morning', () => {
       // The week wraps: Saturday is day 6, Sunday is day 0.
-      const result = isStoreOpen(eveningService, new Date('2024-01-07T01:00:00'))
+      const result = isStoreOpen(eveningService, new Date('2024-01-07T01:00:00'), LOCAL)
 
       expect(result.isOpen).toBe(true)
     })
@@ -180,20 +197,20 @@ describe('Store Service', () => {
     ]
 
     it('is open at 12:00', () => {
-      expect(isStoreOpen(untilMidnight, new Date('2024-01-01T12:00:00')).isOpen).toBe(true)
+      expect(isStoreOpen(untilMidnight, new Date('2024-01-01T12:00:00'), LOCAL).isOpen).toBe(true)
     })
 
     it('is open at 23:59', () => {
-      expect(isStoreOpen(untilMidnight, new Date('2024-01-01T23:59:00')).isOpen).toBe(true)
+      expect(isStoreOpen(untilMidnight, new Date('2024-01-01T23:59:00'), LOCAL).isOpen).toBe(true)
     })
 
     it('is closed at 08:00, before it opens', () => {
-      expect(isStoreOpen(untilMidnight, new Date('2024-01-01T08:00:00')).isOpen).toBe(false)
+      expect(isStoreOpen(untilMidnight, new Date('2024-01-01T08:00:00'), LOCAL).isOpen).toBe(false)
     })
 
     it('is closed on Tuesday at 00:30 — midnight is the end, not an overrun', () => {
       // Monday closes *at* midnight. There is no tail to serve on Tuesday.
-      expect(isStoreOpen(untilMidnight, new Date('2024-01-02T00:30:00')).isOpen).toBe(false)
+      expect(isStoreOpen(untilMidnight, new Date('2024-01-02T00:30:00'), LOCAL).isOpen).toBe(false)
     })
   })
 
@@ -206,8 +223,8 @@ describe('Store Service', () => {
         { day: 1, open: '00:00', close: '00:00', isClosed: false },
       ]
 
-      expect(isStoreOpen(allDay, new Date('2024-01-01T03:00:00')).isOpen).toBe(true)
-      expect(isStoreOpen(allDay, new Date('2024-01-01T15:00:00')).isOpen).toBe(true)
+      expect(isStoreOpen(allDay, new Date('2024-01-01T03:00:00'), LOCAL).isOpen).toBe(true)
+      expect(isStoreOpen(allDay, new Date('2024-01-01T15:00:00'), LOCAL).isOpen).toBe(true)
     })
 
     it('still honours isClosed, whatever the two times say', () => {
@@ -215,7 +232,7 @@ describe('Store Service', () => {
         { day: 1, open: '18:00', close: '02:00', isClosed: true },
       ]
 
-      expect(isStoreOpen(shut, new Date('2024-01-01T23:00:00')).isOpen).toBe(false)
+      expect(isStoreOpen(shut, new Date('2024-01-01T23:00:00'), LOCAL).isOpen).toBe(false)
     })
   })
 
@@ -285,7 +302,7 @@ describe('Store Service', () => {
         { day: 1, open: '09:00', close: '18:00', isClosed: false },
       ]
 
-      expect(isStoreOpen(hours, monday).isOpen).toBe(true)
+      expect(isStoreOpen(hours, monday, LOCAL).isOpen).toBe(true)
     })
   })
 
@@ -364,7 +381,7 @@ describe('Store Service', () => {
       // Create a Monday at 20:00 (after close)
       const monday = new Date('2024-01-01T20:00:00')
 
-      const result = getNextOpenTime(hours, monday)
+      const result = getNextOpenTime(hours, monday, LOCAL)
 
       expect(result).not.toBeNull()
       expect(result?.getDay()).toBe(2) // Tuesday
@@ -382,7 +399,7 @@ describe('Store Service', () => {
         { day: 6, open: '09:00', close: '18:00', isClosed: true },
       ]
 
-      const result = getNextOpenTime(hours)
+      const result = getNextOpenTime(hours, new Date(), LOCAL)
 
       expect(result).toBeNull()
     })
@@ -611,5 +628,64 @@ describe('Store Service', () => {
       expect(sorted[0]._id).toBe('s2') // Paris store first
       expect(sorted[1]._id).toBe('s1') // Lyon store second
     })
+  })
+})
+
+
+/**
+ * The storefront and `orders.create` read one clock, including when nobody said
+ * which.
+ *
+ * WHAT WAS BROKEN. `useStoreStatus` computes two answers from one moment and
+ * says so in as many words — "Both answers off one reading of the clock, so
+ * they cannot describe two different moments" — but they came from two
+ * functions with different fallbacks. `openNow` goes through
+ * `isWithinBusinessHours` → `restaurantClock`; `hoursStatus` goes through
+ * `isStoreOpen` → `readingFrame`. Given no `globalSettings.timezone` — and
+ * `globalSettings` is a singleton nothing seeds, so that is every deployment
+ * whose settings have never been saved — the first read the SERVER's clock and
+ * the second read the VISITOR's.
+ *
+ * The result on one screen: "Ouvert" decided in one zone beside "ferme à
+ * 02:00" computed in another, and an order the mutation refuses.
+ *
+ * Both fall back to `DEFAULT_RESTAURANT_TIMEZONE` now. This is the test that
+ * stops them separating again — it asserts agreement rather than either value,
+ * so it keeps holding if the default itself is ever changed.
+ */
+describe('the clock when nothing has said which', () => {
+  // 12:30 UTC on Wednesday 3 July 2024 is 14:30 in Paris (CEST) — past the
+  // close of a lunch service, and inside it on the server's clock.
+  const LUNCH: BusinessHours[] = [
+    { day: 3, open: '11:00', close: '14:00', isClosed: false },
+  ]
+  const AFTER_LUNCH_IN_PARIS = new Date('2024-07-03T12:30:00Z')
+
+  it('reads a zone-less call on the restaurant default, not on UTC', () => {
+    expect(isStoreOpen(LUNCH, AFTER_LUNCH_IN_PARIS).isOpen).toBe(false)
+    expect(isStoreOpen(LUNCH, AFTER_LUNCH_IN_PARIS, 'UTC').isOpen).toBe(true)
+  })
+
+  it('agrees with the rule orders.create applies', () => {
+    // The two halves of `useStoreStatus`, asked the same question. Neither
+    // value is asserted here — only that they are the same one.
+    for (const zone of [undefined, 'Not/AZone', 'Europe/Paris', 'America/Montreal']) {
+      const storefront = isStoreOpen(LUNCH, AFTER_LUNCH_IN_PARIS, zone).isOpen
+      const mutation = isWithinBusinessHours(
+        LUNCH,
+        AFTER_LUNCH_IN_PARIS.getTime(),
+        zone
+      )
+      expect({ zone, storefront }).toEqual({ zone, storefront: mutation })
+    }
+  })
+
+  it('falls back to the default for a zone Intl refuses, not to the visitor', () => {
+    expect(isStoreOpen(LUNCH, AFTER_LUNCH_IN_PARIS, 'Not/AZone').isOpen).toBe(false)
+  })
+
+  it('never overrides a zone that was given', () => {
+    expect(isStoreOpen(LUNCH, AFTER_LUNCH_IN_PARIS, 'UTC').isOpen).toBe(true)
+    expect(isStoreOpen(LUNCH, AFTER_LUNCH_IN_PARIS, 'Europe/Paris').isOpen).toBe(false)
   })
 })

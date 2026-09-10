@@ -317,9 +317,23 @@ during one, and answering more of it: it packs `packages/*` at HEAD, so it
 measures the code you are about to publish rather than the code already
 published, and it runs the template's test suite as well as `tsc`.
 
-It is deliberately not in CI — it builds and installs the whole engine — and it
-is not a substitute for cloning the boilerplate after a release either: it proves
-the code is consistent, not that the upload happened.
+It is not in `ci.yml` — it builds and installs the whole engine, and paying that
+on every pull request is a decision about CI time rather than about correctness.
+It **does** now gate the delivery, as `Verify the delivered tree` in
+`publish-mirror.yml`, on every path that pushes to the boilerplate. Keep running
+it by hand anyway: the workflow is the floor, and it is not a substitute for
+cloning the boilerplate after a release either — it proves the code is
+consistent, not that the upload happened.
+
+It was wired there after being green and unused for the failure it was written
+for. Four shipped test files reached above the application root — `packages/`,
+`apps/docs/`, a hard-coded sibling app — so on a client clone one scan silently
+lost every caller living in the engine and two files died on ENOENT before
+collecting. `beyours-boilerplate` was red from 7 September while every required
+check here stayed green, because none of them runs outside the workspace those
+paths resolve in. Run against `a7862e90` this check reproduced the boilerplate's
+own line exactly, `Test Files 3 failed | 140 passed (143)`, while `grep -rn
+check:mirror-build .github/` returned nothing.
 
 **It runs the tests as well as `tsc`, and both halves are needed.** Four engine
 packages ship raw `src/*.ts` rather than a build. A typecheck reads that happily,
