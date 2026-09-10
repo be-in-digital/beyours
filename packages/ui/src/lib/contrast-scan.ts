@@ -562,10 +562,16 @@ class Resolver {
   /**
    * A CSS colour value as an inline `style` writes it.
    *
-   * The three spellings this codebase actually uses inline — a hex literal, a
-   * `var(--token)` reference, and a bare palette word. `rgb()`/`rgba()` are
-   * read too because a hand-written inline style is where they turn up.
-   * Anything else returns null and is left unmeasured rather than guessed.
+   * The spellings this codebase actually uses inline: a hex literal, a
+   * `var(--token)` reference, a bare palette word, `rgb()`/`rgba()`, and both
+   * HSL forms — `hsl(var(--token))` and a raw `hsl(h s% l%)`, each with an
+   * optional alpha.
+   *
+   * The HSL pair was missing, and it is the one this design system forces:
+   * tokens are stored as bare channels (`--primary: 24 95% 53%`) so they can be
+   * tinted, which means an inline use of one CANNOT be written any other way.
+   * Anything still unrecognised returns null and is left unmeasured rather than
+   * guessed.
    */
   cssColour(value: string, mode: Mode, scope: string): { rgb: Rgb; alpha: number } | null {
     const text = value.trim()
@@ -592,6 +598,47 @@ class Resolver {
     // `var(--foreground)` inside `.storefront-theme` is that scope's value.
     const variable = text.match(/^var\(\s*--([a-z0-9-]+)\s*(?:,[^)]*)?\)$/i)
     if (variable) return this.colour(variable[1]!, mode, scope)
+
+    // `hsl(var(--primary))`, and `hsl(var(--primary) / 0.5)`.
+    //
+    // THE SPELLING THIS CODEBASE ACTUALLY WRITES, and the one that was
+    // unreadable. Every token in `globals.css` is stored as bare HSL channels
+    // — `--primary: 24 95% 53%` — precisely so a caller can tint it, so the
+    // only way to USE one in an inline style is to wrap it: `hsl(var(--x))`.
+    // Returning null for that left every such style unmeasured, silently, in a
+    // sweep whose whole job is to measure styles.
+    //
+    // The alpha after `/` is the tint. It is returned rather than applied here
+    // because the caller composites against whatever is behind it — which is
+    // the difference between "this ink is too pale" and "this ink is fine on
+    // the surface it is actually on".
+    const hslVar = text.match(
+      /^hsl\(\s*var\(\s*--([a-z0-9-]+)\s*(?:,[^)]*)?\)\s*(?:\/\s*([\d.]+%?)\s*)?\)$/i
+    )
+    if (hslVar) {
+      const resolved = this.colour(hslVar[1]!, mode, scope)
+      if (!resolved) return null
+      const raw = hslVar[2]
+      if (raw === undefined) return resolved
+      const alpha = raw.endsWith("%") ? Number(raw.slice(0, -1)) / 100 : Number(raw)
+      return Number.isFinite(alpha) ? { rgb: resolved.rgb, alpha: resolved.alpha * alpha } : resolved
+    }
+
+    // `hsl(24 95% 53%)` and `hsl(24, 95%, 53%)`, with an optional alpha. A
+    // literal written inline rather than through a token — 17 of them in this
+    // app — and read for the same reason a hex literal is.
+    const hslLiteral = text.match(
+      /^hsla?\(\s*([\d.]+)(?:deg)?[\s,]+([\d.]+)%[\s,]+([\d.]+)%\s*(?:[,/]\s*([\d.]+%?)\s*)?\)$/i
+    )
+    if (hslLiteral) {
+      const raw = hslLiteral[4]
+      const alpha =
+        raw === undefined ? 1 : raw.endsWith("%") ? Number(raw.slice(0, -1)) / 100 : Number(raw)
+      return {
+        rgb: hslToRgb(Number(hslLiteral[1]), Number(hslLiteral[2]), Number(hslLiteral[3])),
+        alpha: Number.isFinite(alpha) ? alpha : 1,
+      }
+    }
 
     // A bare word: `white`, `black`, or a palette entry.
     if (/^[a-z][a-z0-9-]*$/.test(text)) return this.colour(text, mode, scope)
