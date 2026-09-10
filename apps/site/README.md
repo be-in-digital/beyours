@@ -14,6 +14,8 @@ Next.js 16 (App Router) + Convex + Stripe + AWS SES.
 > notices, terms of sale, privacy policy and the affiliate contract all stay
 > under that name — see [Brand and legal entity](#brand-and-legal-entity).
 
+> Counts below were measured on **2026-09-10, at commit `f6c33c3`**.
+
 ---
 
 ## In one minute
@@ -24,7 +26,13 @@ Next.js 16 (App Router) + Convex + Stripe + AWS SES.
 | **What comes in** | Prospects on the marketing pages, affiliates on the portal |
 | **What goes out** | Stripe orders, signed contracts, commissions, tracked incidents |
 | **What sets it apart** | It depends on **no** `@be-in-digital/*` package — this is a website, not an instance of the product |
-| **Size** | 37 routes · 119 components · 19 Convex tables · 3 crons · ~35,900 lines |
+| **Size** | 37 page routes · 1 route handler · 120 components · 60 Convex modules · 22 tables · 6 crons · ~63,000 lines |
+
+```bash
+# re-measure
+find apps/site/app -name 'page.tsx' | wc -l
+grep -c defineTable apps/site/convex/schema.ts
+```
 
 ---
 
@@ -32,24 +40,45 @@ Next.js 16 (App Router) + Convex + Stripe + AWS SES.
 
 This is the peculiarity of this app, and the first thing to understand.
 
+```mermaid
+flowchart TB
+    subgraph app["apps/site — one Next.js application"]
+        L["(landing)<br/>14 pages"]
+        D["(demo)<br/>demo/[slug]"]
+        P["parrainage<br/>8 pages"]
+        A["admin<br/>14 pages"]
+    end
+
+    PROS["Prospects"] --> L & D
+    AFF["External affiliates"] --> P
+    TEAM["Internal team"] --> A
+
+    P -.->|"same identity system<br/>affiliateUsers"| A
+    A -->|"26 public functions<br/>26 requireAdmin calls"| CVX["Own Convex backend<br/>famous-wildcat-229"]
+    L --> CVX
+    L -->|checkout| STR["Stripe"]
+
+    style A fill:#bf872622,stroke:#bf8726
+```
+
 | Route | Audience | Pages | Contents |
-| --- | --- | --- | --- |
+| --- | --- | ---: | --- |
 | `(landing)` | Prospects | 14 | Home, features, pricing, catalogue, contact, checkout, legal pages |
 | `(demo)` | Prospects | 1 | Interactive template demo, `demo/[slug]` |
 | `parrainage` | External affiliates | 8 | Signup, signed contract, dashboard, sharing |
 | `admin` | Internal team | 14 | Clients, fleet, incidents, monitoring, invoices, subscriptions, sales, prospects |
 
-**Why the internal console is not a separate app.** It shares its identity
-system with the affiliate portal: sign-in goes through `/parrainage/connexion`,
-the table is `affiliateUsers`, and an administrator is nothing more than an
-affiliate with `role: "admin"`. Splitting them would require a cross-domain
-session for a benefit limited to blast radius.
+**Why the internal console is not a separate app.** It shares its identity system
+with the affiliate portal: sign-in goes through `/parrainage/connexion`, the
+table is `affiliateUsers`, and an administrator is nothing more than an affiliate
+with `role: "admin"`. Splitting them would require a cross-domain session for a
+benefit limited to blast radius.
 
 Its 26 Convex functions **all** go through `requireAdmin`. Verified: 26 public
 functions, 26 calls.
 
-> Note on `(landing)`: the group also carries the Stripe checkout and the four
-> legal pages. It is not a purely marketing surface.
+> `(landing)` also carries the Stripe checkout and the four legal pages. It is
+> not a purely marketing surface.
 
 ---
 
@@ -75,11 +104,14 @@ applies the whole thing at runtime through scoped CSS variables.
 
 > ⚠️ **This demo storefront is a reimplementation.** It shares no code with
 > `apps/themes`, the product actually shipped. A prospect therefore tries
-> something other than what they buy, and the two drift apart with every
-> change. This is the main open architectural issue in the repository.
+> something other than what they buy, and the two drift apart with every change.
+> This is the main open architectural issue in the repository.
 >
-> Worth noting: `apps/themes/demos/` already holds 50 browsable demos built
-> from the real templates. Convergence probably goes through there.
+> `apps/themes/demos/` already holds 50 browsable demos built from the real
+> templates. Convergence probably goes through there.
+
+**Three lists, no test reconciling them:** 52 entries here, 51 template
+directories in `apps/themes/templates/`, 50 demos in `apps/themes/demos/`.
 
 ---
 
@@ -103,19 +135,24 @@ already signed against that text**.
 That is why the August 2026 BeYours rename swept the whole repository **except
 this directory**.
 
-VAT: **régime réel**, 20 % (art. 278 of the CGI), settled in #174.
-`VAT.regime` in `lib/legal/company.ts` is the single source of truth, and every
-customer-facing mention is read from it — the pricing footnote, the terms of
-sale, the legal notice and the invoice. Charging is gated by
-`NEXT_PUBLIC_TVA_ENABLED` (Next) and `STRIPE_TAX_ENABLED` (Convex); both are
-checked against the regime, each where it is visible. The Next flag is refused
-at boot when it contradicts the regime or is missing — missing being the
-default state of a fresh project, and the state that used to escape. The Convex
-flag is out of the boot check's reach and refuses the sale instead. The
-checkout also carries the tax stance the client displayed, so the two envs —
-which never meet — cannot disagree about VAT in front of the customer. That is
-one bit and not the total: a price that drifts for another reason (a founders
-slot taken between render and submit, a stale bundle) is not covered by it.
+### VAT
+
+**Régime réel, 20 %** (art. 278 of the CGI), settled in #174. `VAT.regime` in
+`lib/legal/company.ts` is the single source of truth, and every customer-facing
+mention is read from it — the pricing footnote, the terms of sale, the legal
+notice and the invoice.
+
+Charging is gated by two flags that **never meet at runtime**:
+
+| Flag | Lives on | Behaviour when wrong |
+| --- | --- | --- |
+| `NEXT_PUBLIC_TVA_ENABLED` | Next.js | **Refused at boot** when it contradicts the regime or is missing — missing being the default state of a fresh project, and the state that used to escape |
+| `STRIPE_TAX_ENABLED` | Convex | Out of the boot check's reach, so it **refuses the sale** instead |
+
+The checkout also carries the tax stance the client displayed, so the two
+environments cannot disagree about VAT in front of the customer. That is one bit
+and not the total: a price that drifts for another reason — a founders slot taken
+between render and submit, a stale bundle — is not covered by it.
 
 ---
 
@@ -141,27 +178,34 @@ run.
 
 ## Convex backend
 
-`convex/` — 34 modules, 19 tables, 3 scheduled jobs, one HTTP webhook
-(`POST /webhooks/stripe`). **Its own Convex deployment**, separate from the
-agency's and from the clients'. Four domains:
+`convex/` — 60 modules, 22 tables, 6 scheduled jobs, one HTTP webhook
+(`POST /webhooks/stripe`). **Its own Convex deployment**
+(`famous-wildcat-229`), separate from the engine's and from the clients'.
 
-**Affiliates** — `affiliateUsers`, `referralCodes`, `referrals`,
-`affiliateSettings`. Signup, referral code, commission tracking.
+Four domains:
 
-**Contracts** — `contractVersions`, `contractSignatures`. Signing happens **in
-the app, with no external provider**. Yousign was dropped (expired
-subscription); the schema keeps some inherited optional fields, and
-`MISE_EN_PROD.md` still mentions its variables — stale.
+| Domain | Tables |
+| --- | --- |
+| **Affiliates** | `affiliateUsers`, `referralCodes`, `referrals`, `affiliateSettings` |
+| **Contracts** | `contractVersions`, `contractSignatures` |
+| **Commerce** | `orders`, `payments`, `subscriptions`, `invoices` |
+| **Operations** | `saDeployments`, `saStores`, `saSalesSnapshots`, `saIncidents`, `saIncidentUpdates`, `saMonitoringChecks`, `saActivity` |
 
-**Commerce** — `orders`, `payments`, `subscriptions`, `invoices`. Stripe and
-Stripe Connect.
+Signing happens **in the app, with no external provider**. Yousign was dropped
+(expired subscription); the schema keeps some inherited optional fields, and
+`MISE_EN_PROD.md` still documents `YOUSIGN_API_KEY` and
+`YOUSIGN_WEBHOOK_SECRET` — stale.
 
-**Operations** — `saDeployments`, `saStores`, `saSalesSnapshots`, `saIncidents`,
-`saIncidentUpdates`, `saMonitoringChecks`, `saActivity`. This is the internal
-console: tracking the fleet of client sites, incidents, monitoring, revenue.
+### This app builds its own SES client, and that is not drift
 
-Multi-provider email in `convex/email/`: AWS SES by default, Resend as an
-alternative, selected by `EMAIL_PROVIDER`.
+`convex/email/providers.ts:23,65,68` constructs an `SESv2Client` directly. In the
+**engine** — `apps/themes` and `apps/reference` — no Convex action may do that;
+`convex/emailTransport.ts` is the one seam and
+`email-provider-switch.test.ts` holds it there.
+
+That rule is the engine's. This app has its own Convex backend and none of the
+engine packages, so it has no `emailTransport.ts` to route through. When quoting
+the rule, say which app you mean.
 
 ---
 
@@ -192,12 +236,16 @@ These were missing from the list above until 2026-09-03:
 | `STRIPE_PRODUCT_CREATION_PREMIUM` | `convex/stripe.ts:67,78` | referral discount spreads over the maintenance line |
 | `BEYOURS_TEST_CHECKOUT` | `convex/stripeMode.ts:38,58` | nothing — but only `"true"` enables the no-payment path, and it must be unset anywhere that sells |
 
-Creating the Stripe objects behind those ids is an account-owner action:
+Creating the Stripe objects behind those ids is an **account-owner action**, not
+a code change:
 [`tasks/stripe-founders-offer-runbook.md`](../../tasks/stripe-founders-offer-runbook.md).
-`.env.example` carries the same list with the full reasoning.
 
 `.gitignore` covers `.env*` except the templates. On an app that handles Stripe
 in live mode, never relax that rule.
+
+> Two offers are sold — Essentielle and Premium — and `convex/planAvailability.ts`
+> decides which may be **bought**. It does not decide what a bought plan unlocks:
+> the engine has no plan gating at all.
 
 ---
 
@@ -207,22 +255,31 @@ From this directory, or via `pnpm --filter @beyours/site <cmd>` from the root:
 
 | Command | Effect |
 | --- | --- |
-| `pnpm dev` | Development server |
-| `pnpm build` | Production build |
-| `pnpm lint` · `pnpm type-check` | Quality |
-| `pnpm test` | 33 Vitest unit tests, 6 files |
+| `pnpm dev` | `next dev`, wrapped in the Infisical bootstrap (`--optional`) |
+| `pnpm dev:plain` | `next dev` with no wrapper |
+| `pnpm dev:backend` | `convex dev` |
+| `pnpm build` · `pnpm start` | Next.js |
+| `pnpm lint` | ESLint |
+| `pnpm type-check` | `tsc --noEmit` **twice** — the app, then `convex/tsconfig.json` |
+| `pnpm test` · `pnpm test:coverage` | Vitest — 58 files |
 | `pnpm test:e2e` | Playwright |
-| `pnpm seed` | Demo dataset for the console |
+| `pnpm seed` | `convex run saSeed:run` — demo dataset for the console |
+| `pnpm seed:reset` | `convex run saSeed:reset` — destructive, takes `{"confirm":true}` |
+
+`scripts/check-prod-bundle.mjs` inspects the served production bundle. It is how
+this app's real Convex backend was found in the first place — it had never been
+written down anywhere.
+
+⚠️ **This app's tests escape `tsc` and ESLint.** A fixture with the wrong type
+passes green. Manual verification here has its own false positives.
 
 ---
 
 ## Fonts
 
 All 7 families are **self-hosted** in `app/fonts/` through `next/font/local` —
-9 files, 212 KB.
-
-Four of them are the templates' accent typefaces: Fraunces for pizzeria, Anton
-for fast food, Oswald for food truck, Zen Kaku for Asian.
+9 files, 212 KB. Four are the templates' accent typefaces: Fraunces for
+pizzeria, Anton for fast food, Oswald for food truck, Zen Kaku for Asian.
 
 **Do not go back to `next/font/google`.** That loader downloads the woff2 files
 from `fonts.gstatic.com` at build time: seven families, so seven chances for a
@@ -239,8 +296,7 @@ Neutralised by an `eslint-plugin-react-hooks@7.0.1` override hoisted to the
 monorepo root — 7.1.1 promotes them to errors. These are real signals worth
 addressing.
 
-**`MISE_EN_PROD.md`** documents `YOUSIGN_API_KEY` and `YOUSIGN_WEBHOOK_SECRET`
-for a provider that was dropped.
+**`MISE_EN_PROD.md` documents a dropped provider.** Yousign, twice.
 
 ---
 
@@ -263,9 +319,8 @@ process is described in [`PROCESS_DE_VENTE.md`](./PROCESS_DE_VENTE.md).
    [`DESIGN.md`](./DESIGN.md) for the art direction.
 2. `lib/legal/company.ts` before any change touching the brand, the legal pages
    or the affiliate contract.
-3. `lib/templates-data.ts` and `lib/template-storefront.ts` to understand the
-   template system — the commercial core.
-4. `convex/schema.ts` for the data model, 530 commented lines.
+3. `lib/templates-data.ts` and `lib/template-storefront.ts` — the commercial core.
+4. `convex/schema.ts` for the data model, 618 commented lines.
 5. `pnpm dev:site` + `npx convex dev`, then `pnpm seed` to populate the console.
 
 ---
@@ -279,10 +334,10 @@ Its history followed at every step.
 
 The three shared packages of the old monorepo were dissolved: `webgl-utils`
 became `lib/webgl/`, `config` was inlined into `tsconfig.json`, and `tokens` was
-dropped — it was declared as a dependency without being imported anywhere.
+dropped — declared as a dependency without being imported anywhere.
 
-`lib/webgl/` has since gone the same way as `tokens`, and for the same reason.
-Its only consumer was `components/webgl/hero-scene.tsx`, a `HeroScene` that no
-route ever rendered, so three.js and `@react-three/fiber` were 41 MB of
-`node_modules` reachable from no page. `tests/dependency-hygiene.test.ts` now
-makes that the standing rule rather than a thing to notice twice.
+`lib/webgl/` has since gone the same way, and for the same reason. Its only
+consumer was `components/webgl/hero-scene.tsx`, a `HeroScene` that no route ever
+rendered, so three.js and `@react-three/fiber` were 41 MB of `node_modules`
+reachable from no page. `tests/dependency-hygiene.test.ts` now makes that the
+standing rule rather than a thing to notice twice.
