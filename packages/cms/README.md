@@ -1,8 +1,8 @@
 # `@be-in-digital/cms`
 
 The block registry behind the custom CMS: block and field definitions, the
-validation that keeps a page well-formed, media handling, and HTML
-sanitisation.
+validation that keeps a page well-formed, media handling, and the SVG
+sanitiser.
 
 `3.1.0` · 9 source files · 982 lines · shipped as `dist/` (tsup) · the smallest
 package that a client actually notices
@@ -14,12 +14,44 @@ package that a client actually notices
 | Subpath | Holds |
 | --- | --- |
 | `.` | Types, the registry, validation, media |
-| `./sanitize` | HTML sanitisation, isolated so it can be imported on its own |
+| `./sanitize` | `sanitizeSvg` and `SanitizeResult` — the **SVG** sanitiser, and nothing else |
 
 ```ts
-import type { BlockDefinition, PageDefinition } from "@be-in-digital/cms"
-import { sanitize } from "@be-in-digital/cms/sanitize"
+import {
+  type BlockDefinition,
+  type PageDefinition,
+  containsActiveContent,          // DOM-free detection — on the barrel
+} from "@be-in-digital/cms"
+
+import { sanitizeSvg } from "@be-in-digital/cms/sanitize"   // the parser
 ```
+
+### The sanitiser is split across the two entry points, deliberately
+
+An uploaded SVG is a document that can carry script, so it gets both a check and
+a cleaner — and they do **not** live in the same place:
+
+| Function | Entry point | Needs |
+| --- | --- | --- |
+| `containsActiveContent` | `.` (the barrel) | nothing — DOM-free, dependency-free |
+| `inspectSvgForActiveContent` → `ActiveContentReport` | `.` | nothing |
+| `sanitizeSvg` → `SanitizeResult` | `./sanitize` | `isomorphic-dompurify`, and therefore a DOM |
+
+The barrel is imported by Convex isolate modules — `convex/cms.ts`,
+`cmsAutoTranslate.ts`, `cmsSeedData.ts`, `cmsMediaConfirmUpload.ts` — which have
+no DOM. Re-exporting `sanitizeSvg` from it made **the whole backend fail to
+push**:
+
+```
+Failed to analyze cms.js: Cannot read properties of undefined (reading 'bind')
+```
+
+So the refusal check stays on the barrel, where a Convex isolate can reach it,
+and only the server-side callers that actually clean an SVG pull the parser in.
+Do not "tidy" `sanitizeSvg` back onto the barrel.
+
+**HTML sanitisation is a different problem and lives elsewhere** —
+`@be-in-digital/convex-functions/htmlSanitize`.
 
 ---
 
@@ -31,7 +63,7 @@ import { sanitize } from "@be-in-digital/cms/sanitize"
 | `src/registry/blocks/` | One module per block type |
 | `src/validation/` | What a page must satisfy before it is stored or published |
 | `src/media/` | Media references inside block values |
-| `src/sanitize/` | Untrusted HTML in, safe HTML out |
+| `src/sanitize/` | Untrusted SVG in, safe SVG out, plus the active-content report |
 
 The registry is the source of truth in both directions: the editor renders its
 form from a block definition, and validation reads the same definition to judge

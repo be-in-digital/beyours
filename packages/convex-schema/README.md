@@ -25,11 +25,11 @@ this package's own scripts.
 | `./tables` | The 33 table modules |
 | `./validators` | Shared Convex validators |
 | `./types` | Hand-written types over the schema |
-| `./dataModel` | The generated `DataModel`, `Doc` and `Id` types |
+| `./dataModel` | `SchemaDataModel`, `TableName`, `Doc<T>`, `DocId<T>`, and the three ctx types |
 
 ```ts
 import { schema } from "@be-in-digital/convex-schema"
-import type { Doc, Id } from "@be-in-digital/convex-schema/dataModel"
+import type { Doc, DocId } from "@be-in-digital/convex-schema/dataModel"
 ```
 
 ---
@@ -119,11 +119,17 @@ const parsed = createProductSchema.parse(args)
 Typing a document or an id:
 
 ```ts
-import type { Doc, Id } from "@be-in-digital/convex-schema/dataModel"
+import type { Doc, DocId } from "@be-in-digital/convex-schema/dataModel"
 
 function priceOf(product: Doc<"products">): number { … }
-function forStore(storeId: Id<"stores">) { … }
+function forStore(storeId: DocId<"stores">) { … }
 ```
+
+**The id type is `DocId<T>`, not `Id<T>`.** Convex's own generated code calls it
+`Id`, and this package deliberately does not: a name that collides with an app's
+`_generated/dataModel` would be settled by import order rather than by intent.
+The context types are named the same way — `SchemaQueryCtx`,
+`SchemaMutationCtx`, `SchemaActionCtx`.
 
 ---
 

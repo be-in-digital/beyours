@@ -14,18 +14,19 @@ One export. Everything is named.
 ```ts
 import {
   renderTemplateToEmailHtml,
-  segmentFilter,
+  buildSegmentFilter,
   parseSubscriberCsv,
+  validateCampaign,
 } from "@be-in-digital/marketing"
 ```
 
 | Module | Answers |
 | --- | --- |
 | `email-html-renderer.ts` | A block tree in, email-safe HTML out |
-| `segment-filter.ts` | Which subscribers a segment resolves to |
-| `csv-parser.ts` | A pasted or uploaded subscriber list, validated |
+| `segment-filter.ts` | Which subscribers a segment resolves to — `buildSegmentFilter`, `evaluateRule`, `getNestedValue` |
+| `csv-parser.ts` | A pasted or uploaded subscriber list — `parseSubscriberCsv` |
 | `double-opt-in.ts` | The confirmation handshake |
-| `campaign-validation.ts` | Is this campaign sendable |
+| `campaign-validation.ts` | Is this campaign sendable — `validateCampaign` |
 | `stats.ts` | Opens, clicks, bounces, complaints |
 
 ---
