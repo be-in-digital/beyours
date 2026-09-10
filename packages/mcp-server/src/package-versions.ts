@@ -15,10 +15,10 @@ export const PACKAGE_VERSIONS = {
   "integrations": "2.2.2",
   "marketing": "3.0.0",
   "restaurant": "4.1.1",
-  "ui": "4.3.1",
+  "ui": "4.3.2",
 } as const;
 
 export type RegisteredPackage = keyof typeof PACKAGE_VERSIONS;
 
 /** Version this MCP server reports over the wire, from its own package.json. */
-export const MCP_SERVER_VERSION = "1.1.4";
+export const MCP_SERVER_VERSION = "1.1.5";

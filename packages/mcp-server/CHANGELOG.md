@@ -1,5 +1,19 @@
 # @be-in-digital/mcp-server
 
+## 1.1.5
+
+### Patch Changes
+
+- Report `@be-in-digital/ui` at 4.3.2
+
+  `PACKAGE_VERSIONS` is what this server tells a consumer to install, so it is
+  only correct between two releases by accident. The `ui` bump to 4.3.2 left it
+  naming 4.3.1, and `registry.test.ts` caught it — `expected '4.3.1' to be
+'4.3.2'`.
+
+  Regenerated with `pnpm --filter @be-in-digital/mcp-server sync:versions`, the
+  command the generated file's own header names, rather than edited by hand.
+
 ## 1.1.4
 
 ### Patch Changes
