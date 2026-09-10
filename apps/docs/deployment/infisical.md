@@ -165,8 +165,25 @@ Machine identities, one per *usage*:
 
 | Identity | Used by | Access | Created |
 |---|---|---|---|
-| `infra-ci` | GitHub Actions | project `beyours-platform`, role **Viewer** | 2026-09-01, id `53cae282-0b9b-44c4-b122-c2ad232d10aa` |
+| `infra-ci` | GitHub Actions | project `beyours-platform`, role **Viewer** | 2026-09-01 |
 | `infra-provisioning` | ops laptops running `pnpm convex:env` | same, when it is needed | not yet |
+
+`infra-ci` carries **two different UUIDs**, and they are not interchangeable:
+
+| What | Value | Where it goes |
+|---|---|---|
+| Identity ID | `53cae282-0b9b-44c4-b122-c2ad232d10aa` | the identity's own page URL, and nowhere else |
+| Universal Auth **Client ID** | `ef6c3483-d126-410a-9bd6-9af34a35734b` | `INFISICAL_CLIENT_ID` |
+
+> The identity ID was the only one written down here, so it is the one that went
+> into `INFISICAL_CLIENT_ID`, and the store answered `401 Invalid credentials`
+> every morning from 2026-09-01 to 2026-09-10
+> ([#456](https://github.com/be-in-digital/beyours/issues/456)). Infisical
+> returns the same 401 for a wrong client ID as for a revoked client secret, so
+> the error does not say which. The identity's own page does: it read
+> `Last Used: Never`, with its client secret at 0 uses. Nothing had expired —
+> the credential had never once been accepted. Read that page before rotating
+> anything, or you will replace a secret that was always correct.
 
 Its **organization** role is `no-access`: an identity should reach a project
 because it was granted that project, never because it is a member of the org.
@@ -419,9 +436,17 @@ Done (2026-09-01):
 - [x] `scripts/infisical-bootstrap.mjs` — `scopes`, `folders`, `check`, `plan`, `migrate`
 - [x] `setup-convex-env.sh --infisical` — the read path back onto a deployment
 - [x] `ci.yml`'s build job reads `/platform`, behind `INFISICAL_ENABLED`
-- [x] **Proven end to end**: run 33476568224, job `Build`, step *Load the shared
-      credentials from Infisical* — `HAS_INFISICAL: true`, universal auth
-      accepted, step green. The machine identity works from CI.
+- [x] **Proven end to end**: run 34435958325, job `Check the store answers`, step
+      *Log in as the CI machine identity* — universal auth accepted, `prod`
+      graded. Dated 2026-09-10, and the date matters: this is the FIRST login
+      this identity ever completed.
+- [ ] ~~Proven end to end: run 33476568224, job `Build`, step *Load the shared
+      credentials from Infisical* — universal auth accepted, step green.~~
+      Retracted 2026-09-10. That step carries `continue-on-error: true`
+      (`.github/workflows/ci.yml:376`), so it cannot report red and its colour
+      proves nothing about the store. The identity had authenticated zero times
+      when this box was ticked, and stayed at zero for nine days. Cite a step
+      that is allowed to fail, or cite nothing.
 
 Done (2026-09-07, [#328](https://github.com/be-in-digital/beyours/issues/328)) —
 the chain was measured end to end and three of its links were carrying nothing,
