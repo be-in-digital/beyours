@@ -21,4 +21,4 @@ export const PACKAGE_VERSIONS = {
 export type RegisteredPackage = keyof typeof PACKAGE_VERSIONS;
 
 /** Version this MCP server reports over the wire, from its own package.json. */
-export const MCP_SERVER_VERSION = "1.1.4";
+export const MCP_SERVER_VERSION = "1.1.5";
