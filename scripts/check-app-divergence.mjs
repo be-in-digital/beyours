@@ -135,15 +135,42 @@ const isConfig = (rel) => {
 
 /* ── Check 1: a shared file that differs must be a documented decision ───── */
 
+/** How many mismatches a second read did not reproduce. Reported, never hidden. */
+let unreproducedMismatches = []
+
+/**
+ * Whether two files differ, confirmed by reading them again.
+ *
+ * WHY A SECOND READ. This check runs in `Lint`, which branch protection
+ * requires by name, so a false red here blocks a merge and reads as the tree's
+ * fault. It produced one: `scripts/setup-aws.sh` reported as diverging in one
+ * run out of four, with `diff` exiting 0 on the same two files throughout and
+ * neither app touched between runs.
+ *
+ * A retry cannot mask a real divergence, which is the only thing that would
+ * make it a bad idea: two files that genuinely differ differ on every read, so
+ * the second comparison fails exactly as the first did. Only a mismatch that
+ * does NOT reproduce is dropped — and dropping it silently would trade a
+ * visible false red for an invisible one, so each is collected and reported.
+ *
+ * This does not explain the anomaly. It stops it deciding a merge.
+ */
+function filesDiffer(rel, aPath, bPath) {
+  const compare = () => !fs.readFileSync(aPath).equals(fs.readFileSync(bPath))
+  if (!compare()) return false
+  if (compare()) return true
+  unreproducedMismatches.push(rel)
+  return false
+}
+
 function checkTwins() {
   const failures = []
+  unreproducedMismatches = []
   for (const rel of walk(REFERENCE)) {
     if (isConfig(rel) || allowed.has(rel)) continue
     const themePath = path.join(THEMES, rel)
     if (!fs.existsSync(themePath)) continue // one-sided; see checkE2eParity
-    const a = fs.readFileSync(path.join(REFERENCE, rel))
-    const b = fs.readFileSync(themePath)
-    if (!a.equals(b)) failures.push(rel)
+    if (filesDiffer(rel, path.join(REFERENCE, rel), themePath)) failures.push(rel)
   }
   return failures
 }
@@ -196,6 +223,23 @@ if (parity.length) {
   console.error(`  A spec that runs against the bench and not the template leaves the`)
   console.error(`  shippable side unproven; a Convex function present on one side only`)
   console.error(`  fails at runtime the first time something calls it.`)
+}
+
+// Reported whether the run passes or fails. A mismatch that a second read did
+// not reproduce is not a divergence, but it is not nothing either: it is the
+// anomaly that made this required check go red on an untouched tree, and it
+// stays visible so the next occurrence can be counted rather than rediscovered.
+if (unreproducedMismatches.length) {
+  const list = unreproducedMismatches.join(", ")
+  if (process.env.GITHUB_ACTIONS) {
+    console.log(
+      `::notice::${unreproducedMismatches.length} file(s) compared unequal once and equal on a second read: ${list}. Not treated as divergence.`
+    )
+  }
+  console.error(
+    `\n  Note: ${unreproducedMismatches.length} file(s) compared unequal once and equal on a second read — ${list}.`
+  )
+  console.error(`  Not counted as divergence. See filesDiffer() in ${SELF}.\n`)
 }
 
 if (twins.length || parity.length) {
