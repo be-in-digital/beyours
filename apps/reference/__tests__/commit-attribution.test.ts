@@ -10,6 +10,8 @@ import {
   ATTRIBUTION_RULES,
   exclusionsFromEvent,
   findAttribution,
+  findAttributingIdentity,
+  IDENTITY_RULES,
   rangeMustHaveCommits,
   runSelfTest,
   SELF_TEST_CASES,
@@ -506,6 +508,62 @@ describe("the Lint check, against a real repository", () => {
     }
   }
 
+    /** Commit as `who` — author only, which is the shape a squash reads. */
+    const commitAs = (
+      dir: string,
+      git: (...args: string[]) => string,
+      who: string,
+      message: string,
+    ) => {
+      fs.appendFileSync(path.join(dir, "a.txt"), "more\n")
+      git("add", "-A")
+      const file = path.join(dir, "msg.txt")
+      fs.writeFileSync(file, message)
+      git("commit", "-q", "--author", who, "-F", file)
+
+      try {
+        execFileSync(
+          process.execPath,
+          [path.join(dir, "scripts/check-commit-attribution.mjs"), "--range", "HEAD~1..HEAD"],
+          { cwd: dir, encoding: "utf8", stdio: "pipe" },
+        )
+        return { status: 0, output: "" }
+      } catch (error) {
+        const failure = error as { status?: number; stdout?: string; stderr?: string }
+        return {
+          status: failure.status ?? -1,
+          output: `${failure.stdout ?? ""}${failure.stderr ?? ""}`,
+        }
+      }
+    }
+
+    test("a clean message written under the assistant's account is refused", () => {
+      const { dir, git } = scratch()
+
+      const refused = commitAs(
+        dir,
+        git,
+        "Claude <noreply@anthropic.com>",
+        "feat: a change whose message says nothing at all\n",
+      )
+      expect(refused.status).toBe(1)
+      // The report has to name the fix, because rewording cannot reach an identity.
+      expect(refused.output).toContain("--reset-author")
+    })
+
+    test("the same message from a colleague of that name is not", () => {
+      const { dir, git } = scratch()
+
+      expect(
+        commitAs(
+          dir,
+          git,
+          "Claude Dubois <claude.dubois@restaurant.fr>",
+          "feat: a change whose message says nothing at all\n",
+        ).status,
+      ).toBe(0)
+    })
+
   test("refuses an attributed commit and passes a clean one", () => {
     const { dir, git } = scratch()
 
@@ -643,5 +701,78 @@ describe("the wiring", () => {
     const lint = Object.values(workflow.jobs).find((job) => job.name === "Lint")
     expect(lint, "ci.yml no longer has a job named Lint").toBeDefined()
     expect(lint?.steps?.map((step) => step.run)).toContain("pnpm check:attribution")
+  })
+})
+
+/**
+ * The other way a trailer reaches `main`: who WROTE the commit, not what it says.
+ *
+ * The check read messages and deliberately not identities, on the stated
+ * reasoning that "squash-merge drops branch authorship, so refusing it would
+ * fail pull requests over commits that never land". #446 falsified it: all
+ * three of its branch commits were written under an AI assistant's own account,
+ * none of the three messages carried a trailer, and the squash on `main` ends
+ * with GitHub's `---------` separator and a co-author trailer it synthesised
+ * from that authorship. Squash-merge converts branch authorship into a trailer;
+ * it does not drop it.
+ *
+ * So the message scan could read three clean commits and watch the merge write
+ * the violation. These cases hold the correction — and the second half of them
+ * holds the thing that decides whether this guard survives: `CLAUDE.md` records
+ * that the assistant's name is also an ordinary French given name, and a guard
+ * that refuses a colleague's commit gets switched off rather than obeyed.
+ */
+describe("attribution in the identity rather than the message", () => {
+  test("the rules are a list, and each row says why", () => {
+    expect(IDENTITY_RULES.length).toBeGreaterThan(0)
+    for (const rule of IDENTITY_RULES) {
+      expect(rule.id).toMatch(/^[a-z-]+$/)
+      expect(rule.why.length).toBeGreaterThan(10)
+      expect(typeof rule.match).toBe("function")
+    }
+  })
+
+  test("an assistant's own account is refused", () => {
+    expect(findAttributingIdentity("Claude", "noreply@anthropic.com")).not.toBeNull()
+    expect(findAttributingIdentity("Claude Opus 5", "noreply@anthropic.com")).not.toBeNull()
+    expect(findAttributingIdentity("Assistant", "someone@openai.com")).not.toBeNull()
+  })
+
+  test("an assistant's bot account is refused", () => {
+    expect(
+      findAttributingIdentity("Copilot", "198982749+Copilot@users.noreply.github.com"),
+    ).not.toBeNull()
+  })
+
+  test("a colleague of the same given name is not", () => {
+    // The false positive that would cost this guard its life.
+    expect(findAttributingIdentity("Claude Dubois", "claude.dubois@restaurant.fr")).toBeNull()
+    expect(
+      findAttributingIdentity("Claude Dupont", "72397342+claude-dupont@users.noreply.github.com"),
+    ).toBeNull()
+  })
+
+  test("GitHub's own committer identity is not", () => {
+    // It commits every squash on `main`. Refusing it refuses the history.
+    expect(findAttributingIdentity("GitHub", "noreply@github.com")).toBeNull()
+  })
+
+  test("a missing identity is not a verdict", () => {
+    expect(findAttributingIdentity("", "")).toBeNull()
+    expect(findAttributingIdentity(undefined, undefined)).toBeNull()
+  })
+
+  test("every identity rule is covered by the self-test the check runs", () => {
+    // The check proves its rules before trusting them, so a rule outside
+    // `SELF_TEST_CASES` is a rule nothing proves.
+    const covered = new Set(
+      SELF_TEST_CASES.filter((c: { identity?: unknown }) => c.identity).flatMap(
+        (c: { identity: { name: string; email: string } }) => {
+          const rule = findAttributingIdentity(c.identity.name, c.identity.email)
+          return rule ? [rule.id] : []
+        },
+      ),
+    )
+    expect([...IDENTITY_RULES.map((r) => r.id)].filter((id) => !covered.has(id))).toEqual([])
   })
 })

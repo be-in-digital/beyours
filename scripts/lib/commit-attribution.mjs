@@ -566,6 +566,16 @@ export const SELF_TEST_CASES = [
     expect: "reject",
   },
   {
+    // Reaches `assistant-identity` specifically. The case above cannot: it
+    // trips `assistant-bot-account` first, so without this one the name rule
+    // was covered by nothing — found by the coverage assertion in
+    // `apps/reference/__tests__/commit-attribution.test.ts`, which is what that
+    // assertion is for.
+    name: "the product name on a no-reply address of our own",
+    identity: { name: "Claude Code", email: "no-reply@be-in-digital.fr" },
+    expect: "reject",
+  },
+  {
     // The case that decides whether this guard survives contact with the team.
     // `CLAUDE.md` says it in as many words: Claude is an ordinary French given
     // name. Refusing a colleague's commit gets a guard switched off.
