@@ -4,7 +4,7 @@
  * Export plain { args, handler } objects for Convex query/mutation wrappers
  */
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 
 // === QUERIES ===
 
@@ -169,9 +169,20 @@ export const remove = {
     const language = await ctx.db.get(args.id)
     if (!language) throw new Error("Language not found")
 
-    // Don't allow deletion of default language
+    // Don't allow deletion of default language.
+    //
+    // `ConvexError` and in French, for two separate reasons. A plainly thrown
+    // `Error` is redacted by Convex in production, so the owner saw
+    // "Server Error" on a click that was refused for a perfectly good reason;
+    // and the message reaches a French screen, where an English sentence is
+    // the product speaking a language its user did not choose.
     if (language.isDefault) {
-      throw new Error("Cannot delete the default language")
+      throw new ConvexError({
+        code: "language_is_default",
+        message:
+          "Cette langue est la langue par défaut de l'établissement. " +
+          "Désignez-en une autre par défaut avant de la supprimer.",
+      })
     }
 
     await ctx.db.delete(args.id)

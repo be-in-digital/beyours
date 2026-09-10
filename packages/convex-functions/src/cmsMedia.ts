@@ -8,7 +8,7 @@
  *   createMedia(status=processing) → presign → PUT S3 → confirmUpload → processImage → setMediaReady
  */
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import {
   getExtensionFromMimeType,
   getMediaKind,
@@ -234,9 +234,17 @@ export const deleteMedia = {
     for (const block of allBlocks) {
       for (const fv of Object.values(block.values)) {
         if ((fv as { mediaId?: string })?.mediaId === args.mediaId) {
-          throw new Error(
-            `Cannot delete: media is referenced in block "${block.blockKey}" (page "${block.pageSlug}", ${block.isDraft ? "draft" : "published"})`,
-          )
+          // `ConvexError`, and in French. Thrown plainly this was redacted to
+          // "Server Error" in production, on a media library that shows a
+          // delete button beside every file — so the owner learned nothing
+          // about which page was still using it.
+          throw new ConvexError({
+            code: "media_in_use_by_block",
+            message:
+              `Ce média est utilisé par le bloc « ${block.blockKey} » de la page ` +
+              `« ${block.pageSlug} » (${block.isDraft ? "brouillon" : "publiée"}). ` +
+              "Retirez-le de cette page avant de le supprimer.",
+          })
         }
       }
     }
@@ -256,9 +264,12 @@ export const deleteMedia = {
       ].filter(Boolean)
 
       if (mediaIds.includes(args.mediaId)) {
-        throw new Error(
-          `Cannot delete: media is referenced in blog article "${article.draftContent?.title ?? "Untitled"}"`,
-        )
+        throw new ConvexError({
+          code: "media_in_use_by_article",
+          message:
+            `Ce média illustre l'article « ${article.draftContent?.title ?? "Sans titre"} ». ` +
+            "Changez son image avant de le supprimer.",
+        })
       }
     }
 

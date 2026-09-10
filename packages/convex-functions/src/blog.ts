@@ -9,7 +9,7 @@
  *   - Tags versioned via blogArticleTags.isDraft
  */
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 import { generateSlug, now } from "./helpers"
 import { sanitizeArticleHtml, sanitizePlainText } from "./htmlSanitize"
 
@@ -786,7 +786,22 @@ export const deleteCategory = {
       (a: any) => a.draftCategoryId === args.categoryId || a.publishedCategoryId === args.categoryId,
     )
     if (hasRefs) {
-      throw new Error("Impossible de supprimer : des articles utilisent cette catégorie")
+      // `ConvexError`, so the sentence survives. Thrown plainly, Convex redacts
+      // it in production and the blog admin printed
+      // `[CONVEX M(blog:deleteCategory)] [Request ID: …] Server Error` — over a
+      // refusal that is entirely reasonable and entirely actionable.
+      //
+      // The count is named too: "des articles" left the owner hunting, and the
+      // number is already in hand here.
+      const count = articles.filter(
+        (a: any) => a.draftCategoryId === args.categoryId || a.publishedCategoryId === args.categoryId,
+      ).length
+      throw new ConvexError({
+        code: "blog_category_in_use",
+        message:
+          `Cette catégorie est utilisée par ${count} article${count > 1 ? "s" : ""}. ` +
+          "Changez leur catégorie avant de la supprimer.",
+      })
     }
 
     await ctx.db.delete(args.categoryId)
