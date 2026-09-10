@@ -379,9 +379,14 @@ describe("the guard's own self-test", () => {
     // mentioning Claude" and every self-test would still pass — while every
     // commit naming CLAUDE.md started failing CI.
     expect(expectations).toContain("accept")
-    expect(SELF_TEST_CASES.some((testCase: { message: string }) => /CLAUDE\.md/.test(testCase.message))).toBe(
-      true,
-    )
+    // `message` is optional on the shared shape: an identity case carries an
+    // author instead of a message, and reading it as a `string` is what broke
+    // `Type Check` when the identity rows landed.
+    expect(
+      SELF_TEST_CASES.some((testCase: { message?: string }) =>
+        /CLAUDE\.md/.test(testCase.message ?? ""),
+      ),
+    ).toBe(true)
   })
 
   test("reports a rule that has stopped matching", () => {
@@ -766,12 +771,11 @@ describe("attribution in the identity rather than the message", () => {
     // The check proves its rules before trusting them, so a rule outside
     // `SELF_TEST_CASES` is a rule nothing proves.
     const covered = new Set(
-      SELF_TEST_CASES.filter((c: { identity?: unknown }) => c.identity).flatMap(
-        (c: { identity: { name: string; email: string } }) => {
-          const rule = findAttributingIdentity(c.identity.name, c.identity.email)
-          return rule ? [rule.id] : []
-        },
-      ),
+      SELF_TEST_CASES.flatMap((c: { identity?: { name: string; email: string } }) => {
+        if (!c.identity) return []
+        const rule = findAttributingIdentity(c.identity.name, c.identity.email)
+        return rule ? [rule.id] : []
+      }),
     )
     expect([...IDENTITY_RULES.map((r) => r.id)].filter((id) => !covered.has(id))).toEqual([])
   })

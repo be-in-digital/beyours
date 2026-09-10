@@ -440,10 +440,30 @@ export function rangeMustHaveCommits(eventName) {
 }
 
 /**
+ * One self-test case: a MESSAGE to scan, or an IDENTITY to judge — never both.
+ *
+ * Declared rather than inferred because the array holds two shapes, and a
+ * consumer that infers the union gets `message?: undefined` on the identity
+ * rows and `identity?: undefined` on the message ones. `apps/reference`'s suite
+ * reads this array, so the union leaked into a TypeScript file and failed
+ * `Type Check` in CI over a `.mjs` with no types of its own. Naming the shape
+ * once is cheaper than annotating every reader.
+ *
+ * @typedef {object} SelfTestCase
+ * @property {string} name        What the case is about, printed when it fails.
+ * @property {string} [message]   A commit message, for the message rules.
+ * @property {{ name: string, email: string }} [identity]  An author or committer, for the identity rules.
+ * @property {"accept" | "reject"} expect  What the guard must say about it.
+ */
+
+/**
  * The cases the guard checks itself against before it is trusted to judge
- * anything, on every single run. Two of the four accepted cases are the ones
- * that would make somebody delete the check: a commit that names `CLAUDE.md`,
- * and a human co-author.
+ * anything, on every single run. Two of the four accepted message cases are the
+ * ones that would make somebody delete the check: a commit that names
+ * `CLAUDE.md`, and a human co-author. The identity cases carry the same
+ * obligation — half of them are colleagues who must pass.
+ *
+ * @type {SelfTestCase[]}
  */
 export const SELF_TEST_CASES = [
   {
