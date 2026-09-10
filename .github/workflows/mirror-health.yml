@@ -197,9 +197,69 @@ jobs:
           scope: "@be-in-digital"
           cache: "pnpm"
 
+      # CAN THIS JOB EVEN ASK THE QUESTION?
+      #
+      # It could not, for every run of its life (#439, #426, #459). `--check`
+      # clones the mirror, `beyours-boilerplate` is PRIVATE, and this job
+      # deliberately holds no `MIRROR_PUSH_TOKEN` — so every run died at
+      # `git clone` with "could not read Username for 'https://github.com'"
+      # and filed an issue saying the staleness of the mirror was unknown.
+      # Daily. The check written to notice a stale mirror noticed nothing and
+      # produced the only noise anybody ever saw from it.
+      #
+      # `MIRROR_READ_TOKEN` is the answer the issues asked for: a NEW secret,
+      # `contents: read` on the mirror and nothing else. It is not
+      # `MIRROR_PUSH_TOKEN` and must never be — `workflow-publish-gates.test.ts`
+      # requires any job holding THAT to be gated on CI, because it can reach
+      # every client site, and gating a daily "is the mirror stale?" question
+      # behind a twelve-minute suite makes a tool nobody reaches for twice.
+      #
+      # UNSET IS A STATED SKIP, NOT A FAILURE AND NOT A SILENT PASS. The job
+      # says in its own summary that it could not look and names the secret to
+      # add. It does not open an issue, because "this repository has not been
+      # given a read token" is a one-time decision and not news every morning —
+      # and it does not go green pretending to have checked, because the step
+      # summary is where a green job says what it did.
+      - name: Is there a credential to read the mirror with?
+        id: credential
+        shell: bash
+        env:
+          MIRROR_READ_TOKEN: ${{ secrets.MIRROR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${MIRROR_READ_TOKEN:-}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Say that the staleness check is switched off
+        if: steps.credential.outputs.present != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "### The staleness check did not run"
+            echo
+            echo "\`MIRROR_READ_TOKEN\` is not set on this repository, so this job"
+            echo "cannot clone \`be-in-digital/beyours-boilerplate\` — it is private, and"
+            echo "this job holds no \`MIRROR_PUSH_TOKEN\` on purpose."
+            echo
+            echo "**Nothing here says the mirror is behind.** It also does not say it is"
+            echo "current. Staleness is being watched only by the observer half of this"
+            echo "workflow, which reads \`Publish mirror\` conclusions and needs no clone."
+            echo
+            echo "To switch this half back on: create a fine-grained PAT with"
+            echo "**\`contents: read\`** on \`beyours-boilerplate\` and nothing else, and add"
+            echo "it as the repository secret \`MIRROR_READ_TOKEN\`. Do **not** reuse"
+            echo "\`MIRROR_PUSH_TOKEN\`: a job holding that can reach every client site, and"
+            echo "\`workflow-publish-gates.test.ts\` correctly refuses it to any job that is"
+            echo "not gated on CI."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       # `--check` pushes nothing and needs no `MIRROR_PUSH_TOKEN`: it clones the
-      # mirror over HTTPS and exits 1 on drift. The registry read is what
-      # `packages: read` is for.
+      # mirror over HTTPS with the read-only token above and exits 1 on drift.
+      # The registry read is what `packages: read` is for.
       # `shell: bash` is load-bearing, not decoration. GitHub's default `run:`
       # shell on Linux is `bash -e {0}` — **without** `-o pipefail`, which you
       # only get by naming the shell. So `node … | tee …` reported *tee's*
@@ -209,31 +269,16 @@ jobs:
       # pipeline gives 0, `bash -eo pipefail` gives 1.
       - name: Compare the mirror against apps/themes
         id: drift
+        if: steps.credential.outputs.present == 'true'
         shell: bash
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # NO `MIRROR_PUSH_TOKEN`, deliberately, and it cost something to leave
-        # out. `publish-mirror.mjs` clones over an authenticated URL when the
-        # token is present and an anonymous one when it is not
-        # (`:327-329`) — and `publish-mirror.yml` sets the token on the step for
-        # BOTH branches of its own dry run, so the anonymous path has never
-        # actually run anywhere. This job is its first caller.
-        #
-        # Passing the token would put it on the exercised path, and
-        # `workflow-publish-gates.test.ts` correctly refuses that: its second
-        # rule is about CAPABILITY rather than spelling — a job holding
-        # `MIRROR_PUSH_TOKEN` can reach the client mirror however its commands
-        # are written, so it must be gated on CI. Gating a daily "is the mirror
-        # stale?" question behind a twelve-minute suite is a tool nobody would
-        # reach for twice, so the answer is to hold no push capability at all.
-        #
-        # Which leaves one thing genuinely unverified, and it is stated rather
-        # than assumed: the anonymous clone works only if
-        # `be-in-digital/beyours-boilerplate` is readable without credentials.
-        # If it is private this job fails at the clone. It fails LOUDLY —
-        # `set -euo pipefail` below, and the report distinguishes "could not
-        # check" from "drift" — so the first run says so instead of reporting a
-        # phantom drift or, worse, a green.
+          # READ-ONLY, and that is the whole design. `publish-mirror.mjs` uses
+          # it to clone and cannot push with it; `--check` does not push at
+          # all. `MIRROR_PUSH_TOKEN` stays out of this job so it holds no
+          # capability to reach the client mirror and therefore needs no CI
+          # gate — see `workflow-publish-gates.test.ts`.
+          MIRROR_READ_TOKEN: ${{ secrets.MIRROR_READ_TOKEN }}
         run: |
           set -euo pipefail
           node scripts/publish-mirror.mjs --check 2>&1 | tee /tmp/mirror-check.log
@@ -283,20 +328,15 @@ jobs:
               echo "the mirror is current is unknown. **This is not a drift report** — the"
               echo "mirror may be perfectly current. Nothing here says it is behind."
               echo
-              echo "The likeliest cause is the clone: this job carries no"
-              echo "\`MIRROR_PUSH_TOKEN\` on purpose (see the workflow comment), so it"
-              echo "clones \`be-in-digital/beyours-boilerplate\` anonymously, which works"
-              echo "only if that repository is public. It is not, so this job has never"
-              echo "been able to answer its own question. The log below confirms which"
-              echo "failure this run hit."
+              echo "This job DID have a credential — it does not run at all without"
+              echo "\`MIRROR_READ_TOKEN\`, and says so in its step summary instead. So the"
+              echo "cause is not the one #439 and #459 were about: not an anonymous clone"
+              echo "of a private repository. The log below says what it actually hit."
               echo
-              echo "**This needs a decision, not a re-run.** Either give this job a"
-              echo "read-only token for the mirror — a NEW secret, not"
-              echo "\`MIRROR_PUSH_TOKEN\`, which \`workflow-publish-gates.test.ts\`"
-              echo "correctly refuses to any job that is not gated on CI — or accept that"
-              echo "staleness is detected only by the observer half of this workflow,"
-              echo "which watches \`Publish mirror\` conclusions and does not need to"
-              echo "clone anything."
+              echo "Worth checking first: the token has expired or its \`contents: read\`"
+              echo "grant on \`beyours-boilerplate\` was withdrawn; the registry read"
+              echo "(\`packages: read\`) failed; or the staged tree could not be installed"
+              echo "or typechecked, which \`--check\` does before it compares."
             fi
             echo
             echo '```'

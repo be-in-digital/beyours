@@ -353,6 +353,20 @@ Required secret: `MIRROR_PUSH_TOKEN`, a fine-grained PAT with `contents: write`
 on `beyours-boilerplate`. Without it the job runs as a dry run and reports drift
 without pushing — `GITHUB_TOKEN` is scoped to the current repository only.
 
+Second, read-only secret: `MIRROR_READ_TOKEN`, a fine-grained PAT with
+**`contents: read`** on `beyours-boilerplate` and nothing else. `Mirror health`
+runs `publish-mirror.mjs --check` on a schedule; that mode pushes nothing but
+still has to CLONE, and the mirror is private — so with no credential the job
+died at `fatal: could not read Username for 'https://github.com'` on every run
+of its life, and filed an issue every morning saying the staleness of the
+mirror was unknown (#426, #439, #459). A separate token rather than reusing the
+push one: a job holding `MIRROR_PUSH_TOKEN` can reach every client site, and
+`workflow-publish-gates.test.ts` refuses that to any job not gated on CI —
+which a daily question must not be. While `MIRROR_READ_TOKEN` is unset the
+staleness check does not run at all and says so in its step summary; the
+observer half, which reads `Publish mirror` conclusions and clones nothing,
+keeps working.
+
 > **A new subpath in a package breaks the boilerplate before it fixes it.** The
 > mirror pins the **published** version, not the workspace one. Export a new
 > `./subpath` from `core` or `admin`, consume it in `apps/themes` on the same
