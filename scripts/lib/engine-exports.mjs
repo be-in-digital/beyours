@@ -92,7 +92,17 @@ export function engineImportsIn(root) {
   }
 
   // `from "…"`, `import("…")`, `require("…")` — one pattern, because all three
-  // end in a quoted specifier and nothing else in this scope is quoted.
+  // end in a quoted specifier.
+  //
+  // It matches a quoted specifier ANYWHERE, which over-reads by design and has
+  // over-read once: an `expect()` message in a mirrored test named a file by a
+  // scoped specifier rather than by its path, and was scanned as an import —
+  // the failure then told the reader to release a package to fix a string that
+  // no runtime ever resolves. Narrowing it to import positions would need a
+  // parser to stay honest about re-exports and dynamic `import()`, and the
+  // cost of the two errors is not symmetric: a missed import ships a client a
+  // tree that will not build, an extra one costs a reader five minutes. So it
+  // stays broad — write engine specifiers in prose as repository paths.
   const specifiers = /["'](@be-in-digital\/[^"']+)["']/g
 
   const walk = (dir) => {

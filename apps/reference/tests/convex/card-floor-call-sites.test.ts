@@ -139,7 +139,7 @@ describe("the engine still exports what these call sites import", () => {
    */
   test("assertCardChargeable is exported by the package the call sites name", () => {
     const file = enginePackageFile("convex-functions", "src/cardChargeFloor.ts")
-    expect(file, "@be-in-digital/convex-functions/src/cardChargeFloor.ts").not.toBeNull()
+    expect(file, "packages/convex-functions/src/cardChargeFloor.ts is missing").not.toBeNull()
     const source = readFileSync(file as string, "utf8")
     expect(source).toMatch(new RegExp(`export function ${FLOOR}\\s*\\(`))
   })
