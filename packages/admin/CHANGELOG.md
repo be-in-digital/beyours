@@ -1,5 +1,15 @@
 # @be-in-digital/admin
 
+## 15.0.0
+
+### Patch Changes
+
+- Updated dependencies [92dc32f]
+- Updated dependencies [92dc32f]
+  - @be-in-digital/restaurant@4.1.1
+  - @be-in-digital/convex-schema@6.2.0
+  - @be-in-digital/convex-functions@7.0.1
+
 ## 14.0.0
 
 ### Minor Changes
