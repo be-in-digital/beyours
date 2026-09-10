@@ -7,15 +7,15 @@
  */
 
 export const PACKAGE_VERSIONS = {
-  "admin": "14.0.0",
+  "admin": "15.0.1",
   "cms": "3.1.0",
-  "convex-functions": "7.0.0",
-  "convex-schema": "6.1.0",
+  "convex-functions": "7.0.1",
+  "convex-schema": "6.2.0",
   "core": "4.1.0",
   "integrations": "2.2.2",
   "marketing": "3.0.0",
-  "restaurant": "4.1.0",
-  "ui": "4.3.0",
+  "restaurant": "4.1.1",
+  "ui": "4.3.1",
 } as const;
 
 export type RegisteredPackage = keyof typeof PACKAGE_VERSIONS;
