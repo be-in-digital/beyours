@@ -340,3 +340,81 @@ test("the staleness check does not join the publisher's concurrency group", () =
     expect(ownGroup, `${file} shares the publisher's concurrency group`).not.toBe(publisherGroup)
   }
 })
+
+/**
+ * The staleness check can reach the mirror, or says out loud that it cannot.
+ *
+ * WHAT WAS BROKEN (#439, #426, #459). `--check` clones
+ * `be-in-digital/beyours-boilerplate`, that repository is PRIVATE, and this
+ * job deliberately holds no `MIRROR_PUSH_TOKEN` — so it cloned anonymously and
+ * every run of its life died at
+ * `fatal: could not read Username for 'https://github.com'`. The check written
+ * to notice a stale mirror has never once said whether the mirror was stale,
+ * and it filed an issue saying so every morning. Three of them are open.
+ *
+ * The fix is a SECOND credential, not the push one: `MIRROR_READ_TOKEN`,
+ * `contents: read` and nothing else. That distinction is the whole design —
+ * `workflow-publish-gates.test.ts` requires any job holding the push token to
+ * be gated on CI, because such a job can reach every client site, and gating a
+ * daily question behind a twelve-minute suite makes a tool nobody reaches for
+ * twice.
+ *
+ * And when the secret is absent the job must neither fail nor pretend: it
+ * skips the clone and writes what it could not do into the step summary.
+ */
+const staleJob = (() => {
+  const health = workflows.find(({ file }) => file === "mirror-health.yml")
+  if (!health) return undefined
+  return Object.values(health.workflow.jobs ?? {}).find((job) =>
+    (job.steps ?? []).some((step) => /publish-mirror\.mjs.*--check/.test(step.run ?? "")),
+  )
+})()
+
+test("the staleness check has a credential for a private mirror", () => {
+  expect(staleJob).toBeDefined()
+  const serialised = JSON.stringify(staleJob)
+  // The clone is authenticated. Without this the job cannot answer its own
+  // question at all, which is the state #439 and #459 report.
+  expect(serialised).toMatch(/secrets\.MIRROR_READ_TOKEN/)
+})
+
+test("and it is the read-only one, never the push token", () => {
+  // A job that can push to the mirror can reach every client site, and
+  // `workflow-publish-gates.test.ts` refuses that to any job not gated on CI.
+  // This job runs daily on a schedule and is gated on nothing, so it must hold
+  // no such capability.
+  expect(JSON.stringify(staleJob)).not.toMatch(/secrets\.MIRROR_PUSH_TOKEN/)
+})
+
+test("without that secret it skips rather than failing every night", () => {
+  // The check must not run when it cannot succeed. A step that fails daily
+  // over a missing credential is not a signal about the mirror; it is noise
+  // that buries one.
+  const check = (staleJob?.steps ?? []).find((step) =>
+    /publish-mirror\.mjs.*--check/.test(step.run ?? ""),
+  )
+  expect(check?.if).toMatch(/steps\.[A-Za-z0-9_-]+\.outputs\./)
+})
+
+test("and it says in its own summary that it did not look", () => {
+  // Skipping silently would be worse than failing: a green job with no output
+  // reads as "the mirror is current". So the same absence that switches the
+  // check off has to write what it could not do where a person sees it, and
+  // name the secret to add.
+  const steps = staleJob?.steps ?? []
+  const skipNotice = steps.find(
+    (step) =>
+      /GITHUB_STEP_SUMMARY/.test(step.run ?? "") &&
+      /MIRROR_READ_TOKEN/.test(step.run ?? "") &&
+      typeof step.if === "string" &&
+      /!=\s*'true'|==\s*'false'/.test(step.if),
+  )
+  expect(skipNotice).toBeDefined()
+})
+
+test("`publish-mirror.mjs` actually reads the secret the workflow passes", () => {
+  // The workflow can set an env var the script ignores, and everything above
+  // would still pass while the clone stayed anonymous. This is the seam.
+  const script = fs.readFileSync(path.join(REPO_ROOT, "scripts/publish-mirror.mjs"), "utf8")
+  expect(script).toMatch(/process\.env\.MIRROR_READ_TOKEN\b(?!_)/)
+})

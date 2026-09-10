@@ -62,6 +62,17 @@
  *
  * Auth: NODE_AUTH_TOKEN (registry read) and, to push, MIRROR_PUSH_TOKEN — a
  * `contents: write` PAT on beyours-boilerplate.
+ *
+ * `--check` pushes nothing, so it does not need that token — but it still has
+ * to CLONE, and beyours-boilerplate is private, so an anonymous clone fails.
+ * MIRROR_READ_TOKEN is the read-only credential for exactly that: a
+ * `contents: read` PAT, held by jobs that only ask questions. It cannot push,
+ * which is what lets `mirror-health.yml` run daily without being gated on a
+ * twelve-minute CI suite — see the second rule in
+ * `workflow-publish-gates.test.ts`.
+ *
+ * Both are optional and the precedence is push-then-read-then-anonymous, so a
+ * caller that has neither behaves exactly as before.
  */
 
 import { execFileSync } from "node:child_process"
@@ -329,6 +340,22 @@ function mirrorPackageJson(sourcePkgPath, versions) {
 // ---------------------------------------------------------------------------
 
 const pushToken = process.env.MIRROR_PUSH_TOKEN
+/**
+ * A `contents: read` PAT on the mirror, for the jobs that only ask questions.
+ *
+ * WHY (#439, #459). `mirror-health.yml` runs `--check` daily and deliberately
+ * holds no MIRROR_PUSH_TOKEN, so it cloned anonymously — and the mirror is a
+ * PRIVATE repository, so every run since the workflow landed died at
+ * `git clone` with "could not read Username for 'https://github.com'". The
+ * check written to answer "is the mirror stale?" has never once answered it,
+ * and it filed an issue saying so every morning.
+ *
+ * A separate secret rather than reusing MIRROR_PUSH_TOKEN, because the two
+ * grant different things and the difference is the whole point: a job holding
+ * the push token can reach every client site, which is why the gate test
+ * requires such a job to be gated on CI. A read-only token reaches nothing.
+ */
+const readToken = process.env.MIRROR_READ_TOKEN
 const work = mkdtempSync(join(tmpdir(), "beyours-mirror-"))
 const clone = join(work, "mirror")
 
@@ -340,11 +367,30 @@ try {
     fail("MIRROR_PUSH_TOKEN is missing — cannot push. Re-run with --check for a dry run.")
   }
 
-  const remote = pushToken
-    ? `https://x-access-token:${pushToken}@github.com/${MIRROR_REPO}.git`
+  // Push token first: a run that will push has to clone over the same
+  // credential it will push with. Then the read-only one. Anonymous last, and
+  // it works only against a public mirror — which this one is not.
+  const cloneToken = pushToken || readToken
+  const remote = cloneToken
+    ? `https://x-access-token:${cloneToken}@github.com/${MIRROR_REPO}.git`
     : `https://github.com/${MIRROR_REPO}.git`
 
-  log(`→ cloning ${MIRROR_REPO}`)
+  if (check && !cloneToken) {
+    // Named before the failure rather than after it. `git clone` on a private
+    // repository with no credential fails with "could not read Username",
+    // which reads as a git problem and sent #439 and #459 looking at the
+    // wrong thing.
+    fail(
+      `no credential for cloning ${MIRROR_REPO}, which is private. ` +
+        "Set MIRROR_READ_TOKEN (a contents: read PAT) for a check, " +
+        "or MIRROR_PUSH_TOKEN for a sync."
+    )
+  }
+
+  log(
+    `→ cloning ${MIRROR_REPO}` +
+      (pushToken ? " (push token)" : readToken ? " (read-only token)" : " (anonymous)")
+  )
   run("git", ["clone", "--depth", "1", remote, clone])
 
   log("→ resolving published versions")

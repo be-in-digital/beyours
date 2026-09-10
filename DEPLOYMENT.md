@@ -404,6 +404,16 @@ Five operational facts:
   is neither a pass nor a failure — the mirror went twelve days without a sync and no
   run ever said so. It was 15 until the compile gate above joined the job and added a
   measured 50 seconds on a warm machine, a few minutes on a cold runner.
+- **Second, read-only secret: `MIRROR_READ_TOKEN`**, a fine-grained PAT with
+  `contents: read` on `beyours-boilerplate` and nothing else. `Mirror health`'s
+  scheduled `--check` pushes nothing but still clones, and the mirror is private:
+  with no credential that job died at `could not read Username` on every run it
+  ever made and filed a daily issue saying the mirror's staleness was unknown
+  (#426, #439, #459). Not the push token — a job holding that can reach every
+  client site, so `workflow-publish-gates.test.ts` requires it to be gated on CI,
+  and a daily question gated behind a twelve-minute suite is a tool nobody
+  reaches for twice. Unset, the check does not run and says so in its step
+  summary rather than failing or going quietly green.
 
 `pnpm check:mirror-css`, which runs inside the required `Lint` job, is the only
 **required** check that compiles what a client builds rather than what this
