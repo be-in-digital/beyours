@@ -198,6 +198,99 @@ describe("every workflow that publishes outside this repository is gated on CI",
 })
 
 /**
+ * A gate a job does not WAIT for is not a gate.
+ *
+ * WHAT WAS BROKEN. `publish-mirror.yml`'s `publish` job reads
+ * `needs.delivered.result` twice in its `if:`, and three of the scenarios below
+ * prove those clauses decide the run. All of it is inert unless `delivered` is
+ * in that job's `needs:` list. The `needs` context holds only the jobs a job
+ * DECLARES, so `needs.delivered.result` on a job that does not need
+ * `delivered` reads as the empty string — `!= 'failure'` and `!= 'cancelled'`
+ * are then both true and the gate passes on every run. Worse than passing: an
+ * undeclared job is never waited for either, so `publish` would start alongside
+ * `delivered` and could finish syncing the mirror before the delivered tree had
+ * finished building.
+ *
+ * Measured at 29463f30: editing `needs: [verify, e2e, delivered]` to
+ * `needs: [verify, e2e]` left this file at 61 tests, all green. The one gate
+ * between a broken template and every client site was removable by a one-token
+ * edit the required suite approved.
+ *
+ * TWO ASSERTIONS, because they fail on different edits. The rule catches an
+ * `if:` that outlived its `needs:` — that one-token edit — for every job in
+ * every workflow, including ones written later; it is the general shape, and
+ * like the CI rule above it is stated once rather than per workflow. It cannot
+ * see a gate removed CLEANLY, both halves in the same commit, because what is
+ * left is self-consistent. That is what the by-name expectation is for.
+ */
+describe("a job waits for every gate its condition reads", () => {
+  const conditional = WORKFLOW_FILES.flatMap((file) => {
+    const wf = readWorkflow(file)
+    return Object.entries(wf.jobs ?? {})
+      .map(([id, job]) => ({
+        file,
+        id,
+        needs: typeof job.needs === "string" ? [job.needs] : (job.needs ?? []),
+        reads: [
+          ...new Set(
+            // Non-null: the group is what the pattern matched on.
+            [...String(job.if ?? "").matchAll(/needs\.([\w-]+)\./g)].map((match) => match[1]!),
+          ),
+        ],
+      }))
+      .filter((entry) => entry.reads.length > 0)
+  })
+
+  /**
+   * If this drops to zero every assertion below passes vacuously — the `if:`
+   * conditions were rewritten, or the workflows moved. Same guard, and same
+   * reason, as `the scan finds the jobs that publish` above.
+   */
+  test("the scan finds the jobs whose condition reads a dependency", () => {
+    expect(conditional.map((entry) => `${entry.file}:${entry.id}`)).toEqual([
+      "e2e.yml:e2e-report",
+      "publish-mirror.yml:publish",
+      "release.yml:e2e",
+      "release.yml:release",
+    ])
+  })
+
+  test.each(conditional)("$file / $id declares every job its if: reads", ({ needs, reads }) => {
+    const undeclared = reads.filter((id) => !needs.includes(id))
+    expect(
+      undeclared,
+      `its if: reads needs.${undeclared[0] ?? "?"}.result while needs: is [${needs.join(", ")}] — ` +
+        `an undeclared job is not awaited, and its result reads as the empty string, so every ` +
+        `comparison against it passes`,
+    ).toEqual([])
+  })
+
+  /**
+   * The one dependency this whole file exists to keep. `verify` and `e2e` are
+   * held by the CI rule above — they call `ci.yml` — but `delivered` calls
+   * nothing, so nothing above names it, and it is the only gate that runs on
+   * BOTH trigger paths: the Release chain never runs `verify`, so on the
+   * `workflow_run` path a missing `delivered` leaves the sync with no check at
+   * all in front of it.
+   */
+  test("publish-mirror's sync waits on the delivered-tree check", () => {
+    const publish = readWorkflow("publish-mirror.yml").jobs?.publish ?? {}
+    const needs = typeof publish.needs === "string" ? [publish.needs] : (publish.needs ?? [])
+
+    expect(
+      needs,
+      "`delivered` builds and tests the tree a client actually receives; without it in `needs:` " +
+        "the sync neither waits for that job nor can read its result",
+    ).toContain("delivered")
+
+    // Exhaustive rather than `toContain`, so a gate cannot be dropped quietly.
+    // Adding one is meant to fail here: the list of checks standing between a
+    // broken template and every client site is edited deliberately or not at all.
+    expect(needs).toEqual(["verify", "e2e", "delivered"])
+  })
+})
+
+/**
  * `ci.yml` is only usable as a gate because it declares `workflow_call:`.
  * Removing that trigger would not fail any of the assertions above — both
  * callers would still name it — but every gate in the repository would stop

@@ -420,6 +420,12 @@ function isGraphical(node: ts.Node, element: ts.JsxOpeningLikeElement): boolean 
 interface InlineStyle {
   color?: string
   background?: string
+  /**
+   * The `styles={{ slot: … }}` entry this pair came from, when it came from
+   * one. Only a label: a failure on a map of four slots has to say which of
+   * them is unreadable. Absent for a plain `style` attribute.
+   */
+  slot?: string
 }
 
 /**
@@ -448,6 +454,48 @@ function literalValues(node: ts.Expression): Array<string | null> {
   return [null]
 }
 
+/** Every colour pair one `{ color, backgroundColor }` object can paint. */
+function stylesOfObject(object: ts.ObjectLiteralExpression): InlineStyle[] {
+  let styles: InlineStyle[] = [{}]
+  for (const property of object.properties) {
+    if (!ts.isPropertyAssignment(property)) continue
+    const name = property.name
+    const key = ts.isIdentifier(name) || ts.isStringLiteral(name) ? name.text : null
+    if (!key) continue
+
+    let field: "color" | "background"
+    if (key === "color") field = "color"
+    else if (key === "backgroundColor" || key === "background") field = "background"
+    else continue
+
+    const values = literalValues(property.initializer).filter(
+      // `background` is shorthand: a gradient or an image in it names no
+      // single surface colour, so only a plain colour value is taken.
+      (value): value is string =>
+        value !== null && !(key === "background" && /\b(?:gradient|url)\(/.test(value))
+    )
+    if (!values.length) continue
+
+    const next: InlineStyle[] = []
+    for (const style of styles) {
+      for (const value of values) {
+        if (next.length >= MAX_ALTERNATIVES) break
+        next.push({ ...style, [field]: value })
+      }
+    }
+    styles = next.length ? next : styles
+  }
+
+  const seen = new Set<string>()
+  return styles.filter((style) => {
+    if (!style.color && !style.background) return false
+    const key = `${style.color ?? ""}|${style.background ?? ""}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 /** Every inline colour pair this element can paint, as separate alternatives. */
 function styleAlternatives(element: ts.JsxOpeningLikeElement): InlineStyle[] {
   for (const attribute of element.attributes.properties) {
@@ -457,45 +505,72 @@ function styleAlternatives(element: ts.JsxOpeningLikeElement): InlineStyle[] {
     if (!initializer || !ts.isJsxExpression(initializer) || !initializer.expression) return []
     const object = initializer.expression
     if (!ts.isObjectLiteralExpression(object)) return []
+    return stylesOfObject(object)
+  }
+  return []
+}
 
-    let styles: InlineStyle[] = [{}]
-    for (const property of object.properties) {
+/**
+ * The colour pairs a `styles={{ slot: ... }}` MAP paints, one per named slot.
+ *
+ * WHY THIS IS A SECOND READER. `styleAlternatives` matches the `style`
+ * attribute, and nothing else did, so a `styles` map went unmeasured entirely:
+ * forcing the tour badge to `color: hsl(var(--primary))` on
+ * `backgroundColor: hsl(var(--primary))` — a 1.000:1 inversion on the first
+ * screen a new owner sees — left `tests/a11y/contrast.test.ts` at 8 passed.
+ * It is the prop shape a third-party component takes to be themed, and this
+ * codebase themes exactly one that way, `reactour`, whose slot values are
+ * written `(base) => ({ ...base, backgroundColor, color })`. So an arrow body
+ * is unwrapped as well as a bare object.
+ *
+ * ONLY SLOTS THAT SET BOTH MEMBERS ARE READ, and the difference from `style`
+ * is what makes that the right rule rather than a cautious one. A `style`
+ * attribute paints the element it is written on, so a colour with no
+ * background of its own is measured against the surface this scan already
+ * tracked down the tree. A slot does not: the element is rendered by the third
+ * party, somewhere this file's JSX does not describe, and the enclosing
+ * element's surface is not the one it lands on. A pair that sets both needs no
+ * such context and is measurable with certainty; a half-pair would be measured
+ * against a surface it never renders on, which is how a scanner starts
+ * reporting failures the product does not have.
+ */
+function styleSlots(element: ts.JsxOpeningLikeElement): InlineStyle[] {
+  for (const attribute of element.attributes.properties) {
+    if (!ts.isJsxAttribute(attribute)) continue
+    if (attribute.name.getText() !== "styles") continue
+    const initializer = attribute.initializer
+    if (!initializer || !ts.isJsxExpression(initializer) || !initializer.expression) return []
+    const map = initializer.expression
+    if (!ts.isObjectLiteralExpression(map)) return []
+
+    const slots: InlineStyle[] = []
+    for (const property of map.properties) {
       if (!ts.isPropertyAssignment(property)) continue
       const name = property.name
-      const key = ts.isIdentifier(name) || ts.isStringLiteral(name) ? name.text : null
-      if (!key) continue
+      const slot = ts.isIdentifier(name) || ts.isStringLiteral(name) ? name.text : null
+      if (!slot) continue
 
-      let field: "color" | "background"
-      if (key === "color") field = "color"
-      else if (key === "backgroundColor" || key === "background") field = "background"
-      else continue
-
-      const values = literalValues(property.initializer).filter(
-        // `background` is shorthand: a gradient or an image in it names no
-        // single surface colour, so only a plain colour value is taken.
-        (value): value is string =>
-          value !== null && !(key === "background" && /\b(?:gradient|url)\(/.test(value))
-      )
-      if (!values.length) continue
-
-      const next: InlineStyle[] = []
-      for (const style of styles) {
-        for (const value of values) {
-          if (next.length >= MAX_ALTERNATIVES) break
-          next.push({ ...style, [field]: value })
+      // `{ ... }`, `(base) => ({ ... })`, or `(base) => { return { ... } }`.
+      let body: ts.Expression = property.initializer
+      if (ts.isArrowFunction(body) || ts.isFunctionExpression(body)) {
+        const fn: ts.ConciseBody = body.body
+        if (ts.isBlock(fn)) {
+          const returned = fn.statements.find(ts.isReturnStatement)?.expression
+          if (!returned) continue
+          body = returned
+        } else {
+          body = fn
         }
       }
-      styles = next.length ? next : styles
-    }
+      while (ts.isParenthesizedExpression(body)) body = body.expression
+      if (!ts.isObjectLiteralExpression(body)) continue
 
-    const seen = new Set<string>()
-    return styles.filter((style) => {
-      if (!style.color && !style.background) return false
-      const key = `${style.color ?? ""}|${style.background ?? ""}`
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
+      for (const style of stylesOfObject(body)) {
+        if (!style.color || !style.background) continue
+        slots.push({ ...style, slot })
+      }
+    }
+    return slots
   }
   return []
 }
@@ -731,13 +806,16 @@ class Resolver {
     // still have won. This is also why it ignores `state`: the same inline
     // value paints every state of the element.
     if (inline) {
+      const attribute = inline.slot ? `styles.${inline.slot}` : "style"
       if (inline.background) {
         const paint = this.cssColour(inline.background, mode, scope)
-        if (paint) reading.backgrounds = [{ ...paint, cls: `style:background:${inline.background}` }]
+        if (paint) {
+          reading.backgrounds = [{ ...paint, cls: `${attribute}:background:${inline.background}` }]
+        }
       }
       if (inline.color) {
         const paint = this.cssColour(inline.color, mode, scope)
-        if (paint) reading.text = { ...paint, cls: `style:color:${inline.color}` }
+        if (paint) reading.text = { ...paint, cls: `${attribute}:color:${inline.color}` }
       }
     }
 
@@ -860,6 +938,15 @@ export function scanContrast(options: ScanOptions): ContrastFailure[] {
                 combinations.push({ classes, style: null })
               }
             }
+            // A slot is themed here and RENDERED elsewhere, so it is detached
+            // in both directions: no className from the element it is written
+            // on, and — below — never the inherited surface for the children.
+            // `<TourProvider styles={{ popover: … }}>` wraps the whole admin,
+            // so letting the popover's background inherit would measure every
+            // page in the app against it.
+            for (const style of styleSlots(element)) {
+              combinations.push({ classes: [], style })
+            }
             const graphical = isGraphical(node, element)
             const line = source.getLineAndCharacterOfPosition(element.getStart()).line + 1
             const inherited: Context[] = []
@@ -886,13 +973,25 @@ export function scanContrast(options: ScanOptions): ContrastFailure[] {
                     }))
                   : [{ rgb: context.surface, cls: context.surfaceCls, known: context.surfaceKnown }]
 
-                const sizePx = reading.sizePx ?? context.sizePx
-                const weight = reading.weight ?? context.weight
+                // A slot is rendered elsewhere, so the enclosing element's
+                // type scale is not its own: an ancestor in `text-2xl` would
+                // otherwise relax a slot's floor to the large-text 3:1. It is
+                // held to the base assumption instead — the same 16px/400 an
+                // unstyled run of text starts at.
+                const sizePx = style?.slot ? 16 : (reading.sizePx ?? context.sizePx)
+                const weight = style?.slot ? 400 : (reading.weight ?? context.weight)
 
                 if (reading.text) {
+                  // `graphical` reads "no JSX children, so it renders no
+                  // text" — right for `<AlertTriangle className="text-…" />`,
+                  // and exactly wrong for a slot. A self-closing
+                  // `<Tour styles={{ popover: … }} />` has no children HERE
+                  // and renders a popover full of prose there; the third party
+                  // supplies them. Judging a slot graphical halves its floor to
+                  // 3:1 on the strength of a fact about the wrong element.
                   const floor =
                     options.minimumRatio ??
-                    (graphical ? AA_LARGE : floorFor(sizePx, weight))
+                    (graphical && !style?.slot ? AA_LARGE : floorFor(sizePx, weight))
                   for (const surface of surfaces) {
                     const ink = throughGroup(
                       over(reading.text.rgb, surface.rgb, reading.text.alpha),
@@ -927,7 +1026,7 @@ export function scanContrast(options: ScanOptions): ContrastFailure[] {
                   }
                 }
 
-                if (state === "base") {
+                if (state === "base" && !style?.slot) {
                   inherited.push({
                     surface: surfaces[0]!.rgb,
                     surfaceCls: surfaces[0]!.cls,

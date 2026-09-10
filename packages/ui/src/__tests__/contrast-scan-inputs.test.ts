@@ -1,5 +1,5 @@
 /**
- * The two inputs `scanContrast` used to ignore, held here.
+ * The three inputs `scanContrast` used to ignore, held here.
  *
  * Both were found the same way: a guard that reported green over a pair that
  * fails. That is the worst failure mode an instrument has — worse than not
@@ -16,6 +16,12 @@
  *     sweep of `globals.css` alone.
  *  2. inline `style={{ … }}` — the sweep read `className` and nothing else, so
  *     an element painting its ink or its surface inline was unmeasured.
+ *  3. a `styles={{ slot: … }}` MAP — the prop a third-party component takes to
+ *     be themed. Reading the `style` attribute alone left it unmeasured, and
+ *     the one place this codebase uses it is the onboarding tour: forcing the
+ *     tour badge to `color: hsl(var(--primary))` on the same
+ *     `backgroundColor` — invisible text on the first screen a new owner sees
+ *     — left the app sweep at 8 passed.
  */
 
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
@@ -262,5 +268,201 @@ describe("scanContrast still refuses what it cannot know", () => {
     // The other half. A resolver that answers for everything is how a sweep
     // starts reporting pairs the product never renders.
     expect(scanContrast({ appDir: root, regions: REGIONS })).toEqual([])
+  })
+})
+
+/**
+ * A `styles` MAP, which is a different animal from a `style` attribute.
+ *
+ * `style` paints the element it is written on, so this sweep can pair a colour
+ * with the surface it tracked down the tree. A `styles` map does not: each slot
+ * is rendered by the third-party component, somewhere this file's JSX never
+ * describes. So a slot is read only when it sets BOTH members of the pair, and
+ * is contained in both directions — it takes no class from the element that
+ * declares it, and it is never the surface a child inherits.
+ *
+ * Written as `(base) => ({ ...base, … })` because that is how `reactour` — the
+ * only consumer of this shape in the codebase — is themed.
+ */
+describe("scanContrast reads a styles={{ slot }} map", () => {
+  const root = fixture()
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+
+  writeFileSync(
+    join(root, "ui/Themed.tsx"),
+    `export function Themed() {
+  return (
+    <Tour
+      styles={{
+        badge: (base) => ({ ...base, backgroundColor: "#ffffff", color: "#eeeeee" }),
+        controls: (base) => ({ ...base, marginTop: "16px" }),
+      }}
+    />
+  )
+}
+`,
+  )
+
+  const failures = scanContrast({ appDir: root, regions: REGIONS })
+
+  it("measures a slot that sets both members of the pair", () => {
+    // #eeeeee on #ffffff is 1.13:1. Nothing here is a class and nothing is a
+    // `style` attribute, so before this the file measured as empty.
+    const failure = failures.find((entry) => entry.mode === "light")
+    expect(failure).toBeDefined()
+    expect(failure!.foregroundHex).toBe("#eeeeee")
+    expect(failure!.backgroundHex).toBe("#ffffff")
+    expect(failure!.ratio).toBeLessThan(1.2)
+  })
+
+  it("names the slot, so a failure says which of them is unreadable", () => {
+    // A map has several slots and one report. `styles.badge` is the difference
+    // between a finding somebody can act on and one they have to go hunting for.
+    const failure = failures.find((entry) => entry.mode === "light")!
+    expect(failure.foreground).toBe("styles.badge:color:#eeeeee")
+    expect(failure.background).toBe("styles.badge:background:#ffffff")
+  })
+})
+
+describe("scanContrast reads a styles map slot written as a plain object", () => {
+  const root = fixture()
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+
+  writeFileSync(
+    join(root, "ui/Plain.tsx"),
+    `export function Plain() {
+  return <Tour styles={{ badge: { backgroundColor: "#ffffff", color: "#eeeeee" } }} />
+}
+`,
+  )
+
+  it("does not require the arrow form to see the pair", () => {
+    const failure = scanContrast({ appDir: root, regions: REGIONS }).find(
+      (entry) => entry.mode === "light",
+    )
+    expect(failure?.foreground).toBe("styles.badge:color:#eeeeee")
+  })
+})
+
+describe("scanContrast leaves half a styles map slot unmeasured", () => {
+  const root = fixture()
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+
+  writeFileSync(
+    join(root, "ui/Half.tsx"),
+    `export function Half() {
+  return <Tour styles={{ badge: (base) => ({ ...base, color: "#eeeeee" }) }} />
+}
+`,
+  )
+
+  it("invents no failure against a surface the slot does not render on", () => {
+    // #eeeeee against this fixture's white app surface is 1.13:1, so a reader
+    // that fell back to the enclosing context would report it. The slot is not
+    // rendered there, and a scanner that guesses is the one nobody reads.
+    expect(scanContrast({ appDir: root, regions: REGIONS })).toEqual([])
+  })
+})
+
+describe("a styles map slot is not the surface its children inherit", () => {
+  const root = fixture()
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+
+  writeFileSync(
+    join(root, "ui/Wrapper.tsx"),
+    `export function Wrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <Tour styles={{ popover: (base) => ({ ...base, backgroundColor: "#000000", color: "#ffffff" }) }}>
+      <span style={{ color: "#eeeeee" }}>Bonjour</span>
+    </Tour>
+  )
+}
+`,
+  )
+
+  const failures = scanContrast({ appDir: root, regions: REGIONS })
+
+  it("measures the child against the app's surface, not the slot's", () => {
+    // The discriminating case, and the reason containment is asserted rather
+    // than assumed. `<TourProvider styles={{ popover: … }}>` wraps the WHOLE
+    // admin. If the slot's black leaked into the context, #eeeeee on it is
+    // 18.4:1 and this file goes silent in light mode; against the app's own
+    // white it is 1.13:1 and reported. Silence here is the bug, not a pass.
+    const light = failures.find((entry) => entry.mode === "light")
+    expect(light).toBeDefined()
+    expect(light!.backgroundHex).toBe("#ffffff")
+    expect(light!.foreground).toBe("style:color:#eeeeee")
+  })
+
+  it("still measures the slot's own pair", () => {
+    // #ffffff on #000000 is 21:1, so the slot itself reports nothing — and the
+    // test above would read the same whether the slot were measured or skipped
+    // entirely. This is what keeps that from passing vacuously.
+    expect(failures.every((entry) => !entry.foreground.startsWith("styles."))).toBe(true)
+    const inverted = scanContrast({
+      appDir: root,
+      regions: REGIONS,
+      minimumRatio: 25,
+    }).filter((entry) => entry.foreground.startsWith("styles.popover:"))
+    expect(inverted.length).toBeGreaterThan(0)
+  })
+})
+
+/**
+ * The floor a slot is judged at, which two of this file's heuristics get wrong
+ * for the same reason: both read a fact about the element the prop is WRITTEN
+ * on, and a slot is rendered somewhere else entirely.
+ */
+describe("a styles map slot is judged at the floor for body text", () => {
+  const root = fixture()
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+
+  // Self-closing, and nothing here relaxes the type scale.
+  writeFileSync(
+    join(root, "ui/Closed.tsx"),
+    `export function Closed() {
+  return <Tour styles={{ badge: (base) => ({ ...base, backgroundColor: "#ffffff", color: "#949494" }) }} />
+}
+`,
+  )
+
+  // Not self-closing, and wrapped in a heading scale.
+  writeFileSync(
+    join(root, "ui/Scaled.tsx"),
+    `export function Scaled({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-2xl">
+      <Tour styles={{ popover: (base) => ({ ...base, backgroundColor: "#ffffff", color: "#949494" }) }}>
+        {children}
+      </Tour>
+    </div>
+  )
+}
+`,
+  )
+
+  // #949494 on #ffffff is 3.03:1 — under AA for body text, over it for large
+  // text and for a graphical object. So either heuristic firing turns this
+  // pair silent, and only this value tells the two floors apart.
+  const failures = scanContrast({ appDir: root, regions: REGIONS })
+
+  it("does not read a self-closing element as a picture", () => {
+    // `isGraphical` means "no JSX children, so it renders no text" — true of
+    // `<AlertTriangle className="text-amber-500" />` and false of a component
+    // themed through `styles`, whose children the third party supplies. The
+    // popover this badge sits in is full of prose.
+    const failure = failures.find((entry) => entry.foreground === "styles.badge:color:#949494")
+    expect(failure).toBeDefined()
+    expect(failure!.floor).toBe(4.5)
+  })
+
+  it("does not take the type scale of the element that declares it", () => {
+    // An ancestor's `text-2xl` says nothing about a slot's size, and letting it
+    // through would relax the floor to the large-text 3:1 — 3.03:1 would then
+    // pass on the strength of a heading somewhere else in the tree.
+    const failure = failures.find((entry) => entry.foreground === "styles.popover:color:#949494")
+    expect(failure).toBeDefined()
+    expect(failure!.floor).toBe(4.5)
+    expect(failure!.sizePx).toBe(16)
   })
 })
