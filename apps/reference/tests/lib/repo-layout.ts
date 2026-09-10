@@ -153,3 +153,31 @@ export function engineSourceRoots(): {
 
   return { sources, includesBuildOutput: true, layout: "installed" }
 }
+
+/**
+ * One file inside an engine package, resolved wherever this checkout keeps it.
+ *
+ * `engineSourceRoots()` answers "which directories hold engine code"; this
+ * answers "where is THIS file", which is what a test asserting something about
+ * a named module needs. Same two addresses: `packages/<pkg>/…` in the monorepo,
+ * `node_modules/@be-in-digital/<pkg>/…` in a delivered site.
+ *
+ * `null` when it is not there, so a caller can fail loudly with its own message
+ * instead of an ENOENT from a `readFileSync` three frames down. A test that
+ * reads engine source must assert this is non-null before trusting anything it
+ * concludes — a file that cannot be found reads exactly like a file that
+ * contains nothing, and that is the silent-vacuum shape this module exists to
+ * refuse.
+ *
+ * Only packages that PUBLISH the path work in a client site. `convex-functions`
+ * ships `src`, which is why `src/payments.ts` resolves in both layouts; a
+ * package that publishes only `dist` would answer `null` there, correctly.
+ */
+export function enginePackageFile(pkg: string, relative: string): string | null {
+  const { layout } = engineSourceRoots()
+  const candidate =
+    layout === "monorepo"
+      ? path.join(MONOREPO_ROOT as string, "packages", pkg, relative)
+      : path.join(APP_ROOT, "node_modules", "@be-in-digital", pkg, relative)
+  return fs.existsSync(candidate) ? candidate : null
+}

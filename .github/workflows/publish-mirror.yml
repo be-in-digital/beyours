@@ -207,9 +207,37 @@ jobs:
         with:
           version: 10.4.1
 
+      # NODE 22 HERE, WHERE EVERY OTHER JOB PINS 20 — and the difference is the
+      # point rather than an oversight.
+      #
+      # This job materialises `apps/themes` WITHOUT a lockfile: the mirror owns
+      # its own (`MIRROR_OWNED` in `lib/mirror-tree.mjs`), so there is none to
+      # copy. `pnpm install` therefore resolves the newest satisfying version of
+      # every transitive dependency rather than the pinned set anybody actually
+      # installs. On its first real run that resolved `undici@8.10.2`, which
+      # defines `webidl.util.markAsUncloneable` only when the runtime has
+      # `worker_threads.markAsUncloneable` — a Node 22.10 API. On Node 20 it is
+      # absent, `CacheStorage` calls it anyway, and jsdom died at import with
+      # `TypeError: webidl.util.markAsUncloneable is not a function`, taking two
+      # test files with it and blocking the sync.
+      #
+      # NO CLIENT HAS THAT COMBINATION. The monorepo pins `undici@7.29.0`
+      # through its lockfile and a client installs from the boilerplate's, so
+      # both run undici 7 on Node 20 quite happily. The only tree that resolves
+      # undici 8 is this temporary one, and the only runtime that cannot run it
+      # is the one this job used to pin. A gate that blocks delivery on a
+      # combination nobody runs is a false red on the delivery path — the same
+      # defect `check:divergence` was corrected for one commit earlier.
+      #
+      # WHAT THIS NARROWS, said plainly: the check no longer demonstrates that
+      # the delivered tree runs on Node 20, only that its code is consistent
+      # with the packed engine. Getting the Node 20 guarantee back means giving
+      # the materialised tree a lockfile, which means the mirror publishing one
+      # — a larger change than this job. `engines` still says `>=20.0.0` and
+      # every other workflow still runs 20, so nothing else moved.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           registry-url: "https://npm.pkg.github.com"
           scope: "@be-in-digital"
           cache: "pnpm"
