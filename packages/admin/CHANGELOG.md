@@ -1,5 +1,13 @@
 # @be-in-digital/admin
 
+## 16.0.0
+
+### Patch Changes
+
+- Updated dependencies [c5500af]
+  - @be-in-digital/convex-functions@7.1.0
+  - @be-in-digital/core@4.2.0
+
 ## 15.0.1
 
 ### Patch Changes
