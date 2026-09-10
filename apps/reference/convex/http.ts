@@ -16,6 +16,7 @@ import {
   handleUnsubscribePost,
   handleConfirmOptIn,
   handleSesWebhook,
+  handleResendWebhook,
 } from "./emailHttpHandlers";
 import { handleWebhook as bidStripeWebhook } from "./bidStripeWebhook";
 import { healthCheck } from "./health";
@@ -124,6 +125,17 @@ http.route({
   path: "/webhooks/ses",
   method: "POST",
   handler: handleSesWebhook,
+});
+
+// Resend webhook (the same five events, for a deployment on EMAIL_PROVIDER=resend)
+//
+// A client whose AWS SES production-access request was refused runs on Resend,
+// and SNS never calls the route above. Without this one nothing suppressed a
+// dead address and nothing recorded a spam report on that deployment.
+http.route({
+  path: "/webhooks/resend",
+  method: "POST",
+  handler: handleResendWebhook,
 });
 
 // BeYours Stripe webhook (subscription lifecycle)

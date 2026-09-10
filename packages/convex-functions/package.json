@@ -26,6 +26,7 @@
     "./backupTables": "./src/backupTables.ts",
     "./storeAudit": "./src/storeAudit.ts",
     "./snsSignature": "./src/snsSignature.ts",
+    "./resendSignature": "./src/resendSignature.ts",
     "./accessAudit": "./src/accessAudit.ts",
     "./automationDispatch": "./src/automationDispatch.ts",
     "./campaignDelivery": "./src/campaignDelivery.ts",
