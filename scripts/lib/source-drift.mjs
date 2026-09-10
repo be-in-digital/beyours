@@ -223,3 +223,80 @@ export function bumpedAhead(workspaceVersion, publishedVersion) {
   }
   return false
 }
+
+/**
+ * What a package declaring a subpath its published version lacks must do
+ * about it before the pull request may merge.
+ *
+ *   "released-here" — the version in this tree is already ahead of the
+ *                     registry. `changeset publish` pushes it on merge, so the
+ *                     mirror is blocked for the length of one Release run.
+ *   "promised"      — a changeset is waiting. Something WILL carry it, one day.
+ *   "unclaimed"     — nothing will ever carry it.
+ *
+ * ONLY THE FIRST MAY MERGE, and that is a change of rule rather than a
+ * tightening for its own sake.
+ *
+ * The gate used to let "promised" through as a warning, on reasoning this file
+ * still applies to ordinary drift and which is right there: "a changeset that
+ * exists and is waiting is the intended workflow… failing on one hours old
+ * would punish the normal case." A subpath is not ordinary drift. It is the one
+ * kind of change that makes `publish-mirror.mjs` refuse EVERY sync — a
+ * storefront fix by somebody else queues behind it — and it stays refused for
+ * as long as the release is merely promised.
+ *
+ * #427 measured what that costs. Eight commits, 129 files under `apps/themes`,
+ * on no client site for two days, because three subpaths sat unpublished:
+ *
+ *     @be-in-digital/ui@3.1.0 does not export ./contrast
+ *     @be-in-digital/ui@3.1.0 does not export ./contrast-scan
+ *     @be-in-digital/convex-functions@5.0.0 does not export ./paymentLedger
+ *
+ * Every signal a human would check was green throughout, this one included: it
+ * printed a warning and exited 0. Five occurrences merged that way. The audit
+ * of 10 September named the sixth as the one to stop.
+ *
+ * The remedy is one command and it is already documented — `publish-mirror.mjs`
+ * prints it in its own failure text: `pnpm version-packages`, commit the bumped
+ * manifests, merge. That consumes the changeset and turns "promised" into
+ * "released-here", which is precisely the distinction `bumpedAhead` exists to
+ * draw.
+ *
+ * WHAT THIS DOES NOT DO. It does not require the release to have PUBLISHED
+ * before the merge — that is impossible, the publish happens on merge. It
+ * requires the bump to be in the commit, so the publish is a consequence of
+ * merging rather than a separate act somebody has to remember.
+ */
+export function classifySubpathGap({ workspaceVersion, publishedVersion, hasChangeset }) {
+  if (bumpedAhead(workspaceVersion, publishedVersion)) return "released-here"
+  return hasChangeset ? "promised" : "unclaimed"
+}
+
+/** Whether a subpath gap in that state may reach `main`. */
+export function subpathGapMayMerge(verdict) {
+  return verdict === "released-here"
+}
+
+/** What to tell whoever tripped it, written for them rather than for us. */
+export function describeSubpathGap(row, verdict) {
+  const paths = row.missing.map((p) => `\`${p}\``).join(", ")
+  const head =
+    `${row.name} declares ${paths}, which ${row.version} (the version a client installs) ` +
+    "does not have."
+  if (verdict === "released-here") {
+    return (
+      `${head} The version is already bumped to ${row.workspaceVersion} in this tree, so the ` +
+      "release that carries it is written rather than promised — `changeset publish` pushes " +
+      "it on merge."
+    )
+  }
+  const why =
+    " Until a release carries it, `publish-mirror.mjs` refuses EVERY sync — including changes " +
+    "by other people that have nothing to do with this one."
+  return verdict === "promised"
+    ? `${head} A changeset is waiting, which is a promise rather than a release.${why} ` +
+        "Run `pnpm version-packages` on this pull request and commit the bumped manifests, so " +
+        "the publish happens on merge."
+    : `${head} No changeset will move its version, so nothing will ever carry it.${why} ` +
+        "Run `pnpm changeset`, then `pnpm version-packages`, and commit both."
+}

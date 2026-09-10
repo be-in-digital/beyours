@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.0.1
+
+### Patch Changes
+
+- Updated dependencies [92dc32f]
+  - @be-in-digital/convex-schema@6.2.0
+
 ## 7.0.0
 
 ### Major Changes

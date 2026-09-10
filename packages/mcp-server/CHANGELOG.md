@@ -1,5 +1,22 @@
 # @be-in-digital/mcp-server
 
+## 1.1.4
+
+### Patch Changes
+
+- Report the versions the two releases in this change actually cut
+
+  The pinned table this server answers from is generated, and it is the
+  answer: a caller asks the MCP server which version of an engine package to
+  install, and it reads `package-versions.ts`. The table still described the
+  tree as it stood before `convex-schema`, `restaurant`, `ui` and `admin` were
+  versioned, so it would have named four versions a client cannot install and
+  `registry.test.ts` failed on the first of them.
+
+  Regenerated with `pnpm --filter @be-in-digital/mcp-server sync:versions`, the
+  command the failing test names in its own message. The table does not list
+  this package, so cutting this release does not invalidate it again.
+
 ## 1.1.3
 
 ### Patch Changes

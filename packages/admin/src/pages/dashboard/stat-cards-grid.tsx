@@ -60,7 +60,7 @@ function TrendIndicator({ current, previous }: { current: number; previous: numb
     <span
       className={cn(
         "inline-flex items-center gap-0.5 text-[11px] font-medium",
-        isPositive ? "text-success" : "text-red-600 dark:text-red-400"
+        isPositive ? "text-success" : "text-red-700 dark:text-red-400"
       )}
     >
       {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}

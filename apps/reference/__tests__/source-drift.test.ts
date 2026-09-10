@@ -2,12 +2,15 @@ import { describe, expect, it, test } from "vitest"
 
 import {
   bumpedAhead,
+  classifySubpathGap,
   describeDrift,
+  describeSubpathGap,
   describeWaiting,
   formatSummary,
   formatTable,
   formatWaitingSummary,
   isReleasableSource,
+  subpathGapMayMerge,
   summariseDrift,
 } from "../../../scripts/lib/source-drift.mjs"
 
@@ -258,5 +261,100 @@ describe("bumpedAhead", () => {
     expect(bumpedAhead("1.0.0", "")).toBe(false)
     expect(bumpedAhead(undefined as unknown as string, "1.0.0")).toBe(false)
     expect(bumpedAhead("1.0.0-rc.1", "1.0.0")).toBe(false)
+  })
+})
+
+/**
+ * A subpath a client cannot resolve may not merge on a promise.
+ *
+ * WHAT WAS BROKEN. `publish-mirror.mjs` refuses EVERY sync while a package
+ * declares an `exports` subpath its published version lacks — not just the
+ * change that added it, but a storefront fix by somebody else that happens to
+ * queue behind it. The gate let that merge on a warning whenever a changeset
+ * was waiting, on the reasoning this file applies to ordinary drift: a waiting
+ * changeset is the intended workflow.
+ *
+ * A subpath is not ordinary drift, and #427 measured the difference. Eight
+ * commits and 129 files under `apps/themes` reached no client site for two
+ * days because three subpaths sat unpublished — `./contrast`, `./contrast-scan`
+ * and `./paymentLedger` — while every signal a human would check, this one
+ * included, was green. Five occurrences merged that way.
+ *
+ * The remedy was always one command, and `publish-mirror.mjs` prints it in its
+ * own failure text: `pnpm version-packages`, commit the bumped manifests,
+ * merge. That turns a promise into a release the merge itself publishes. So
+ * only a bump already in the tree may merge.
+ */
+describe("a subpath the published version does not carry", () => {
+  const gap = (workspaceVersion: string, hasChangeset: boolean) =>
+    classifySubpathGap({ workspaceVersion, publishedVersion: "3.1.0", hasChangeset })
+
+  test("a bump already in the tree is a release, and may merge", () => {
+    // `changeset publish` compares each version against the registry and pushes
+    // whatever is missing, so merging this IS the release.
+    expect(gap("3.2.0", false)).toBe("released-here")
+    expect(subpathGapMayMerge("released-here")).toBe(true)
+  })
+
+  test("a waiting changeset is a promise, and may NOT", () => {
+    // The rule that changed. This used to be a warning and exit 0.
+    expect(gap("3.1.0", true)).toBe("promised")
+    expect(subpathGapMayMerge("promised")).toBe(false)
+  })
+
+  test("no changeset at all may not either", () => {
+    expect(gap("3.1.0", false)).toBe("unclaimed")
+    expect(subpathGapMayMerge("unclaimed")).toBe(false)
+  })
+
+  test("a bump outranks the absence of a changeset", () => {
+    // Versioning CONSUMES changesets, so the commit that cuts a release has an
+    // empty `.changeset/` — and used to be reported as the deadlock it ends.
+    expect(gap("4.0.0", false)).toBe("released-here")
+  })
+
+  test("a version that is not ahead is not a bump", () => {
+    // Equal, behind, and unparseable all fail towards reporting.
+    expect(gap("3.1.0", false)).toBe("unclaimed")
+    expect(gap("3.0.9", false)).toBe("unclaimed")
+    expect(gap("not-a-version", false)).toBe("unclaimed")
+  })
+
+  describe("what it tells whoever tripped it", () => {
+    const row = {
+      name: "@be-in-digital/ui",
+      version: "3.1.0",
+      workspaceVersion: "3.1.0",
+      missing: ["./contrast", "./contrast-scan"],
+    }
+
+    test("a promise is told to cut the release here, not to write another changeset", () => {
+      const said = describeSubpathGap(row, "promised")
+      expect(said).toContain("pnpm version-packages")
+      // The wrong advice would be `pnpm changeset` — there already is one.
+      expect(said).toContain("promise rather than a release")
+      expect(said).toContain("./contrast")
+    })
+
+    test("an unclaimed subpath is told to write one first", () => {
+      const said = describeSubpathGap(row, "unclaimed")
+      expect(said).toContain("pnpm changeset")
+      expect(said).toContain("pnpm version-packages")
+    })
+
+    test("both say why it is not only their problem", () => {
+      // The sentence that makes the rule land: the queue behind it is other
+      // people's work.
+      for (const verdict of ["promised", "unclaimed"] as const) {
+        expect(describeSubpathGap(row, verdict)).toContain("refuses EVERY sync")
+      }
+    })
+
+    test("a release cut here is told it is fine, and why the mirror still waits", () => {
+      const said = describeSubpathGap({ ...row, workspaceVersion: "3.2.0" }, "released-here")
+      expect(said).toContain("already bumped to 3.2.0")
+      expect(said).toContain("changeset publish")
+      expect(said).not.toContain("pnpm version-packages")
+    })
   })
 })

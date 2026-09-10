@@ -77,6 +77,11 @@ import { appendFileSync, readdirSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
 import { EXPORTS_UNKNOWN, exportsResolve, publishedTarball } from "./lib/engine-exports.mjs"
+import {
+  classifySubpathGap,
+  describeSubpathGap,
+  subpathGapMayMerge,
+} from "./lib/source-drift.mjs"
 import { CHANGESET_DIR, isChangesetFile, parseChangeset } from "./lib/pending-release.mjs"
 import { lookupPublishedVersion, publishablePackages, REPO_ROOT } from "./lib/registry.mjs"
 import {
@@ -311,43 +316,27 @@ if (subpathUnknown.length > 0) {
  */
 const bumpedAhead = (row) => versionIsAhead(row.workspaceVersion, row.version)
 
-const bumped = subpathProblems.filter((row) => bumpedAhead(row))
-const blocking = subpathProblems.filter(
-  (row) => !covered.has(row.name) && !bumpedAhead(row)
-)
-const announced = subpathProblems.filter(
-  (row) => covered.has(row.name) && !bumpedAhead(row)
-)
+const verdictOf = (row) =>
+  classifySubpathGap({
+    workspaceVersion: row.workspaceVersion,
+    publishedVersion: row.version,
+    hasChangeset: covered.has(row.name),
+  })
+
+const bumped = subpathProblems.filter((row) => verdictOf(row) === "released-here")
+const blocking = subpathProblems.filter((row) => !subpathGapMayMerge(verdictOf(row)))
 
 for (const row of bumped) {
-  const paths = row.missing.map((p) => `\`${p}\``).join(", ")
   console.log(
-    `::notice file=${row.dir}/package.json::${row.name} declares ${paths}, absent from ` +
-      `${row.version} (what the registry serves). The version is already bumped to ` +
-      `${row.workspaceVersion} in this tree, so the release that carries it is written ` +
-      `rather than merely promised — \`changeset publish\` pushes it on merge. The mirror ` +
-      `cannot sync until that publish lands.`
-  )
-}
-
-for (const row of announced) {
-  const paths = row.missing.map((p) => `\`${p}\``).join(", ")
-  console.log(
-    `::warning file=${row.dir}/package.json::${row.name} declares ${paths}, which ` +
-      `${row.version} (the version a client installs) does not have. A changeset is ` +
-      `waiting, so a release will carry it — until that release publishes, the mirror ` +
-      `cannot sync.`
+    `::notice file=${row.dir}/package.json::${describeSubpathGap(row, "released-here")} ` +
+      "The mirror cannot sync until that publish lands."
   )
 }
 
 for (const row of blocking) {
-  const paths = row.missing.map((p) => `\`${p}\``).join(", ")
   console.log(
-    `::${warnOnly ? "warning" : "error"} file=${row.dir}/package.json::${row.name} declares ` +
-      `${paths}, which ${row.version} (the version a client installs) does not have, and no ` +
-      `changeset will move its version. The mirror will refuse to sync anything — every ` +
-      `client, including changes unrelated to this one — until a release carries it. Run ` +
-      `\`pnpm changeset\` on this pull request.`
+    `::${warnOnly ? "warning" : "error"} file=${row.dir}/package.json::` +
+      describeSubpathGap(row, verdictOf(row))
   )
 }
 
@@ -381,19 +370,11 @@ if (drifted.length === 0 && blocking.length === 0) {
     console.log("Subpaths not checked (--no-registry).")
   } else if (subpathChecked === 0) {
     console.log("No package's subpaths could be compared against a published version.")
-  } else if (announced.length > 0) {
-    // Never "every declared subpath exists" when two lines above said two of
-    // them do not. The run is green because a release is written down for
-    // them, which is a different sentence from a clean bill of health — and
-    // printing the clean one under its own warnings is the exact dishonesty
-    // the `unknown` branch above was added to stop.
-    const names = announced.map((row) => row.name).join(", ")
-    console.log(
-      `${subpathChecked} package(s) compared. ${announced.length} declare a subpath ` +
-        `no published version carries yet — ${names} — each with a changeset waiting. ` +
-        `The mirror cannot sync until that release publishes.`
-    )
   } else {
+    // No `announced` branch any more, and its absence is the change: a waiting
+    // changeset used to reach here and print a green-ish sentence under its own
+    // warning. `promised` is blocking now, so this line is only ever reached
+    // when every declared subpath either exists or is bumped in this tree.
     console.log(
       `Every declared subpath exists in the version a client installs ` +
         `(${subpathChecked} package(s) compared).`

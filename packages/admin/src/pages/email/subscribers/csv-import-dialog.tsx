@@ -239,7 +239,7 @@ export function CsvImportDialog({ open, onOpenChange }: CsvImportDialogProps) {
         {step === "done" && importResult && (
           <div className="space-y-4">
             <div className="flex flex-col items-center gap-3 py-4">
-              <CheckCircle2 className="h-12 w-12 text-green-600" />
+              <CheckCircle2 className="h-12 w-12 text-green-700 dark:text-green-500" />
               <div className="text-center">
                 <p className="font-semibold">{importResult.imported} abonné{importResult.imported > 1 ? "s" : ""} importé{importResult.imported > 1 ? "s" : ""}</p>
                 {importResult.skipped > 0 && (

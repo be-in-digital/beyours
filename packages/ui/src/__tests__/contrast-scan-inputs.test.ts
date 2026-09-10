@@ -178,3 +178,89 @@ describe("scanContrast resolves an inline var() through the scope chain", () => 
     for (const failure of failures) expect(failure.ratio).toBeCloseTo(1, 2)
   })
 })
+
+/**
+ * The spelling this design system forces, and the one the scanner could not read.
+ *
+ * Tokens are stored as bare HSL channels — `--primary: 24 95% 53%` — precisely
+ * so a caller can tint them, which means an inline USE of one cannot be written
+ * any other way than `hsl(var(--token))`. `cssColour` read `var(--token)` and
+ * returned null for the wrapped form, so every such style was dropped: not
+ * reported as unmeasurable, just absent, in a sweep whose whole job is to
+ * measure styles.
+ *
+ * Written as a difference, like everything else in this file: the same pair
+ * that measures 1:1 through a bare `var()` must measure 1:1 through
+ * `hsl(var())`, and a token tinted to 10% must NOT be read as the token at
+ * full strength.
+ */
+describe("scanContrast resolves hsl(var(--token))", () => {
+  const root = fixture()
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+
+  writeFileSync(
+    join(root, "ui/HslVar.tsx"),
+    `export function HslVar() {
+  return (
+    <div style={{ backgroundColor: "hsl(var(--background))", color: "hsl(var(--background))" }}>
+      Bonjour
+    </div>
+  )
+}
+`,
+  )
+
+  it("measures it exactly as it measures a bare var()", () => {
+    const failures = scanContrast({ appDir: root, regions: REGIONS })
+    expect(failures.length).toBeGreaterThan(0)
+    for (const failure of failures) expect(failure.ratio).toBeCloseTo(1, 2)
+  })
+})
+
+describe("scanContrast reads a raw hsl() literal", () => {
+  const root = fixture()
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+
+  writeFileSync(
+    join(root, "ui/HslLiteral.tsx"),
+    `export function HslLiteral() {
+  return (
+    <div style={{ backgroundColor: "hsl(0 0% 100%)", color: "hsl(0 0% 96%)" }}>
+      Bonjour
+    </div>
+  )
+}
+`,
+  )
+
+  it("measures near-white ink on white rather than leaving it unmeasured", () => {
+    // 96% lightness on 100% is about 1.1:1 — the kind of pair a sweep exists to
+    // find, and which was invisible for want of four characters.
+    const failures = scanContrast({ appDir: root, regions: REGIONS })
+    expect(failures.length).toBeGreaterThan(0)
+    for (const failure of failures) expect(failure.ratio).toBeLessThan(1.3)
+  })
+})
+
+describe("scanContrast still refuses what it cannot know", () => {
+  const root = fixture()
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+
+  writeFileSync(
+    join(root, "ui/HslUnknown.tsx"),
+    `export function HslUnknown() {
+  return (
+    <div style={{ backgroundColor: "hsl(var(--not-a-token))", color: "hsl(var(--nor-this))" }}>
+      Bonjour
+    </div>
+  )
+}
+`,
+  )
+
+  it("invents nothing for a token no stylesheet declares", () => {
+    // The other half. A resolver that answers for everything is how a sweep
+    // starts reporting pairs the product never renders.
+    expect(scanContrast({ appDir: root, regions: REGIONS })).toEqual([])
+  })
+})

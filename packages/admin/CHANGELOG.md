@@ -1,5 +1,50 @@
 # @be-in-digital/admin
 
+## 15.0.1
+
+### Patch Changes
+
+- Clear the WCAG AA floor on every shipped template, and read the HSL spelling
+
+  **Three shades, one step darker each.** Once a vertical template tints
+  `--background` away from the engine's near-white `0 0% 99%`, three Tailwind
+  inks in the admin fall under the floor:
+
+  |                                             | measured across 51 palettes | floor |
+  | ------------------------------------------- | --------------------------- | ----- |
+  | `stat-cards-grid.tsx` — `text-red-600`      | 4.196–4.500:1               | 4.5   |
+  | `csv-import-dialog.tsx` — `text-green-600`  | 2.832–2.983:1               | 3     |
+  | `suggestions-review.tsx` — `text-amber-600` | 2.943–2.996:1               | 3     |
+
+  Each moves to the 700 shade, with the dark-scheme value pinned where it was
+  implicit so the fix does not follow the ink into a scheme that already cleared.
+  These are 68 failures across 34 of the 51 templates, and they were invisible
+  because the sweep that should have found them was discarding 40.9% of what it
+  measured.
+
+  **And `scanContrast` could not read the spelling this design system forces.**
+  Tokens are stored as bare HSL channels — `--primary: 24 95% 53%` — precisely so
+  a caller can tint them, which means an inline use of one cannot be written any
+  way other than `hsl(var(--token))`. `cssColour` read `var(--token)` and returned
+  null for the wrapped form, so every such inline style was dropped: not reported
+  as unmeasurable, absent. A raw `hsl(h s% l%)` literal was dropped the same way.
+
+  Both are read now, each with its optional alpha, and a token no stylesheet
+  declares still resolves to nothing rather than to a guess.
+
+- Updated dependencies
+  - @be-in-digital/ui@4.3.1
+
+## 15.0.0
+
+### Patch Changes
+
+- Updated dependencies [92dc32f]
+- Updated dependencies [92dc32f]
+  - @be-in-digital/restaurant@4.1.1
+  - @be-in-digital/convex-schema@6.2.0
+  - @be-in-digital/convex-functions@7.0.1
+
 ## 14.0.0
 
 ### Minor Changes
