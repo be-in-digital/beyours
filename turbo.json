@@ -262,6 +262,11 @@
         // closes, and the hatch is what lets a deployment mid-configuration
         // keep recording them. It never re-opens subscription confirmation.
         "SES_SNS_ALLOW_ANY_TOPIC",
+        // The Svix secret `/webhooks/resend` verifies each delivery against.
+        // The Resend suite sets it to drive both answers: a correctly-signed
+        // delivery is acted on, and an unset secret refuses every one rather
+        // than acting on an unverified body.
+        "RESEND_WEBHOOK_SECRET",
         // The rest.
         "ADMIN_BOOTSTRAP_TOKEN",
         "OPENAI_API_KEY",
@@ -458,6 +463,11 @@
         // closes, and the hatch is what lets a deployment mid-configuration
         // keep recording them. It never re-opens subscription confirmation.
         "SES_SNS_ALLOW_ANY_TOPIC",
+        // The Svix secret `/webhooks/resend` verifies each delivery against.
+        // The Resend suite sets it to drive both answers: a correctly-signed
+        // delivery is acted on, and an unset secret refuses every one rather
+        // than acting on an unverified body.
+        "RESEND_WEBHOOK_SECRET",
         // The rest.
         "ADMIN_BOOTSTRAP_TOKEN",
         "OPENAI_API_KEY",

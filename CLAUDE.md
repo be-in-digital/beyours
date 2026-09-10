@@ -548,8 +548,22 @@ SES** — `resolveEmailProvider` returns a refusal the caller surfaces; it does
 not throw, so do not go looking for one.
 Set `EMAIL_PROVIDER`, `RESEND_API_KEY` and `RESEND_FROM_EMAIL` on **both** the
 Next.js env and the Convex deployment (`pnpm env:sync` carries them). Resend has
-no configuration sets, so a client who moves loses open/click tracking, not
-their mail. In the ENGINE — `apps/themes` and `apps/reference` — no Convex
+no configuration sets, so the SES-side wiring — the topic, the event
+destination, `IncludeOriginalHeaders` — has no counterpart; what carries the
+feedback instead is **`POST /webhooks/resend`**, added by #444. Set
+`RESEND_WEBHOOK_SECRET` on the **Convex** deployment as well: that route
+refuses every delivery while it is unset rather than acting on an unverified
+body, because the body names the subscriber to suppress.
+
+Until #444 there was no such route, and it was the whole of the difference
+between the two transports: a Resend client mailed a growing list with **zero
+suppression** — a dead mailbox re-mailed on every campaign, a spam report never
+recorded, « Délivrés » at 0 for ever — and the first symptom available to
+anybody was the sending domain being throttled. `email-provider-switch.test.ts`
+now reads `http.ts` and fails when a value of `EMAIL_PROVIDERS` has no
+`/webhooks/<provider>` route, so the next transport cannot ship without one.
+
+In the ENGINE — `apps/themes` and `apps/reference` — no Convex
 action constructs an `SESv2Client` any more; `convex/emailTransport.ts` is the
 one seam, and `email-provider-switch.test.ts` holds it there.
 
@@ -662,6 +676,13 @@ SES_SNS_ALLOW_ANY_TOPIC=       # "true" re-opens notifications to any signed
                                # topic while the ARN above is still unset. An
                                # operator's deliberate downgrade; it never lets
                                # the endpoint confirm a subscription.
+
+# The Svix signing secret for POST /webhooks/resend, from the Resend dashboard.
+# Only for EMAIL_PROVIDER=resend, and set on the CONVEX deployment — a Resend
+# deployment gets no SNS notification at all, so this route is the ONLY way a
+# bounce or a spam report reaches the product. Unset, the route answers 401 to
+# every delivery rather than acting on an unverified body.
+RESEND_WEBHOOK_SECRET=
 
 # Payments — SumUp and PayPal are OAuth client pairs, not single API keys
 STRIPE_SECRET_KEY=            # sk_...

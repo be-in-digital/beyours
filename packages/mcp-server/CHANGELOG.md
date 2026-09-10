@@ -1,5 +1,16 @@
 # @be-in-digital/mcp-server
 
+## 1.1.6
+
+### Patch Changes
+
+- Report the versions this release actually cuts.
+
+  `src/package-versions.ts` is generated from the workspace manifests, so a
+  `pnpm version-packages` run leaves it stale until `sync:versions` is run
+  again. It named `admin@15.0.1`, `convex-functions@7.0.1` and `core@4.1.0`;
+  this release cuts 16.0.0, 7.1.0 and 4.2.0.
+
 ## 1.1.5
 
 ### Patch Changes

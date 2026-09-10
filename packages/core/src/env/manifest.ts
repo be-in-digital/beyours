@@ -240,7 +240,16 @@ const GROUP_DECLARATIONS: readonly Omit<EnvManifestGroup, 'requiredTogether'>[] 
     // not know it exists cannot ask for it. Leaving all three unset keeps SES.
     feature: 'Resend (alternative à SES si la demande AWS est refusée)',
     tier: 'site',
-    vars: ['EMAIL_PROVIDER', 'RESEND_API_KEY', 'RESEND_FROM_EMAIL'],
+    vars: [
+      'EMAIL_PROVIDER',
+      'RESEND_API_KEY',
+      'RESEND_FROM_EMAIL',
+      // The feedback half. A Resend deployment gets no SNS notification, so
+      // this is the ONLY path by which a bounce or a spam report reaches the
+      // product — and while it is unset `/webhooks/resend` refuses every
+      // delivery rather than acting on an unverified body.
+      'RESEND_WEBHOOK_SECRET',
+    ],
   },
   {
     // BeYours' own billing, not the restaurant's. Set on the deployment that
@@ -310,6 +319,10 @@ const CONVEX_KEYS: readonly string[] = [
   'EMAIL_PROVIDER',
   'RESEND_API_KEY',
   'RESEND_FROM_EMAIL',
+  // Read by `convex/emailHttpHandlers.ts`: the Svix secret `/webhooks/resend`
+  // verifies each delivery against. Unset, that route answers 401 to every
+  // one — the body names the subscriber to suppress.
+  'RESEND_WEBHOOK_SECRET',
   // Translation
   'OPENAI_API_KEY',
   // Payments

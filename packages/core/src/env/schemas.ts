@@ -232,6 +232,19 @@ const siteOptionalShape = {
   // operator who flips the switch and changes nothing else keeps sending from
   // the address they already verified.
   RESEND_FROM_EMAIL: opt(z.string().email()),
+  // The Svix signing secret for `/webhooks/resend`, from the Resend dashboard.
+  //
+  // Set on the CONVEX deployment — the handler reads it there, the same way
+  // SES_SNS_TOPIC_ARN is read by `/webhooks/ses`. Without it that route
+  // REFUSES every delivery (401) rather than processing an unverified body:
+  // the handler marks subscribers bounced and complained from ids and
+  // addresses in the payload, so accepting an unsigned one would let anybody
+  // suppress mail to a real customer.
+  //
+  // A Resend deployment WITHOUT this variable has no feedback path at all —
+  // dead addresses are re-mailed on every campaign and a spam report is never
+  // recorded — which is the state every Resend client shipped in before #444.
+  RESEND_WEBHOOK_SECRET: opt(z.string().min(1)),
 
   // Sentry source-map upload (build time) — all three or none, see
   // SITE_FEATURE_GROUPS. The token is a secret and belongs on the build host,

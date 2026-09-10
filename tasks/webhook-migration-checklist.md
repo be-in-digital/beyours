@@ -204,12 +204,39 @@ Confirmed by reading the code, so nobody re-checks them.
 | Service | Why not |
 |---|---|
 | **PayPal** | `return_url` / `cancel_url` passed per request, never registered |
-| **Resend** | outbound only (`api.resend.com/emails`); no webhook wired |
 | **Sentry** | DSN outbound; no tunnel route anywhere |
 | **Unsplash**, **OpenAI** | outbound only |
 | **Google Maps** | browser key. *But* any HTTP-referrer restriction is keyed to the **public domain**, not the Convex host |
 | **Calendly** | outbound link, and superseded by `BOOKING_URL` (bookself.app) |
 | **Yousign** | **removed.** Replaced by in-app signing (`apps/site/convex/affiliateSignature.ts`); only vestigial schema fields remain |
+
+## 4b. Resend — an inbound URL since #444
+
+**Only for a deployment running `EMAIL_PROVIDER=resend`.** This row used to sit
+in the table above reading *"outbound only; no webhook wired"*, and that was
+accurate and was the defect: a Resend deployment had no feedback path at all,
+so a dead mailbox was re-mailed on every campaign, a spam report was never
+recorded, and the first thing anybody noticed was the sending domain being
+throttled.
+
+| Step | Where | Value |
+|---|---|---|
+| 1 | Resend dashboard → **Webhooks** → Add endpoint | `https://<deployment>.convex.site/webhooks/resend` |
+| 2 | Subscribe it to | `email.sent`, `email.delivered`, `email.bounced`, `email.complained`, `email.opened`, `email.clicked`, `email.failed` |
+| 3 | Copy the **Signing Secret** (`whsec_…`) | `npx convex env set RESEND_WEBHOOK_SECRET whsec_…` |
+
+Set the secret on the **Convex** deployment, not the Next.js one — the handler
+reads it there, the same way `/webhooks/ses` reads `SES_SNS_TOPIC_ARN`.
+
+**While `RESEND_WEBHOOK_SECRET` is unset the route answers 401 to every
+delivery.** That is deliberate and it fails closed: the body names the
+subscriber to suppress, so acting on an unverified one would let anybody
+suppress mail to a real customer. Svix retries a non-2xx for a day, so a secret
+set within that window collects the backlog rather than losing it.
+
+**Moving a Resend deployment** puts this endpoint in the same class as the
+Convex-hosted webhooks in section 2 — the URL contains the deployment name, so
+it has to be re-pointed and the secret re-set on the new deployment.
 
 ## 5. Documentation that will send someone to the wrong place
 
