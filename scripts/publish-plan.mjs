@@ -195,10 +195,19 @@ const output = process.env.GITHUB_OUTPUT
 if (output) {
   appendFileSync(output, `publishing=${pending.length > 0}\n`)
   appendFileSync(output, `packages=${pending.map((pkg) => pkg.name).join(",")}\n`)
-  // Nothing gates on this yet, deliberately. It exists so that making the
-  // owed bump blocking is a workflow change rather than a rewrite of this
-  // script — the same escape hatch `check-pending-release.mjs` keeps in
-  // `--fail`.
+  // READ, since #427: `release.yml`'s `owed-bump` job opens an issue on it.
+  //
+  // Still not a gate, and the comment above this function says why — the
+  // mirror's `workflow_run` path fires only on a green Release, so failing
+  // here would stop the sync it is reporting on. What changed is that the
+  // verdict now reaches somebody: the `::warning::` above and the step summary
+  // below are visible only to whoever opens the run, and a push to `main` has
+  // no pull request to annotate and no author to notify. Six changesets sat on
+  // `main` for over an hour with the mirror blocked while this warning printed
+  // on four consecutive green runs.
+  //
+  // Making it blocking is still a workflow change rather than a rewrite here —
+  // the same escape hatch `check-pending-release.mjs` keeps in `--fail`.
   appendFileSync(output, `bump_owed=${owed !== null}\n`)
 }
 

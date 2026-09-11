@@ -250,6 +250,11 @@ describe("a job waits for every gate its condition reads", () => {
     expect(conditional.map((entry) => `${entry.file}:${entry.id}`)).toEqual([
       "e2e.yml:e2e-report",
       "publish-mirror.yml:publish",
+      // `owed-bump` reads `plan.outputs.bump_owed` to open an issue when a
+      // merged changeset has no release to travel in (#427). It reports and
+      // gates nothing — `release` deliberately does not wait on it, because
+      // failing a Release would stop the mirror sync it is reporting on.
+      "release.yml:owed-bump",
       "release.yml:e2e",
       "release.yml:release",
     ])
