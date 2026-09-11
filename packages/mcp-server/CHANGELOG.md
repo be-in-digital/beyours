@@ -1,5 +1,16 @@
 # @be-in-digital/mcp-server
 
+## 1.1.7
+
+### Patch Changes
+
+- Report the versions this release cuts.
+
+  `src/package-versions.ts` is generated from the workspace manifests, so a
+  `pnpm version-packages` run leaves it naming the versions that release
+  supersedes: `admin@16.0.0`, `convex-functions@7.1.0`, `convex-schema@6.2.0`.
+  This release cuts 17.0.0, 7.2.0 and 6.3.0.
+
 ## 1.1.6
 
 ### Patch Changes
