@@ -99,3 +99,4 @@ export {
   cmsAccountTable,
 } from "./cms"
 export { rateLimitsTable } from "./rateLimits"
+export * from "./customers"

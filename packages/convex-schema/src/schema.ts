@@ -36,6 +36,7 @@ import {
   favoritesTable,
   customerAddressesTable,
   contactMessagesTable,
+  customersTable,
   emailSubscribersTable,
   emailTemplatesTable,
   emailCampaignsTable,
@@ -126,6 +127,7 @@ export default defineSchema({
   customerAddresses: customerAddressesTable,
   contactMessages: contactMessagesTable,
   // Email Marketing
+  customers: customersTable,
   emailSubscribers: emailSubscribersTable,
   emailTemplates: emailTemplatesTable,
   emailCampaigns: emailCampaignsTable,

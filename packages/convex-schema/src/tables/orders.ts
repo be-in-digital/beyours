@@ -283,10 +283,36 @@ export const ordersTable = defineTable({
    * order that Uber Eats or Deliveroo invoiced themselves.
    */
   invoiceId: v.optional(v.id("invoices")),
+  /**
+   * `customerInfo.email`, lower-cased and trimmed — the key the customer book
+   * is written under.
+   *
+   * WHY A SECOND FIELD (#364). `customerInfo.email` is stored exactly as the
+   * diner typed it, and it must stay that way: it is what a confirmation is
+   * sent to and what an invoice shows. But `Alice@Example.com` and
+   * `alice@example.com` are one person, which is why the promotion
+   * per-customer cap normalises before its own lookup — a cap that did not was
+   * bypassable by changing the case.
+   *
+   * So the book cannot index the field the diner typed, and normalising in a
+   * query does not work either: an index is on stored bytes. One derived
+   * field, written beside the original, is what makes "this person's orders" a
+   * point lookup instead of a scan of the establishment's whole history.
+   *
+   * Optional, so no row written before it existed needs a backfill under
+   * `schemaValidation: true` — and an order with no e-mail has none by
+   * definition. `customers.backfill` fills it for the orders already there;
+   * until it has run, a customer's detail view shows the orders it can find and
+   * says so.
+   */
+  customerEmailKey: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
   .index("by_storeId", ["storeId"])
+  // Read by the customer book's detail view: this person's orders, newest
+  // first, without scanning the establishment's whole history.
+  .index("by_storeId_customerEmailKey", ["storeId", "customerEmailKey"])
   .index("by_storeId_status", ["storeId", "status"])
   .index("by_storeId_createdAt", ["storeId", "createdAt"])
   /**

@@ -19,6 +19,7 @@
     ".": "./src/index.ts",
     "./eslint/convex-auth": "./eslint/convex-auth.mjs",
     "./categories": "./src/categories.ts",
+    "./customers": "./src/customers.ts",
     "./globalSettings": "./src/globalSettings.ts",
     "./storeIntegrations": "./src/storeIntegrations.ts",
     "./stores": "./src/stores.ts",

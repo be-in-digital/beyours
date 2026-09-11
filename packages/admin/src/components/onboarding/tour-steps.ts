@@ -178,6 +178,26 @@ export const TOUR_STEP_SPECS: TourStepSpec[] = [
       "Réordonnez-les avec les flèches haut/bas, modifiez ou supprimez en un clic.",
   },
 
+  // ── Customers ──────────────────────────────────────────────────────
+  //
+  // Restored with the page (#364). #363 deleted this step because
+  // `/dashboard/customers` was `<ComingSoon/>`, and a guided tour that walks a
+  // new owner into an empty screen is worse than a tour that is one step
+  // shorter. The copy below describes what the screen now does rather than
+  // what it was sold as: it says where the list comes from, and it does not
+  // promise "préférences", which nothing computes.
+  {
+    route: adminRoutes.customers,
+    navFor: adminRoutes.customers,
+    content:
+      "Clients — Les personnes qui ont commandé chez vous, avec leur nombre de " +
+      "commandes, leur total dépensé et leur panier moyen. La liste se remplit " +
+      "toute seule : chaque commande confirmée qui porte une adresse e-mail y " +
+      "ajoute la personne. Triez par « Récents » ou « Meilleurs clients », et " +
+      "exportez tout en CSV — ces données sont les vôtres. " +
+      "Une commande sans e-mail n'y figure pas : la page vous dit combien.",
+  },
+
   // ── Inventory ──────────────────────────────────────────────────────
   {
     route: adminRoutes.inventory,

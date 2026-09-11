@@ -85,6 +85,7 @@ export {
 } from "@be-in-digital/ui"
 
 // Pages (lazy loaded by consuming apps)
+export { CustomersPage } from "./pages/customers"
 export { DashboardPage } from "./pages/dashboard"
 export { OrdersPage, OrderDetailPage } from "./pages/orders"
 export { ProductsPage, NewProductPage, EditProductPage, ImageToProductPage } from "./pages/products"
