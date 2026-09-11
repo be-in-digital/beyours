@@ -38,11 +38,21 @@
  *     So a message-only scan can read three clean commits and watch the merge
  *     write the violation itself. It cost a red CI on `main`, a `Release` and a
  *     `Publish mirror` that never started, and a line nobody may now rewrite.
- *   - Not the pull request title or body. They carry the footer today and do
- *     not become the commit message — while the repository squashes from
- *     commit messages. If that setting is ever changed to "pull request title
- *     and description", this check goes blind at pull-request time and the
- *     `push` run on `main` becomes the one that catches it, after the fact.
+ *   - Not the pull request title or body. `scripts/check-pr-attribution.mjs`
+ *     reads those, and it exists because the reason given here was wrong.
+ *
+ *     This said they "do not become the commit message — while the repository
+ *     squashes from commit messages". `main` squashes with GitHub's "default
+ *     to pull request title, commit details", so the squash is assembled from
+ *     BOTH: the subject is the PR TITLE and the body is these commits.
+ *
+ *         $ git log -1 --format='%s' f0b3d9b3
+ *         Give a Resend deployment a feedback path (#463)     <- the PR title
+ *
+ *     So the title has been landing on protected history unread, which is
+ *     #434's finding. This check keeps its scope — the commits, which are the
+ *     squash BODY and the only thing `.githooks/commit-msg` can reach — and
+ *     the sibling reads the two fields a web form writes.
  *
  * Usage:  node scripts/check-commit-attribution.mjs [--range <A>..<B>]
  *         (also: pnpm check:attribution)
