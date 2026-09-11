@@ -780,3 +780,154 @@ describe("attribution in the identity rather than the message", () => {
     expect([...IDENTITY_RULES.map((r) => r.id)].filter((id) => !covered.has(id))).toEqual([])
   })
 })
+
+/**
+ * The pull request's own title and body.
+ *
+ * WHAT WAS BROKEN (#434). `check-commit-attribution.mjs` reads commits, and its
+ * docblock deliberately excluded the pull request on the grounds that it
+ * "[does] not become the commit message — while the repository squashes from
+ * commit messages".
+ *
+ * The second clause is measurably wrong for this repository, and the
+ * consequence is on protected history. `main` squashes with GitHub's "default
+ * to pull request title, commit details", so the squash is assembled from
+ * BOTH ends:
+ *
+ *     $ git log -1 --format='%s' f0b3d9b3
+ *     Give a Resend deployment a feedback path (#463)      <- the PR TITLE
+ *     $ git log -1 --format='%b' f0b3d9b3
+ *     * fix(email): give a Resend deployment a feedback path   <- the commits
+ *
+ * So the title lands verbatim and nothing read it — and it is the field an
+ * author writes last, in a web form, where `.githooks/commit-msg` cannot reach.
+ *
+ * The body is checked for a different reason, and the script says which: it
+ * does not reach the commit here, but `CLAUDE.md`'s rule covers pull request
+ * descriptions, and #434 measured 22 of the last 25 violating it — including
+ * the pull request that made the rule executable.
+ */
+describe("the pull request's own text", () => {
+  const CHECKER = path.join(__dirname, "../../../scripts/check-pr-attribution.mjs")
+
+  function run(args: string[]): { code: number; out: string } {
+    try {
+      const out = execFileSync("node", [CHECKER, ...args], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+        // No event payload: the script must read its arguments, not a runner.
+        env: { ...process.env, GITHUB_EVENT_PATH: "" },
+      })
+      return { code: 0, out }
+    } catch (error) {
+      const failure = error as { status?: number; stdout?: string; stderr?: string }
+      return { code: failure.status ?? 1, out: `${failure.stdout ?? ""}${failure.stderr ?? ""}` }
+    }
+  }
+
+  test("a clean title and body pass", () => {
+    const { code } = run(["--title", "Give a Resend deployment a feedback path", "--body", "Closes #444."])
+    expect(code).toBe(0)
+  })
+
+  test("attribution in the TITLE fails, and says where it lands", () => {
+    // The one that reaches protected history.
+    const { code, out } = run([
+      "--title", "Fix the thing 🤖 Generated with Claude Code",
+      "--body", "Closes #1.",
+    ])
+    expect(code).toBe(1)
+    expect(out).toMatch(/title/)
+    expect(out).toMatch(/SUBJECT of the squash commit/)
+  })
+
+  test("attribution in the BODY fails too", () => {
+    const { code, out } = run([
+      "--title", "A clean title",
+      "--body", "Some prose.\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    ])
+    expect(code).toBe(1)
+    expect(out).toMatch(/body/)
+  })
+
+  test("a French given name is not attribution", () => {
+    // The collision that would make this check unusable here, and the reason
+    // the matchers are imported rather than re-stated: `ATTRIBUTION_RULES`
+    // already carries it.
+    const { code } = run([
+      "--title", "Corrige le bug signalé par Claude Dubois",
+      "--body", "Claude a relu la carte.",
+    ])
+    expect(code).toBe(0)
+  })
+
+  test("and neither is this product's AI-generated blog", () => {
+    const { code } = run([
+      "--title", "feat(blog): schedule AI-generated articles",
+      "--body", "The auto-blog pipeline writes AI-generated drafts.",
+    ])
+    expect(code).toBe(0)
+  })
+
+  test("a sample quoted in a fenced block is not a credit", () => {
+    // The first pull request this check ran on was the one that added it, and
+    // it failed — on its own documentation. A pull request that explains the
+    // rule necessarily quotes what the rule forbids, and a guard that refuses
+    // every pull request discussing it is a guard somebody turns off.
+    const { code } = run([
+      "--title", "Read the pull request's own title",
+      "--body", 'Prose.\n\n```\n$ node x.mjs --title "Fix it 🤖 Generated with Claude Code"\n```\n\nMore prose.',
+    ])
+    expect(code).toBe(0)
+  })
+
+  test("but a real one outside the fence still fails", () => {
+    // The exemption is for samples, not a hiding place — and it costs nothing
+    // on protected history either way, since the body does not reach the commit.
+    const { code } = run([
+      "--title", "clean",
+      "--body", "Prose.\n\n```\nsample\n```\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    ])
+    expect(code).toBe(1)
+  })
+
+  test("and the TITLE gets no exemption at all", () => {
+    // One line, no fences, and it lands on `main` verbatim. Nothing about it
+    // is a sample, so backticks buy nothing.
+    const { code } = run(["--title", "`🤖 Generated with Claude Code`", "--body", "clean"])
+    expect(code).toBe(1)
+  })
+
+  test("with nothing to read it says so rather than inventing a verdict", () => {
+    // Off a pull_request event — a push, the merge queue, a local run. A check
+    // that failed there could not be run by hand at all.
+    const { code, out } = run([])
+    expect(code).toBe(0)
+    expect(out).toMatch(/nothing to read/)
+  })
+
+  test("CI runs it, and only where a pull request exists", () => {
+    const ci = parse(
+      fs.readFileSync(
+        path.join(__dirname, "../../../.github/workflows/ci.yml"),
+        "utf8",
+      ),
+    ) as { jobs?: Record<string, { steps?: { run?: string; if?: string }[] }> }
+
+    const step = Object.values(ci.jobs ?? {})
+      .flatMap((job) => job.steps ?? [])
+      .find((entry) => /pnpm check:pr-attribution/.test(entry.run ?? ""))
+
+    expect(step, "no CI step runs check:pr-attribution").toBeDefined()
+    // There is no pull request on a push or in the merge queue.
+    expect(step?.if ?? "").toMatch(/pull_request/)
+  })
+
+  test("the two checks share their matchers rather than each keeping a copy", () => {
+    // A second copy would drift, and the half that drifts is whichever nobody
+    // exercises — which is exactly how the title came to be unread.
+    const source = fs.readFileSync(CHECKER, "utf8")
+    expect(source).toMatch(/from "\.\/lib\/commit-attribution\.mjs"/)
+    expect(source).not.toMatch(/Co-Authored-By.*=.*\/\^/)
+  })
+})

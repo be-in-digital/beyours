@@ -734,7 +734,22 @@ When working on tasks:
     strips the trailers as they are written — `pnpm install` installs it, by
     pointing `core.hooksPath` at that tracked directory — and `pnpm
     check:attribution` refuses them in the required `Lint` job, over every
-    commit between the event's base and `HEAD`. Naming `CLAUDE.md` in a commit
+    commit between the event's base and `HEAD`.
+
+    Since #434 a second check, `pnpm check:pr-attribution`, reads the pull
+    request's own **title and body** on every `pull_request` run. Not belt and
+    braces: `main` squashes with GitHub's "default to pull request title,
+    commit details", so the squash SUBJECT is the pull request title and lands
+    on protected history verbatim — and it is the field an author writes last,
+    in a web form, where the commit-msg hook cannot reach. The body does not
+    reach the commit and is checked because the rule above covers pull request
+    descriptions; 22 of the 25 pull requests before that check carried one.
+    Both share one set of matchers, imported rather than restated. Fenced code
+    blocks in a **body** are exempt — a pull request explaining the rule quotes
+    what the rule forbids, and the body reaches no commit — while a **title**
+    gets no exemption at all, because it lands on `main` verbatim.
+
+    Naming `CLAUDE.md` in a commit
     is not attribution and stays legal; the guard matches co-author trailers,
     `Claude-*` trailers, session links, "generated/made/built with Claude"
     credits, a bare mention of the assistant by product name, an

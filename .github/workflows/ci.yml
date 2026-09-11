@@ -138,6 +138,31 @@ jobs:
       - name: Check commits for AI attribution
         run: pnpm check:attribution
 
+      # The other half of the same rule, and the half that reaches protected
+      # history (#434).
+      #
+      # `check:attribution` reads COMMITS, and its docblock says it deliberately
+      # skips the pull request because "they … do not become the commit
+      # message — while the repository squashes from commit messages". The
+      # second clause is measurably wrong here. `main` squashes with GitHub's
+      # "default to pull request title, commit details", so the squash is
+      # assembled from both:
+      #
+      #     $ git log -1 --format='%s' f0b3d9b3
+      #     Give a Resend deployment a feedback path (#463)     <- the PR TITLE
+      #     $ git log -1 --format='%b' f0b3d9b3
+      #     * fix(email): give a Resend deployment a feedback path   <- commits
+      #
+      # The title lands verbatim and nothing read it. It is also the field an
+      # author writes last, in a web form, where `.githooks/commit-msg` cannot
+      # reach.
+      #
+      # `if:` because there is no pull request on a push or in the merge queue,
+      # and a step that invented a verdict there would be worse than none.
+      - name: Check the pull request for AI attribution
+        if: github.event_name == 'pull_request'
+        run: pnpm check:pr-attribution
+
       # Documentation is the one artefact here that nothing executes, so it is
       # the one that rots without saying so. CLAUDE.md spent months pointing at
       # four documents that had never existed and four commands that answered
