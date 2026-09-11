@@ -1,5 +1,17 @@
 # @be-in-digital/mcp-server
 
+## 1.1.8
+
+### Patch Changes
+
+- Carry this release's versions in the package registry
+
+  `src/package-versions.ts` is generated from the workspace manifests, so every
+  release moves it — and a release that moved it without naming this package
+  would publish a registry still quoting the versions before the bump. The
+  server would then answer "which version of `@be-in-digital/admin` should I
+  install" with the one a client already has.
+
 ## 1.1.7
 
 ### Patch Changes

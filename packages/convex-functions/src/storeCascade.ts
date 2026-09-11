@@ -59,6 +59,7 @@ export const STORE_SCOPED_TABLES: ReadonlyArray<{ table: string; index: string }
   // i18n
   { table: "languages", index: "by_storeId" },
   { table: "translations", index: "by_storeId_entity" },
+  { table: "customers", index: "by_storeId_email" },
   { table: "translationJobs", index: "by_storeId" },
   // Email marketing
   { table: "emailSubscribers", index: "by_storeId" },

@@ -144,6 +144,11 @@ export const BACKUP_TABLES = [
   "emailConfig",
   "emailTemplates",
   "emailSegments",
+  // The establishment's own book of who bought from it (#364). Restored like
+  // any other client data: it is derived from the orders, and a restore that
+  // brought the orders back without it would leave the Clients screen empty
+  // until the next order rebuilt it one person at a time.
+  "customers",
   "emailSubscribers",
   "emailCampaigns",
   "emailAutomations",

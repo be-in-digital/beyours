@@ -22,6 +22,7 @@ import {
   UtensilsCrossed,
   Warehouse,
   type LucideIcon,
+  Users,
 } from "lucide-react"
 import { hasPermission, type Permission, type Role } from "@be-in-digital/core"
 import { profileAllowsPermission } from "@be-in-digital/convex-functions/teamAccess"
@@ -193,8 +194,17 @@ export const navGroups: NavGroup[] = [
         icon: LayoutList,
         requiredPermission: "products:read",
       },
-      // "Clients" is deliberately kept out of the nav until the page is
-      // built (the /dashboard/customers route stays reachable).
+      {
+        // Kept out of the nav until the page was built, which it is since #364.
+        // `customers:read` is the same gate the Messages entry below uses, and
+        // a waiter holds it — looking up the person standing at the counter is
+        // what a waiter does. The export is the same screen, and an export of
+        // what the reader can already see needs no second permission.
+        label: "Clients",
+        href: adminRoutes.customers,
+        icon: Users,
+        requiredPermission: "customers:read",
+      },
       {
         label: "Inventaire",
         href: adminRoutes.inventory,

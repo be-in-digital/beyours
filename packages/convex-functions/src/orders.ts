@@ -47,6 +47,11 @@ import {
 } from "@be-in-digital/convex-schema"
 import { create as kitchenTicketCreate } from "./kitchenTickets"
 import {
+  customerKey,
+  recordOrder as recordCustomerOrder,
+  reverseOrder as reverseCustomerOrder,
+} from "./customers"
+import {
   reverseMetadataIncremental,
   updateMetadataIncremental,
 } from "./emailSubscribers"
@@ -1230,6 +1235,15 @@ export const create = {
       orderNumber,
       customerId: args.customerId,
       customerInfo: args.customerInfo,
+      /* The key the customer book is written under (#364).
+       *
+       * Derived rather than a second copy of the truth: `customerInfo.email`
+       * stays exactly as the diner typed it, because that is what a
+       * confirmation is sent to and what an invoice shows. An index is on
+       * stored bytes, so a lookup by the normalised key needs the normalised
+       * key stored. `undefined` when the order carries no e-mail — a cash
+       * walk-in is not a person the book can hold. */
+      customerEmailKey: customerKey(args.customerInfo.email) ?? undefined,
       type: args.type,
       tableNumber,
       status: "pending",
@@ -1668,13 +1682,29 @@ export const updateStatus = {
 }
 
 /**
- * Update the subscriber's denormalised order history for a status change.
+ * Update the denormalised order history for a status change.
  *
- * Silent when the customer left no email, or is not a subscriber — the lookup
- * inside `updateMetadataIncremental` already skips a non-subscriber, and this
- * must never create one: an order is a purchase, not consent to be marketed to.
- * `source: "order"` exists in the schema for that decision; taking it is not
- * this function's to make.
+ * TWO BOOKS, AND THE DIFFERENCE BETWEEN THEM IS CONSENT (#364).
+ *
+ * `emailSubscribers.metadata` is the MARKETING history, and it is silent for
+ * anyone who is not a subscriber — the lookup inside
+ * `updateMetadataIncremental` skips them, and this must never create one: an
+ * order is a purchase, not consent to be marketed to. `source: "order"` exists
+ * in the schema for that decision; taking it is not this function's to make.
+ *
+ * `customers` is the establishment's own book of who bought from it, and that
+ * one IS created here. It records a fact the restaurant already holds in
+ * `orders` — this person, this often, this much — which is the trade record
+ * every business keeps. It creates no subscriber, it is not a segment, and the
+ * campaign sender does not read it.
+ *
+ * Both on the same transitions, from the same caller, so the two cannot answer
+ * the same question differently.
+ *
+ * Silent for an order with no e-mail, in both books. A cash walk-in who gave a
+ * first name has no contact, and an address-book entry that cannot be addressed
+ * is worse than an honest count — `customers.anonymousOrderCount` is how the
+ * screen says how many those are.
  */
 async function syncSubscriberOrderMetadata(
   ctx: any,
@@ -1686,15 +1716,46 @@ async function syncSubscriberOrderMetadata(
   const email = order.customerInfo?.email
   if (!email) return undefined
 
+  const productIds = (order.items ?? [])
+    .map((item: { productId?: string }) => item.productId)
+    .filter((id: string | undefined): id is string => Boolean(id))
+
   if (to === "confirmed") {
+    /*
+     * Stamp the derived key here rather than only at creation.
+     *
+     * `customerKey` is what the customer detail view looks an order up by, and
+     * writing it at the two `insert("orders", …)` sites means it is correct
+     * only for as long as nobody adds a third. A platform order arriving from
+     * the Uber Eats or Deliveroo webhook path, a seed, a manual repair — each
+     * one is an order the Clients screen would show a total for and no orders
+     * behind it, which reads as data loss rather than as a missing field.
+     *
+     * Every order that counts passes through this transition, so stamping it
+     * here is the one place that cannot be forgotten. It is a no-op when the
+     * key is already right, which is the ordinary case.
+     */
+    const key = customerKey(email)
+    if (key && order.customerEmailKey !== key) {
+      await ctx.db.patch(order._id, { customerEmailKey: key })
+    }
+
+    await recordCustomerOrder.handler(ctx, {
+      storeId: order.storeId,
+      email,
+      name: order.customerInfo?.name,
+      phone: order.customerInfo?.phone,
+      orderAmount: order.total,
+      orderType: order.type,
+      productIds,
+      orderedAt: now,
+    })
     await updateMetadataIncremental.handler(ctx, {
       storeId: order.storeId,
       email,
       orderAmount: order.total,
       orderType: order.type,
-      productIds: (order.items ?? [])
-        .map((item: { productId?: string }) => item.productId)
-        .filter((id: string | undefined): id is string => Boolean(id)),
+      productIds,
       orderedAt: now,
     })
 
@@ -1719,6 +1780,11 @@ async function syncSubscriberOrderMetadata(
   }
 
   if (from === "confirmed" && to === "cancelled") {
+    await reverseCustomerOrder.handler(ctx, {
+      storeId: order.storeId,
+      email,
+      orderAmount: order.total,
+    })
     await reverseMetadataIncremental.handler(ctx, {
       storeId: order.storeId,
       email,
@@ -1955,6 +2021,9 @@ export const createFromWebhook = {
         phone: args.customerPhone,
         email: args.customerEmail,
       },
+      // A platform order carries a person too — Uber Eats and Deliveroo both
+      // send one — so it belongs in the book on the same terms.
+      customerEmailKey: customerKey(args.customerEmail) ?? undefined,
       deliveryAddress: args.deliveryAddress,
       items: mappedItems,
       subtotal: args.subtotal,

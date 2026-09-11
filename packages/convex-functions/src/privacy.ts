@@ -103,6 +103,12 @@ export const DINER_TABLES = [
   "userProfiles",
   "platformWebhookFailures",
   "emailSegments",
+  /* The establishment's own book of who bought from it (#364). Names,
+     e-mail addresses and phone numbers, keyed on the e-mail — so it is
+     personal data by every reading, and an erasure that reached the orders
+     and left this behind would leave the person in the address book they
+     asked to be removed from. */
+  "customers",
   /* `cmsHome` WAS HERE, and it was a note the report always printed about a
      table that cannot hold a row (#434.7).
      
@@ -476,11 +482,12 @@ const STEP_REDEMPTIONS = 2
 const STEP_CONTACT_MESSAGES = 3
 const STEP_PROMOTION_USAGES = 4
 const STEP_EMAIL_SUBSCRIBERS = 5
-const STEP_GAME_REFERRALS = 6
-const STEP_ACCOUNT_TABLES = 7
-const STEP_RATE_LIMITS = 8
-const STEP_NOTES = 9
-const STEP_DONE = 10
+const STEP_CUSTOMERS = 6
+const STEP_GAME_REFERRALS = 7
+const STEP_ACCOUNT_TABLES = 8
+const STEP_RATE_LIMITS = 9
+const STEP_NOTES = 10
+const STEP_DONE = 11
 
 export function initialState(): PrivacyState {
   return {
@@ -834,6 +841,33 @@ export async function privacyPass(
           })
           if (write) await ctx.db.delete(subscriber._id)
           tally(state, "emailSubscribers", "deleted")
+        }
+        if (result.isDone) advance()
+        else state.cursor = result.continueCursor
+        continue
+      }
+
+      if (state.step === STEP_CUSTOMERS) {
+        /* The establishment's own book of who bought from it (#364).
+         *
+         * Deleted outright, not anonymised. An order is anonymised because the
+         * money, the lines, the VAT and the dates have to stay — a paid order
+         * is a fiscal record. A customer row is the opposite: it is nothing but
+         * the person. Name, e-mail, phone and the aggregate of what they
+         * bought, with no figure any book depends on, since every one of them
+         * is derived from the orders that remain.
+         *
+         * Paged over `by_storeId` and matched in memory for the same reason the
+         * subscriber step gives: a seek on the folded value walks past a row
+         * written before the folding was fixed, and those are exactly the rows
+         * a request arrives about. */
+        const result = await page("customers", "by_storeId_email", storeId)
+        budget -= result.page.length
+        for (const customer of result.page) {
+          if (!matchesEmail(customer.email)) continue
+          if (mode === "export") collect(records, "customers", customer)
+          if (write) await ctx.db.delete(customer._id)
+          tally(state, "customers", "deleted")
         }
         if (result.isDone) advance()
         else state.cursor = result.continueCursor

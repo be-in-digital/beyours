@@ -24,6 +24,7 @@
  */
 
 export * from "./categories"
+export * from "./customers"
 export * from "./dashboard"
 export * from "./design"
 export * from "./email"
