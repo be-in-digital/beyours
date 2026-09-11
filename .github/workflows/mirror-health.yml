@@ -92,14 +92,103 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Retry once, before reporting, and only for a run that was not itself a
-      # dispatch — so a retried run cancelled a second time reports instead of
-      # looping. `continue-on-error` because a refused dispatch must not stop
-      # the issue below from being opened.
+      # ── Is there anything left to report? ────────────────────────────────
+      #
+      # A `cancelled` conclusion is usually not news. `publish-mirror.yml`
+      # carries `concurrency: publish-mirror`, so a run of it is cancelled
+      # whenever a third joins the group — and a busy hour on `main` does that
+      # several times over. If a LATER run for the same commit went on to
+      # succeed, the cancellation carried no information about the mirror at
+      # all, and reporting it buries the one conclusion that did.
+      #
+      # Measured on #478: four comments in fifty minutes, three of them about
+      # superseded runs. Noise on a staleness alarm is not harmless — it is how
+      # the alarm stops being read.
+      #
+      # `gh run list --commit` needs `actions: read`, which `actions: write`
+      # below already includes. A lookup that fails leaves `superseded` empty
+      # and the report goes ahead: not knowing is a reason to speak, never a
+      # reason to stay quiet.
+      - name: Did a later run for this commit already succeed?
+        id: superseded
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          # Through the environment, like everything else here: a `${{ }}` a
+          # shell expands is a `${{ }}` a shell can be surprised by, and the
+          # file's own convention is worth more than the two lines it saves.
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -uo pipefail
+          later=$(gh run list --workflow=publish-mirror.yml --commit "$RUN_SHA" \
+            --json databaseId,conclusion \
+            --jq "[.[] | select(.conclusion == \"success\" and .databaseId > ${RUN_ID})] | length" 2>/dev/null || echo 0)
+          if [ "${later:-0}" -gt 0 ]; then
+            echo "superseded=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "### Nothing to report"
+              echo
+              echo "A \`Publish mirror\` run for \`${RUN_SHA:0:7}\` ended"
+              echo "\`${CONCLUSION}\`, but a later run for the same"
+              echo "commit succeeded. The concurrency group cancels a queued run whenever a"
+              echo "third joins it, so this is the ordinary shape of a busy hour on"
+              echo "\`main\` — and the successful run is the one that says where the mirror"
+              echo "stands."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "superseded=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Was it refused, or did it not finish? ────────────────────────────
+      #
+      # These need different words and different actions, and reporting them
+      # the same way is what made #478 unreadable.
+      #
+      # `cancelled` and `timed_out` mean no step reached a verdict: the run was
+      # superseded, killed, or hung. Re-running is exactly right.
+      #
+      # `failure` means a step RAN and REFUSED. Re-running hits the same
+      # refusal — and the commonest refusal here is one no re-run can ever
+      # clear: `mirror-typecheck.mjs` compiling the staged template against the
+      # engine versions the REGISTRY serves, and finding a symbol that only
+      # exists in the workspace. That is the deadlock #427 and #389 are about,
+      # and its fix is a release. #478 dispatched four retries into it.
+      #
+      # The publisher already writes the diagnosis; this reads it back out of
+      # the run it is reporting on rather than paraphrasing it, so the two
+      # cannot drift apart.
+      - name: What did the failed run say?
+        id: diagnosis
+        if: github.event.workflow_run.conclusion == 'failure' && steps.superseded.outputs.superseded != 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set -uo pipefail
+          gh run view "$RUN_ID" --log-failed > /tmp/failed.log 2>/dev/null || true
+          # The line `mirror-typecheck.mjs` prints, and only it, when the staged
+          # tree needs a symbol the pinned version does not carry.
+          if grep -q "would NOT compile for a client" /tmp/failed.log; then
+            echo "cause=pinned-versions" >> "$GITHUB_OUTPUT"
+          else
+            echo "cause=unknown" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Retry once, and only for a conclusion a retry can change: `cancelled`
+      # or `timed_out`, from a run that was not itself a dispatch — so a
+      # retried run cancelled a second time reports instead of looping.
+      # `continue-on-error` because a refused dispatch must not stop the issue
+      # below from being opened.
       - name: Re-run the sync, once
         id: retry
         continue-on-error: true
-        if: github.event.workflow_run.event != 'workflow_dispatch'
+        if: >-
+          ${{ github.event.workflow_run.event != 'workflow_dispatch'
+            && github.event.workflow_run.conclusion != 'failure'
+            && steps.superseded.outputs.superseded != 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -114,6 +203,7 @@ jobs:
       # written and the job is still visible in the Actions tab — the fallback
       # must never be the thing that hides the finding.
       - name: Say that the mirror may be stale
+        if: steps.superseded.outputs.superseded != 'true'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -123,17 +213,46 @@ jobs:
           RUN_SHA: ${{ github.event.workflow_run.head_sha }}
           RETRIED: ${{ steps.retry.outputs.retried }}
           RETRY_OUTCOME: ${{ steps.retry.outcome }}
+          CAUSE: ${{ steps.diagnosis.outputs.cause }}
         run: |
           set -uo pipefail
           {
             echo "A \`Publish mirror\` run on \`main\` ended **${CONCLUSION}**, so"
             echo "\`be-in-digital/beyours-boilerplate\` may not carry \`${RUN_SHA:0:7}\`."
             echo
-            echo "\`cancelled\` is neither a pass nor a failure, and a cancelled run"
-            echo "executes no step of its own — which is why this report comes from"
-            echo "another workflow."
+            if [ "${CONCLUSION}" = "failure" ]; then
+              echo "The run reached a verdict and refused. This report comes from another"
+              echo "workflow because the same observer watches for \`cancelled\`, which a"
+              echo "run cannot report on itself — a cancelled run executes no step at all."
+            else
+              echo "\`cancelled\` is neither a pass nor a failure, and a cancelled run"
+              echo "executes no step of its own — which is why this report comes from"
+              echo "another workflow."
+            fi
             echo
-            if [ "${RETRIED:-}" = "true" ]; then
+            if [ "${CAUSE:-}" = "pinned-versions" ]; then
+              echo "**No retry was dispatched, and none would help.** That run did not"
+              echo "stop short — it compiled the staged template against the engine"
+              echo "versions the **registry** serves and found a symbol that exists only"
+              echo "in this workspace. Every sync is refused until a release carries it,"
+              echo "including changes by other people that have nothing to do with the"
+              echo "one that blocked it."
+              echo
+              echo "**Recover by cutting a release.** \`pnpm check:pending-release\` says"
+              echo "whether a changeset for the package the error names is already"
+              echo "waiting; merge it and let Release publish, or write one if there is"
+              echo "none. The sync then goes on its own. Read the \`Sync\` step of the run"
+              echo "below for the package and the symbol."
+              echo
+              echo "Do **not** remove the import to get past it. The import is correct and"
+              echo "the pinned version is what is behind — removing it delivers a template"
+              echo "missing whatever it was reaching for, and the gate goes green over a"
+              echo "product that lost a feature."
+            elif [ "${CONCLUSION}" = "failure" ]; then
+              echo "**No retry was dispatched.** A step ran and refused, so re-running"
+              echo "reaches the same refusal. Read the \`Sync\` step of the run below:"
+              echo "whatever it names is what has to change."
+            elif [ "${RETRIED:-}" = "true" ]; then
               echo "**A retry has been dispatched.** Check the Actions tab: if that run"
               echo "goes green the mirror is current again and this issue can be closed."
               echo "It is dispatched once only — a retry that is itself cancelled is"
@@ -320,9 +439,19 @@ jobs:
               echo "\`be-in-digital/beyours-boilerplate\`, which every client site is"
               echo "cloned from and merges from with \`pnpm update:template\`."
               echo
-              echo "A sync should have happened on its own. That it did not means the"
-              echo "run was cancelled, died, or was never triggered — the \`paths:\`"
-              echo "filter in \`publish-mirror.yml\` enumerates what triggers one."
+              echo "A sync should have happened on its own. Four ways it did not: the run"
+              echo "was cancelled, it died, it was never triggered — the \`paths:\` filter"
+              echo "in \`publish-mirror.yml\` enumerates what triggers one — or it ran and"
+              echo "**refused**."
+              echo
+              echo "Check the refusal first, because it is the one a re-run cannot clear."
+              echo "\`mirror-typecheck.mjs\` compiles the staged template against the engine"
+              echo "versions the REGISTRY serves, and a symbol added to a package's source"
+              echo "without a release exists in this workspace and not in what a client"
+              echo "installs. Every sync is refused until a release carries it, including"
+              echo "changes by other people. The failed run names the package and the"
+              echo "symbol; the fix is \`pnpm check:pending-release\` and a Release, not a"
+              echo "re-run and not deleting the import."
             else
               echo "\`scripts/publish-mirror.mjs --check\` **did not finish**, so whether"
               echo "the mirror is current is unknown. **This is not a drift report** — the"
