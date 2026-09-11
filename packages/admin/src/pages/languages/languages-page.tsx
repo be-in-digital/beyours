@@ -50,6 +50,18 @@ interface Language {
   isRtl: boolean
 }
 
+/** One catalogue back-fill, as `autoTranslate.listJobs` reports it. */
+interface TranslationJob {
+  _id: string
+  targetLanguage: string
+  entityType: string
+  status: string
+  totalItems: number
+  completedItems: number
+  error?: string
+  updatedAt: number
+}
+
 interface LanguagesPageProps {
   /**
    * The UI-string overrides panel, rendered as a second tab when supplied.
@@ -88,6 +100,22 @@ export function LanguagesPage({ uiOverrides }: LanguagesPageProps) {
     storeId ? { storeId } : "skip"
   ) as Language[] | undefined
 
+  /**
+   * What the last catalogue back-fills actually did (#95).
+   *
+   * `translateCatalogue` has always written a `translationJobs` row and kept it
+   * up to date — how many items it completed, whether it finished, and the
+   * error when the daily quota stopped it. Nothing read any of it, so a run
+   * that stopped at 80 of 300 looked exactly like one that finished: the toast
+   * below says « Traduction du catalogue lancée : 300 éléments » either way,
+   * and the first evidence anybody got was a German storefront with French
+   * dish names on it.
+   */
+  const translationJobs = useQuery(
+    api.autoTranslate.listJobs,
+    storeId ? { storeId } : "skip"
+  ) as TranslationJob[] | undefined
+
   const createLanguage = useMutation(api.languages.create)
   const translateCatalogue = useAction(api.autoTranslate.translateCatalogue)
   const toggleActive = useMutation(api.languages.toggleActive)
@@ -110,9 +138,10 @@ export function LanguagesPage({ uiOverrides }: LanguagesPageProps) {
    * indistinguishable from one that finished, and the missing translations
    * surface on the storefront instead.
    *
-   * The row is not the missing half: a query over `by_storeId` and somewhere
-   * on this page to render it is. Until that exists, do not describe this
-   * back-fill as followable — in a comment, in the admin, or in the tour.
+   * The row was not the missing half: a query over `by_storeId` and somewhere
+   * on this page to render it was. Both exist since #95 —
+   * `autoTranslate.listJobs` and the « Traductions du catalogue » tab below, so
+   * a run stopped by the daily quota now says so where the owner is looking.
    */
   const backfillCatalogue = async (
     store: string,
@@ -439,6 +468,80 @@ export function LanguagesPage({ uiOverrides }: LanguagesPageProps) {
     )
   }
 
+  /**
+   * What each back-fill did, in the words an owner needs.
+   *
+   * `failed` is the one that matters and the one that was invisible: the
+   * catalogue translator bills a daily quota, and a run that hits it stops
+   * where it is and records why. Said plainly here, because the alternative —
+   * the state this screen shipped in — is an owner who believes their carte is
+   * translated and a diner who reads half of it in the wrong language.
+   */
+  const catalogueRuns = (() => {
+    if (translationJobs === undefined) {
+      return <p className="text-sm text-muted-foreground">Chargement…</p>
+    }
+    if (translationJobs.length === 0) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          Aucune traduction du catalogue lancée pour le moment. Ajoutez une langue
+          pour lancer la première.
+        </p>
+      )
+    }
+
+    const ENTITY_LABELS: Record<string, string> = {
+      products: "Produits",
+      categories: "Catégories",
+      menus: "Formules",
+    }
+    const STATUS_LABELS: Record<string, string> = {
+      pending: "En attente",
+      in_progress: "En cours",
+      completed: "Terminée",
+      failed: "Interrompue",
+    }
+
+    return (
+      <div className="space-y-3">
+        {translationJobs.map((job) => (
+          <div
+            key={job._id}
+            className="rounded-lg border border-border bg-card p-4 text-sm"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold">
+                {ENTITY_LABELS[job.entityType] ?? job.entityType} →{" "}
+                {job.targetLanguage.toUpperCase()}
+              </span>
+              <span
+                className={
+                  job.status === "failed"
+                    ? "font-semibold text-destructive"
+                    : "text-muted-foreground"
+                }
+              >
+                {STATUS_LABELS[job.status] ?? job.status}
+              </span>
+            </div>
+            <p className="mt-1 text-muted-foreground">
+              {job.completedItems} / {job.totalItems} élément
+              {job.totalItems > 1 ? "s" : ""}
+            </p>
+            {job.error && (
+              <p className="mt-2 text-destructive">
+                {/* The server's own sentence, not a code: it already says what
+                    to do — wait for the quota to reset — and inventing a second
+                    wording here is how the two drift. */}
+                {job.error}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+  })()
+
   return (
     <div className="space-y-6">
       {header}
@@ -446,12 +549,16 @@ export function LanguagesPage({ uiOverrides }: LanguagesPageProps) {
         <TabsList>
           <TabsTrigger value="languages">Langues</TabsTrigger>
           <TabsTrigger value="overrides">Traductions UI</TabsTrigger>
+          <TabsTrigger value="jobs">Traductions du catalogue</TabsTrigger>
         </TabsList>
         <TabsContent value="languages" className="mt-4">
           {panel}
         </TabsContent>
         <TabsContent value="overrides" className="mt-4">
           {uiOverrides}
+        </TabsContent>
+        <TabsContent value="jobs" className="mt-4">
+          {catalogueRuns}
         </TabsContent>
       </Tabs>
     </div>
