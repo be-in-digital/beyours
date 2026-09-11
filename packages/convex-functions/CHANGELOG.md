@@ -1,5 +1,103 @@
 # Changelog
 
+## 7.2.0
+
+### Minor Changes
+
+- d2e747a: Bound the backup subsystem's reads.
+
+  Every read in the backup path was a bare `.collect()` over a whole table, and
+  Convex refuses a transaction that reads more than 16 384 documents.
+  `BACKUP_TABLES` holds `orders`, `products`, `gamePlays`, `emailSubscribers` and
+  `kitchenTickets`, so an establishment trading two years passed the ceiling on
+  its orders alone: the export threw, the restore threw, and « Sauvegardes
+  automatiques quotidiennes » could not be used by the establishments with most to
+  lose.
+
+  Adds `BACKUP_PAGE_SIZE`, the page every one of those reads now takes. Exported
+  so a test can seed past it without seeding 16 384 rows — a paging loop is only
+  proved by a second page.
+
+- 390c8d5: Give a prize that gives something away a way to say what.
+
+  `prizes.productId` and `prizes.menuId` were declared in the schema and written
+  by nothing, which cost two things. The delete guards that read them —
+  `menus.remove`'s `menu_in_prize` and the matching refusal in `products.remove`
+  — could not fire outside their own tests, because no production path could put
+  a prize in that state. And an owner could create a « Menu offert » that named
+  no menu: it read « Menu offert » on the wheel, on the winning screen and on the
+  QR code the diner brought to the counter, where nobody could tell what had been
+  promised.
+
+  `PRIZE_TARGET_FIELDS` declares the rule beside the code that enforces it — the
+  shape `HONOURABLE_DISCOUNT_TYPES` established for promotions. A target is
+  required for the type that gives something away, refused for every other type,
+  and checked to belong to the same establishment. The admin prize form offers the
+  picker for exactly those two types.
+
+- 4d759b5: Bound the public actions that call a paid third party.
+
+  Every public-by-design _mutation_ was rate-limited and every public-by-design
+  **action** was not — not an oversight in one handler, a consequence of how the
+  limiter is built: `consumeRateLimit` reads and writes the `rateLimits` table,
+  deliberately in the same transaction as the write it protects, and an action
+  has no `ctx.db` at all. So the bound could not be written where those callers
+  are and was written nowhere.
+
+  Adds `paymentSessionPerOrder` and `deliveryQuotePerStore` to `RATE_LIMITS`.
+  The apps consume them through a new `rateLimits.consume` internal mutation.
+
+### Patch Changes
+
+- b8c6f3e: Stop three deletes leaving a reference behind.
+  - `categories.remove` left `stores.stationMapping[].categoryId` — a required
+    `v.id("categories")` inside an array — naming a row that no longer exists.
+    Inert only because `orders.ts` compares strings rather than dereferencing,
+    and re-persisted on every save of the kitchen tab. It is stripped now.
+  - `blog.deleteArticle` left `blogAutoQueue.articleId`: a generation work item
+    for an article nobody can open. Cascaded, through a new `by_articleId` index.
+  - `languages.remove` left every `translations` row for that language.
+    `languageCode` is a `v.string()`, so no validator could see the orphan — and
+    re-adding the same code **resurrected** the stale rows, putting last month's
+    German back on the storefront. Cascaded, batched at
+    `LANGUAGE_TRANSLATION_BATCH`, with the app wrapper draining the rest.
+
+  `requiredActions.remove` is measured and left alone: its ids live in
+  `gamePlays.completedActions`, nothing dereferences them, and those rows carry
+  the prize claim, the cooldown and the art. 7.1 consent. The reason is now in
+  the code rather than absent from it.
+
+- f1e4bf6: Make five delete refusals reach the owner.
+
+  Convex redacts the message of a plainly thrown `Error` in production — the
+  browser receives "Server Error" — and `categories.remove`, `languages.remove`,
+  `blog.deleteCategory` and both branches of `cmsMedia.deleteMedia` were thrown
+  that way. Each is a sentence the owner has to act on: how many products to
+  move, which page still shows this image, which language to make default first.
+
+  They are `ConvexError({ code, message })` now, in French, and two of them name
+  a count the caller already had in hand. `categories.remove` was the sharpest:
+  `products.ts` cites it as "the precedent and the reasoning" for its own
+  refusal, and it was the one being redacted.
+
+- 50b0edb: See a media reference that is not an id.
+
+  `deleteMedia` checked every place a media is referenced by ID — a block's
+  `mediaId`, an article's `coverImageId` and `ogImageId`. An image dropped into an
+  article's body is not one of them: the editor writes `<img src="…">`, so the
+  reference lives as a URL in an HTML string, `usageCount` never moves, and the
+  library showed « Utilisations : 0 » beside the delete button for a photograph on
+  a published page. The bytes went with the row.
+
+  `mediaReferenceNeedles` and `textReferencesMedia` find it, matching the media's
+  own identifiers — id, S3 key, every URL — anywhere in a body or a block's text.
+  `blogCategories.imageId` is read too: the one reference in the set that IS a
+  plain `v.id("cmsMedia")` was the one nothing looked at.
+
+- Updated dependencies [b8c6f3e]
+- Updated dependencies [390c8d5]
+  - @be-in-digital/convex-schema@6.3.0
+
 ## 7.1.0
 
 ### Minor Changes

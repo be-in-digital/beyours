@@ -1,5 +1,46 @@
 # Changelog - @be-in-digital/convex-schema
 
+## 6.3.0
+
+### Minor Changes
+
+- b8c6f3e: Stop three deletes leaving a reference behind.
+  - `categories.remove` left `stores.stationMapping[].categoryId` — a required
+    `v.id("categories")` inside an array — naming a row that no longer exists.
+    Inert only because `orders.ts` compares strings rather than dereferencing,
+    and re-persisted on every save of the kitchen tab. It is stripped now.
+  - `blog.deleteArticle` left `blogAutoQueue.articleId`: a generation work item
+    for an article nobody can open. Cascaded, through a new `by_articleId` index.
+  - `languages.remove` left every `translations` row for that language.
+    `languageCode` is a `v.string()`, so no validator could see the orphan — and
+    re-adding the same code **resurrected** the stale rows, putting last month's
+    German back on the storefront. Cascaded, batched at
+    `LANGUAGE_TRANSLATION_BATCH`, with the app wrapper draining the rest.
+
+  `requiredActions.remove` is measured and left alone: its ids live in
+  `gamePlays.completedActions`, nothing dereferences them, and those rows carry
+  the prize claim, the cooldown and the art. 7.1 consent. The reason is now in
+  the code rather than absent from it.
+
+### Patch Changes
+
+- 390c8d5: Give a prize that gives something away a way to say what.
+
+  `prizes.productId` and `prizes.menuId` were declared in the schema and written
+  by nothing, which cost two things. The delete guards that read them —
+  `menus.remove`'s `menu_in_prize` and the matching refusal in `products.remove`
+  — could not fire outside their own tests, because no production path could put
+  a prize in that state. And an owner could create a « Menu offert » that named
+  no menu: it read « Menu offert » on the wheel, on the winning screen and on the
+  QR code the diner brought to the counter, where nobody could tell what had been
+  promised.
+
+  `PRIZE_TARGET_FIELDS` declares the rule beside the code that enforces it — the
+  shape `HONOURABLE_DISCOUNT_TYPES` established for promotions. A target is
+  required for the type that gives something away, refused for every other type,
+  and checked to belong to the same establishment. The admin prize form offers the
+  picker for exactly those two types.
+
 ## 6.2.0
 
 ### Minor Changes
