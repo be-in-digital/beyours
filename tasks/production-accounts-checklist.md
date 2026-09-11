@@ -112,7 +112,7 @@ instance. Do not copy one to the other.
 |---|---|---|---|
 | **Uber Eats** | partner app **"BeYours POS"** | `UBER_EATS_CLIENT_ID`, `UBER_EATS_CLIENT_SECRET`, `UBER_EATS_WEBHOOK_SECRET` | Prod client ID already issued — **confirm which account owns it**. |
 | **Deliveroo** | partner app | `DELIVEROO_CLIENT_ID`, `DELIVEROO_CLIENT_SECRET`, `DELIVEROO_WEBHOOK_SECRET` | Sandbox secret is **compromised** (still in git history) — rotate, see `secret-rotation-runbook.md`. |
-| **Uber Direct** | delivery-as-a-service | `UBER_DIRECT_CUSTOMER_ID` | |
+| **Uber Direct** | delivery-as-a-service | `UBER_DIRECT_WEBHOOK_SECRET` (falls back to the Uber Eats one when unset) | The client id, secret and customer id are held on `globalSettings.integrations.uberDirect`, not in the environment. `UBER_DIRECT_CUSTOMER_ID` was listed here and is read by no code. |
 
 ## 4. Commercial site (`apps/site`)
 

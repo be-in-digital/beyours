@@ -279,33 +279,36 @@ NEXT_PUBLIC_CONVEX_URL=
 CONVEX_DEPLOYMENT=
 
 # Better Auth
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-FACEBOOK_CLIENT_ID=
-FACEBOOK_CLIENT_SECRET=
-APPLE_CLIENT_ID=
-APPLE_TEAM_ID=
-APPLE_KEY_ID=
-APPLE_PRIVATE_KEY=
+BETTER_AUTH_SECRET=
+# No GOOGLE_/FACEBOOK_/APPLE_ variables. Social sign-in is described in
+# `packages/core/src/auth/README.md` and is not wired: no code in any package
+# or app reads one of those eight names.
 
 # Payments
 STRIPE_SECRET_KEY=
-STRIPE_PUBLISHABLE_KEY=
 STRIPE_WEBHOOK_SECRET=
 
-SUMUP_API_KEY=
-SUMUP_MERCHANT_CODE=
+# SumUp is an OAuth pair. The merchant code comes back from the OAuth exchange
+# and is stored on the connection, so there is no SUMUP_MERCHANT_CODE to set.
+SUMUP_CLIENT_ID=
+SUMUP_CLIENT_SECRET=
 
+# PAYPAL_SECRET was listed here and is read by nothing; the name is
+# PAYPAL_CLIENT_SECRET.
 PAYPAL_CLIENT_ID=
-PAYPAL_SECRET=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_SANDBOX_MODE=
 
-SQUARE_ACCESS_TOKEN=
-SQUARE_LOCATION_ID=
+# No SQUARE_* variables: Square is announced and not implemented, and
+# `refundPolicy.ts` refuses it by name. Nothing reads SQUARE_ACCESS_TOKEN or
+# SQUARE_LOCATION_ID.
 
 # Integrations
-UBER_EATS_API_KEY=
-DELIVEROO_API_KEY=
-UBER_DIRECT_CUSTOMER_ID=
+UBER_EATS_CLIENT_ID=
+UBER_EATS_CLIENT_SECRET=
+DELIVEROO_CLIENT_ID=
+DELIVEROO_CLIENT_SECRET=
+UBER_DIRECT_WEBHOOK_SECRET=
 
 # Email
 RESEND_API_KEY=

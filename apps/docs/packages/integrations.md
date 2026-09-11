@@ -27,8 +27,12 @@ UBER_EATS_CLIENT_SECRET=your_secret
 DELIVEROO_CLIENT_ID=your_client_id
 DELIVEROO_CLIENT_SECRET=your_secret
 DELIVEROO_WEBHOOK_SECRET=your_secret
-UBER_DIRECT_CUSTOMER_ID=your_customer_id
-UBER_DIRECT_CLIENT_SECRET=your_secret
+# No UBER_DIRECT_CUSTOMER_ID: no code reads one. Uber Direct is an OAuth
+# pair held in globalSettings, with this for its webhook.
+UBER_DIRECT_WEBHOOK_SECRET=your_webhook_secret
+# No UBER_DIRECT_CLIENT_ID / _CLIENT_SECRET either: the Uber Direct OAuth
+# pair is held on `globalSettings.integrations.uberDirect`, entered through the
+# admin, not in the environment.
 ```
 
 ## Shape of the Package

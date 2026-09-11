@@ -129,19 +129,37 @@ AWS_SES_FROM_EMAIL=
 # Payments (add the ones you use)
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
-SUMUP_API_KEY=
+# SumUp and PayPal are OAuth CLIENT PAIRS, not single API keys. There is no
+# SUMUP_API_KEY — this file listed one for a long time and no code has ever
+# read it, so an operator setting it configured nothing while believing SumUp
+# was connected. SumUp connects through /connect/sumup/callback.
+SUMUP_CLIENT_ID=
+SUMUP_CLIENT_SECRET=
 PAYPAL_CLIENT_ID=
 PAYPAL_CLIENT_SECRET=
+PAYPAL_SANDBOX_MODE=
 # No SQUARE_* variable: Square has no implementation to configure.
 
 # Translation
 OPENAI_API_KEY=
 
 # Integrations (optional)
-UBER_EATS_API_KEY=
-DELIVEROO_API_KEY=
-UBER_DIRECT_CUSTOMER_ID=
+# Also OAuth pairs, each with its own webhook secret. UBER_EATS_API_KEY,
+# DELIVEROO_API_KEY and UBER_DIRECT_CUSTOMER_ID were listed here and are read
+# by no code at all.
+UBER_EATS_CLIENT_ID=
+UBER_EATS_CLIENT_SECRET=
+UBER_EATS_WEBHOOK_SECRET=
+DELIVEROO_CLIENT_ID=
+DELIVEROO_CLIENT_SECRET=
+DELIVEROO_WEBHOOK_SECRET=
+# Falls back to the Uber Eats one when unset.
+UBER_DIRECT_WEBHOOK_SECRET=
 ```
+
+> **The authoritative list is `packages/core/src/env/schemas.ts`**, which the
+> apps enforce at startup. Anything not in it is read by nothing, however
+> plausible it looks in a document.
 
 ## Tailwind CSS Configuration
 
