@@ -744,7 +744,10 @@ When working on tasks:
     in a web form, where the commit-msg hook cannot reach. The body does not
     reach the commit and is checked because the rule above covers pull request
     descriptions; 22 of the 25 pull requests before that check carried one.
-    Both share one set of matchers, imported rather than restated.
+    Both share one set of matchers, imported rather than restated. Fenced code
+    blocks in a **body** are exempt — a pull request explaining the rule quotes
+    what the rule forbids, and the body reaches no commit — while a **title**
+    gets no exemption at all, because it lands on `main` verbatim.
 
     Naming `CLAUDE.md` in a commit
     is not attribution and stays legal; the guard matches co-author trailers,

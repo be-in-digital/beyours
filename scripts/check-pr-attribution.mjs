@@ -46,7 +46,46 @@
  */
 import { readFileSync } from "node:fs"
 
-import { findAttribution, runSelfTest } from "./lib/commit-attribution.mjs"
+import { findAttribution, runSelfTest, splitLines } from "./lib/commit-attribution.mjs"
+
+/**
+ * A body with its fenced code blocks blanked out.
+ *
+ * WHY ONLY THE BODY, AND WHY AT ALL. The first pull request this check ever ran
+ * on was the one that added it, and it failed — on its own documentation. A
+ * pull request that explains the rule necessarily quotes what the rule forbids:
+ *
+ *     $ node scripts/check-pr-attribution.mjs --title "…🤖 Generated with…"
+ *     ::error::The pull request title carries 1 attribution line(s).
+ *
+ * That is a sample of the check's output, not a credit, and a guard that
+ * refuses every pull request discussing it is a guard somebody turns off.
+ *
+ * The exemption costs nothing where it matters. The body does not reach the
+ * commit — the squash body is built from the commits, which
+ * `check:attribution` reads line by line with no exemption of any kind — so a
+ * credit hidden in a fence here credits nothing on protected history. It is
+ * also not hiding: a fenced block renders as code, which is what a sample is.
+ *
+ * THE TITLE GETS NO EXEMPTION. It is one line, it has no fences, and it lands
+ * on `main` verbatim. Nothing about it is a sample.
+ *
+ * Blanked rather than removed, so the line numbers in a report still match what
+ * the author sees in the edit box.
+ */
+function withoutCodeFences(text) {
+  let fenced = false
+  return splitLines(text)
+    .map((line) => {
+      // ``` or ~~~, any length, with an optional language tag.
+      if (/^\s*(?:```|~~~)/.test(line)) {
+        fenced = !fenced
+        return ""
+      }
+      return fenced ? "" : line
+    })
+    .join("\n")
+}
 
 /* ── The guard guards itself first ───────────────────────────────────────── */
 
@@ -123,10 +162,13 @@ const FIELDS = [
   },
   {
     name: "body",
-    text: body,
+    // Outside fenced code blocks — see `withoutCodeFences` for why the title
+    // gets no such exemption and this does.
+    text: typeof body === "string" ? withoutCodeFences(body) : body,
     lands:
       "The body does not reach the commit here, but CLAUDE.md's rule covers " +
-      "pull request descriptions as prose written in this repository.",
+      "pull request descriptions as prose written in this repository. " +
+      "Fenced code blocks are exempt: a sample is not a credit.",
   },
 ]
 

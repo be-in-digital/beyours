@@ -869,6 +869,35 @@ describe("the pull request's own text", () => {
     expect(code).toBe(0)
   })
 
+  test("a sample quoted in a fenced block is not a credit", () => {
+    // The first pull request this check ran on was the one that added it, and
+    // it failed — on its own documentation. A pull request that explains the
+    // rule necessarily quotes what the rule forbids, and a guard that refuses
+    // every pull request discussing it is a guard somebody turns off.
+    const { code } = run([
+      "--title", "Read the pull request's own title",
+      "--body", 'Prose.\n\n```\n$ node x.mjs --title "Fix it 🤖 Generated with Claude Code"\n```\n\nMore prose.',
+    ])
+    expect(code).toBe(0)
+  })
+
+  test("but a real one outside the fence still fails", () => {
+    // The exemption is for samples, not a hiding place — and it costs nothing
+    // on protected history either way, since the body does not reach the commit.
+    const { code } = run([
+      "--title", "clean",
+      "--body", "Prose.\n\n```\nsample\n```\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+    ])
+    expect(code).toBe(1)
+  })
+
+  test("and the TITLE gets no exemption at all", () => {
+    // One line, no fences, and it lands on `main` verbatim. Nothing about it
+    // is a sample, so backticks buy nothing.
+    const { code } = run(["--title", "`🤖 Generated with Claude Code`", "--body", "clean"])
+    expect(code).toBe(1)
+  })
+
   test("with nothing to read it says so rather than inventing a verdict", () => {
     // Off a pull_request event — a push, the merge queue, a local run. A check
     // that failed there could not be run by hand at all.
