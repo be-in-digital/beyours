@@ -52,7 +52,6 @@ const TABLE_LABELS: Record<string, string> = {
   userProfiles: "Profil client",
   platformWebhookFailures: "File d'attente Uber Eats / Deliveroo",
   emailSegments: "Segments d'emailing",
-  cmsHome: "Témoignages sur la page d'accueil",
   betterAuth: "Compte client (connexion)",
 }
 

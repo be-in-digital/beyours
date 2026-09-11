@@ -103,7 +103,24 @@ export const DINER_TABLES = [
   "userProfiles",
   "platformWebhookFailures",
   "emailSegments",
-  "cmsHome",
+  /* `cmsHome` WAS HERE, and it was a note the report always printed about a
+     table that cannot hold a row (#434.7).
+     
+     Nothing reads or writes `cmsHome`, or any of the other fifteen legacy
+     `cms*` singletons — measured across `packages/convex-functions/src`,
+     each app's `convex` and `components`: zero inserts, zero patches, zero
+     queries. They were superseded by the block-based `cmsPages` / `cmsBlocks`
+     / `cmsMedia`.
+     
+     So every erasure report ended with an instruction to go and check the
+     homepage testimonials by hand, for testimonials that do not exist and
+     cannot. That is worse than noise on a legally-facing document: it makes
+     every erasure read as incomplete, and an operator who dutifully checks and
+     finds nothing learns to skip the notes — including the four that are real.
+     
+     The table stays declared in the schema; see the comment there for why
+     dropping it is a deploy-time risk this repository cannot take on a
+     measurement of its own code. */
 ] as const
 
 export type DinerTable = (typeof DINER_TABLES)[number]
@@ -970,12 +987,6 @@ export async function privacyPass(
         "platformWebhookFailures",
         -1,
         "File d'attente des webhooks Uber Eats / Deliveroo : contient des commandes brutes non indexables par personne. Effacée par la purge programmée, pas par cette demande."
-      )
-      note(
-        state,
-        "cmsHome",
-        -1,
-        "Témoignages publiés sur la page d'accueil : contenu éditorial saisi par l'établissement. À vérifier et retirer à la main si cette personne y est citée."
       )
       note(
         state,

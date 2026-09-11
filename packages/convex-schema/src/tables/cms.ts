@@ -325,6 +325,44 @@ export const pageMetadata = {
 // CMS Global Config
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * THE SIXTEEN LEGACY `cms*` SINGLETONS BELOW HAVE NO READER AND NO WRITER.
+ *
+ * Measured (#434.7), across every non-schema source in the repository — each
+ * engine package, each app's `convex/` and each app's `components/`:
+ *
+ *     cms, cmsHome, cmsMenu, cmsAbout, cmsContact, cmsBlogPosts, cmsCart,
+ *     cmsCheckout, cmsTracking, cmsSignin, cmsSignup, cmsPrivacy, cmsTerms,
+ *     cms404, cmsMaintenance, cmsAccount          reads=0  inserts=0
+ *
+ * They were superseded by the block-based `cmsPages` / `cmsBlocks` / `cmsMedia`
+ * and nothing has written one since.
+ *
+ * WHY THEY ARE STILL DECLARED, which is a decision rather than an omission.
+ * Convex refuses a deploy that drops a table while documents exist in it, and
+ * "zero writers in this repository" is a measurement of the CODE. It says
+ * nothing about a deployment provisioned two years ago against a version that
+ * had them — and a schema change that bricks the deploy of a live restaurant
+ * is a worse outcome than sixteen empty declarations.
+ *
+ * WHAT REMOVING THEM ACTUALLY NEEDS, so the next person does not have to
+ * rediscover it: a migration that counts the rows on each deployment first,
+ * deletes what it finds, and only then drops the declaration — in that order,
+ * across every client. `convex/migrations/` is where that goes.
+ *
+ * WHAT HAS BEEN FIXED HERE IS THE PART THAT REACHED A PERSON. `privacy.ts`
+ * listed `cmsHome` as a diner table and printed, on EVERY erasure report, an
+ * instruction to check the homepage testimonials by hand — for testimonials
+ * that cannot exist. That is worse than noise on a legally-facing document:
+ * it makes every erasure read as incomplete, and an operator who checks and
+ * finds nothing learns to skip the notes, including the four that are real.
+ *
+ * They remain in `backupTables.ts`, and that is also deliberate. Exporting an
+ * empty table is one paginated read since #432.4, and a backup that silently
+ * stopped carrying a table on the strength of "it should be empty" is the
+ * trade this comment exists to refuse.
+ */
+
 export const cmsTable = defineTable({
   name: v.string(),
   defaultLocale: v.string(),
