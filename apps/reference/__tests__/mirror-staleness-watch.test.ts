@@ -174,6 +174,89 @@ test("the observer retries the sync, and bounds the retry", () => {
   ).toBe(true)
 })
 
+/**
+ * The three rules #478 measured the cost of, in one hour on 11 September 2026.
+ *
+ * The mirror stopped at `2479f25` and stayed there through nine files of
+ * `apps/themes`. `Publish mirror` failed twice on a real refusal, was cancelled
+ * four times by retries joining its own concurrency group, and the run that
+ * finally concluded `success` stood down without pushing. The issue collected
+ * four comments, three of which describe superseded runs, and every one of them
+ * promised that a retry would fix it.
+ *
+ * None of that was a missing observer. The observer worked. What it said was
+ * wrong.
+ */
+const observerSteps = observers.flatMap(({ workflow }) =>
+  Object.values(workflow.jobs ?? {}).flatMap((job) =>
+    (job.steps ?? []).filter((step) => !isDeadCondition(step.if)),
+  ),
+)
+
+test("the observer does not retry a conclusion a retry cannot change", () => {
+  // `cancelled` and `timed_out` mean no step reached a verdict — re-running is
+  // exactly right. `failure` means a step RAN and REFUSED, and the commonest
+  // refusal here is the version-pin deadlock (#427, #389), which no number of
+  // re-runs clears. #478 dispatched four into it.
+  const retry = observerSteps.find((step) =>
+    /gh workflow run\s+publish-mirror\.yml/.test(step.run ?? ""),
+  )
+  expect(retry, "nothing re-dispatches the sync").toBeDefined()
+  expect(
+    /conclusion\s*!=\s*'failure'/.test(retry?.if ?? ""),
+    "a run that refused must not be retried into the same refusal",
+  ).toBe(true)
+})
+
+test("the observer asks whether a later run already succeeded", () => {
+  // The concurrency group cancels a queued run whenever a third joins it, so a
+  // busy hour on `main` produces cancellations that say nothing about the
+  // mirror. Reporting them is how a staleness alarm stops being read.
+  const lookup = observerSteps.find((step) =>
+    /gh run list[^\n]*--commit/.test(step.run ?? ""),
+  )
+  expect(
+    lookup,
+    "nothing checks whether the cancellation was superseded, so every one is reported",
+  ).toBeDefined()
+  expect(
+    /conclusion ==[^\n]*success/.test(lookup?.run ?? ""),
+    "the lookup must ask for a SUCCESSFUL later run, not merely a later one",
+  ).toBe(true)
+})
+
+test("and it stays quiet when one did", () => {
+  const report = observerSteps.find((step) =>
+    /gh issue (create|comment)/.test(step.run ?? ""),
+  )
+  expect(report, "nothing reports a stale mirror").toBeDefined()
+  expect(
+    /superseded/.test(report?.if ?? ""),
+    "the report must be gated on the supersession lookup, or the lookup changes nothing",
+  ).toBe(true)
+})
+
+test("the report names the one cause a re-run cannot clear", () => {
+  // `mirror-typecheck.mjs` prints this line, and only it, when the staged tree
+  // needs a symbol the pinned version does not carry. The observer reads it
+  // back out of the run it reports on rather than paraphrasing, so the two
+  // cannot drift apart — which is why the same string is asserted on both
+  // sides here.
+  const marker = "would NOT compile for a client"
+  const publisher = fs.readFileSync(
+    path.join(REPO_ROOT, "scripts/lib/mirror-typecheck.mjs"),
+    "utf8",
+  )
+  expect(
+    publisher.includes(marker),
+    "the publisher no longer prints the line the observer greps for",
+  ).toBe(true)
+  expect(
+    observerSteps.some((step) => (step.run ?? "").includes(marker)),
+    "the observer does not recognise the version-pin deadlock, so it reports it as a stall",
+  ).toBe(true)
+})
+
 test("something asks whether the mirror is current, on a schedule", () => {
   // The backstop, and the half that does not depend on a conclusion existing to
   // observe: a sync that was never triggered at all produces no run and no
