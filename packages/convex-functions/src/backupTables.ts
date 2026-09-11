@@ -213,6 +213,35 @@ export type ExportOnlyTable = (typeof EXPORT_ONLY_TABLES)[number]
 export const EXPORTED_TABLES = [...BACKUP_TABLES, ...EXPORT_ONLY_TABLES] as const
 
 /**
+ * How many documents one backup transaction may touch.
+ *
+ * WHY A BOUND AT ALL (#432.4). Every read in the backup subsystem was a bare
+ * `.collect()` over a whole table, and Convex refuses a transaction that reads
+ * more than 16,384 documents:
+ *
+ *     const existing = await ctx.db.query(args.tableName).collect()
+ *     for (const row of existing) { await ctx.db.delete(row._id) }
+ *
+ * `BACKUP_TABLES` holds `orders`, `products`, `gamePlays`, `emailSubscribers`
+ * and `kitchenTickets`. A restaurant trading two years passes that ceiling on
+ * the orders alone — so the export threw, the restore threw, and the feature
+ * sold as « Sauvegardes automatiques quotidiennes » could not be used by
+ * exactly the establishments that had most to lose. `queryBounds.test.ts`, the
+ * instrument written for this class of defect, covered neither function.
+ *
+ * 2,000 rather than something nearer the ceiling. The limit is on documents AND
+ * on bytes — 8 MiB read, 8 MiB written per transaction — and a backup row is an
+ * order with its lines or a CMS block with its values, not a counter. 2,000 of
+ * those sit inside both limits with a wide margin, and the margin is the point:
+ * a page size tuned to the biggest table that exists today is one the next
+ * schema change invalidates silently.
+ *
+ * Exported so a test can seed past it without seeding 16,384 rows. A paging
+ * loop is only proved by running it more than once.
+ */
+export const BACKUP_PAGE_SIZE = 2_000
+
+/**
  * Tables re-walked with the FULL id map after the last insert.
  *
  * The foreign-key graph has cycles, so no order can satisfy every edge. Each
