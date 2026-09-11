@@ -335,10 +335,23 @@ export const navGroups: NavGroup[] = [
         requiredPermission: "team:read",
       },
       {
+        /* `translations:read`, not `settings:read` (#95).
+         *
+         * `nav-permission-surface.test.ts` requires a nav gate to name the
+         * resource its screen's own queries enforce, and this one did not —
+         * the screen reads languages and, since the catalogue-runs tab,
+         * `autoTranslate.listJobs` under `translations:read`.
+         *
+         * It changes nobody's access: every role holding `settings:read`
+         * holds `translations:read` too — `super_admin`, `client_admin` and
+         * `manager`, and no other role holds either. What it changes is that
+         * the label and the gate now say the same thing, so a later narrowing
+         * of one is visible in the other.
+         */
         label: "Langues",
         href: adminRoutes.languages,
         icon: Globe,
-        requiredPermission: "settings:read",
+        requiredPermission: "translations:read",
       },
       {
         label: "Abonnement",

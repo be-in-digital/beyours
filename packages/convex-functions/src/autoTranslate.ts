@@ -856,6 +856,83 @@ export const createBatchJob = {
   },
 }
 
+/**
+ * How many translation runs the owner's screen shows.
+ *
+ * One per entity type per language, and the admin fires three at a time —
+ * products, categories, menus — so twelve covers the last four languages
+ * added. Bounded for the reason every read in this repository is: an
+ * establishment that has been adding languages for two years must not turn
+ * opening a screen into a table walk.
+ */
+export const TRANSLATION_JOB_PAGE = 12
+
+/**
+ * The recent catalogue translation runs, most recent first.
+ *
+ * WHY THIS EXISTS (#95). `translateCatalogue` writes a `translationJobs` row
+ * and `runBatchChunkPlan` keeps it up to date — `completedItems`, `status`, and
+ * the `error` when the daily quota stops a run. Nothing read any of it:
+ *
+ *     $ grep -rn 'query("translationJobs")' packages apps
+ *     (no output)
+ *
+ * So a back-fill that stopped on the quota looked exactly like one that
+ * finished. The owner adds German, the toast says « Traduction du catalogue
+ * lancée : 300 éléments », the run stops at 80, and the first evidence anybody
+ * gets is a German storefront with French dish names on it.
+ *
+ * `languages-page.tsx` said so in its own comment — *"The row is not the
+ * missing half: a query over `by_storeId` and somewhere on this page to render
+ * it is"* — and this is that query.
+ *
+ * `by_storeId` then sorted in memory: the index is not on time, and twelve rows
+ * are cheaper to sort than an index is to maintain on every write.
+ */
+export const listJobs = {
+  args: {
+    storeId: v.id("stores"),
+    limit: v.optional(v.number()),
+  },
+  handler: async (
+    ctx: any,
+    args: { storeId: string; limit?: number }
+  ): Promise<
+    Array<{
+      _id: string
+      targetLanguage: string
+      entityType: string
+      status: string
+      totalItems: number
+      completedItems: number
+      error?: string
+      updatedAt: number
+    }>
+  > => {
+    const limit = Math.min(Math.max(args.limit ?? TRANSLATION_JOB_PAGE, 1), 50)
+    const rows = await ctx.db
+      .query("translationJobs")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      // One more than the window, so the scan stays bounded while an
+      // establishment accumulates runs.
+      .take(limit * 4)
+
+    return rows
+      .sort((a: any, b: any) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))
+      .slice(0, limit)
+      .map((job: any) => ({
+        _id: job._id,
+        targetLanguage: job.targetLanguage,
+        entityType: job.entityType,
+        status: job.status,
+        totalItems: job.totalItems ?? 0,
+        completedItems: job.completedItems ?? 0,
+        ...(job.error ? { error: job.error } : {}),
+        updatedAt: job.updatedAt ?? job.createdAt ?? 0,
+      }))
+  },
+}
+
 // ── resetDailyQuota ──────────────────────────────────────────────────────
 
 export const resetDailyQuota = {
