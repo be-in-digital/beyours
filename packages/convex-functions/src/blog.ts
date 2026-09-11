@@ -668,6 +668,31 @@ export async function deleteArticleCore(
     await ctx.db.delete(t._id)
   }
 
+  /* The generation queue row that produced this article, or was going to.
+   *
+   * `blogAutoQueue.articleId` is a `v.optional(v.id("blogArticles"))` and a
+   * bare delete left it naming nothing. `blogAutoPlanner` reads the queue to
+   * decide what to write next and what has already been written, so an orphan
+   * row is a work item for an article that cannot be looked at — and
+   * `v.id()` validates an id's encoding rather than that it resolves, so
+   * nothing complained.
+   *
+   * Cascaded, not refused: the row is a work item for THIS article and is of no
+   * use to anything once the article is gone. `backupTables.ts` already says so
+   * of the whole table — "File d'attente de génération, replanifiée
+   * automatiquement".
+   *
+   * `by_articleId` is a new index. The alternative was scanning the store's
+   * whole queue on every article delete, which is the shape #400 added five
+   * indexes to stop. */
+  const queued = await ctx.db
+    .query("blogAutoQueue")
+    .withIndex("by_articleId", (q: any) => q.eq("articleId", args.articleId))
+    .collect()
+  for (const row of queued) {
+    await ctx.db.delete(row._id)
+  }
+
   // Cancel any scheduled jobs
   if (article.scheduledPublishJobId) {
     try {

@@ -133,6 +133,10 @@ export const blogAutoQueueTable = defineTable({
   .index("by_storeId", ["storeId"])
   .index("by_status_scheduledFor", ["status", "scheduledFor"])
   .index("by_configId", ["configId"])
+  // Read by `blog.deleteArticleCore`, which deletes the queue row an article
+  // came from. Without it that cascade would scan the establishment's whole
+  // queue on every article delete — the shape #400 added five indexes to end.
+  .index("by_articleId", ["articleId"])
   .index("by_idempotencyKey", ["idempotencyKey"])
 
 // ============================================================================

@@ -68,6 +68,31 @@ export const update = {
   },
 }
 
+/**
+ * Delete a required action. The bare delete is correct, and this says why.
+ *
+ * `gamePlays.completedActions` holds the ids of the actions a diner did, so a
+ * delete here leaves ids in those arrays naming nothing — which reads like the
+ * dangling-reference class #400 and #432 swept, and is not one.
+ *
+ * MEASURED. The only reader is `gamePlay.ts:273`, which folds the arrays into a
+ * `done` set to answer "has this device already done this action?". An id that
+ * no longer resolves simply never matches an action that is still required, and
+ * an action that is no longer required is not asked about. There is nothing to
+ * dereference and nothing to repair.
+ *
+ * AND REWRITING THEM WOULD BE WRONG. `gamePlays` is the record of what a diner
+ * actually did — the row a prize claim, a cooldown and the consent under art.
+ * 7.1 all hang off. Editing that history to tidy up an admin screen's config
+ * change is a worse trade than a string nobody reads. Deleting the plays is
+ * worse still.
+ *
+ * One consequence worth stating rather than discovering: deleting an action and
+ * re-creating it mints a NEW id, so every device must do it again. That is the
+ * right behaviour — a re-created "Suivez-nous sur Instagram" is a new demand,
+ * not a remembered one — and it is the reason this is a decision rather than an
+ * omission.
+ */
 export const remove = {
   args: { id: v.id("requiredActions") },
   handler: async (ctx: any, args: any) => {
