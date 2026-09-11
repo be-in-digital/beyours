@@ -79,8 +79,13 @@ jobs:
   # for a reason worth stating where somebody would otherwise "fix" it: the
   # mirror's `workflow_run` path fires only on `conclusion == 'success'`, so
   # failing this job would stop the sync altogether — the gate would cause the
-  # outage it reports. Nothing reads the output yet; it is here so that making
-  # it blocking is a workflow change rather than a script rewrite.
+  # outage it reports.
+  #
+  # The `owed-bump` job below reads it and opens an issue. That is #427's last
+  # finding: the warning and the step summary were there the whole time and are
+  # visible only to whoever opens the run, and a push to `main` has no pull
+  # request to annotate and no author to notify. Making it BLOCKING is still a
+  # workflow change rather than a script rewrite.
   plan:
     name: Plan
     runs-on: ubuntu-latest
@@ -107,6 +112,83 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/publish-plan.mjs
+
+  # A MERGED FIX THAT REACHES NO CLIENT, SAID WHERE SOMEBODY SEES IT (#427, #389).
+  #
+  # `plan` already computes `bump_owed` and already writes a `::warning::` and a
+  # step summary. Both are visible only to somebody who opens the run, and on a
+  # push to `main` there is no pull request to annotate and no author to notify —
+  # so nobody does.
+  #
+  # Measured, on this repository, on 11 September 2026: six changesets sat on
+  # `main` for over an hour with the mirror blocked behind them, `Release` went
+  # green four times in a row, and the only thing that ever told anybody was
+  # `mirror-health.yml` opening an issue AFTER a `Publish mirror` run had already
+  # failed. The warning was there the whole time. That is #427's last finding —
+  # "every green signal is uninformative" — and #389's second.
+  #
+  # Not blocking, and `publish-plan.mjs` says why at length: the mirror's
+  # `workflow_run` path fires only on `conclusion == 'success'`, so failing here
+  # would stop the sync this is reporting on. The gate would cause the outage.
+  #
+  # Same shape as `mirror-health.yml` and `env-store-health.yml`, deliberately:
+  # one issue, commented on rather than duplicated, and `continue-on-error`
+  # because this organisation forbids Actions from opening pull requests and
+  # whether that extends to issues is not something this repository can read.
+  # A refusal must never be the thing that hides the finding.
+  owed-bump:
+    name: Say a version bump is owed
+    needs: [plan]
+    if: needs.plan.outputs.bump_owed == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Open or update the report
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: "Release: a version bump is owed, and the mirror is waiting"
+        run: |
+          set -uo pipefail
+          {
+            echo "\`main\` carries merged changesets that no release has cut, so"
+            echo "**no client site has these fixes** and \`Publish mirror\` will not sync."
+            echo
+            echo "This is not a build failure. \`apps/themes\` links the engine with"
+            echo "\`workspace:^\` and compiles the current source, so this repository is"
+            echo "green by construction; the mirror pins the version the registry serves,"
+            echo "so the boilerplate's typecheck fails on any API only the workspace has."
+            echo "Until a release exists the mirror refuses EVERY sync — including changes"
+            echo "that have nothing to do with the ones waiting."
+            echo
+            echo "**To clear it:** \`pnpm version-packages\`, commit the bumped manifests"
+            echo "and CHANGELOGs, and merge. \`Release\` publishes on that merge and"
+            echo "\`Publish mirror\` syncs behind it."
+            echo
+            echo "If a package's registry file is generated from the manifests — the MCP"
+            echo "registry is — re-run its \`sync:versions\` in the same commit, or"
+            echo "\`check:source-drift\` will name it on the next push."
+            echo
+            echo "Commit: \`${GITHUB_SHA:0:7}\`"
+            echo
+            echo "[This report](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+          } > /tmp/owed-bump.md
+
+          cat /tmp/owed-bump.md >> "$GITHUB_STEP_SUMMARY"
+
+          # One issue, commented on rather than duplicated: a week of merges with
+          # no release would otherwise file a dozen identical ones, which is read
+          # as noise and muted — the failure mode this exists to escape.
+          existing=$(gh issue list --state open --search "in:title \"$TITLE\"" \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file /tmp/owed-bump.md
+          else
+            gh issue create --title "$TITLE" --body-file /tmp/owed-bump.md
+          fi
 
   # The fifth required check, on the commit about to be published.
   #

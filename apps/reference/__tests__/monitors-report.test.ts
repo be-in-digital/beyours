@@ -35,7 +35,12 @@ import { parse } from "yaml"
 const WORKFLOW_DIR = path.join(__dirname, "../../../.github/workflows")
 
 type Step = { id?: string; name?: string; run?: string; uses?: string; if?: string }
-type Job = { if?: string; steps?: Step[]; permissions?: Record<string, string> }
+type Job = {
+  if?: string
+  needs?: string | string[]
+  steps?: Step[]
+  permissions?: Record<string, string>
+}
 type Workflow = { name?: string; on?: Record<string, unknown>; jobs?: Record<string, Job> }
 
 const read = (file: string): Workflow =>
@@ -164,4 +169,120 @@ test("mirror-health does not title an issue with a fact it did not measure", () 
     /grep -q "drift detected[^"]*"[\s\S]*?TITLE=/.test(run),
     "the title is not selected from what the check actually reported"
   ).toBe(true)
+})
+
+/**
+ * A merged fix that reaches no client says so where somebody sees it.
+ *
+ * WHAT THIS HOLDS SHUT (#427, #389). `release.yml`'s `plan` job has always
+ * computed `bump_owed` — "changesets are waiting and this push publishes
+ * nothing" — and its only outputs were a `::warning::` annotation and a step
+ * summary. Both are visible to whoever opens the run, and a push to `main` has
+ * no pull request to annotate and no author to notify.
+ *
+ * Measured on 11 September 2026: six changesets sat on `main` for over an hour
+ * with the mirror blocked behind them, `Release` went green four times in a row,
+ * and the only thing that ever told anybody was `mirror-health.yml` opening an
+ * issue AFTER a `Publish mirror` run had already failed. The warning printed on
+ * every one of those four runs.
+ *
+ * WHY IT MUST NOT BE A GATE, and this is asserted rather than trusted to a
+ * comment: the mirror's `workflow_run` path fires only on
+ * `conclusion == 'success'`, so failing the Release would stop the sync it is
+ * reporting on — the gate would cause the outage. So the property is "there is a
+ * path to a human", not "the build goes red".
+ */
+const RELEASE = "release.yml"
+
+test("Release reports an owed version bump to a person", () => {
+  const workflow = read(RELEASE)
+  const reporting = Object.values(workflow.jobs ?? {}).filter((job) =>
+    (job.steps ?? []).some((step) => /gh issue (create|comment)/.test(step.run ?? "")),
+  )
+  expect(reporting.length, "no job in release.yml opens an issue").toBeGreaterThan(0)
+})
+
+test("and it fires on the verdict the plan job already computed", () => {
+  // Not on a failure: this is the case where everything is green and nothing
+  // shipped, which is the whole finding.
+  const workflow = read(RELEASE)
+  const job = Object.values(workflow.jobs ?? {}).find((entry) =>
+    (entry.steps ?? []).some((step) => /gh issue (create|comment)/.test(step.run ?? "")),
+  )
+  expect(job?.if ?? "").toMatch(/bump_owed/)
+})
+
+test("the report is continue-on-error, so a refused issue does not hide it", () => {
+  // The same reason the two monitors above carry it: this organisation forbids
+  // Actions from opening pull requests and whether that extends to issues is not
+  // something this repository can read.
+  const workflow = read(RELEASE)
+  const step = Object.values(workflow.jobs ?? {})
+    .flatMap((job) => job.steps ?? [])
+    .find((entry) => /gh issue (create|comment)/.test(entry.run ?? ""))
+  expect((step as { "continue-on-error"?: boolean })?.["continue-on-error"]).toBe(true)
+})
+
+test("and the Release itself is not gated on it", () => {
+  // Asserted, not left to the comment: failing on an owed bump would stop the
+  // mirror sync, because `publish-mirror.yml`'s `workflow_run` path fires only
+  // on a green Release. The gate would cause the outage it reports.
+  const workflow = read(RELEASE)
+  const publish = workflow.jobs?.["release"]
+  expect(publish, "release.yml has no `release` job").toBeDefined()
+  expect(JSON.stringify(publish?.needs ?? [])).not.toMatch(/owed-bump/)
+})
+
+/**
+ * The client template's own CI says which engine it tested.
+ *
+ * WHAT THIS HOLDS SHUT (#389). `apps/themes/.github/workflows/ci.yml` is
+ * published verbatim into `beyours-boilerplate`, where `package.json` pins
+ * `"@be-in-digital/admin": "^9.0.0"` — a RANGE — while this repository links the
+ * engine with `workspace:^` and tests the current source.
+ *
+ * So on 7 September 2026, #387 fixed `addChoice`, merged green here, and the
+ * boilerplate's suite then failed three times on the spec that fix was written
+ * for — while installing `admin@9.0.0`, the version from before it. The run read
+ * as the fix failing. It was executing the unfixed component with the fixed
+ * spec, and the log recorded the Playwright summary and the Convex backend and
+ * never the resolved versions.
+ *
+ * The issue's own words: *"Three lines of YAML; it turns 'why is this red' from
+ * an investigation into a glance."*
+ */
+test("the template's e2e job prints the engine versions it installed", () => {
+  const template = parse(
+    fs.readFileSync(
+      path.join(__dirname, "../../themes/.github/workflows/ci.yml"),
+      "utf8",
+    ),
+  ) as Workflow
+
+  const e2e = template.jobs?.["e2e"]
+  expect(e2e, "the template has no e2e job").toBeDefined()
+
+  const printing = (e2e?.steps ?? []).filter((step) =>
+    /@be-in-digital\//.test(step.run ?? ""),
+  )
+  expect(printing.length, "no step reads the installed engine versions").toBeGreaterThan(0)
+})
+
+test("and it prints them before anything can fail", () => {
+  // A report that only runs after the build is absent from the log of a run
+  // that died at the build — which is one of the ways this goes red.
+  const template = parse(
+    fs.readFileSync(
+      path.join(__dirname, "../../themes/.github/workflows/ci.yml"),
+      "utf8",
+    ),
+  ) as Workflow
+  const steps = template.jobs?.["e2e"]?.steps ?? []
+
+  const reportAt = steps.findIndex((step) => /@be-in-digital\//.test(step.run ?? ""))
+  const buildAt = steps.findIndex((step) => /^pnpm build$/m.test(step.run ?? ""))
+
+  expect(reportAt).toBeGreaterThanOrEqual(0)
+  expect(buildAt).toBeGreaterThanOrEqual(0)
+  expect(reportAt).toBeLessThan(buildAt)
 })
