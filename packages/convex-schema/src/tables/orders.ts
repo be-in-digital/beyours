@@ -203,6 +203,43 @@ export const ordersTable = defineTable({
    */
   stripeCheckoutSessionId: v.optional(v.string()),
   /**
+   * The checkout this order was last sent to pay through, whichever provider.
+   *
+   * WHY A SECOND FIELD RATHER THAN THREE MORE (#431.2). The field above is
+   * Stripe's, and Stripe reads it for more than reconciliation — a second
+   * checkout on one order expires the first one through it (#411). SumUp and
+   * PayPal had nothing of the kind at all, so nothing could ask either provider
+   * what became of a checkout:
+   *
+   *     $ grep -n "reconcile" convex/crons.ts
+   *     only internal.stripe.reconcilePendingCheckouts
+   *
+   * A diner who paid with SumUp and closed the tab before the redirect
+   * completed left the charge at SumUp, the order at `pending`, and the kitchen
+   * blind — permanently, because no path in the product ever asked again.
+   *
+   * One shape for all three, so the sweep is one concept rather than a
+   * per-provider copy. `provider` is carried inside it because an order can
+   * change payment method between attempts, and a reference read against the
+   * wrong provider's API is worse than no reference: it answers "unknown" and
+   * would be read as "never paid".
+   *
+   * Stripe writes BOTH: this one for the sweep and the field above for the
+   * session-expiry logic that already reads it. The sweep falls back to the
+   * older field for orders written before this existed, so a checkout stranded
+   * yesterday is still recoverable.
+   *
+   * Optional, so no row written before it existed needs a backfill under
+   * `schemaValidation: true`.
+   */
+  providerCheckoutRef: v.optional(
+    v.object({
+      provider: v.union(v.literal("stripe"), v.literal("sumup"), v.literal("paypal")),
+      reference: v.string(),
+      attachedAt: v.number(),
+    })
+  ),
+  /**
    * When this order stopped naming a person.
    *
    * WHY IT IS NEEDED: an anonymised order and an order placed by a walk-in who

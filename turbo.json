@@ -267,6 +267,11 @@
         // delivery is acted on, and an unset secret refuses every one rather
         // than acting on an unverified body.
         "RESEND_WEBHOOK_SECRET",
+        // Read by `paypal.reconcilePendingOrders`, which returns immediately on
+        // a deployment that does not take PayPal — which is most of them, and a
+        // sweep that threw there would be red every quarter of an hour for
+        // ever. The suite deletes it to drive exactly that branch (#431.2).
+        "PAYPAL_CLIENT_ID",
         // The rest.
         "ADMIN_BOOTSTRAP_TOKEN",
         "OPENAI_API_KEY",
@@ -468,6 +473,11 @@
         // delivery is acted on, and an unset secret refuses every one rather
         // than acting on an unverified body.
         "RESEND_WEBHOOK_SECRET",
+        // Read by `paypal.reconcilePendingOrders`, which returns immediately on
+        // a deployment that does not take PayPal — which is most of them, and a
+        // sweep that threw there would be red every quarter of an hour for
+        // ever. The suite deletes it to drive exactly that branch (#431.2).
+        "PAYPAL_CLIENT_ID",
         // The rest.
         "ADMIN_BOOTSTRAP_TOKEN",
         "OPENAI_API_KEY",
