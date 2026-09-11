@@ -7,18 +7,164 @@ export const list = {
   },
 }
 
+/**
+ * Which prize types name a thing, and which field names it.
+ *
+ * WHY THIS EXISTS (#432.7). `prizes.productId` and `prizes.menuId` were
+ * declared in the schema and written by nothing:
+ *
+ *     $ grep -c menuId packages/convex-functions/src/prizes.ts
+ *     0
+ *
+ * Two consequences, and the second is the one that reaches a diner.
+ *
+ * The guards were DEAD. `menus.remove` refuses `menu_in_prize` and
+ * `products.remove` refuses a dish a prize gives away, and neither refusal
+ * could fire outside its own test, because no production path could put a
+ * prize in that state. Two green guards over a condition nothing could reach.
+ *
+ * And the product let an owner create a lie. `type` offered « Produit
+ * offert » and « Menu offert » while nothing could say WHICH product or menu,
+ * so a prize read « Menu offert » on the wheel, on the winning screen and on
+ * the QR code the diner brought to the counter — and nobody at the counter
+ * could tell which menu had been promised.
+ *
+ * The schema's own comment named the fix, and this is it: the engine already
+ * has the pattern in `HONOURABLE_DISCOUNT_TYPES`
+ * (`promotionDiscount.ts`), where a promotion type the order path cannot
+ * honour is refused at creation, in the same file as the resolver that
+ * enforces it. Same shape here — the rule lives beside the code that applies
+ * it, so one cannot drift from the other.
+ */
+export const PRIZE_TARGET_FIELDS = {
+  free_product: "productId",
+  free_menu: "menuId",
+} as const satisfies Record<string, "productId" | "menuId">
+
+export type TargetedPrizeType = keyof typeof PRIZE_TARGET_FIELDS
+
+/** Does this prize type name a product or a menu? */
+export function needsTarget(type: string): type is TargetedPrizeType {
+  return Object.prototype.hasOwnProperty.call(PRIZE_TARGET_FIELDS, type)
+}
+
+const PRIZE_TYPE_LABELS: Record<string, string> = {
+  free_product: "Produit offert",
+  free_menu: "Menu offert",
+}
+
+/**
+ * Refuse a prize whose type and target disagree.
+ *
+ * Three ways they can, and each is refused for its own reason:
+ *
+ *  - a « Produit offert » with no product — the lie above;
+ *  - a « Remise » naming a menu — the screens would render a target the type
+ *    has no place for, which is the same lie in the other direction;
+ *  - a target belonging to ANOTHER establishment — a deployment is one
+ *    client's, and a prize is redeemed at a counter. `storeId` is checked
+ *    rather than assumed, because the id arrives from the caller.
+ */
+async function assertTargetMatchesType(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  storeId: unknown,
+  type: string,
+  target: { productId?: unknown; menuId?: unknown }
+): Promise<void> {
+  const required = needsTarget(type) ? PRIZE_TARGET_FIELDS[type] : null
+
+  for (const field of ["productId", "menuId"] as const) {
+    const id = target[field]
+    if (id == null) continue
+    if (field !== required) {
+      throw new ConvexError({
+        code: "prize_target_not_applicable",
+        message:
+          `Un lot de ce type ne désigne ni produit ni formule. ` +
+          `Choisissez « ${PRIZE_TYPE_LABELS.free_product} » ou ` +
+          `« ${PRIZE_TYPE_LABELS.free_menu} » pour en désigner un.`,
+      })
+    }
+    const row = await ctx.db.get(id)
+    if (!row || row.storeId !== storeId) {
+      throw new ConvexError({
+        code: "prize_target_not_found",
+        message:
+          field === "productId"
+            ? "Ce produit n'existe pas dans cet établissement."
+            : "Cette formule n'existe pas dans cet établissement.",
+      })
+    }
+  }
+
+  if (required && target[required] == null) {
+    throw new ConvexError({
+      code: "prize_target_required",
+      message:
+        required === "productId"
+          ? "Un « Produit offert » doit désigner le produit offert : sans lui, " +
+            "personne au comptoir ne sait ce qui a été promis."
+          : "Un « Menu offert » doit désigner la formule offerte : sans elle, " +
+            "personne au comptoir ne sait ce qui a été promis.",
+    })
+  }
+}
+
 export const create = {
-  args: { storeId: v.id("stores"), name: v.string(), description: v.optional(v.string()), type: v.union(v.literal("discount_percentage"), v.literal("discount_fixed"), v.literal("free_product"), v.literal("free_menu"), v.literal("custom")), value: v.optional(v.number()), validityDays: v.number(), totalAvailable: v.optional(v.number()), isActive: v.boolean() },
+  args: {
+    storeId: v.id("stores"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    type: v.union(
+      v.literal("discount_percentage"),
+      v.literal("discount_fixed"),
+      v.literal("free_product"),
+      v.literal("free_menu"),
+      v.literal("custom")
+    ),
+    value: v.optional(v.number()),
+    /** Required for `free_product`, refused for every other type. */
+    productId: v.optional(v.id("products")),
+    /** Required for `free_menu`, refused for every other type. */
+    menuId: v.optional(v.id("menus")),
+    validityDays: v.number(),
+    totalAvailable: v.optional(v.number()),
+    isActive: v.boolean(),
+  },
   handler: async (ctx: any, args: any) => {
+    await assertTargetMatchesType(ctx, args.storeId, args.type, args)
     const now = Date.now()
     return await ctx.db.insert("prizes", { ...args, createdAt: now, updatedAt: now })
   },
 }
 
 export const update = {
-  args: { id: v.id("prizes"), name: v.optional(v.string()), description: v.optional(v.string()), value: v.optional(v.number()), isActive: v.optional(v.boolean()) },
+  args: {
+    id: v.id("prizes"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    value: v.optional(v.number()),
+    productId: v.optional(v.id("products")),
+    menuId: v.optional(v.id("menus")),
+    isActive: v.optional(v.boolean()),
+  },
   handler: async (ctx: any, args: any) => {
     const { id, ...fields } = args
+    const prize = await ctx.db.get(id)
+    if (!prize) throw new Error("Prize not found")
+
+    /* Checked against the row's OWN type, which `update` cannot change. A
+       caller passing a target has to pass one this prize may hold — and the
+       merge below is what makes that the right question: an absent field
+       leaves whatever the prize already has. */
+    if (fields.productId != null || fields.menuId != null) {
+      await assertTargetMatchesType(ctx, prize.storeId, prize.type, {
+        productId: fields.productId ?? prize.productId,
+        menuId: fields.menuId ?? prize.menuId,
+      })
+    }
+
     await ctx.db.patch(id, { ...fields, updatedAt: Date.now() })
   },
 }

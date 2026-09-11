@@ -108,9 +108,30 @@ export function GameCatalogPage() {
   const [prizeValue, setPrizeValue] = useState("")
   const [validityDays, setValidityDays] = useState("7")
   const [totalAvailable, setTotalAvailable] = useState("")
+  /* Which product or formule a « Produit offert » / « Menu offert » gives away.
+     The two types existed with nothing able to say WHICH, so a prize read
+     « Menu offert » on the wheel, on the winning screen and on the QR code the
+     diner brought to the counter — and nobody at the counter could tell what had
+     been promised. The server refuses one without a target since #432.7; this is
+     the field that supplies it. */
+  const [prizeProductId, setPrizeProductId] = useState("")
+  const [prizeMenuId, setPrizeMenuId] = useState("")
 
   const games = useQuery(api.games.list, storeId ? { storeId } : "skip") as Game[] | undefined
   const prizes = useQuery(api.prizes.list, storeId ? { storeId } : "skip") as Prize[] | undefined
+  /* The catalogue, for the two prize types that give something away.
+     `products.listAll`, not `products.list`: the owner picking a prize is
+     entitled to see a dish that is not currently on sale — a seasonal one they
+     are about to publish — and `list` is the storefront's filtered read since
+     #443. Only loaded when the dialog can use it. */
+  const products = useQuery(
+    api.products.listAll,
+    storeId && isAddPrizeOpen ? { storeId } : "skip",
+  ) as { _id: string; name: string }[] | undefined
+  const menus = useQuery(
+    api.menus.list,
+    storeId && isAddPrizeOpen ? { storeId } : "skip",
+  ) as { _id: string; name: string }[] | undefined
 
   const createGame = useMutation(api.games.create)
   const updateGame = useMutation(api.games.update)
@@ -155,6 +176,18 @@ export function GameCatalogPage() {
       toast.error("La validité doit être un nombre de jours positif")
       return
     }
+    /* Asked here as well as refused there. The server is the authority — it has
+       to be, the mutation is reachable without this screen — but meeting a
+       refusal is a worse way to learn that a field is required than being told
+       before submitting. */
+    if (prizeType === "free_product" && !prizeProductId) {
+      toast.error("Choisissez le produit offert")
+      return
+    }
+    if (prizeType === "free_menu" && !prizeMenuId) {
+      toast.error("Choisissez la formule offerte")
+      return
+    }
     try {
       await createPrize({
         storeId,
@@ -162,6 +195,11 @@ export function GameCatalogPage() {
         description: prizeDescription.trim() || undefined,
         type: prizeType,
         value: prizeValue ? parseInt(prizeValue, 10) : undefined,
+        // Sent only for the type that takes it: the server refuses a target on
+        // a type that has no place for one, which is the same lie in the other
+        // direction as a « Menu offert » naming nothing.
+        productId: prizeType === "free_product" ? (prizeProductId as never) : undefined,
+        menuId: prizeType === "free_menu" ? (prizeMenuId as never) : undefined,
         validityDays: parsedValidity,
         totalAvailable: totalAvailable ? parseInt(totalAvailable, 10) : undefined,
         isActive: true,
@@ -173,6 +211,8 @@ export function GameCatalogPage() {
       setPrizeValue("")
       setValidityDays("7")
       setTotalAvailable("")
+      setPrizeProductId("")
+      setPrizeMenuId("")
     } catch (error) {
       toast.error("Création du lot impossible — vérifiez votre connexion et réessayez")
       console.error(error)
@@ -509,6 +549,40 @@ export function GameCatalogPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                {prizeType === "free_product" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="prizeProduct">Produit offert *</Label>
+                    <Select value={prizeProductId} onValueChange={setPrizeProductId}>
+                      <SelectTrigger id="prizeProduct">
+                        <SelectValue placeholder="Choisissez un produit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(products ?? []).map((product) => (
+                          <SelectItem key={product._id} value={product._id}>
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {prizeType === "free_menu" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="prizeMenu">Formule offerte *</Label>
+                    <Select value={prizeMenuId} onValueChange={setPrizeMenuId}>
+                      <SelectTrigger id="prizeMenu">
+                        <SelectValue placeholder="Choisissez une formule" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(menus ?? []).map((menu) => (
+                          <SelectItem key={menu._id} value={menu._id}>
+                            {menu.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="prizeValue">Valeur (optionnelle)</Label>
                   <Input
