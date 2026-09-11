@@ -51,7 +51,7 @@ Two things share the name "auto-translation", and they are not the same code:
 
 | | Where | Calls OpenAI |
 |---|---|---|
-| What the admin button runs | `@be-in-digital/convex-functions/autoTranslate` (`getTranslationPlan`, `runTranslationPlan`, `runBatchChunkPlan`, `saveDocumentTranslations`…), wrapped by each app as the `translateCatalogue`, `translateUIStrings` and `batchChunk` actions | Yes, `fetch` straight to `api.openai.com`, under a per-store daily quota |
+| What the admin button runs | `@be-in-digital/convex-functions/autoTranslate` (`getTranslationPlan`, `runTranslationPlan`, `runBatchChunkPlan`, `saveDocumentTranslations`…), wrapped by each app as the `translateCatalogue` and `batchChunk` actions. There is no `translateUIStrings`: it existed in both apps with zero callers, under a docblock claiming the admin languages page called it, and has been deleted — UI strings are translated one at a time through « Traductions UI » (`translations.upsert`) | Yes, `fetch` straight to `api.openai.com`, under a per-store daily quota |
 | The reusable helpers | `translateText` / `batchTranslate` in `@be-in-digital/core` | Only through an **injected** HTTP client |
 
 The core helpers never import an SDK and never read `process.env`: an `HttpClient`
