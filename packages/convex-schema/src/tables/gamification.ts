@@ -133,14 +133,19 @@ export const prizesTable = defineTable({
   // French refusals they carry — a product decision, not a dead-code sweep, so
   // it was left to the owner.
   //
-  // The real gap is upstream: `type` offers `free_product` and `free_menu`
-  // while nothing can say WHICH product or menu, so an owner can create a
-  // « Menu offert » that names no menu and the storefront cannot honour it.
-  // The engine already has a pattern for exactly this — `HONOURABLE_DISCOUNT_TYPES`
-  // in `promotionDiscount.ts`, where a promotion type the order path cannot
-  // honour is refused at creation, in the same file as the resolver that
-  // enforces it. Closing this the same way is what would give these two fields
-  // a writer, and the guards something to guard.
+  // WRITTEN SINCE #432.7, and that is what made the two guards above real.
+  // `type` offered `free_product` and `free_menu` while nothing could say WHICH
+  // product or menu, so an owner could create a « Menu offert » that named
+  // nothing — it read « Menu offert » on the wheel, on the winning screen and on
+  // the QR code the diner brought to the counter, where nobody could tell what
+  // had been promised. And `menus.remove`'s `menu_in_prize` refusal, plus the
+  // matching one in `products.remove`, could not fire outside their own tests,
+  // because no production path could put a prize in that state.
+  //
+  // `PRIZE_TARGET_FIELDS` in `prizes.ts` is the rule, declared beside the code
+  // that enforces it — the shape `HONOURABLE_DISCOUNT_TYPES` established for
+  // promotions. Required for the type that gives something away, refused for
+  // every other type, and checked to belong to the same establishment.
   productId: v.optional(v.id("products")),
   menuId: v.optional(v.id("menus")),
   validityDays: v.number(), // How many days the prize is valid
