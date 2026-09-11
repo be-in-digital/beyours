@@ -4,7 +4,7 @@
  * Export plain { args, handler } objects for Convex query/mutation wrappers
  */
 
-import { v } from "convex/values"
+import { ConvexError, v } from "convex/values"
 
 // === QUERIES ===
 
@@ -195,9 +195,22 @@ export const remove = {
       .collect()
 
     if (products.length > 0) {
-      throw new Error(
-        `Cette catégorie contient ${products.length} produit${products.length > 1 ? "s" : ""}. Déplacez-les dans une autre catégorie avant de la supprimer.`
-      )
+      // `ConvexError`, not `Error`. Convex redacts a plainly thrown `Error` in
+      // production — the browser receives "Server Error" — and this sentence is
+      // the whole point of the refusal: it tells the owner what to do, and how
+      // many products they have to move first.
+      //
+      // `products.ts:658` names THIS function as "the precedent and the
+      // reasoning" for its own refusal, and it was the one throwing a plain
+      // `Error`. #418 fixed the wrong half — it taught `categories-page.tsx` to
+      // call `convexErrorMessage(...)`, which reads a payload the server was
+      // never sending, so the screen printed its fallback verbatim.
+      throw new ConvexError({
+        code: "category_has_products",
+        message:
+          `Cette catégorie contient ${products.length} produit${products.length > 1 ? "s" : ""}. ` +
+          "Déplacez-les dans une autre catégorie avant de la supprimer.",
+      })
     }
 
     await ctx.db.delete(args.id)
