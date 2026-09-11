@@ -1,5 +1,37 @@
 # @be-in-digital/admin
 
+## 17.0.0
+
+### Minor Changes
+
+- 390c8d5: Give a prize that gives something away a way to say what.
+
+  `prizes.productId` and `prizes.menuId` were declared in the schema and written
+  by nothing, which cost two things. The delete guards that read them —
+  `menus.remove`'s `menu_in_prize` and the matching refusal in `products.remove`
+  — could not fire outside their own tests, because no production path could put
+  a prize in that state. And an owner could create a « Menu offert » that named
+  no menu: it read « Menu offert » on the wheel, on the winning screen and on the
+  QR code the diner brought to the counter, where nobody could tell what had been
+  promised.
+
+  `PRIZE_TARGET_FIELDS` declares the rule beside the code that enforces it — the
+  shape `HONOURABLE_DISCOUNT_TYPES` established for promotions. A target is
+  required for the type that gives something away, refused for every other type,
+  and checked to belong to the same establishment. The admin prize form offers the
+  picker for exactly those two types.
+
+### Patch Changes
+
+- Updated dependencies [d2e747a]
+- Updated dependencies [b8c6f3e]
+- Updated dependencies [f1e4bf6]
+- Updated dependencies [50b0edb]
+- Updated dependencies [390c8d5]
+- Updated dependencies [4d759b5]
+  - @be-in-digital/convex-functions@7.2.0
+  - @be-in-digital/convex-schema@6.3.0
+
 ## 16.0.0
 
 ### Patch Changes
