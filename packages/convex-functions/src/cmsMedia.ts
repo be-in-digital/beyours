@@ -215,6 +215,83 @@ export function collectMediaS3Keys(
  * so the keys are read here, while the row still exists, and handed to the app
  * wrapper to schedule against; looking them up after the commit is impossible.
  */
+/**
+ * Every string an inline reference to this media could be written as.
+ *
+ * WHY THIS EXISTS (#432.5). `deleteMedia` checked `cmsBlocks.values[].mediaId`
+ * and an article's `coverImageId` / `ogImageId` — every place a media is
+ * referenced BY ID. An image dropped into an article's body is not: the editor
+ * writes `<img src="…">`, so the reference is a URL in an HTML string, it never
+ * increments `usageCount`, and the library showed **Utilisations: 0** beside the
+ * delete button for a photograph on a published page.
+ *
+ * And the delete is not recoverable in the way a row delete is. The S3 bytes go
+ * with it (`cmsMediaDelete.ts`), so the published article is left with a broken
+ * image and the file is gone.
+ *
+ * The needles are the media's own identifiers rather than a parse of the HTML:
+ * matching "is this string anywhere in that text" is exact, needs no HTML
+ * parser in a Convex mutation, and cannot be defeated by an attribute order or
+ * a query string the editor happens to append. The cost is a false POSITIVE on
+ * a coincidence — which is the right way for this to be wrong: refusing a delete
+ * the owner can retry after removing the image beats purging bytes off a live
+ * page.
+ *
+ * `s3Key` is included because an app can serve through `/api/files?key=…`, and
+ * the `mediaId` because a block editor may write the id into a data attribute.
+ * Short or empty values are dropped: a needle of `""` matches every document.
+ */
+export function mediaReferenceNeedles(media: {
+  _id?: unknown
+  s3Key?: string
+  sourceUrl?: string
+  url?: string
+  thumbnailUrl?: string
+  variants?: Record<string, { url?: string } | undefined>
+}): string[] {
+  const needles = new Set<string>()
+  for (const candidate of [
+    typeof media._id === "string" ? media._id : undefined,
+    media.s3Key,
+    media.sourceUrl,
+    media.url,
+    media.thumbnailUrl,
+    ...Object.values(media.variants ?? {}).map((variant) => variant?.url),
+  ]) {
+    // 8 characters is well under any real key, URL or Convex id, and well over
+    // anything that could match by accident.
+    if (typeof candidate === "string" && candidate.length >= 8) needles.add(candidate)
+  }
+  return [...needles]
+}
+
+/** Does this text carry any of those references? */
+export function textReferencesMedia(
+  text: unknown,
+  needles: readonly string[]
+): boolean {
+  if (typeof text !== "string" || text.length === 0) return false
+  return needles.some((needle) => text.includes(needle))
+}
+
+/**
+ * Every string inside a CMS block's values, however deeply nested.
+ *
+ * A block's `values` is `v.any()`, so a rich-text field is a string on one block
+ * and an array of nodes on another. Walking it is the only reading that does not
+ * depend on which editor wrote the block.
+ */
+export function collectStrings(value: unknown, out: string[] = []): string[] {
+  if (typeof value === "string") {
+    out.push(value)
+  } else if (Array.isArray(value)) {
+    for (const item of value) collectStrings(item, out)
+  } else if (value && typeof value === "object") {
+    for (const item of Object.values(value)) collectStrings(item, out)
+  }
+  return out
+}
+
 export const deleteMedia = {
   args: {
     storeId: v.id("stores"),
@@ -231,7 +308,22 @@ export const deleteMedia = {
       .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .collect()
 
+    // Every string this media could be referenced by, for the inline cases the
+    // id checks cannot see (#432.5).
+    const needles = mediaReferenceNeedles({ ...media, _id: args.mediaId })
+
     for (const block of allBlocks) {
+      // A rich-text block carries `<img src="…">` rather than a `mediaId`, so the
+      // block's own text is read as well as its fields.
+      if (collectStrings(block.values).some((text) => textReferencesMedia(text, needles))) {
+        throw new ConvexError({
+          code: "media_in_use_by_block",
+          message:
+            `Ce média apparaît dans le bloc « ${block.blockKey} » de la page ` +
+            `« ${block.pageSlug} » (${block.isDraft ? "brouillon" : "publiée"}). ` +
+            "Retirez-le de cette page avant de le supprimer.",
+        })
+      }
       for (const fv of Object.values(block.values)) {
         if ((fv as { mediaId?: string })?.mediaId === args.mediaId) {
           // `ConvexError`, and in French. Thrown plainly this was redacted to
@@ -271,6 +363,45 @@ export const deleteMedia = {
             "Changez son image avant de le supprimer.",
         })
       }
+
+      /* The BODY, which is where the hole was (#432.5). An image dropped into
+         an article is an `<img src="…">` in the HTML — no `mediaId`, no
+         `usageCount`, so the library showed « Utilisations : 0 » beside the
+         delete button for a photograph on a published page, and the S3 bytes
+         went with the row.
+
+         Draft and published both: a published body is what a reader sees, and a
+         draft body is what the owner is about to publish. */
+      for (const content of [article.draftContent, article.publishedContent]) {
+        if (!content) continue
+        if (!textReferencesMedia(content.content, needles)) continue
+        throw new ConvexError({
+          code: "media_in_use_by_article_body",
+          message:
+            `Ce média apparaît dans le corps de l'article ` +
+            `« ${content.title ?? article.draftContent?.title ?? "Sans titre"} ». ` +
+            "Retirez-le de l'article avant de le supprimer.",
+        })
+      }
+    }
+
+    /* And a blog CATEGORY's image, which `blog.ts` writes to
+       `blogCategories.imageId` and this check did not read at all — so the one
+       reference in the whole set that is a plain `v.id("cmsMedia")` was the one
+       nothing looked at. */
+    const blogCategories = await ctx.db
+      .query("blogCategories")
+      .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
+      .collect()
+
+    for (const category of blogCategories) {
+      if (category.imageId !== args.mediaId) continue
+      throw new ConvexError({
+        code: "media_in_use_by_blog_category",
+        message:
+          `Ce média illustre la catégorie « ${category.name} » du blog. ` +
+          "Changez son image avant de le supprimer.",
+      })
     }
 
     // Read before the delete: once the mutation commits the row is gone and
