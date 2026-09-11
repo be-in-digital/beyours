@@ -711,10 +711,17 @@ export const attachCheckoutSession = {
   args: {
     orderId: v.id("orders"),
     checkoutSessionId: v.string(),
+    /**
+     * Which provider the reference belongs to. Stripe when absent, so every
+     * caller written before #431.2 keeps its meaning.
+     */
+    provider: v.optional(
+      v.union(v.literal("stripe"), v.literal("sumup"), v.literal("paypal"))
+    ),
   },
   handler: async (
     ctx: any,
-    args: { orderId: string; checkoutSessionId: string }
+    args: { orderId: string; checkoutSessionId: string; provider?: string }
   ): Promise<void> => {
     const checkoutSessionId = args.checkoutSessionId.trim()
     if (!checkoutSessionId) return
@@ -722,8 +729,22 @@ export const attachCheckoutSession = {
     const order = await ctx.db.get(args.orderId)
     if (!order) return
 
+    const provider = args.provider ?? "stripe"
+
+    /* BOTH fields for Stripe, one for the other two.
+     *
+     * `stripeCheckoutSessionId` is read by more than the sweep — a second
+     * checkout on one order expires the first through it (#411) — so it stays
+     * exactly as it was. `providerCheckoutRef` is what the sweep reads, for all
+     * three providers, so SumUp and PayPal stop being unrecoverable (#431.2).
+     */
     await ctx.db.patch(args.orderId, {
-      stripeCheckoutSessionId: checkoutSessionId,
+      ...(provider === "stripe" ? { stripeCheckoutSessionId: checkoutSessionId } : {}),
+      providerCheckoutRef: {
+        provider,
+        reference: checkoutSessionId,
+        attachedAt: Date.now(),
+      },
       updatedAt: Date.now(),
     })
   },
@@ -748,6 +769,10 @@ export const listStrandedCheckouts = {
     maxAgeHours: v.optional(v.number()),
     limit: v.optional(v.number()),
     scanLimit: v.optional(v.number()),
+    /** Which provider's references to return. Stripe when absent. */
+    provider: v.optional(
+      v.union(v.literal("stripe"), v.literal("sumup"), v.literal("paypal"))
+    ),
   },
   handler: async (
     ctx: any,
@@ -757,6 +782,7 @@ export const listStrandedCheckouts = {
       maxAgeHours?: number
       limit?: number
       scanLimit?: number
+      provider?: string
     }
   ): Promise<
     Array<{
@@ -778,17 +804,51 @@ export const listStrandedCheckouts = {
       )
       .take(args.scanLimit ?? 500)
 
-    return rows
-      .filter((order: any) => typeof order.stripeCheckoutSessionId === "string")
-      .filter((order: any) => order.stripeCheckoutSessionId.trim() !== "")
-      .slice(0, args.limit ?? 50)
-      .map((order: any) => ({
+    const provider = args.provider ?? "stripe"
+
+    /* The reference this order was last sent to pay through, for THIS provider.
+     *
+     * `providerCheckoutRef` first, because it carries the provider and an order
+     * can change payment method between attempts — a SumUp reference read
+     * against Stripe answers "unknown", which a sweep would take for "never
+     * paid" and could act on.
+     *
+     * `stripeCheckoutSessionId` is the fallback, and only for Stripe: it is
+     * what orders written before #431.2 have, and a checkout stranded the day
+     * before this shipped is still worth recovering.
+     */
+    const referenceOf = (order: any): string | null => {
+      const ref = order.providerCheckoutRef
+      if (ref && typeof ref.reference === "string" && ref.reference.trim() !== "") {
+        return ref.provider === provider ? ref.reference.trim() : null
+      }
+      if (provider !== "stripe") return null
+      const legacy = order.stripeCheckoutSessionId
+      return typeof legacy === "string" && legacy.trim() !== "" ? legacy.trim() : null
+    }
+
+    const found: Array<{
+      orderId: string
+      storeId: string
+      checkoutSessionId: string
+      total: number
+      createdAt: number
+    }> = []
+
+    for (const order of rows) {
+      const reference = referenceOf(order)
+      if (!reference) continue
+      found.push({
         orderId: order._id,
         storeId: order.storeId,
-        checkoutSessionId: order.stripeCheckoutSessionId as string,
+        checkoutSessionId: reference,
         total: order.total,
         createdAt: order.createdAt,
-      }))
+      })
+      if (found.length >= (args.limit ?? 50)) break
+    }
+
+    return found
   },
 }
 
