@@ -213,6 +213,44 @@ export const remove = {
       })
     }
 
+    /* CASCADED — `stores.stationMapping[].categoryId`.
+     *
+     * The kitchen routing names a category per station, and `categoryId` is a
+     * REQUIRED `v.id("categories")` inside that array
+     * (`tables/stores.ts:120`). A bare delete left an entry naming a row that
+     * no longer exists, and nothing complained: `v.id()` validates how an id is
+     * encoded, not that it resolves.
+     *
+     * It was inert only by accident. `orders.ts:2158` builds a `Map` of strings
+     * rather than calling `ctx.db.get`, so a dead entry routed nothing and said
+     * nothing — and `use-store-detail.ts` re-persists the whole array on every
+     * save of the kitchen tab, so the dead entry was written back for ever.
+     * The first line that dereferences it turns a tidy-up click into a broken
+     * kitchen screen.
+     *
+     * Cascaded rather than refused, deliberately. Refusing would block the
+     * deletion of an EMPTY category on a kitchen setting the owner is not
+     * looking at, and a station that routed a category which no longer exists
+     * has nothing left to route. The refusal above is for products, which are
+     * the owner's to move.
+     *
+     * Bounded by construction: one store, and a station mapping is one entry
+     * per category the establishment routes — the same handful the kitchen tab
+     * shows on one screen. */
+    const store = await ctx.db.get(category.storeId)
+    const mapping = store?.stationMapping as
+      | Array<{ categoryId: string; station: string }>
+      | undefined
+    if (mapping && mapping.length > 0) {
+      const kept = mapping.filter((entry) => entry.categoryId !== args.id)
+      if (kept.length !== mapping.length) {
+        await ctx.db.patch(category.storeId, {
+          stationMapping: kept,
+          updatedAt: Date.now(),
+        })
+      }
+    }
+
     await ctx.db.delete(args.id)
   },
 }

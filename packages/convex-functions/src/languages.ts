@@ -161,7 +161,86 @@ export const setDefault = {
 }
 
 /**
- * Delete a language
+ * How many `translations` rows one pass may delete.
+ *
+ * Same shape and the same reason as `MENU_TRANSLATION_BATCH`: a transaction has
+ * a document ceiling, and an establishment that added a language and ran the
+ * bulk translator has one row per product, per category, per menu and per CMS
+ * field in it. A catalogue of four hundred dishes is already four hundred rows
+ * for that one language.
+ */
+export const LANGUAGE_TRANSLATION_BATCH = 500
+
+export interface LanguagePurgeResult {
+  deleted: number
+  hasMore: boolean
+}
+
+/**
+ * Delete one batch of a language's translations.
+ *
+ * `take(budget + 1)`: the extra row is how the caller learns there is more to
+ * do without paying for a count.
+ */
+async function deleteLanguageTranslationBatch(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ctx: any,
+  storeId: unknown,
+  languageCode: string,
+  budget: number = LANGUAGE_TRANSLATION_BATCH
+): Promise<LanguagePurgeResult> {
+  const rows = await ctx.db
+    .query("translations")
+    .withIndex("by_storeId_language", (q: any) =>
+      q.eq("storeId", storeId).eq("languageCode", languageCode)
+    )
+    .take(budget + 1)
+
+  const hasMore = rows.length > budget
+  const batch = hasMore ? rows.slice(0, budget) : rows
+  for (const row of batch) {
+    await ctx.db.delete(row._id)
+  }
+  return { deleted: batch.length, hasMore }
+}
+
+/**
+ * The rest of the sweep, one batch per run. Internal only: it takes a language
+ * CODE rather than an id, because the language row went in the first pass.
+ */
+export const purgeTranslations = {
+  args: { storeId: v.id("stores"), languageCode: v.string() },
+  handler: async (ctx: any, args: any): Promise<LanguagePurgeResult> =>
+    deleteLanguageTranslationBatch(ctx, args.storeId, args.languageCode),
+}
+
+/**
+ * Delete a language, and the translations that only ever described it.
+ *
+ * WHAT WENT WRONG (#432.6). A bare `ctx.db.delete(args.id)`, leaving every
+ * `translations` row for that language behind — the product names, the category
+ * names, the menu descriptions and the CMS fields the owner had translated or
+ * the bulk translator had written.
+ *
+ * Invisible to every validator, and this is why: `translations.languageCode` is
+ * a `v.string()`, not a `v.id("languages")`. A language is identified by its BCP
+ * 47 code throughout the product, so the schema cannot see that the column is a
+ * foreign key and nothing has ever complained about an orphan.
+ *
+ * And then the consequence, which is the part that reaches a diner: re-adding
+ * the same language **resurrects the stale rows**. An owner who removes German,
+ * spends a month rewriting the carte, and adds German back gets last month's
+ * German on the storefront — silently, because there is no state in which the
+ * product could tell that those rows are older than the text they translate.
+ *
+ * CASCADED, not refused. The rows describe entities in a language the
+ * establishment no longer offers; they are of no use to anything else, which is
+ * the same test `menus.remove` applies to its own translations. Refusing would
+ * ask the owner to delete four hundred rows they cannot see from a screen that
+ * does not list them.
+ *
+ * Batched, with the first batch inside this transaction and the rest drained by
+ * the app wrapper — the shape `menus.remove` already uses, for the same ceiling.
  */
 export const remove = {
   args: { id: v.id("languages") },
@@ -185,6 +264,16 @@ export const remove = {
       })
     }
 
+    /* The language row goes first, so the storefront stops offering it even if
+       the drain below is interrupted. A language with half its translations gone
+       is a worse screen than one that is simply no longer offered. */
+    const { storeId, code } = language
     await ctx.db.delete(args.id)
+
+    return {
+      ...(await deleteLanguageTranslationBatch(ctx, storeId, code)),
+      storeId,
+      languageCode: code as string,
+    }
   },
 }
