@@ -113,6 +113,7 @@ export {
   EmailTemplatesPage,
   EmailSubscribersPage,
   EmailSegmentsPage,
+  EmailAutomationsPage,
   EmailConfigPage,
 } from "./pages/email"
 export { SystemPage } from "./pages/system"

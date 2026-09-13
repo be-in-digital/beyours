@@ -589,12 +589,16 @@ describe("no delete screen throws the server's sentence away", () => {
       .toHaveLength(2)
     expect(deleteCatches(fs.readFileSync(path.join(PAGES, "stores", "use-store-detail.ts"), "utf8")))
       .toHaveLength(2)
-    // Seventeen call sites across fifteen files.
+    // Eighteen call sites across sixteen files — seventeen across fifteen until
+    // the automations screen arrived with the eighteenth (#270). Its refusal is
+    // the one this whole file is about: `emailAutomations.remove` refuses to
+    // delete an automation that has already mailed somebody, and says so in a
+    // sentence that offers « pause » instead.
     const total = deleteScreens.reduce(
       (sum, file) => sum + deleteCatches(fs.readFileSync(file, "utf8")).length,
       0
     )
-    expect(total).toBe(17)
+    expect(total).toBe(18)
   })
 
   it.each(deleteScreens.map((file) => [path.relative(PAGES, file), file]))(

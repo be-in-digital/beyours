@@ -34,6 +34,7 @@ export const subTitles: Record<string, string> = {
   "email/templates": "Modèles",
   "email/subscribers": "Abonnés",
   "email/segments": "Segments",
+  "email/automations": "Automatisations",
   "email/config": "Configuration",
   "content/pages": "Pages",
   "content/components": "Composants",

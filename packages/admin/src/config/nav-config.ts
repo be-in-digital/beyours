@@ -274,6 +274,10 @@ export const navGroups: NavGroup[] = [
           { label: "Modèles", href: adminRoutes.emailTemplates },
           { label: "Abonnés", href: adminRoutes.emailSubscribers },
           { label: "Segments", href: adminRoutes.emailSegments },
+          // The screen the five settings toggles were gating a sequence that
+          // could not exist (#270). `emailAutomations.list` enforces
+          // `marketing:read`, the same as every sibling here.
+          { label: "Automatisations", href: adminRoutes.emailAutomations },
           { label: "Configuration", href: adminRoutes.emailConfig },
         ],
       },
