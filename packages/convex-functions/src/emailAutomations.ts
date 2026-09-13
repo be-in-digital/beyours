@@ -6,6 +6,8 @@
 
 import { ConvexError, v } from "convex/values"
 
+import { TRIGGER_READINESS } from "./automationDispatch"
+
 const triggerValidator = v.union(
   v.literal("welcome"),
   v.literal("birthday"),
@@ -89,14 +91,95 @@ export const listActiveByTrigger = {
 
 // === MUTATIONS ===
 
+/** How long a subscriber must be quiet before a win-back sequence fires. */
+export const DEFAULT_INACTIVE_AFTER_DAYS = 90
+
+/**
+ * At least one step, and not more than a sequence anybody would write.
+ *
+ * The ceiling is not a business rule — it is there so a forged payload cannot
+ * schedule ten thousand sends off one trigger.
+ */
+export const MAX_AUTOMATION_STEPS = 20
+
+/**
+ * Refuse a trigger that cannot fire, at the door.
+ *
+ * THE SAME SHAPE AS `HONOURABLE_DISCOUNT_TYPES`, and for the same reason. Two of
+ * the five triggers have no data behind them — `birthday` (no record carries a
+ * date of birth) and `abandoned_cart` (carts live in the browser and are never
+ * persisted) — and `TRIGGER_READINESS` in `automationDispatch.ts` already
+ * carries the reason for each. Until now nothing enforced it anywhere: the
+ * settings screen offered the toggle, `create` accepted the trigger, `activate`
+ * activated it, and not one email was ever sent.
+ *
+ * Enforced HERE rather than only in the editor, because the mutation is public
+ * under `marketing:write` and the editor is not the only caller — an API call
+ * was the only way to make an automation at all until this issue.
+ *
+ * Implement a trigger in `TRIGGER_READINESS` and it becomes creatable on the
+ * same commit, in the editor and on the API together.
+ */
+function assertTriggerCanFire(trigger: string): void {
+  const readiness = TRIGGER_READINESS[trigger as keyof typeof TRIGGER_READINESS]
+  if (readiness && !readiness.ready) {
+    throw new ConvexError({
+      code: "automation_trigger_not_ready",
+      message:
+        `Ce déclencheur n'est pas encore disponible : ${readiness.missing ?? "les données nécessaires n'existent pas"}. ` +
+        "Une automatisation sur ce déclencheur n'enverrait jamais rien.",
+      trigger,
+    })
+  }
+}
+
+/** A sequence the dispatcher can actually run. */
+function assertSteps(steps: Array<{ delayMinutes: number }>): void {
+  if (steps.length === 0) {
+    throw new ConvexError({
+      code: "automation_without_steps",
+      message: "Ajoutez au moins une étape : une automatisation sans étape n'envoie rien.",
+    })
+  }
+  if (steps.length > MAX_AUTOMATION_STEPS) {
+    throw new ConvexError({
+      code: "automation_too_many_steps",
+      message: `Une automatisation accepte au maximum ${MAX_AUTOMATION_STEPS} étapes.`,
+    })
+  }
+  for (const step of steps) {
+    // `delayForStep` counts every delay FROM THE TRIGGER, not from the previous
+    // step, so a negative one would schedule a send before the event that
+    // caused it and a fractional one would land between minutes.
+    if (!Number.isInteger(step.delayMinutes) || step.delayMinutes < 0) {
+      throw new ConvexError({
+        code: "automation_invalid_delay",
+        message: "Un délai se compte en minutes entières, à partir du déclencheur.",
+      })
+    }
+  }
+}
+
 export const create = {
   args: {
     storeId: v.id("stores"),
     name: v.string(),
     trigger: triggerValidator,
     steps: v.array(stepValidator),
+    /**
+     * Quiet days before a win-back sequence fires — `inactive` only.
+     *
+     * IT WAS ON THE TABLE AND ON NEITHER MUTATION. `emailAutomations.inactiveAfterDays`
+     * is read by the nightly win-back sweep and no caller, UI or API, could ever
+     * set it, so every win-back automation in existence was stuck on the 90-day
+     * default. Added here and on `update` together; the editor exposes it only
+     * for the trigger it belongs to.
+     */
+    inactiveAfterDays: v.optional(v.number()),
   },
   handler: async (ctx: any, args: any) => {
+    assertTriggerCanFire(args.trigger)
+    assertSteps(args.steps)
     const now = Date.now()
     return await ctx.db.insert("emailAutomations", {
       ...args,
@@ -114,9 +197,12 @@ export const update = {
     name: v.optional(v.string()),
     trigger: v.optional(triggerValidator),
     steps: v.optional(v.array(stepValidator)),
+    inactiveAfterDays: v.optional(v.number()),
   },
   handler: async (ctx: any, args: any) => {
     const { id, ...fields } = args
+    if (fields.trigger !== undefined) assertTriggerCanFire(fields.trigger)
+    if (fields.steps !== undefined) assertSteps(fields.steps)
     await ctx.db.patch(id, { ...fields, updatedAt: Date.now() })
   },
 }
@@ -171,9 +257,23 @@ export const remove = {
   },
 }
 
+/**
+ * Switch an automation on.
+ *
+ * The same two checks `create` makes, re-made here. A draft written before those
+ * checks existed — every automation on every deployment today was written by an
+ * API call against the unguarded mutation — can hold an unready trigger or no
+ * steps at all, and activating it is the moment the promise is made to the
+ * owner. Refusing at activation is the last place it can be refused before a
+ * screen starts reporting "active" about a sequence that sends nothing.
+ */
 export const activate = {
   args: { id: v.id("emailAutomations") },
   handler: async (ctx: any, args: any) => {
+    const automation = await ctx.db.get(args.id)
+    if (!automation) throw new Error("Automatisation introuvable")
+    assertTriggerCanFire(automation.trigger)
+    assertSteps(automation.steps ?? [])
     await ctx.db.patch(args.id, { status: "active", updatedAt: Date.now() })
   },
 }

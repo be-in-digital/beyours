@@ -51,6 +51,7 @@ export const adminRoutes = {
   emailTemplates: "/dashboard/email/templates",
   emailSubscribers: "/dashboard/email/subscribers",
   emailSegments: "/dashboard/email/segments",
+  emailAutomations: "/dashboard/email/automations",
   emailConfig: "/dashboard/email/config",
 
   // ─── Content ────────────────────────────────────────────────────────────────
