@@ -20,8 +20,11 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useQuery } from "convex/react"
+import { hasPermission, type Role } from "@be-in-digital/core"
+import { profileAllowsPermission } from "@be-in-digital/convex-functions/teamAccess"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { useAdminApiStore } from "../../stores/admin-api-store"
+import { useAdminAuthStore } from "../../stores/admin-auth-store"
 import { ORDER_TYPE_LABELS, ORDER_SOURCE_LABELS } from "../../lib/vocabulary"
 
 type OrderStatus =
@@ -59,12 +62,42 @@ export interface DashboardTotals {
   uncollected: number
 }
 
+/** One dish in « Plats populaires ». */
+export interface DashboardProduct {
+  productId?: string
+  name: string
+  quantity: number
+  revenue: number
+  orderCount: number
+}
+
+/** One hour of the establishment's trading day. */
+export interface DashboardHour {
+  hour: number
+  orders: number
+  revenue: number
+}
+
+/** Who ordered over the period. See the server's `DashboardDiners`. */
+export interface DashboardDiners {
+  identified: number
+  returning: number
+  newcomers: number
+  returningRate: number
+  anonymousOrders: number
+}
+
 export interface DashboardStats {
   today: DashboardTotals & { activeOrders: number }
   yesterday: DashboardTotals
-  last7Days: Array<{ day: string; revenue: number; orders: number }>
+  /** One bar per day of the chosen period, oldest first, labelled. */
+  days: Array<{ day: string; revenue: number; orders: number }>
   byType: Array<{ name: string; value: number; label: string }>
   bySource: Array<{ name: string; value: number; label: string }>
+  topProducts: DashboardProduct[]
+  /** 24 entries, always all of them — an empty hour is a measurement. */
+  hourly: DashboardHour[]
+  diners: DashboardDiners | null
   /** True when the server stopped at its read cap, so the figures are floors. */
   truncated: boolean
 }
@@ -73,9 +106,12 @@ export interface DashboardStats {
 interface ServerDashboardStats {
   today: DashboardTotals & { activeOrders: number }
   yesterday: DashboardTotals
-  last7Days: Array<{ dayStart: number; revenue: number; orders: number }>
+  days: Array<{ dayStart: number; revenue: number; orders: number }>
   byType: Array<{ name: string; value: number }>
   bySource: Array<{ name: string; value: number }>
+  topProducts: DashboardProduct[]
+  hourly: DashboardHour[]
+  diners: DashboardDiners | null
   truncated: boolean
 }
 
@@ -83,8 +119,35 @@ const DAY_NAMES: Record<number, string> = {
   0: "Dim", 1: "Lun", 2: "Mar", 3: "Mer", 4: "Jeu", 5: "Ven", 6: "Sam",
 }
 
-/** Bars on the orders chart. */
-export const DASHBOARD_CHART_DAYS = 7
+/**
+ * The periods the overview can be read over.
+ *
+ * These replace the literals this screen used to carry — a fixed seven-bar
+ * chart and a fixed thirty-day breakdown, neither of them a parameter. The site
+ * copy promised « analyse des tendances et des performances par période » while
+ * no period could be chosen.
+ *
+ * Thirty is the ceiling because `MAX_DAY_BUCKETS` in `dashboardStats.ts` is 31:
+ * the chart has one bar per day, and the hour-of-day buckets are derived from
+ * those same local midnights, which is what makes them DST-correct without a
+ * timezone argument.
+ */
+export const DASHBOARD_PERIODS = [7, 14, 30] as const
+
+export type DashboardPeriod = (typeof DASHBOARD_PERIODS)[number]
+
+/** What the picker calls each one. */
+export const DASHBOARD_PERIOD_LABELS: Record<DashboardPeriod, string> = {
+  7: "7 jours",
+  14: "14 jours",
+  30: "30 jours",
+}
+
+/** The period a first visit lands on. */
+export const DASHBOARD_DEFAULT_PERIOD: DashboardPeriod = 7
+
+/** Bars on the orders chart, when no period has been chosen. */
+export const DASHBOARD_CHART_DAYS = DASHBOARD_DEFAULT_PERIOD
 
 /** How far back the type and source breakdowns look. */
 export const DASHBOARD_BREAKDOWN_DAYS = 30
@@ -140,8 +203,13 @@ export function labelDashboardStats(stats: ServerDashboardStats): DashboardStats
   return {
     today: stats.today,
     yesterday: stats.yesterday,
-    last7Days: stats.last7Days.map((day) => ({
-      day: DAY_NAMES[new Date(day.dayStart).getDay()] ?? "",
+    days: stats.days.map((day) => ({
+      // A 30-day chart repeats each weekday four times, so the day number goes
+      // on the label as well. Seven bars keep the bare name they always had.
+      day:
+        stats.days.length > DASHBOARD_CHART_DAYS
+          ? `${new Date(day.dayStart).getDate()}`
+          : DAY_NAMES[new Date(day.dayStart).getDay()] ?? "",
       revenue: day.revenue,
       orders: day.orders,
     })),
@@ -153,8 +221,34 @@ export function labelDashboardStats(stats: ServerDashboardStats): DashboardStats
       ...entry,
       label: ORDER_SOURCE_LABELS[entry.name] || entry.name,
     })),
+    topProducts: stats.topProducts,
+    hourly: stats.hourly,
+    diners: stats.diners,
     truncated: stats.truncated,
   }
+}
+
+/**
+ * May this operator read the establishment's figures?
+ *
+ * BOTH of the server's gates, in the server's order, the same pair
+ * `canRoleSeeNavHref` runs: the RBAC role check, then
+ * `profileAllowsPermission`, which narrows the role to the modules the owner
+ * ticked in the invite dialog. Asked in the browser so the query is never sent
+ * — a Convex refusal rethrows out of `useQuery` during render and unwinds the
+ * whole screen, which for a `kitchen` account would be a blank overview page
+ * rather than an explained one.
+ */
+export function canReadDashboardAnalytics(
+  role: string | null | undefined,
+  modules: string[] = []
+): boolean {
+  if (!role) return false
+  if (!hasPermission(role as Role, "analytics:read")) return false
+  return profileAllowsPermission(
+    { role: role as Role, permissions: modules },
+    "analytics:read"
+  )
 }
 
 /**
@@ -200,33 +294,47 @@ export function useDashboardStats(): {
   storeId: string | null
   stats: DashboardStats | null
   orders: DashboardOrder[]
+  period: DashboardPeriod
+  setPeriod: (period: DashboardPeriod) => void
+  /** True when this operator's role carries no `analytics:read`. */
+  analyticsDenied: boolean
 } {
   const storeId = useAdminStoreId()
   const { api } = useAdminApiStore()
   const todayStart = useTodayStart()
+  const [period, setPeriod] = useState<DashboardPeriod>(DASHBOARD_DEFAULT_PERIOD)
 
-  // Keyed on today's midnight rather than recomputed per render: a boundary
-  // that moved on every render would resubscribe the query on every render,
-  // and one fixed at mount would still call yesterday "today" on a screen the
-  // kitchen leaves open through the night.
+  const role = useAdminAuthStore((state) => state.role)
+  const modules = useAdminAuthStore((state) => state.permissions)
+  const mayRead = canReadDashboardAnalytics(role, modules)
+
+  // Keyed on today's midnight and the chosen period rather than recomputed per
+  // render: a boundary that moved on every render would resubscribe the query
+  // on every render, and one fixed at mount would still call yesterday "today"
+  // on a screen the kitchen leaves open through the night.
   const windows = useMemo(
     () => ({
-      dayStarts: dashboardDayStarts(new Date(todayStart)),
+      dayStarts: dashboardDayStarts(new Date(todayStart), period),
       todayEnd: dashboardTodayEnd(new Date(todayStart)),
-      breakdownSince: dashboardBreakdownSince(new Date(todayStart)),
+      // The breakdown pies follow the picker too. They used to sit on their own
+      // fixed thirty days, so the donuts and the chart above them answered
+      // about different stretches of time with nothing saying so.
+      breakdownSince: dashboardBreakdownSince(new Date(todayStart), period),
     }),
-    [todayStart]
+    [todayStart, period]
   )
 
   // `api` is injected by the admin layout, so both references are absent on the
   // first render and `"skip"` is what `useQuery` wants until they arrive.
   const statsRef =
-    storeId && api?.orders?.dashboardStats ? api.orders.dashboardStats : "skip"
+    mayRead && storeId && api?.orders?.dashboardStats
+      ? api.orders.dashboardStats
+      : "skip"
   const recentRef = storeId && api?.orders?.recent ? api.orders.recent : "skip"
 
   const serverStats = useQuery(
     statsRef,
-    storeId ? { storeId, ...windows } : "skip"
+    mayRead && storeId ? { storeId, ...windows } : "skip"
   ) as ServerDashboardStats | undefined
 
   const recentOrders = useQuery(recentRef, storeId ? { storeId } : "skip") as
@@ -238,5 +346,12 @@ export function useDashboardStats(): {
     [serverStats]
   )
 
-  return { storeId, stats, orders: recentOrders ?? [] }
+  return {
+    storeId,
+    stats,
+    orders: recentOrders ?? [],
+    period,
+    setPeriod,
+    analyticsDenied: !mayRead,
+  }
 }
