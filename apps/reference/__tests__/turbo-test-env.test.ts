@@ -23,6 +23,17 @@ import path from "node:path"
  * out. Adding `process.env.SOMETHING` to a suite without declaring it fails
  * this file.
  *
+ * IT COVERED ONE OF THE THREE TASKS IT NAMED, and #328 measured the cost.
+ * `testRoots()` walks `e2e/` — the `*.test.ts` files there are vitest suites —
+ * so a variable read by an e2e helper was demanded on the `test` task and
+ * `DELIVEROO_E2E_REQUIRE_LIVE` duly appeared there. The file that reads it is
+ * imported by `*.spec.ts` too, which PLAYWRIGHT runs, under `test:e2e`, which
+ * declared nothing of the kind. So the declaration landed on the task that did
+ * not need it and was missing from the one that did, and
+ * `DELIVEROO_E2E_REQUIRE_LIVE=1` — the switch that turns a silently SKIPPED
+ * live suite into a failing one — could never reach the code that reads it.
+ * The second describe block below is that half.
+ *
  * Bench-only: it reads the monorepo root and would be meaningless on a client
  * site.
  */
@@ -303,5 +314,88 @@ describe("test:coverage carries the same declarations as test", () => {
   /** The reason it is a separate task at all. */
   test("it is the one that writes coverage", () => {
     expect(coverage?.outputs).toContain("coverage/**")
+  })
+})
+
+/**
+ * And the same rule for the runner the first half does not cover.
+ *
+ * `e2e/` is shared: Playwright owns the `*.spec.ts` files, vitest owns the
+ * `*.test.ts` files, and both import the same helpers — `test-config.ts`,
+ * `convex-harness.ts`. A variable one of those helpers reads is therefore read
+ * under BOTH tasks, and declaring it on one leaves it stripped for the other.
+ * That is not a hypothetical split: `DELIVEROO_E2E_REQUIRE_LIVE` was on `test`
+ * and absent from `test:e2e` for the whole life of the guard above.
+ *
+ * `playwright.config.ts` is swept too, and belongs to nobody else. It is where
+ * `E2E_PORT` is read — the variable that gives a run its own port, which turbo
+ * ate, so through `pnpm test:e2e` every run took 3000 whatever was asked for.
+ *
+ * ONE DIRECTION ONLY, deliberately. The reverse assertion that `test` carries —
+ * nothing declared that no suite reads — would be wrong here: `test:e2e` boots
+ * a Next.js server and a Convex backend, and most of what it passes through is
+ * read by the APPLICATION rather than by anything under `e2e/`. `AWS_REGION` is
+ * declared for the server, not for a spec, and flagging it would make this
+ * guard one nobody could keep green.
+ */
+describe("turbo's test:e2e task declares what Playwright reads", () => {
+  const e2eTask = (() => {
+    const task = readTurboJson().tasks["test:e2e"]
+    if (!task) throw new Error("turbo.json declares no `test:e2e` task")
+    return task
+  })()
+
+  const e2eDeclared = new Set([
+    ...(e2eTask.env ?? []),
+    ...(e2eTask.passThroughEnv ?? []),
+    ...SYSTEM_VARIABLES,
+  ])
+
+  /** Every file Playwright can load: `e2e/` whole, plus each config. */
+  function e2eSources(): string[] {
+    const files: string[] = []
+    const walk = (dir: string) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name)
+        if (entry.isDirectory()) {
+          if (entry.name !== "node_modules") walk(full)
+          continue
+        }
+        if (/\.(ts|tsx|mts)$/.test(entry.name)) files.push(full)
+      }
+    }
+    for (const root of testRoots().filter((dir) => path.basename(dir) === "e2e")) walk(root)
+    for (const app of fs.readdirSync(path.join(REPO_ROOT, "apps"))) {
+      const config = path.join(REPO_ROOT, "apps", app, "playwright.config.ts")
+      if (fs.existsSync(config)) files.push(config)
+    }
+    return files.sort()
+  }
+
+  const e2eReads = (() => {
+    const byVariable = new Map<string, string[]>()
+    for (const file of e2eSources()) {
+      for (const name of readsOf(fs.readFileSync(file, "utf8"))) {
+        const where = path.relative(REPO_ROOT, file)
+        byVariable.set(name, [...(byVariable.get(name) ?? []), where])
+      }
+    }
+    return byVariable
+  })()
+
+  test("the scan actually finds e2e sources and reads", () => {
+    expect(e2eSources().length).toBeGreaterThan(20)
+    expect(e2eReads.size).toBeGreaterThan(3)
+  })
+
+  test("it sweeps the Playwright config, which is not under any test root", () => {
+    expect(e2eSources().some((file) => /playwright\.config\.ts$/.test(file))).toBe(true)
+  })
+
+  test.each([...e2eReads.keys()].sort())("%s is declared on test:e2e", (name) => {
+    expect(
+      e2eDeclared.has(name),
+      `read by ${e2eReads.get(name)?.slice(0, 3).join(", ")} — turbo strips it before Playwright starts, so the read returns undefined. Add it to the test:e2e task's "passThroughEnv" in turbo.json.`,
+    ).toBe(true)
   })
 })

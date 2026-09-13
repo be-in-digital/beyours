@@ -547,7 +547,21 @@
         "DELIVEROO_CLIENT_SECRET",
         "DELIVEROO_WEBHOOK_SECRET",
         "DELIVEROO_SITE_ID",
-        "DELIVEROO_BRAND_ID"
+        "DELIVEROO_BRAND_ID",
+        // Read under `e2e/` and by `playwright.config.ts`, and stripped here
+        // until #328 measured it. `DELIVEROO_E2E_REQUIRE_LIVE=1` is the switch
+        // that turns a SKIPPED live suite into a failing one — so while turbo
+        // ate it, the guard against a silent skip could never engage, and the
+        // operator setting it saw the same green either way.
+        //
+        // Two of the three are also on the `test` task, which is not
+        // duplication: `e2e/` holds `*.spec.ts` that Playwright runs and
+        // `*.test.ts` that vitest runs, and they share the helpers that read
+        // these. A variable read by a shared helper has to be declared on both
+        // tasks or it is stripped for one of the two runners.
+        "DELIVEROO_E2E_REQUIRE_LIVE",
+        "DELIVEROO_IS_SANDBOX",
+        "E2E_PORT"
       ]
     },
     "clean": {
