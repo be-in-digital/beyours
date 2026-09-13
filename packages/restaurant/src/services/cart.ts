@@ -21,7 +21,31 @@ interface ValidationResult {
 export const validateCartItem = (item: CartItem): ValidationResult => {
   const errors: string[] = []
 
-  if (!item.productId || item.productId.trim().length === 0) {
+  // Exactly one of the two: a line is a dish or a formule, never both and
+  // never neither. A line with both would price twice; one with neither is the
+  // empty line that used to be impossible and is now expressible.
+  if (item.menu) {
+    if (item.productId) {
+      errors.push('A line cannot be both a product and a menu')
+    }
+    if (!item.menu.menuId || item.menu.menuId.trim().length === 0) {
+      errors.push('Menu ID is required')
+    }
+    if (item.menu.choices.length === 0) {
+      errors.push('A menu line must carry its choices')
+    }
+    item.menu.choices.forEach((choice, index) => {
+      if (!choice.productId || choice.productId.trim().length === 0) {
+        errors.push(`Menu choice ${index + 1}: product ID is required`)
+      }
+      if (!choice.sectionId || choice.sectionId.trim().length === 0) {
+        errors.push(`Menu choice ${index + 1}: section ID is required`)
+      }
+      if (!Number.isInteger(choice.quantity) || choice.quantity <= 0) {
+        errors.push(`Menu choice ${index + 1}: quantity must be a positive integer`)
+      }
+    })
+  } else if (!item.productId || item.productId.trim().length === 0) {
     errors.push('Product ID is required')
   }
 
@@ -99,7 +123,43 @@ export const cartLineId = (item: NewCartItem): string => {
     .map((option) => `${option.name}\u001f${option.choice}`)
     .sort()
     .join('\u001e')
-  return options ? `${item.productId}\u001d${options}` : item.productId
+
+  /*
+   * A *formule* line is identified by its WHOLE selection (#352).
+   *
+   * Two « Formule Midi » in one basket, one with the risotto and one with the
+   * burrata, are two lines — and keyed on the menu id alone they would be one,
+   * so "+" on either would raise both and the kitchen would receive two of
+   * whichever was added first. Same defect this function was written to fix for
+   * products with options, one level up.
+   *
+   * The choices are sorted so the id does not depend on the order the dialog
+   * happened to collect them in, and each carries its quantity: two of the same
+   * dessert is not the same line as one.
+   */
+  if (item.menu) {
+    const choices = item.menu.choices
+      .map(
+        (choice) =>
+          `${choice.sectionId}\u001f${choice.productId}\u001f${choice.quantity}${
+            choice.options?.length
+              ? `\u001f${choice.options
+                  .map((option) => `${option.name}=${option.choice}`)
+                  .sort()
+                  .join(',')}`
+              : ''
+          }`
+      )
+      .sort()
+      .join('\u001e')
+    return `menu:${item.menu.menuId}\u001d${choices}`
+  }
+
+  // `productId` is required on a non-formule line; `validateCartItem` refuses
+  // one without it, and the empty string keeps this total rather than throwing
+  // on a line that has already been rejected.
+  const productId = item.productId ?? ''
+  return options ? `${productId}\u001d${options}` : productId
 }
 
 /**

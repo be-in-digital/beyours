@@ -68,6 +68,45 @@ export const ordersTable = defineTable({
     taxRatePercent: v.optional(v.number()),
     notes: v.optional(v.string()),
     externalId: v.optional(v.string()), // External platform item ID
+    /**
+     * The *formule* this dish was bought inside, when it was (#352).
+     *
+     * A FORMULE IS N ROWS SHARING A `menuLineId`, NOT ONE NESTED ROW. Both the
+     * kitchen and the tax need the dishes individually: the pass has to print
+     * « Entrée : Burrata » and « Plat : Risotto » as separate lines to cook, and
+     * VAT is owed per rate, so a bundle of food at 10 % and wine at 20 % has to
+     * carry two taxable bases. A single row with the dishes nested inside it
+     * would hide both — and `subtotal` here already sums to the order's
+     * subtotal, which a nested shape would have to restate.
+     *
+     * Each row's `subtotal` is that dish's SHARE of the bundle price, split pro
+     * rata on à-la-carte value; see `allocateBundlePrice` in
+     * `@be-in-digital/convex-functions/menuLine`. The shares sum to exactly the
+     * formule's price, so nothing downstream needs to know a formule was
+     * involved to get the money right.
+     *
+     * All three are optional, and absent together on an à-la-carte line.
+     */
+    menuId: v.optional(v.id("menus")),
+    /**
+     * The formule's name as it was sold.
+     *
+     * Copied rather than read back through `menuId`: a receipt has to say what
+     * the diner bought, and an owner who renames « Formule Midi » to « Menu du
+     * jour » must not change what a past order says they were charged for.
+     */
+    menuName: v.optional(v.string()),
+    /**
+     * Which formule of this order the dish belongs to.
+     *
+     * Two of the same formule in one basket, composed differently, are two
+     * groups — and `menuId` cannot tell them apart. The storefront's cart line
+     * id is what lands here, so the grouping the diner saw is the grouping the
+     * kitchen prints.
+     */
+    menuLineId: v.optional(v.string()),
+    /** The section of the formule this dish fills, e.g. « Dessert au choix ». */
+    menuSectionLabel: v.optional(v.string()),
   })),
   subtotal: v.number(),
   taxAmount: v.number(),

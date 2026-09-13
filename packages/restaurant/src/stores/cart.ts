@@ -45,7 +45,7 @@ export interface CartActions {
 export type CartStore = CartState & CartActions
 
 /** Bumped when the persisted shape changes; see `migrateCartState`. */
-export const CART_STORAGE_VERSION = 1
+export const CART_STORAGE_VERSION = 2
 
 /**
  * Bring a cart written by an older build up to the current shape.
@@ -55,6 +55,16 @@ export const CART_STORAGE_VERSION = 1
  * undefined — and undefined matches every other line, which is the exact bug
  * this replaces. The id is derived from the line's own contents, so it is
  * simply recomputed.
+ *
+ * VERSION 2 (#352): `cartLineId` gained a formule branch and a different
+ * spelling for a product line — `productId ?? ''` rather than `productId`. Both
+ * produce the same string for every cart that exists today, since a persisted
+ * cart has only product lines and every one of them has a `productId`. The
+ * version is bumped anyway, and every id recomputed, because the alternative is
+ * trusting that equivalence to hold through the next change to the function; a
+ * recompute is cheap and a mismatched `lineId` is a line the bin cannot remove.
+ *
+ * Nothing is dropped. A v1 cart is a valid v2 cart.
  */
 export function migrateCartState(persisted: unknown, version: number): CartState {
   const state = persisted as CartState
