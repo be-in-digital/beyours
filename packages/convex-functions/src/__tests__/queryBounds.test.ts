@@ -221,7 +221,7 @@ describe("orders.dashboardStats", () => {
     expect(stats.today.averageBasket).toBe(1_500)
     expect(stats.today.activeOrders).toBe(1)
     expect(stats.yesterday.revenue).toBe(3_000)
-    expect(stats.last7Days).toHaveLength(7)
+    expect(stats.days).toHaveLength(7)
     expect(stats.truncated).toBe(false)
   })
 
@@ -1401,7 +1401,7 @@ describe("regressions the bounding introduced", () => {
       breakdownSince: midnight.getTime() - 30 * DAY,
     })
     expect(stats.today.orderCount).toBe(0)
-    expect(stats.last7Days[6]!.orders).toBe(0)
+    expect(stats.days[6]!.orders).toBe(0)
   })
 
   it("refuses a todayEnd that does not come after the last boundary", async () => {

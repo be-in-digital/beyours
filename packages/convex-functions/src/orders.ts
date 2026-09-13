@@ -349,6 +349,16 @@ export const list = {
 export const DASHBOARD_ORDER_SCAN_LIMIT = 5_000
 
 /**
+ * The most customer rows « Taux de retour » will read in one transaction.
+ *
+ * One per distinct diner over the period, so far below the order cap: an
+ * establishment taking 5,000 orders in a month has nothing like 5,000 separate
+ * regulars. It is here so the two reads together stay well inside Convex's
+ * 16,384-document ceiling however either of them grows.
+ */
+export const DASHBOARD_CUSTOMER_SCAN_LIMIT = 2_000
+
+/**
  * Everything `/dashboard` renders, aggregated on the server.
  *
  * The page used to subscribe to `orders.list` — every order ever — and do this
@@ -386,10 +396,36 @@ export const dashboardStats = {
       .take(DASHBOARD_ORDER_SCAN_LIMIT + 1)
 
     const truncated = rows.length > DASHBOARD_ORDER_SCAN_LIMIT
+
+    /*
+     * The diners who ordered over the period, for « Taux de retour ».
+     *
+     * A SECOND READ RATHER THAN A DERIVATION FROM THE ORDERS. Whether a diner
+     * came back is a question about their FIRST EVER order, which the orders in
+     * this window cannot answer — a regular of two years and somebody's first
+     * visit look identical inside a 30-day read. `customers.firstOrderAt` is
+     * the fact, and `customers` is the table #364 built to hold it.
+     *
+     * BOUNDED TWICE, AND THE INDEX IS WHAT MAKES THE BOUND CHEAP. The range on
+     * `by_storeId_lastOrderAt` already narrows the read to the diners who
+     * ordered inside the period — that is what `lastOrderAt >= periodStart`
+     * means — so `.take()` is a ceiling on a set that is already the right one,
+     * not a sample of the whole book. A busy period reads as many customer rows
+     * as there were distinct diners in it, and never more than the cap.
+     */
+    const periodStart = args.dayStarts[0] as number
+    const customerRows = await ctx.db
+      .query("customers")
+      .withIndex("by_storeId_lastOrderAt", (q: any) =>
+        q.eq("storeId", args.storeId).gte("lastOrderAt", periodStart)
+      )
+      .take(DASHBOARD_CUSTOMER_SCAN_LIMIT)
+
     return computeDashboardStats(
       rows.slice(0, DASHBOARD_ORDER_SCAN_LIMIT),
       { ...args, now: Date.now() },
-      truncated
+      truncated,
+      customerRows
     )
   },
 }

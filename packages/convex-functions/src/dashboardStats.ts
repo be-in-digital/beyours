@@ -55,6 +55,40 @@ export interface DashboardOrderRow {
   source?: string
   createdAt: number
   total: number
+  /**
+   * The lines of the order, for « Plats populaires ».
+   *
+   * Optional because a caller that only needs the money — a test fixture, a
+   * summary row — should not have to invent lines. An order with no lines
+   * contributes nothing to the dish rollup rather than counting as a sale of
+   * nothing.
+   */
+  items?: DashboardOrderLine[]
+  /**
+   * The diner this order is attributed to: `customers.email`, already folded.
+   *
+   * Written on the order at the confirmation transition (#364). Absent on an
+   * order placed before that table existed and on a walk-in who gave no
+   * address — both of which are real, and neither of which is a diner this
+   * module can count.
+   */
+  customerEmailKey?: string
+}
+
+/** One line of an order, as the dish rollup reads it. */
+export interface DashboardOrderLine {
+  /**
+   * The catalogue product, when the line still points at one.
+   *
+   * Rolling up by id rather than by name is what makes « Pizza Margherita »
+   * renamed to « Margherita » one dish instead of two. A line whose product
+   * has been deleted keeps its name and no id, and falls back to the name —
+   * which is the only thing left that identifies what was sold.
+   */
+  productId?: string
+  productName: string
+  quantity: number
+  subtotal: number
 }
 
 /**
@@ -151,13 +185,78 @@ export interface DashboardBreakdownEntry {
   value: number
 }
 
+/** One dish in « Plats populaires ». */
+export interface DashboardProduct {
+  /** The catalogue id when the line still has one; absent for a deleted product. */
+  productId?: string
+  /** The name as the most recent order of it recorded — see `topProducts`. */
+  name: string
+  /** Units sold over the period. This is what the list is ranked on. */
+  quantity: number
+  /** What those units came to, on the same collected-money rule as `revenue`. */
+  revenue: number
+  /** How many separate orders included it. */
+  orderCount: number
+}
+
+/** One hour of the trading day in « Heures de pointe ». */
+export interface DashboardHour {
+  /** Local hour, 0-23, in the establishment's own day. */
+  hour: number
+  orders: number
+  revenue: number
+}
+
+/**
+ * Who ordered over the period, and how many of them had been here before.
+ *
+ * THE DEFINITION, because « taux de retour » has several and they disagree. A
+ * returning diner is one whose FIRST EVER order predates this period — not one
+ * who ordered twice inside it. The second reading makes the figure a function
+ * of the window length: the same restaurant with the same regulars scores 8% on
+ * a week and 34% on a month, which is not a rate of anything.
+ *
+ * Counted over diners, not orders. A regular who came four times is one
+ * returning customer, not four.
+ *
+ * `anonymous` is the honest remainder: an order with no address belongs to a
+ * person this establishment cannot recognise on their next visit, so it is
+ * neither new nor returning. Reported rather than folded into either, because
+ * a cash-heavy establishment would otherwise read a rate computed over a
+ * minority of its trade with nothing saying so.
+ */
+export interface DashboardDiners {
+  /** Diners with at least one order in the period, identified by address. */
+  identified: number
+  /** Of those, the ones whose first ever order predates the period. */
+  returning: number
+  /** Of those, the ones ordering here for the first time. */
+  newcomers: number
+  /** `returning / identified`, or 0 when nobody identifiable ordered. */
+  returningRate: number
+  /** Orders in the period that carry no address, so belong to no diner here. */
+  anonymousOrders: number
+}
+
 export interface DashboardStats {
   today: DashboardTotals & { activeOrders: number }
   yesterday: DashboardTotals
-  /** One entry per boundary in `dayStarts`, in the same order. */
-  last7Days: DashboardDay[]
+  /**
+   * One entry per boundary in `dayStarts`, in the same order.
+   *
+   * This was `last7Days` while seven was the only window there was. The period
+   * is now the caller's to choose, and a field called `last7Days` holding
+   * thirty entries is the kind of name that survives into a chart axis.
+   */
+  days: DashboardDay[]
   byType: DashboardBreakdownEntry[]
   bySource: DashboardBreakdownEntry[]
+  /** Dishes over the period, most units first. */
+  topProducts: DashboardProduct[]
+  /** The trading day hour by hour, 24 entries, always all of them. */
+  hourly: DashboardHour[]
+  /** Who ordered over the period. `null` when the caller supplied no diners. */
+  diners: DashboardDiners | null
   /** True when the read hit its cap, so every number below is a floor. */
   truncated: boolean
 }
@@ -272,6 +371,157 @@ export function assertDayStarts(dayStarts: number[], todayEnd?: number): void {
   }
 }
 
+/** How many dishes « Plats populaires » lists. */
+export const TOP_PRODUCT_LIMIT = 8
+
+/**
+ * The dishes that sold, most units first.
+ *
+ * RANKED ON UNITS, NOT MONEY. « Plats populaires » is a question about what the
+ * kitchen is making, and ranking on revenue answers a different one — the
+ * 38 € plateau outranks the 9 € burger the establishment sells forty of. Both
+ * figures are returned so the reader can see the other ordering; only one can
+ * be the sort.
+ *
+ * KEYED ON `productId` WHERE THERE IS ONE. A dish renamed mid-period is one
+ * dish, and two dishes that happen to share a name are two. A line whose
+ * product was deleted has no id left and falls back to the name, which is all
+ * that still identifies what was sold — so a deleted product does not vanish
+ * from the history of a period it sold in.
+ *
+ * THE NAME COMES FROM THE MOST RECENT ORDER of that dish. `orders` are passed
+ * newest first (the query reads `.order("desc")`), so the first line seen for a
+ * key wins and a rename shows up under the new name.
+ *
+ * Money is COLLECTED money, the same rule as everywhere else here: a line on an
+ * unpaid order counts as a dish the kitchen made and as no revenue. `quantity`
+ * counts it either way, because the kitchen made it either way.
+ */
+export function topProducts(
+  orders: DashboardOrderRow[],
+  limit: number = TOP_PRODUCT_LIMIT
+): DashboardProduct[] {
+  const byKey = new Map<string, DashboardProduct>()
+
+  for (const order of orders) {
+    const collected = isCollected(order)
+    for (const line of order.items ?? []) {
+      const key = line.productId ?? `name:${line.productName}`
+      const existing = byKey.get(key)
+      if (existing) {
+        existing.quantity += line.quantity
+        existing.orderCount += 1
+        if (collected) existing.revenue += line.subtotal
+      } else {
+        byKey.set(key, {
+          ...(line.productId ? { productId: line.productId } : {}),
+          name: line.productName,
+          quantity: line.quantity,
+          revenue: collected ? line.subtotal : 0,
+          orderCount: 1,
+        })
+      }
+    }
+  }
+
+  return [...byKey.values()]
+    .sort((a, b) => b.quantity - a.quantity || b.revenue - a.revenue)
+    .slice(0, Math.max(0, limit))
+}
+
+/** Hours in a day. All of them are always reported, including the empty ones. */
+const HOURS_IN_DAY = 24
+
+/**
+ * The trading day hour by hour, in the establishment's own local hours.
+ *
+ * NO TIMEZONE PARAMETER, AND THAT IS THE POINT. `dayStarts` are local midnights
+ * the browser computed — see this module's header — so `createdAt - dayStart`
+ * is elapsed local time, and dividing it by an hour gives the local hour
+ * directly. A `timezoneOffsetMinutes` argument would be wrong twice a year: a
+ * thirty-day period straddling the last Sunday in October contains days that
+ * are 23 and 25 hours long, and one offset cannot describe both.
+ *
+ * ALL 24 BUCKETS, ALWAYS. A restaurant closed between 15:00 and 18:00 has a
+ * real trough there, and a chart that omitted the empty hours would draw the
+ * afternoon as a continuation of lunch. Empty is a measurement.
+ *
+ * An order outside every day of the period is dropped rather than forced into
+ * the nearest bucket: it is outside the window the caller asked about.
+ */
+export function hourlyLoad(
+  orders: DashboardOrderRow[],
+  windows: { dayStarts: number[]; todayEnd: number }
+): DashboardHour[] {
+  const buckets: DashboardHour[] = Array.from({ length: HOURS_IN_DAY }, (_, hour) => ({
+    hour,
+    orders: 0,
+    revenue: 0,
+  }))
+
+  for (const order of orders) {
+    // Which day of the period the order falls in. Walked from the end, because
+    // the newest orders arrive first and land in the last days.
+    let dayStart: number | null = null
+    for (let i = windows.dayStarts.length - 1; i >= 0; i--) {
+      const start = windows.dayStarts[i] as number
+      const end = windows.dayStarts[i + 1] ?? windows.todayEnd
+      if (order.createdAt >= start && order.createdAt < end) {
+        dayStart = start
+        break
+      }
+    }
+    if (dayStart === null) continue
+
+    const hour = Math.floor((order.createdAt - dayStart) / 3_600_000)
+    // A 25-hour DST day puts one order at hour 24. It happened at the hour the
+    // clock read 23 for the second time, which is the bucket a reader means.
+    const bucket = buckets[Math.min(hour, HOURS_IN_DAY - 1)]
+    if (!bucket) continue
+    bucket.orders += 1
+    if (isCollected(order)) bucket.revenue += order.total
+  }
+
+  return buckets
+}
+
+/** What `diners` needs to know about one customer of the establishment. */
+export interface DashboardCustomerRow {
+  firstOrderAt: number
+  lastOrderAt: number
+}
+
+/**
+ * Who ordered over the period, and how many had been here before.
+ *
+ * `customers` are the establishment's whole book, narrowed by the caller to
+ * those whose `lastOrderAt` falls inside the period — which is exactly the set
+ * of diners who ordered in it. `firstOrderAt < periodStart` is then the whole
+ * of the question: a diner whose first ever order predates the period came
+ * back.
+ *
+ * See `DashboardDiners` for why that definition and not "ordered twice inside
+ * the window".
+ */
+export function diners(
+  customers: DashboardCustomerRow[],
+  periodStart: number,
+  anonymousOrders: number
+): DashboardDiners {
+  let returning = 0
+  for (const customer of customers) {
+    if (customer.firstOrderAt < periodStart) returning += 1
+  }
+  const identified = customers.length
+  return {
+    identified,
+    returning,
+    newcomers: identified - returning,
+    returningRate: identified > 0 ? returning / identified : 0,
+    anonymousOrders,
+  }
+}
+
 /**
  * Bucket a window of orders into what the dashboard renders.
  *
@@ -281,7 +531,16 @@ export function assertDayStarts(dayStarts: number[], todayEnd?: number): void {
 export function computeDashboardStats(
   orders: DashboardOrderRow[],
   windows: DashboardWindows,
-  truncated = false
+  truncated = false,
+  /**
+   * The establishment's customer rows for the period, when the caller has them.
+   *
+   * Optional, and `diners` comes back `null` without it, because this module is
+   * pure and a caller that only has orders — a fixture, a legacy path — must
+   * not be made to fabricate a customer book. `null` is a screen that says it
+   * does not know; a zero would be a screen claiming nobody came back.
+   */
+  customerRows?: DashboardCustomerRow[]
 ): DashboardStats {
   assertDayStarts(windows.dayStarts, windows.todayEnd)
 
@@ -306,7 +565,7 @@ export function computeDashboardStats(
     (order) => ACTIVE_STATUSES.has(order.status) && order.createdAt >= activeSince
   ).length
 
-  const last7Days: DashboardDay[] = windows.dayStarts.map((dayStart, index) => {
+  const days: DashboardDay[] = windows.dayStarts.map((dayStart, index) => {
     const dayEnd = windows.dayStarts[index + 1] ?? windows.todayEnd
     const ofThatDay = valid.filter(
       (order) => order.createdAt >= dayStart && order.createdAt < dayEnd
@@ -322,6 +581,13 @@ export function computeDashboardStats(
 
   const breakdown = valid.filter((order) => order.createdAt >= windows.breakdownSince)
 
+  // The period the three new metrics are about: the whole of the chart, which
+  // is what the picker sets. `assertDayStarts` has refused an empty list.
+  const periodStart = windows.dayStarts[0] as number
+  const ofPeriod = valid.filter(
+    (order) => order.createdAt >= periodStart && order.createdAt < windows.todayEnd
+  )
+
   return {
     today: {
       ...totals(
@@ -336,11 +602,23 @@ export function computeDashboardStats(
         (order) => order.createdAt >= yesterdayStart && order.createdAt < todayStart
       )
     ),
-    last7Days,
+    days,
     byType: tally(breakdown, (order) => order.type),
     // An order written before `source` existed is a website order, which is
     // what it was.
     bySource: tally(breakdown, (order) => order.source ?? "website"),
+    topProducts: topProducts(ofPeriod),
+    hourly: hourlyLoad(ofPeriod, windows),
+    diners: customerRows
+      ? diners(
+          customerRows,
+          periodStart,
+          // Orders in the period that belong to no diner this establishment can
+          // recognise. Counted here rather than in `diners` because it is a
+          // fact about the ORDERS, and `diners` only ever sees the customers.
+          ofPeriod.filter((order) => !order.customerEmailKey).length
+        )
+      : null,
     truncated,
   }
 }

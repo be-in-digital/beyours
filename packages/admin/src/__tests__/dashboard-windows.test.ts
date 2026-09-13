@@ -114,20 +114,64 @@ describe("labelDashboardStats", () => {
       collectedOrderCount: 1,
       uncollected: 0,
     },
-    last7Days: [
+    days: [
       // A Monday and the Tuesday after it, as local midnights.
       { dayStart: new Date("2026-03-16T00:00:00").getTime(), revenue: 100, orders: 1 },
       { dayStart: new Date("2026-03-17T00:00:00").getTime(), revenue: 200, orders: 2 },
     ],
     byType: [{ name: "delivery", value: 3 }],
     bySource: [{ name: "uber_eats", value: 2 }],
+    topProducts: [
+      { productId: "p1", name: "Margherita", quantity: 4, revenue: 4_800, orderCount: 3 },
+    ],
+    hourly: Array.from({ length: 24 }, (_, hour) => ({ hour, orders: 0, revenue: 0 })),
+    diners: {
+      identified: 3,
+      returning: 1,
+      newcomers: 2,
+      returningRate: 1 / 3,
+      anonymousOrders: 1,
+    },
     truncated: false,
   }
 
   it("names each bar after its own weekday", () => {
     const labelled = labelDashboardStats(server)
-    expect(labelled.last7Days.map((day) => day.day)).toEqual(["Lun", "Mar"])
-    expect(labelled.last7Days.map((day) => day.revenue)).toEqual([100, 200])
+    expect(labelled.days.map((day) => day.day)).toEqual(["Lun", "Mar"])
+    expect(labelled.days.map((day) => day.revenue)).toEqual([100, 200])
+  })
+
+  it("numbers the bars instead when the period is longer than a week", () => {
+    // Seven weekday names read cleanly; thirty repeat each name four times, and
+    // a reader cannot tell which "Mar" is which.
+    const march = (day: number) =>
+      new Date(`2026-03-${String(day).padStart(2, "0")}T00:00:00`).getTime()
+    const labelled = labelDashboardStats({
+      ...server,
+      days: Array.from({ length: 8 }, (_, index) => ({
+        dayStart: march(index + 1),
+        revenue: 0,
+        orders: 0,
+      })),
+    })
+    expect(labelled.days.map((day) => day.day)).toEqual([
+      "1", "2", "3", "4", "5", "6", "7", "8",
+    ])
+  })
+
+  it("carries the three new metrics through unchanged", () => {
+    // They need no labelling — a dish name is the establishment's own, an hour
+    // is a number, and a rate is a rate. Carried rather than recomputed.
+    const labelled = labelDashboardStats(server)
+    expect(labelled.topProducts[0]!.name).toBe("Margherita")
+    expect(labelled.hourly).toHaveLength(24)
+    expect(labelled.diners?.returning).toBe(1)
+  })
+
+  it("passes a missing customer book through as null, not as zero", () => {
+    // A zero would claim nobody came back.
+    const labelled = labelDashboardStats({ ...server, diners: null })
+    expect(labelled.diners).toBeNull()
   })
 
   it("translates the breakdown keys the server returns raw", () => {

@@ -155,7 +155,7 @@ describe("computeDashboardStats — the chart and the other windows", () => {
       windows()
     )
 
-    const yesterdayBar = stats.last7Days[5]
+    const yesterdayBar = stats.days[5]
     expect(yesterdayBar?.revenue).toBe(5_000)
     // Both orders happened yesterday, and the bar's order count says so.
     expect(yesterdayBar?.orders).toBe(2)
