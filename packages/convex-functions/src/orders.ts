@@ -59,8 +59,10 @@ import { allocateOrderNumber } from "./numbering"
 import { isMarketplaceOrder } from "./orderSource"
 import {
   planOrderConfirmation,
+  readSubscriberStanding,
   type OrderConfirmationDispatch,
 } from "./orderConfirmation"
+import { planOrderReady } from "./orderReady"
 import { issueInvoiceForOrder } from "./invoices"
 import { collectionOnOrder } from "./paymentLedger"
 import {
@@ -1710,10 +1712,43 @@ export const updateStatus = {
     // cooking and bagging something that no longer existed. Ticket cancellation
     // is now `cancelKitchenTicketsForOrder`, called from both.
     //
+    /*
+     * « Votre commande est prête » (#96).
+     *
+     * HERE, NOT IN A CALLER, for the reason the block above gives: nearly every
+     * path into a status change goes through this handler, and a rule that lives
+     * in one caller is a rule the others skip. The kitchen display marks a ticket
+     * ready through `kitchenTickets`, which advances the order through here.
+     *
+     * `planOrderReady` claims the send transactionally, so the `ready`
+     * transition being reached twice — a second station finishing, a status
+     * corrected back and forward — puts one email in the inbox and not two. It
+     * refuses a delivery order outright: « prête » there means the food left the
+     * kitchen, and telling the diner to come and collect it would be wrong.
+     *
+     * `readSubscriberStanding` is passed in rather than imported by `orderReady`
+     * so that module stays free of any dependency on the marketing tables' shape
+     * — the same split `planOrderConfirmation` uses.
+     */
+    const readyDispatch =
+      to === "ready"
+        ? await planOrderReady(ctx, args.id, readSubscriberStanding)
+        : null
+
     // Counted on entering `confirmed`, which the state machine allows exactly
     // once and only from `pending`, so no retry double-counts. Given back on
     // `confirmed -> cancelled`, which it also allows.
-    return await syncSubscriberOrderMetadata(ctx, order, from, to, now)
+    const postOrder = await syncSubscriberOrderMetadata(ctx, order, from, to, now)
+
+    // Both, because a status change can owe two different sends and the wrapper
+    // is the only place that can name a function to schedule. `undefined` on
+    // either side is the ordinary case.
+    if (readyDispatch) {
+      return { ...(postOrder ?? {}), ready: readyDispatch } as PostOrderDispatch & {
+        ready: { orderId: string }
+      }
+    }
+    return postOrder
   },
 }
 

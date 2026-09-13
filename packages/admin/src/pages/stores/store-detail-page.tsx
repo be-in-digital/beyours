@@ -302,6 +302,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
             displayConfig={displayConfig}
             setDisplayConfig={setDisplayConfig}
             handleUpdateDisplay={handleUpdateDisplay}
+            storeId={store?._id}
           />
         </TabsContent>
 

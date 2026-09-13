@@ -44,6 +44,7 @@ import {
   MIN_AUTO_DISMISS_MINUTES,
   type KitchenDisplayConfig,
 } from "../../lib/kitchen-display"
+import { StoreDisplayToken } from "./store-display-token"
 import {
   MAX_STATION_NAME_LENGTH,
   ORDER_CONFIRMATION_MODES,
@@ -85,6 +86,8 @@ interface StoreKitchenTabProps {
   displayConfig: KitchenDisplayConfig
   setDisplayConfig: Dispatch<SetStateAction<KitchenDisplayConfig>>
   handleUpdateDisplay: () => Promise<void>
+  /** The establishment whose display credential this tab can rotate (#96). */
+  storeId: string | undefined
 }
 
 /** The value a category select carries when nothing is assigned. */
@@ -143,6 +146,7 @@ export function StoreKitchenTab({
   displayConfig,
   setDisplayConfig,
   handleUpdateDisplay,
+  storeId,
 }: StoreKitchenTabProps) {
   const [stationDraft, setStationDraft] = useState("")
 
@@ -798,6 +802,10 @@ export function StoreKitchenTab({
       <Button onClick={handleUpdateDisplay} size="sm" data-testid="display-save">
         Enregistrer l&apos;écran de salle
       </Button>
+
+      {/* Beside the screen's own settings, because it is the same screen: what
+          it shows, and how it is opened at all (#96). */}
+      <StoreDisplayToken storeId={storeId} />
     </>
   )
 }

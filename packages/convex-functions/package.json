@@ -52,6 +52,7 @@
     "./numbering": "./src/numbering.ts",
     "./orderSource": "./src/orderSource.ts",
     "./orderConfirmation": "./src/orderConfirmation.ts",
+    "./orderReady": "./src/orderReady.ts",
     "./orderTotals": "./src/orderTotals.ts",
     "./orderLine": "./src/orderLine.ts",
     "./promotionDiscount": "./src/promotionDiscount.ts",

@@ -157,6 +157,30 @@ export const storesTable = defineTable({
     autoDismissMinutes: v.number(),
   })),
 
+  /**
+   * The secret a wall-mounted order screen reads `getForDisplay` with (#96).
+   *
+   * WHY IT EXISTS. `/display/[storeId]` hangs in the dining room and its only
+   * query required `kitchen:read` — so a screen a customer is meant to read
+   * needed a staff session, on a tablet bolted to a wall in a public room. The
+   * audit called it "the unusable unauthenticated display screen", and the way
+   * out is not to drop the gate: it is to give the screen its own credential.
+   *
+   * WHAT MAKES IT SAFE TO BE IN A URL. `getForDisplay` returns order numbers,
+   * statuses, timestamps and the establishment's own name — no customer name, no
+   * address, no telephone number, no amount. It is the information already
+   * printed on a screen anybody in the room can see. So the token is not
+   * protecting personal data; it is stopping a stranger polling the endpoint and
+   * learning how busy the kitchen is.
+   *
+   * ABSENT MEANS OFF, NOT OPEN. A store with no token refuses every
+   * token-authenticated read, so no existing deployment becomes readable by
+   * generating nothing. The owner creates one in the admin and rotates it when a
+   * tablet leaves the building — which is the whole point of it being a value on
+   * the store rather than a deployment-wide flag.
+   */
+  displayToken: v.optional(v.string()),
+
   // Homepage trending section mode
   trendingMode: v.optional(v.union(v.literal("manual"), v.literal("automatic"))),
 
