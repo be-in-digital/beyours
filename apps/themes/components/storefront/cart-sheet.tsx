@@ -123,7 +123,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:bg-white/10"
+                            className="text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary-hover"
                           >
                             Tout vider
                           </Button>
@@ -170,7 +170,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                 ref={closeButtonRef}
                 onClick={() => onOpenChange(false)}
                 aria-label="Fermer la Box"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-primary-foreground transition-colors hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-hover text-primary-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-primary"
               >
                 <X className="h-4 w-4" />
               </button>

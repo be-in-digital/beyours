@@ -181,27 +181,54 @@ function parseTokens(sheets: string[], selectors: string[]): Map<string, Map<str
   // and every block in `globals.css` is introduced by one.
   const css = sheets.join("\n").replace(/\/\*[\s\S]*?\*\//g, "")
   const blocks = new Map<string, Map<string, Rgb>>()
+  /*
+   * Every rule head in the sheet, with the selectors it names.
+   *
+   * A SELECTOR LIST IS ONE RULE, and the reader has to see it that way. The
+   * 51 vertical templates declare their palette as `:root,\n.storefront-theme {`
+   * — they have to, because `globals.css` declares the storefront palette on
+   * `.storefront-theme` and a property declared on an element beats the one it
+   * would inherit. Matching a selector only when it sits immediately against the
+   * `{` read that rule as neither `:root` nor `.storefront-theme`, so a sweep
+   * with a template overlay silently measured the engine's palette 51 times and
+   * passed.
+   *
+   * Collected once for the whole sheet rather than searched per selector: the
+   * scan asks for four scopes and the sheets are long.
+   */
+  const heads: Array<{ parts: string[]; bodyStart: number }> = []
+  {
+    const boundary = /(?:^|[}{;])\s*([^{}();@]+?)\s*\{/g
+    let found: RegExpExecArray | null
+    while ((found = boundary.exec(css))) {
+      const raw = found[1] ?? ""
+      // `@media`, `@layer` and the like are skipped by the class above; what is
+      // left is a selector list, normalised so `\n` and runs of spaces compare
+      // equal to the single spaces a caller writes.
+      const parts = raw
+        .split(",")
+        .map((part) => part.trim().replace(/\s+/g, " "))
+        .filter((part) => part.length > 0)
+      if (parts.length > 0) heads.push({ parts, bodyStart: boundary.lastIndex })
+    }
+  }
+
   for (const selector of selectors) {
     const tokens = new Map<string, Rgb>()
-    const pattern = selector
-      .trim()
-      .split(/\s+/)
-      .map((part) => part.replace(/[.\\]/g, "\\$&"))
-      .join("\\s+")
-    // Anchored at a rule boundary, not at any whitespace: `.storefront-theme`
-    // otherwise matches inside `.dark .storefront-theme` and the light scope
-    // silently loads the dark block's values.
-    const head = new RegExp(String.raw`(?:^|[}{;])\s*${pattern}\s*\{`, "g")
-    let match: RegExpExecArray | null
-    while ((match = head.exec(css))) {
+    const wanted = selector.trim().replace(/\s+/g, " ")
+    for (const { parts, bodyStart } of heads) {
+      // Exact part match, not a substring: `.storefront-theme` must not match
+      // inside `.dark .storefront-theme`, or the light scope loads the dark
+      // block's values.
+      if (!parts.includes(wanted)) continue
       let depth = 1
-      let i = head.lastIndex
+      let i = bodyStart
       while (i < css.length && depth > 0) {
         if (css[i] === "{") depth++
         else if (css[i] === "}") depth--
         i++
       }
-      const body = css.slice(head.lastIndex, i - 1)
+      const body = css.slice(bodyStart, i - 1)
       const declaration = /--([a-z0-9-]+):\s*(?:hsl\()?\s*([\d.]+)\s+([\d.]+)%\s+([\d.]+)%\s*\)?\s*;/g
       let token: RegExpExecArray | null
       while ((token = declaration.exec(body))) {
