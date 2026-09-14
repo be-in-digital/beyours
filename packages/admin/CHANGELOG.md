@@ -1,5 +1,43 @@
 # @be-in-digital/admin
 
+## 21.0.0
+
+### Minor Changes
+
+- Answer a Deliveroo order by hand, and record who moved an order
+
+  **A restaurant on `manual` had no way to run a service.**
+  `storeIntegrations.orderMode` offers `auto_accept`, `auto_reject` and `manual`,
+  and the webhook honours the first two. Under `manual` it logged the mode and did
+  nothing else, so the order sat in the product with no control anywhere that could
+  accept or refuse it. The API calls existed — `deliveroo.acceptOrder` and
+  `deliveroo.rejectOrder` — and only the automatic paths called them.
+
+  `deliverooOrderDecision.accept` and `.reject` are those calls behind
+  `orders:update_status`, which kitchen and delivery hold because advancing an order
+  is their job, with a panel on the order detail screen that renders itself away on
+  every order that is not awaiting a decision. **The platform moves first**:
+  Deliveroo owes the diner an answer, so if the call fails nothing here claims it
+  happened. Refusing names a reason from Deliveroo's own vocabulary, because
+  Deliveroo shows it to the diner.
+
+  **An order's status had no audit trail.** It releases the kitchen, flags money as
+  owed back and cancels tickets, and nothing recorded who changed it. Every status
+  change now writes a `systemAuditLog` line — a new `order_status_change` action,
+  labelled on the system screen — naming the order, both statuses, the platform it
+  came from and the cancellation reason. It names **no diner**: that log is read by
+  the whole team and sits outside the erasure set, so a customer in it would be a
+  copy `eraseDataSubject` cannot reach.
+
+### Patch Changes
+
+- Updated dependencies [ff0588c]
+- Updated dependencies
+- Updated dependencies [9b0b850]
+  - @be-in-digital/convex-functions@7.5.1
+  - @be-in-digital/convex-schema@6.7.0
+  - @be-in-digital/ui@4.3.3
+
 ## 20.0.0
 
 ### Minor Changes

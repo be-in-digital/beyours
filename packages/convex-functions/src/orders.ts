@@ -30,6 +30,7 @@ import {
   type DashboardStats,
 } from "./dashboardStats"
 import { verifyMenuSelection } from "./menuLine"
+import { recordOrderStatusChange } from "./orderAudit"
 import { recordStockMovement } from "./stockLedger"
 import { clampPagination, clampPageSize } from "./pagination"
 import { refusePlatformStatus } from "./platformWebhook"
@@ -1875,6 +1876,27 @@ export const updateStatus = {
     }
 
     await ctx.db.patch(args.id, updates)
+
+    /*
+     * Who moved it, and from what to what (#104).
+     *
+     * The most consequential field in the product had no audit trail: an owner
+     * asking "who cancelled the 42 € order at half past eight" had
+     * `orders.updatedAt` and a shrug. Written HERE rather than in a caller for
+     * the same reason the subscriber metadata is: nearly every path into a status
+     * change comes through this handler.
+     *
+     * `updateFromWebhook` is the exception, as it is for the metadata — it is a
+     * separate handler, and it records its own line.
+     */
+    await recordOrderStatusChange(ctx, {
+      orderNumber: String(order.orderNumber ?? ""),
+      from,
+      to,
+      ...(args.cancellationReason ? { reason: args.cancellationReason } : {}),
+      ...(order.source ? { source: String(order.source) } : {}),
+      now,
+    })
 
     // Staff accepting the order *is* the manual confirmation workflow, so this
     // releases it whatever `orderConfirmation` says — the setting describes

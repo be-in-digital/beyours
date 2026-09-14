@@ -488,9 +488,23 @@ describe("updateStatus", () => {
     // cancellation closed a ticket".
     const tables: Record<string, Doc[]> = { payments, kitchenTickets }
 
+    const audit: Array<Record<string, unknown>> = []
+
     const ctx = {
+      // `recordOrderStatusChange` reads the identity to name who moved the order,
+      // and there is none in these unit tests — which is the "système" case, and
+      // the honest one for a scheduler or a webhook.
+      auth: { getUserIdentity: async () => null },
       db: {
         get: async (id: string) => docs[id] ?? null,
+        // `updateStatus` writes an audit line now (#104). The fake collects them
+        // rather than dropping them: a stub with no `insert` made the handler
+        // throw `ctx.db.insert is not a function`, which is the fake being
+        // incomplete and not the handler being wrong.
+        insert: async (table: string, doc: Record<string, unknown>) => {
+          if (table === "systemAuditLog") audit.push(doc)
+          return `${table}:audit`
+        },
         patch: async (id: string, updates: Record<string, unknown>) => {
           patches.push({ id, updates })
           Object.assign(docs[id] ?? {}, updates)
@@ -512,7 +526,7 @@ describe("updateStatus", () => {
         },
       },
     }
-    return { ctx, patches, docs }
+    return { ctx, patches, docs, audit }
   }
 
   // "unpaid" was not one of the values the schema allows — no order in the
@@ -1343,9 +1357,20 @@ describe("cancelling a marketplace order", () => {
     }
     const patches: Array<{ id: string; updates: Record<string, unknown> }> = []
 
+    const audit: Array<Record<string, unknown>> = []
+
     const ctx = {
+      // No identity: the "système" case, which is what a platform cancellation
+      // actually is.
+      auth: { getUserIdentity: async () => null },
       db: {
         get: async (id: string) => docs[id] ?? null,
+        // The audit line `updateStatus` writes (#104). Collected rather than
+        // dropped, so a test can assert on it.
+        insert: async (table: string, doc: Record<string, unknown>) => {
+          if (table === "systemAuditLog") audit.push(doc)
+          return `${table}:audit`
+        },
         patch: async (id: string, updates: Record<string, unknown>) => {
           patches.push({ id, updates })
           Object.assign(docs[id] ?? {}, updates)
@@ -1355,7 +1380,7 @@ describe("cancelling a marketplace order", () => {
         }),
       },
     }
-    return { ctx, patches, docs }
+    return { ctx, patches, docs, audit }
   }
 
   it.each(["uber_eats", "deliveroo"])(
@@ -1433,8 +1458,15 @@ describe("the two webhook cancellation paths agree", () => {
       [order._id as string]: { ...order },
     }
     const ctx = {
+      // No identity: both of these paths are webhooks, which is the "système"
+      // case the audit line records.
+      auth: { getUserIdentity: async () => null },
       db: {
         get: async (id: string) => docs[id] ?? null,
+        // The audit line `updateStatus` writes (#104). Swallowed here rather than
+        // collected: this file's subject is that the two cancellation paths agree
+        // about the payment status, and the line itself is asserted elsewhere.
+        insert: async (table: string) => `${table}:audit`,
         patch: async (id: string, updates: Record<string, unknown>) => {
           Object.assign(docs[id] ?? {}, updates)
         },

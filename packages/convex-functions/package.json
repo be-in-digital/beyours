@@ -1,6 +1,6 @@
 {
   "name": "@be-in-digital/convex-functions",
-  "version": "7.5.0",
+  "version": "7.5.1",
   "publishConfig": {
     "access": "restricted"
   },
@@ -52,6 +52,7 @@
     "./numbering": "./src/numbering.ts",
     "./orderSource": "./src/orderSource.ts",
     "./orderConfirmation": "./src/orderConfirmation.ts",
+    "./orderAudit": "./src/orderAudit.ts",
     "./orderReady": "./src/orderReady.ts",
     "./stockLedger": "./src/stockLedger.ts",
     "./orderTotals": "./src/orderTotals.ts",
