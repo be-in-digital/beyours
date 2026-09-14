@@ -331,6 +331,13 @@ export const gameReferralsTable = defineTable({
   storeId: v.id("stores"),
   code: v.string(), // Shareable referral code
   referrerFingerprint: v.string(),
+  /*
+   * Nothing writes this (#330, NEW2-DATA-9). `gameReferral.create` records the
+   * fingerprint and the code; no path collects the referrer's name, and no
+   * screen asks for one. Declared and optional, so a document already holding
+   * it still validates — see the note on `orders.externalDisplayId` for why a
+   * dead field is kept rather than dropped.
+   */
   referrerName: v.optional(v.string()),
   conversions: v.number(), // Friends who played via this code
   pendingBonuses: v.number(), // Bonus plays earned, not yet used

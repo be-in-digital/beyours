@@ -194,14 +194,45 @@ export const ordersTable = defineTable({
     v.literal("pos")
   ),
   externalOrderId: v.optional(v.string()), // External platform order ID (Uber Eats, Deliveroo, etc.)
-  externalDisplayId: v.optional(v.string()), // Human-readable display ID from platform
-  externalPlatformData: v.optional(v.any()), // Raw webhook payload for debugging
+  /*
+   * THREE FIELDS NOTHING WRITES (#330, NEW2-DATA-9).
+   *
+   * Each carried a comment describing what it would hold — "Human-readable
+   * display ID from platform", "delivery / collection / dine_in", "Flag for
+   * remake orders" — and each has zero writers across
+   * `packages/convex-functions/src` and both apps' `convex`. A descriptive
+   * comment on a field nothing populates reads as a shipped capability to
+   * anybody auditing the schema, which is exactly how the audit found them.
+   *
+   * `externalDisplayId` is the number a kitchen matches against the tablet on
+   * the wall. It would be worth having; `createFromWebhook` does not extract it
+   * from either platform's payload, so it is `undefined` on every order.
+   *
+   * `deliveryType` duplicates `orders.type`, which IS written and IS read —
+   * `delivery` / `pickup` / `dine_in`. Two fields for one fact, one of them
+   * always empty and spelled differently (`collection` vs `pickup`).
+   *
+   * `isRemake` was for Deliveroo's remake flow, which is not implemented.
+   *
+   * THEY STAY DECLARED, and optional. Convex validates a document against the
+   * schema on the next write to it, so a stored field absent from the schema
+   * fails that write — and nothing here can say whether a deployment
+   * provisioned before this comment holds one. Same treatment as
+   * `stores.integrations`: the field stays, and the comment says who reads it.
+   *
+   * If one gains a writer, delete its paragraph here rather than leaving a note
+   * that contradicts the code.
+   */
+  externalDisplayId: v.optional(v.string()),
+  // Raw webhook payload, kept for diagnosing a platform order. Written by the
+  // Uber Eats and Deliveroo webhook paths; read by a human, not by code.
+  externalPlatformData: v.optional(v.any()),
   deliveryType: v.optional(v.union(
     v.literal("delivery"),
     v.literal("collection"),
     v.literal("dine_in")
   )),
-  isRemake: v.optional(v.boolean()), // Flag for remake orders from delivery platforms
+  isRemake: v.optional(v.boolean()),
   platformSyncStatus: v.optional(v.union(
     v.literal("pending"),
     v.literal("synced"),
