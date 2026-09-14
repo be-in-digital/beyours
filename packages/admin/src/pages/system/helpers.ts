@@ -34,6 +34,10 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   store_created: "Établissement créé",
   store_updated: "Établissement modifié",
   store_deleted: "Établissement supprimé",
+  // Who moved an order, and from what to what (#104). Labelled because
+  // `audit-log.test.ts` requires a label for every action the schema can store:
+  // an unlabelled one prints its raw slug on the screen.
+  order_status_change: "Statut de commande",
   access_granted: "Accès accordé",
   access_changed: "Accès modifié",
   access_revoked: "Accès retiré",
