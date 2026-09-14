@@ -125,9 +125,39 @@ export function remainingStock(prize: {
   return undefined
 }
 
+/**
+ * The longest wait an owner may set between two plays, in hours.
+ *
+ * A week. Past that the game is not on a cooldown, it is switched off — and
+ * `isActive` is the control for that, on the same screen.
+ */
+export const MAX_COOLDOWN_HOURS = 168
+
+/**
+ * The wait this game asks of one device, clamped to something it can honour.
+ *
+ * ZERO IS ALLOWED, AND MEANS NO WAIT. It is a real choice — a one-evening
+ * event where every scan should play — and it is survivable because the
+ * cooldown is not the abuse bound: `consumeRateLimit` bounds the rate and
+ * `prizeBudget` bounds the cost. See this module's header for why the
+ * fingerprint is not a control.
+ *
+ * The bounds exist because the value reaches `games.update` through
+ * `config: v.any()`, which validates nothing. A negative number would make
+ * `playedAt + cooldown` lie in the past and every play allowed; a very large one
+ * would be indistinguishable from a game nobody can ever play again, with
+ * nothing on the screen to say so.
+ */
+export function resolveCooldownHours(game: {
+  config?: { cooldownHours?: number }
+}): number {
+  const raw = game.config?.cooldownHours
+  if (typeof raw !== "number" || !Number.isFinite(raw)) return DEFAULT_COOLDOWN_HOURS
+  return Math.min(Math.max(0, Math.floor(raw)), MAX_COOLDOWN_HOURS)
+}
+
 export function cooldownMsForGame(game: { config?: { cooldownHours?: number } }): number {
-  const hours = game.config?.cooldownHours ?? DEFAULT_COOLDOWN_HOURS
-  return hours * 60 * 60 * 1000
+  return resolveCooldownHours(game) * 60 * 60 * 1000
 }
 
 /**

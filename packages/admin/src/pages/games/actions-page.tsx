@@ -258,7 +258,14 @@ export function GameActionsPage() {
               </div>
               <div className="grid grid-cols-2 items-end gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="actionTimer">Durée de vérification (s)</Label>
+                  {/* NOT « Durée de vérification » (#107). Nothing is verified:
+                      the product opens the link and counts seconds. It cannot
+                      read whether a Google review was left, and neither
+                      Instagram nor Facebook offers a follow-check for a visitor
+                      with no account link. Naming it verification told the owner
+                      the platform guaranteed the reviews — and they set a win
+                      ratio, and the prize budget, believing it. */}
+                  <Label htmlFor="actionTimer">Temps d&apos;attente au retour (s)</Label>
                   <Input
                     id="actionTimer"
                     type="number"
@@ -267,6 +274,11 @@ export function GameActionsPage() {
                     value={timerSeconds}
                     onChange={(e) => setTimerSeconds(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Le client déclare lui-même avoir fait l&apos;action. Nous
+                    ouvrons le lien et attendons ce délai à son retour — nous ne
+                    vérifions pas l&apos;avis ni l&apos;abonnement.
+                  </p>
                 </div>
                 <div className="flex items-center gap-2 pb-2">
                   <Switch id="actionRequired" checked={isRequired} onCheckedChange={setIsRequired} />
