@@ -122,20 +122,49 @@ jobs:
           CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
           set -uo pipefail
-          later=$(gh run list --workflow=publish-mirror.yml --commit "$RUN_SHA" \
-            --json databaseId,conclusion \
-            --jq "[.[] | select(.conclusion == \"success\" and .databaseId > ${RUN_ID})] | length" 2>/dev/null || echo 0)
-          if [ "${later:-0}" -gt 0 ]; then
+          runs=$(gh run list --workflow=publish-mirror.yml --commit "$RUN_SHA" \
+            --json databaseId,status,conclusion --limit 50 2>/dev/null || echo "[]")
+
+          # ANY successful run for this commit, earlier or later.
+          #
+          # The mirror is keyed on the COMMIT, not on run order: a successful
+          # run pushed THAT tree, and a cancellation afterwards cannot unpush
+          # it. The lookup used to demand `.databaseId > RUN_ID`, and #508 is
+          # what that cost — `aea6981` was published by run 34881631905 at
+          # 18:34, a `workflow_run` for the same commit was cancelled at 18:45,
+          # and the observer reported a stale mirror that was already current.
+          # `conclusion == "success"` stays the test; only the ordering goes.
+          succeeded=$(echo "$runs" \
+            | jq "[.[] | select(.conclusion == \"success\")] | length" 2>/dev/null || echo 0)
+
+          # A LATER run for this commit that has not finished.
+          #
+          # This one must stay ordered: an unfinished run will reach its own
+          # conclusion and be observed in its turn, so the last run of a burst
+          # always reports and no cancellation is swallowed. Without it the
+          # observer reports every link in a chain it is itself forging — the
+          # retry below joins `concurrency: publish-mirror`, cancels the run
+          # already in flight, and that cancellation dispatches another retry.
+          # Measured on `38b76bd6`: four runs, three of them cancelled by their
+          # own successor, on a commit whose sync went on to succeed.
+          in_flight=$(echo "$runs" \
+            | jq "[.[] | select(.status != \"completed\" and .databaseId > ${RUN_ID})] | length" 2>/dev/null || echo 0)
+
+          if [ "${succeeded:-0}" -gt 0 ] || [ "${in_flight:-0}" -gt 0 ]; then
             echo "superseded=true" >> "$GITHUB_OUTPUT"
+            if [ "${succeeded:-0}" -gt 0 ]; then
+              reason="another run for the same commit succeeded, so the mirror carries this tree"
+            else
+              reason="a later run for the same commit is still going, and will report its own conclusion"
+            fi
             {
               echo "### Nothing to report"
               echo
               echo "A \`Publish mirror\` run for \`${RUN_SHA:0:7}\` ended"
-              echo "\`${CONCLUSION}\`, but a later run for the same"
-              echo "commit succeeded. The concurrency group cancels a queued run whenever a"
-              echo "third joins it, so this is the ordinary shape of a busy hour on"
-              echo "\`main\` — and the successful run is the one that says where the mirror"
-              echo "stands."
+              echo "\`${CONCLUSION}\`, but ${reason}."
+              echo
+              echo "The concurrency group cancels a queued run whenever a third joins it, so"
+              echo "this is the ordinary shape of a busy hour on \`main\`."
             } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "superseded=false" >> "$GITHUB_OUTPUT"

@@ -208,20 +208,70 @@ test("the observer does not retry a conclusion a retry cannot change", () => {
   ).toBe(true)
 })
 
-test("the observer asks whether a later run already succeeded", () => {
+/** The `gh run list` lookup that decides whether a cancellation is news. */
+const supersessionLookup = observerSteps.find((step) =>
+  /gh run list[^\n]*--commit/.test(step.run ?? ""),
+)
+
+/** Each `jq` selector inside that lookup, one per line it appears on. */
+function selectors(): string[] {
+  return (supersessionLookup?.run ?? "")
+    .split("\n")
+    .filter((line) => /select\(/.test(line))
+}
+
+test("the observer asks whether a run for the same commit already succeeded", () => {
   // The concurrency group cancels a queued run whenever a third joins it, so a
   // busy hour on `main` produces cancellations that say nothing about the
   // mirror. Reporting them is how a staleness alarm stops being read.
-  const lookup = observerSteps.find((step) =>
-    /gh run list[^\n]*--commit/.test(step.run ?? ""),
-  )
   expect(
-    lookup,
+    supersessionLookup,
     "nothing checks whether the cancellation was superseded, so every one is reported",
   ).toBeDefined()
   expect(
-    /conclusion ==[^\n]*success/.test(lookup?.run ?? ""),
-    "the lookup must ask for a SUCCESSFUL later run, not merely a later one",
+    /conclusion ==[^\n]*success/.test(supersessionLookup?.run ?? ""),
+    "the lookup must ask for a SUCCESSFUL run, not merely another one",
+  ).toBe(true)
+})
+
+test("a success counts whenever it ran, not only after the cancellation", () => {
+  // #508. `aea6981` was published by a run at 18:34; a `workflow_run` for the
+  // SAME commit was cancelled at 18:45. The lookup demanded
+  // `.databaseId > RUN_ID`, saw no LATER success, and reported a stale mirror
+  // that was already current — the sixth report of that title.
+  //
+  // The mirror is keyed on the COMMIT, not on run order. A successful run
+  // pushed that tree and a cancellation afterwards cannot unpush it.
+  const success = selectors().filter((line) => /conclusion ==[^\n]*success/.test(line))
+
+  expect(success).toHaveLength(1)
+  expect(
+    /databaseId/.test(success[0] ?? ""),
+    "the success arm must not be ordered against this run — an EARLIER success still means the mirror carries the tree",
+  ).toBe(false)
+})
+
+test("a later run still going is left to report its own conclusion", () => {
+  // Without this the observer reports every link in a chain it is itself
+  // forging: the retry joins `concurrency: publish-mirror`, cancels the run in
+  // flight, and that cancellation dispatches another retry. Measured on
+  // `38b76bd6` — four runs, three cancelled by their own successor, on a commit
+  // whose sync went on to succeed.
+  const inFlight = selectors().filter((line) => /status !=[^\n]*completed/.test(line))
+
+  expect(
+    inFlight,
+    "nothing notices that a successor is already running, so a burst reports once per run",
+  ).toHaveLength(1)
+
+  // This arm MUST stay ordered. An unfinished run reaches its own conclusion
+  // and is observed in its turn, so the last run of a burst always reports and
+  // no cancellation is swallowed. Drop the ordering and an EARLIER unfinished
+  // run — there is no such thing, but a future edit could invent one — would
+  // silence the alarm permanently.
+  expect(
+    /databaseId >/.test(inFlight[0] ?? ""),
+    "only a LATER unfinished run supersedes: it is the one that will report next",
   ).toBe(true)
 })
 
