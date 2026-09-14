@@ -1,5 +1,190 @@
 # Changelog
 
+## 7.5.0
+
+### Minor Changes
+
+- eebf756: Give automations an editor, and refuse a trigger that cannot fire
+
+  `packages/admin/src/pages/email/` shipped six pages and the sidebar listed the
+  same six. None of them created, edited or deleted an automation. The mutations
+  existed and were permission-guarded — `create`, `update`, `remove`, `activate`,
+  `pause` — and **nothing in the product called any of them**. The one automation
+  query a screen read was `listActive`, filling a dashboard card that said
+  « Aucune automation active » to every owner, permanently, because there was no
+  path to a first one. An owner's only way to build a sequence was a Convex API
+  call.
+
+  It became the binding constraint with #268: three triggers reach subscribers now
+  — `welcome` on double opt-in, `post_order` on every confirmed order, `inactive`
+  on a daily sweep — and five settings toggles gate them. The engine worked and
+  there was no supported way to feed it. An owner switching « Post-commande » on
+  got a toggle that saved, an engine that dispatched, and no email, because the
+  toggle enabled a sequence that did not exist.
+
+  The new screen lists automations with their trigger, step count, status and sends;
+  creates and edits a name, a trigger and an ordered list of steps; and activates,
+  pauses or deletes one. **Every delay is presented as counted from the trigger**,
+  which is what `delayForStep` does — an editor that chained delays would drift and
+  would not match what the owner wrote.
+
+  Three server-side changes came with it:
+  - **`inactiveAfterDays` is accepted by `create` and `update`.** It was on the
+    table and read by the win-back sweep, and on neither mutation — so no caller,
+    UI or API, could ever set it, and every win-back automation in existence was
+    stuck on the 90-day default.
+  - **A trigger that cannot fire is refused**, at creation, at update and at
+    activation. `birthday` has no record carrying a date of birth and
+    `abandoned_cart` has no persisted cart; `TRIGGER_READINESS` already knew and
+    nothing asked, so an owner could build one, activate it, watch it report
+    « active », and never receive an email. Implement a trigger there and it
+    becomes creatable on the same commit.
+  - **A sequence with no steps, a negative or fractional delay, or an absurd number
+    of steps is refused.** The first would activate and send nothing; the second
+    would schedule a send before the event that caused it.
+
+- 17e67d3: Make _formules_ orderable — the customer half that never shipped
+
+  An owner was told in three places in the product that they could sell formules:
+  the menus tab's empty state, the products page heading, and the guided tour
+  auto-launched on first login. No customer could ever order one.
+
+  The admin half was complete — schema, CRUD, RBAC, a 473-line tab over a 761-line
+  section builder — and the seven customer-facing strings were already translated
+  into French, English and Spanish. `menu.addComboToCart` (« Ajouter la formule au
+  panier ») was referenced nowhere in either app. Someone translated the button
+  before anyone built it.
+
+  What was missing, and is here now:
+  - **`menus.listActive`** — the filtered public query `menus.list`'s own comment
+    asked for. It resolves `pick_category` sections server-side, leaves out a
+    formule whose mandatory dish has been switched off (rather than offering it and
+    refusing the diner at the checkout), and keeps offering one whose dish is
+    merely sold out, marked so.
+  - **`menuLine.ts`** — a pure module that verifies a composed formule against its
+    sections and prices it. Every chosen dish passes the same gate an à-la-carte
+    line does, so a formule is refused for the same reasons: sold out, switched
+    off, outside its serving window.
+  - **`orders.create` accepts one.** It used to throw on any line with no
+    `productId`, which is exactly what a bundle is. A formule becomes N order rows
+    sharing a `menuLineId`, one per dish, each priced at its share — so the money,
+    the kitchen and the invoice all get what they need without a nested shape.
+  - **The cart can hold one.** `CartItem.productId` is optional and `menu` carries
+    the composition; `cartLineId` hashes the whole selection, so two « Formule
+    Midi » composed differently are two lines. `CART_STORAGE_VERSION` is 2 and
+    every persisted cart migrates without losing anything.
+  - **The storefront** renders the formules above the à-la-carte grid, composes one
+    in a dialog, lists its dishes in the cart, and sends it to the checkout.
+
+  **The two money decisions, stated because they were the reason this was its own
+  change:**
+  1. **VAT across a mixed-rate bundle** is split **pro rata on à-la-carte value**,
+     the standard treatment of an _offre composite à prix global_. A 15 € dish at
+     10 % and a 5 € glass of wine at 20 % sold at 20 € owes 1,36 € + 0,83 €. Split
+     evenly it would have declared 0,39 € more VAT than is owed, on a numbered
+     fiscal document. The leftover centime goes to the largest share,
+     deterministically, so the shares always sum to exactly the price and two runs
+     bill the same.
+  2. **A formule's dishes are not discountable** by product- or category-scoped
+     promotions. The bundle price is already the owner's discount; letting « -20 %
+     sur les desserts » reach the dessert inside it discounts the same dish twice
+     without the owner asking. Order-level promotions still apply. A coupon that
+     matches nothing but formules is **refused with a sentence** rather than
+     granted at zero — a diner charged full price with no explanation cannot tell a
+     rule from a bug.
+
+  Also: the kitchen slip prints « Formule Midi · Plat — Risotto », so a cook can
+  see which dishes are one cover; and `menu.sections` / `menu.fixedItem`, the two
+  translated strings this change does not use, are removed rather than left as dead
+  translations in three languages.
+
+- Record why the stock number changed
+
+  `products.stock.quantity` was a number with no history. An owner opening
+  Inventaire saw "3 portions" and had no way to learn whether that was three sold
+  and two cancelled or five sold and four restocked by hand — and when the number
+  is wrong, which it is the first time anybody miscounts, there was nothing to
+  reconcile against.
+
+  Four paths move stock, and each one patched the quantity and said nothing:
+  `orders.create` sells it, `orders.updateStatus` gives it back on a cancellation,
+  `products.updateStock` is an owner retyping it, and
+  `products.toggleStockTracking` turns the number on and off. All four now write a
+  `stockMovements` row **inside the same transaction as the movement**, so a
+  quantity cannot change without the ledger saying why.
+
+  The row records `before`, `after` and the delta — both ends, because a delta
+  alone is only meaningful against a number nobody recorded. A sale carries the
+  order number; a manual correction carries the member of staff who made it. A sale
+  records no `actorId` at all: the diner is not staff, and putting who bought the
+  last portion into a table the whole team reads would turn a dish screen into a
+  purchase history.
+
+  Nothing is written when nothing moved — a patch that sets 4 to 4 is not a
+  movement, and a ledger padded with them is a ledger nobody reads. The tracking
+  switch is the exception and is recorded at an unchanged quantity, because the
+  switch _is_ the movement there: the number stops meaning anything until it is
+  turned back on.
+
+  The history opens from the Inventaire row it explains, and the table goes with
+  the establishment in the store cascade and into backups after `orders`, since a
+  `sale` row references the order that caused it.
+
+  This is **not** a reservation system. The product sells stock when the order is
+  created and gives it back if it is cancelled, which is the honest model for a
+  restaurant where the gap is minutes. The ledger records that model; it does not
+  change it.
+
+- d37e32c: Build the three sales metrics the site named and the engine did not have
+
+  `apps/site` listed five figures. Two existed as today-only cards. Three did not
+  exist in any form — `grep -riE 'plats populaires|topProduct|peakHour|returnRate'`
+  over `apps/themes` and `packages` returned nothing at all:
+  - **Plats populaires** — there was no product-level aggregation anywhere.
+  - **Heures de pointe** — there was no time-of-day bucketing.
+  - **Taux de retour** — there was no notion of a returning customer until #364
+    built the customer book.
+
+  All three are now computed in `dashboardStats.ts`, in the same pure module as
+  the rest of the overview's arithmetic, on the same collected-money rule.
+
+  The dishes rank on **units sold**, not revenue: the question is what the kitchen
+  is making, and ranking on money puts the 38 € plateau above the burger the
+  establishment sells forty of. Both figures are shown.
+
+  The hours are the establishment's own local hours, derived from the local
+  midnights the browser already computes — so there is no timezone argument, and a
+  period straddling a clock change reads correctly on both sides of it.
+
+  « Taux de retour » counts a diner as returning when their **first ever order
+  predates the period**, not when they ordered twice inside it. The second reading
+  makes the figure a function of the window length rather than of the restaurant.
+  The definition is stated on the card, and so is the number of orders with no
+  e-mail address, which belong to neither side.
+
+  Two things the issue also asked for:
+  - **The period is now a choice** — 7, 14 or 30 days. Every window on this screen
+    was a literal while the site sold « analyse des tendances et des performances
+    par période ». The breakdown pies follow the picker too; they used to sit on
+    their own fixed thirty days, so the donuts and the chart above them answered
+    about different stretches of time.
+  - **`analytics:read` is enforced.** It and `analytics:view_all` were declared in
+    `packages/core/src/auth/rbac.ts` and consumed by nothing, so a `kitchen`
+    account — which holds `orders:read` to work the pass — could read the
+    establishment's turnover, average basket and best-selling dishes. The screen
+    stays reachable for every role, because it is where each login lands; the
+    figures are replaced by a stated panel, and the recent-orders table and quick
+    actions remain.
+
+  `DashboardStats.last7Days` is now `days`: a field named for seven holding thirty
+  entries is the kind of name that survives into a chart axis.
+
+### Patch Changes
+
+- Updated dependencies [17e67d3]
+- Updated dependencies
+  - @be-in-digital/convex-schema@6.6.0
+
 ## 7.4.0
 
 ### Minor Changes

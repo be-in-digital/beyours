@@ -183,6 +183,13 @@ export const BACKUP_TABLES = [
      `ARCHIVE_EDGES` below, and this module's header for which half of the link
      breaks on which kind of restore. */
   "orders",
+  // The stock ledger (#99). A backup that restored the quantities and not the
+  // movements would put a number back with no way to tell whether it is right.
+  //
+  // AFTER `orders`, and the ordering test is what says so: a `sale` row carries
+  // the `orderId` that caused it, so importing the ledger first would restore a
+  // reference to a row that does not exist yet.
+  "stockMovements",
   "payments",
   "kitchenTickets",
   "promotionUsages",

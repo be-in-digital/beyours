@@ -60,6 +60,13 @@ export const STORE_SCOPED_TABLES: ReadonlyArray<{ table: string; index: string }
   { table: "languages", index: "by_storeId" },
   { table: "translations", index: "by_storeId_entity" },
   { table: "customers", index: "by_storeId_email" },
+  /*
+   * The stock ledger (#99). It goes with the establishment: a movement is a fact
+   * about one restaurant's dishes, and it references a `products` row that the
+   * same cascade is deleting. Not personal data — see `stockMovements`'s own
+   * docblock for why a sale records the order number and not the diner.
+   */
+  { table: "stockMovements", index: "by_storeId_createdAt" },
   { table: "translationJobs", index: "by_storeId" },
   // Email marketing
   { table: "emailSubscribers", index: "by_storeId" },

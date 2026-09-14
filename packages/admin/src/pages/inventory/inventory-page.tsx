@@ -12,9 +12,11 @@ import {
   AlertTriangle,
   XCircle,
   PackageOpen,
+  History,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useAdminStoreId, useDebounce, useAdminApi } from "../../hooks/admin-hooks"
+import { StockHistoryDialog } from "./stock-history-dialog"
 import { ADMIN_PAGE_SIZE } from "../../lib/constants"
 import {
   Button,
@@ -199,6 +201,10 @@ export function InventoryPage() {
   const [currentPage, setCurrentPage] = useState(1)
 
   const debouncedSearch = useDebounce(searchQuery, 300)
+  /** The dish whose stock history is open, or null (#99). */
+  const [historyProduct, setHistoryProduct] = useState<
+    { _id: string; name: string } | null
+  >(null)
 
   const products = useQuery(
     api?.products?.listAll,
@@ -371,6 +377,9 @@ export function InventoryPage() {
                     <TableHead>Seuil alerte</TableHead>
                     <TableHead>Auto-désactivation</TableHead>
                     <TableHead>Suivi</TableHead>
+                    <TableHead className="w-[52px]">
+                      <span className="sr-only">Historique</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -476,12 +485,36 @@ export function InventoryPage() {
                             }
                           />
                         </TableCell>
+
+                        {/* Where the portions went (#99). Beside the number it
+                            explains, because that is where the question is
+                            asked. */}
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Historique du stock de ${product.name}`}
+                            onClick={() =>
+                              setHistoryProduct({ _id: product._id, name: product.name })
+                            }
+                          >
+                            <History className="h-4 w-4" aria-hidden="true" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     )
                   })}
                 </TableBody>
               </Table>
             </div>
+
+            {/* Where the portions went (#99). One dialog, mounted once: a
+                dialog per row would hold a query per row. */}
+            <StockHistoryDialog
+              storeId={storeId}
+              product={historyProduct}
+              onOpenChange={(open: boolean) => !open && setHistoryProduct(null)}
+            />
 
             {/* Pagination */}
             {totalPages > 1 && (

@@ -30,6 +30,7 @@ import {
   type DashboardStats,
 } from "./dashboardStats"
 import { verifyMenuSelection } from "./menuLine"
+import { recordStockMovement } from "./stockLedger"
 import { clampPagination, clampPageSize } from "./pagination"
 import { refusePlatformStatus } from "./platformWebhook"
 import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
@@ -167,7 +168,9 @@ async function moveTrackedStock(
   ctx: any,
   lines: Array<{ productId?: string; quantity: number }>,
   direction: 1 | -1,
-  now: number
+  now: number,
+  /** The order this movement belongs to, so the ledger row reads on its own. */
+  order?: { _id?: unknown; storeId?: unknown; orderNumber?: string }
 ): Promise<void> {
   const byProduct = new Map<string, number>()
   for (const line of lines) {
@@ -178,9 +181,26 @@ async function moveTrackedStock(
   for (const [productId, quantity] of byProduct) {
     const product = await ctx.db.get(productId)
     if (!product?.stock?.tracked) continue
+    const before = product.stock.quantity
+    const after = Math.max(0, before + direction * quantity)
     await ctx.db.patch(productId, {
-      ...stockPatch(product, Math.max(0, product.stock.quantity + direction * quantity)),
+      ...stockPatch(product, after),
       updatedAt: now,
+    })
+
+    // The ledger (#99). Written here rather than in either caller, for the same
+    // reason `stockPatch` is a function: a rule about stock that lives in one
+    // caller is a rule the other skips.
+    await recordStockMovement(ctx, {
+      storeId: product.storeId,
+      productId,
+      productName: product.name,
+      reason: direction === -1 ? "sale" : "restock",
+      before,
+      after,
+      ...(order?._id === undefined ? {} : { orderId: order._id }),
+      ...(order?.orderNumber === undefined ? {} : { orderNumber: order.orderNumber }),
+      now,
     })
   }
 }
@@ -1525,7 +1545,9 @@ export const create = {
         quantity: ordered,
       })),
       -1,
-      now
+      now,
+      // The order is inserted just above, so the ledger row can name it.
+      { _id: orderId, storeId: args.storeId, orderNumber }
     )
 
     // Burn the delivery quote. One quote, one order: it used to be reusable
@@ -1800,7 +1822,7 @@ export const updateStatus = {
       // has no stock path, the platform keeps its own count, and crediting one
       // here would invent stock the restaurant does not have.
       if (!isMarketplaceOrder(order.source)) {
-        await moveTrackedStock(ctx, order.items ?? [], 1, now)
+        await moveTrackedStock(ctx, order.items ?? [], 1, now, order)
       }
 
       // Give the coupon back too. The stock was restored here and the promotion
