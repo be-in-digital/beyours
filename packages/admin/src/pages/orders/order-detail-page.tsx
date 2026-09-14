@@ -32,6 +32,7 @@ import {
 } from "@be-in-digital/ui"
 import { OrderStatusActions } from "./order-status-actions"
 import { UberDirectPanel } from "./uber-direct-panel"
+import { DeliverooDecisionPanel } from "./deliveroo-decision-panel"
 import { ArrowLeft, RotateCcw, Banknote, AlertTriangle } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -619,6 +620,16 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               <OrderStatusActions orderId={order._id} currentStatus={order.status} />
             </CardContent>
           </Card>
+
+          {/* A Deliveroo order still awaiting a decision (#103, #104). Renders
+              itself away on every other order. Above the courier panel, because
+              there is no courier to book until the order is accepted. */}
+          <DeliverooDecisionPanel
+            api={api}
+            orderId={order._id}
+            source={order.source}
+            status={order.status}
+          />
 
           {/* Uber Direct courier — renders itself away on non-delivery orders */}
           <UberDirectPanel

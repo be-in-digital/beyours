@@ -31,6 +31,18 @@ export const systemAuditLogTable = defineTable({
     // of authority in this product and nothing recorded a change to it: a
     // manager could be promoted, moved to another restaurant or dismissed and
     // the log showed nothing at all.
+    /*
+     * Who moved an order, and from what to what (#104).
+     *
+     * The most consequential field in the product had no trail at all: an owner
+     * asking "who cancelled the 42 € order at half past eight" had
+     * `orders.updatedAt` and a shrug. `details` carries the order NUMBER, the two
+     * statuses, the platform the order came from and the cancellation reason —
+     * and no diner: this log is read by the whole team and is outside the
+     * erasure set, so a customer in it would be a copy `eraseDataSubject` cannot
+     * reach.
+     */
+    v.literal("order_status_change"),
     v.literal("access_granted"),
     v.literal("access_changed"),
     v.literal("access_revoked"),

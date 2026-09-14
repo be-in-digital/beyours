@@ -52,6 +52,7 @@
     "./numbering": "./src/numbering.ts",
     "./orderSource": "./src/orderSource.ts",
     "./orderConfirmation": "./src/orderConfirmation.ts",
+    "./orderAudit": "./src/orderAudit.ts",
     "./orderReady": "./src/orderReady.ts",
     "./stockLedger": "./src/stockLedger.ts",
     "./orderTotals": "./src/orderTotals.ts",
