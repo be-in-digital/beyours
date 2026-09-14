@@ -114,7 +114,7 @@ describe("canTransitionOrderStatus", () => {
 })
 
 // ============================================================================
-// Cancellation window — mirrors what Deliveroo allows
+// Cancellation window — open until the food is handed over
 // ============================================================================
 
 describe("cancellation window", () => {
@@ -123,10 +123,30 @@ describe("cancellation window", () => {
     expect(canTransitionOrderStatus("confirmed", "cancelled")).toBe(true)
   })
 
-  it("refuses cancelling once preparing, ready or with a rider", () => {
-    // Deliveroo forbids it, so accepting it internally would desync the two.
-    expect(canTransitionOrderStatus("preparing", "cancelled")).toBe(false)
-    expect(canTransitionOrderStatus("ready", "cancelled")).toBe(false)
-    expect(canTransitionOrderStatus("out_for_delivery", "cancelled")).toBe(false)
+  it("allows cancelling once the kitchen has started (#111)", () => {
+    /*
+     * THIS USED TO BE `toBe(false)`, with "Deliveroo forbids it" as the reason.
+     * That reasoning is sound and it is about ONE KIND OF ORDER. This table is
+     * global, so applying it to everything left an establishment unable to record
+     * the commonest cancellation there is — the diner who telephones while the
+     * kitchen is cooking. The staff's only recourse was to COMPLETE an order that
+     * never happened: money in the takings, an invoice in a fiscal series, and a
+     * sale in the customer book, for food nobody received.
+     *
+     * The platform constraint moved to where the platform is known:
+     * `orders.updateStatus` refuses a late cancellation when
+     * `isMarketplaceOrder(order.source)`, and `order-cancel-window.test.ts` in
+     * both apps holds that half.
+     */
+    expect(canTransitionOrderStatus("preparing", "cancelled")).toBe(true)
+    expect(canTransitionOrderStatus("ready", "cancelled")).toBe(true)
+    expect(canTransitionOrderStatus("out_for_delivery", "cancelled")).toBe(true)
+  })
+
+  it("refuses cancelling once the diner has the food", () => {
+    // Not the same question. Money comes back through `payments.refundPayment`,
+    // which calls the provider; a cancellation would claim the food never left.
+    expect(canTransitionOrderStatus("delivered", "cancelled")).toBe(false)
+    expect(canTransitionOrderStatus("completed", "cancelled")).toBe(false)
   })
 })

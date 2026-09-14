@@ -130,6 +130,13 @@ export type OrderRefusalCode =
   | "menu_not_found"
   | "menu_wrong_store"
   | "menu_choice_sold_out"
+  /*
+   * A marketplace order cancelled too late (#111). The status machine allows it
+   * for an establishment's own orders — a diner telephones while the kitchen is
+   * cooking — and Deliveroo and Uber Eats refuse it at that stage, so honouring
+   * it on our side alone would desynchronise the two.
+   */
+  | "platform_cancel_too_late"
 
 /**
  * An order the establishment cannot take, refused so the diner can read why.
@@ -1792,6 +1799,36 @@ export const updateStatus = {
 
     if (!canTransitionOrderStatus(from, to)) {
       throw new Error(`Invalid order status transition: ${from} -> ${to}`)
+    }
+
+    /*
+     * A platform order cannot be cancelled once it is being made (#111).
+     *
+     * The status machine allows `preparing`, `ready` and `out_for_delivery` to
+     * reach `cancelled`, because an establishment's own diner telephones to
+     * cancel while the kitchen is cooking and that has to be recordable. That
+     * freedom is not ours to take on a marketplace order: Deliveroo and Uber Eats
+     * refuse a cancellation at those stages, the platform keeps its own state,
+     * and cancelling only on our side desynchronises the two — the restaurant
+     * reads « annulée » while the rider is still coming.
+     *
+     * The constraint lives HERE rather than in the table because `order.source`
+     * is what decides it, and `ORDER_STATUS_TRANSITIONS` has no order to read.
+     *
+     * `pending` and `confirmed` are untouched: a platform order can still be
+     * rejected before it is made, which is what the auto-reject path does.
+     */
+    if (
+      to === "cancelled" &&
+      from !== "pending" &&
+      from !== "confirmed" &&
+      isMarketplaceOrder(order.source)
+    ) {
+      throw new OrderRefusedError(
+        "platform_cancel_too_late",
+        "Cette commande vient d'une plateforme et est déjà en préparation : annulez-la depuis le tableau de bord de la plateforme, sinon les deux systèmes ne diront plus la même chose.",
+        { source: String(order.source ?? "") }
+      )
     }
 
     const now = Date.now()

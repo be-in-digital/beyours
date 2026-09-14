@@ -543,13 +543,55 @@ describe("updateStatus", () => {
   })
 
   it("rejects a transition the table forbids", async () => {
-    const { ctx, patches } = createOrderCtx({ ...baseOrder, status: "preparing" })
+    /*
+     * `delivered -> cancelled`. This used to be `preparing -> cancelled`, which
+     * the table forbade for every order — including the establishment's own, so
+     * a diner who telephoned while the kitchen was cooking could not be recorded
+     * at all (#111). `preparing`, `ready` and `out_for_delivery` reach
+     * `cancelled` now; the platform constraint that justified the narrow window
+     * moved to the handler, where `order.source` is readable, and is asserted
+     * below.
+     *
+     * Once the food is handed over it is still refused, and that is a different
+     * question: money comes back through `payments.refundPayment`, which calls
+     * the provider. A cancellation would claim the food never left.
+     */
+    const { ctx, patches } = createOrderCtx({ ...baseOrder, status: "delivered" })
 
     await expect(
       updateStatus.handler(ctx, { id: "orders:1", status: "cancelled" })
-    ).rejects.toThrow(/preparing.*cancelled/)
+    ).rejects.toThrow(/delivered.*cancelled/)
 
     // Nothing must have been written before the guard fired.
+    expect(patches).toHaveLength(0)
+  })
+
+  it("cancels an order the establishment took itself, mid-service", async () => {
+    // The case the old table made impossible.
+    const { ctx, patches } = createOrderCtx({ ...baseOrder, status: "preparing" })
+
+    await updateStatus.handler(ctx, { id: "orders:1", status: "cancelled" })
+
+    expect(patches[0]?.updates.status).toBe("cancelled")
+  })
+
+  it("refuses a late cancellation on a marketplace order", async () => {
+    /*
+     * The constraint the table used to carry globally. Deliveroo and Uber Eats
+     * refuse a cancellation once the order is being made and keep their own
+     * state, so cancelling on our side alone leaves the restaurant reading
+     * « annulée » while a rider is still coming.
+     */
+    const { ctx, patches } = createOrderCtx({
+      ...baseOrder,
+      status: "preparing",
+      source: "deliveroo",
+    })
+
+    await expect(
+      updateStatus.handler(ctx, { id: "orders:1", status: "cancelled" })
+    ).rejects.toThrow(/plateforme/)
+
     expect(patches).toHaveLength(0)
   })
 
