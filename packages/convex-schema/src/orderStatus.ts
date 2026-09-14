@@ -31,9 +31,26 @@ export const ORDER_TERMINAL_STATUSES = ["completed", "cancelled"] as const
 /**
  * Allowed moves, keyed by current status.
  *
- * The cancellation window stops at `confirmed` on purpose: Deliveroo refuses to
- * cancel an order that is already being made, ready for collection, or with a
- * rider. Accepting it on our side would desync the two systems.
+ * CANCELLATION RUNS UNTIL THE FOOD IS HANDED OVER (#111). It used to stop at
+ * `confirmed`, and the reason given was Deliveroo: the platform refuses to cancel
+ * an order already being made, ready for collection, or with a rider, so
+ * accepting it on our side would desync the two systems.
+ *
+ * That reasoning is sound and it is about ONE KIND OF ORDER. The table is global,
+ * so applying it to everything left an establishment unable to record the
+ * commonest cancellation there is — the diner who telephones while the kitchen is
+ * cooking. There was no way to say so: the only status reachable from `preparing`
+ * was `ready`, and the staff's only recourse was to complete an order that never
+ * happened, which puts money in the takings, issues an invoice in a fiscal series
+ * and writes a sale into the customer book, for food nobody received.
+ *
+ * So the platform constraint moved to where the platform is known.
+ * `orders.updateStatus` refuses a late cancellation when `isMarketplaceOrder`
+ * — it has `order.source`, and this table does not.
+ *
+ * `delivered` and `completed` still cannot be cancelled, and that is not the same
+ * question: the diner has the food. Money comes back through
+ * `payments.refundPayment`, which calls the provider.
  */
 export const ORDER_STATUS_TRANSITIONS: Record<
   OrderStatus,
@@ -41,9 +58,9 @@ export const ORDER_STATUS_TRANSITIONS: Record<
 > = {
   pending: ["confirmed", "cancelled"],
   confirmed: ["preparing", "cancelled"],
-  preparing: ["ready", "out_for_delivery"],
-  ready: ["completed", "out_for_delivery"],
-  out_for_delivery: ["delivered"],
+  preparing: ["ready", "out_for_delivery", "cancelled"],
+  ready: ["completed", "out_for_delivery", "cancelled"],
+  out_for_delivery: ["delivered", "cancelled"],
   delivered: ["completed"],
   completed: [],
   cancelled: [],

@@ -5,6 +5,16 @@
  * the status machine in `@be-in-digital/convex-schema`. The UI may offer fewer
  * transitions than the server allows — never more, or the button writes a state
  * `updateStatus` refuses.
+ *
+ * « Annuler la commande » reaches `preparing`, `ready` and `out_for_delivery`
+ * since #111. Until then the only cancellation was on `pending`, so a diner who
+ * telephoned while the kitchen was cooking could not be recorded at all and the
+ * staff's only recourse was to complete an order that never happened.
+ *
+ * It is offered on a MARKETPLACE order too, and `updateStatus` refuses that one
+ * with a sentence naming the platform — deliberately, because the alternative is
+ * hiding the button and leaving the operator with no explanation of why an order
+ * they can see cannot be cancelled. The refusal tells them where to go instead.
  */
 
 import type { ComponentType } from "react"
@@ -57,6 +67,13 @@ export const statusTransitions: Record<OrderStatus, StatusAction[]> = {
       variant: "default",
       icon: PackageCheck,
     },
+    {
+      label: "Annuler la commande",
+      nextStatus: "cancelled",
+      variant: "destructive",
+      icon: XCircle,
+      requiresReason: true,
+    },
   ],
   ready: [
     {
@@ -71,6 +88,13 @@ export const statusTransitions: Record<OrderStatus, StatusAction[]> = {
       variant: "secondary",
       icon: Truck,
     },
+    {
+      label: "Annuler la commande",
+      nextStatus: "cancelled",
+      variant: "destructive",
+      icon: XCircle,
+      requiresReason: true,
+    },
   ],
   out_for_delivery: [
     {
@@ -78,6 +102,13 @@ export const statusTransitions: Record<OrderStatus, StatusAction[]> = {
       nextStatus: "delivered",
       variant: "default",
       icon: CheckCircle,
+    },
+    {
+      label: "Annuler la commande",
+      nextStatus: "cancelled",
+      variant: "destructive",
+      icon: XCircle,
+      requiresReason: true,
     },
   ],
   delivered: [
