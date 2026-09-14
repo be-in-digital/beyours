@@ -4,8 +4,11 @@ import type { Dispatch, SetStateAction } from "react"
 import type { StoreIntegration } from "./store-detail-types"
 import { StoreUberEatsCard } from "./store-uber-eats-card"
 import { StoreDeliverooCard } from "./store-deliveroo-card"
+import { OrphanProductsPanel } from "./orphan-products-panel"
+import { UberEatsConnectionCard } from "./uber-eats-connection-card"
 
 interface StoreIntegrationsTabProps {
+  storeId: string | undefined
   storeIntegrations: StoreIntegration[] | undefined
   hasUberEatsGlobal: boolean | undefined
   hasDeliverooGlobal: boolean | undefined
@@ -55,6 +58,7 @@ interface StoreIntegrationsTabProps {
 }
 
 export function StoreIntegrationsTab({
+  storeId,
   storeIntegrations,
   hasUberEatsGlobal,
   hasDeliverooGlobal,
@@ -104,6 +108,15 @@ export function StoreIntegrationsTab({
 }: StoreIntegrationsTabProps) {
   return (
     <>
+      {/* Above the two platform cards: an import that left unmatched items is the
+          first thing to resolve, and the cards are where the next import is
+          launched from. */}
+      <OrphanProductsPanel storeId={storeId} />
+
+      {/* The merchant account is one connection for the whole deployment, so it
+          sits above the per-store cards rather than inside one of them. */}
+      <UberEatsConnectionCard hasUberEatsGlobal={hasUberEatsGlobal} />
+
       <StoreUberEatsCard
         storeIntegrations={storeIntegrations}
         hasUberEatsGlobal={hasUberEatsGlobal}

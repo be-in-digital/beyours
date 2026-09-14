@@ -309,6 +309,7 @@ export function StoreDetailPage({ params }: { params: Promise<{ storeId: string 
         {/* INTEGRATIONS TAB */}
         <TabsContent value="integrations" className="space-y-4">
           <StoreIntegrationsTab
+            storeId={store?._id}
             storeIntegrations={storeIntegrations}
             hasUberEatsGlobal={hasUberEatsGlobal}
             hasDeliverooGlobal={hasDeliverooGlobal}

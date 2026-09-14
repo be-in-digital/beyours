@@ -122,9 +122,13 @@ Uber Eats uses an Authorization-Code flow (`eats.pos_provisioning`). Code:
 
 1. **Register the redirect URI** in the Uber developer portal (exactly):
    `${CONVEX_SITE_URL}/connect/uber-eats/callback`
-2. Admin clicks "Connect Uber Eats" → `uberEatsOAuth.generateAuthorizeUrl`
-   (admin-authenticated) builds the consent URL and stores a single-use,
-   10-minute **CSRF `state`** in the `oauthStates` table.
+2. The owner presses **Connecter le compte** on Dashboard → Établissements →
+   *(a store)* → Intégrations → *Connexion Uber Eats*. That calls
+   `uberEatsOAuth.generateAuthorizeUrl` (admin-authenticated), which builds the
+   consent URL and stores a single-use, 10-minute **CSRF `state`** in the
+   `oauthStates` table. The card also shows whether the connection is live and
+   offers **Déconnecter**; until #274 this step described a button that did not
+   exist, and the only way to run it was by hand.
 3. The merchant consents at Uber and is redirected to the callback.
 4. The callback (`uberEatsOAuthHttp.uberEatsConnectCallback`) **validates the
    `state`** (rejects missing/expired/forged before any token exchange), exchanges
