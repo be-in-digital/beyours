@@ -153,27 +153,33 @@ export const BACKUP_TABLES = [
   "emailCampaigns",
   "emailAutomations",
 
-  /* ── The sixteen CMS singletons ──
-     Every page of the storefront a client edits: the home page, the menu, the
-     cart, the checkout, the legal pages. None of them was in a backup, which
-     is what made "a backup of a restaurant's website" untrue in the plainest
-     possible sense. `cms` first: the other fifteen reference it. */
-  "cms",
-  "cmsHome",
-  "cmsMenu",
-  "cmsAbout",
-  "cmsContact",
-  "cmsBlogPosts",
-  "cmsCart",
-  "cmsCheckout",
-  "cmsTracking",
-  "cmsSignin",
-  "cmsSignup",
-  "cmsPrivacy",
-  "cmsTerms",
-  "cms404",
-  "cmsMaintenance",
-  "cmsAccount",
+  /* ── The sixteen legacy CMS singletons WERE HERE (#434.7) ──
+     `cms`, `cmsHome`, `cmsMenu`, `cmsAbout`, `cmsContact`, `cmsBlogPosts`,
+     `cmsCart`, `cmsCheckout`, `cmsTracking`, `cmsSignin`, `cmsSignup`,
+     `cmsPrivacy`, `cmsTerms`, `cms404`, `cmsMaintenance`, `cmsAccount`.
+
+     They were added on the reasoning "every page of the storefront a client
+     edits", and a backup without them was not a backup of a website. That
+     reasoning was true of the CMS they were written for and is not true of the
+     one that shipped: all sixteen were superseded by the block-based
+     `cmsPages` / `cmsBlocks` / `cmsMedia` below, and were measured at zero reads,
+     zero inserts and zero patches across `packages/convex-functions/src`, each
+     app's `convex` and each app's `components`.
+
+     So the nightly backup on every client deployment walked sixteen tables that
+     cannot hold a row, and a restore walked them again. Not harmful — sixteen
+     empty reads — but it spends the transaction budget, and it made the backup's
+     own table count a claim about a CMS that no longer exists. `privacy.ts`
+     carried the same list for the same reason and lost it first; this is the
+     other half.
+
+     THEY STAY DECLARED IN THE SCHEMA. Convex refuses a deploy that drops a table
+     still holding rows, and no measurement from inside this repository can tell
+     whether a client deployment provisioned two years ago still has one. Dropping
+     them is a migration, not an edit.
+
+     If one ever gains a writer again it belongs back here — the classification is
+     about whether a table holds client data, not about its name. */
 
   /* ── Trade ──
      Last, because everything they reference comes before them. `orders` also
@@ -444,6 +450,35 @@ export const EXCLUDED_TABLES: readonly ExcludedTable[] = [
   { table: "emailEvents", reason: "Statistiques d'ouverture et de clic, dérivées des envois." },
   { table: "blogAutoQueue", reason: "File d'attente de génération, replanifiée automatiquement." },
   { table: "blogAutoUsage", reason: "Compteurs de quota mensuel." },
+
+  /* The sixteen legacy CMS singletons (#434.7). Excluded rather than backed up,
+     and named one by one rather than pattern-matched, so a NEW `cms*` table has
+     to be classified deliberately instead of inheriting this exemption. */
+  ...(
+    [
+      "cms",
+      "cmsHome",
+      "cmsMenu",
+      "cmsAbout",
+      "cmsContact",
+      "cmsBlogPosts",
+      "cmsCart",
+      "cmsCheckout",
+      "cmsTracking",
+      "cmsSignin",
+      "cmsSignup",
+      "cmsPrivacy",
+      "cmsTerms",
+      "cms404",
+      "cmsMaintenance",
+      "cmsAccount",
+    ] as const
+  ).map((table) => ({
+    table,
+    reason:
+      "Ancien CMS page par page, remplacé par cmsPages / cmsBlocks / cmsMedia : " +
+      "aucune écriture nulle part, donc aucune donnée à sauvegarder.",
+  })),
   { table: "prizeIssuance", reason: "Compteurs de lots distribués, recalculés." },
   {
     table: "platformWebhookFailures",
