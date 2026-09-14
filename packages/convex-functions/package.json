@@ -116,9 +116,9 @@
   "scripts": {
     "lint": "eslint src/",
     "type-check": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "test:coverage": "vitest run --coverage",
     "clean": "rm -rf node_modules"
   },
   "dependencies": {

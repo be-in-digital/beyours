@@ -17,7 +17,7 @@
     "seed": "convex run saSeed:run",
     "seed:reset": "convex run saSeed:reset '{\"confirm\":true}'",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test"
   },
   "dependencies": {
