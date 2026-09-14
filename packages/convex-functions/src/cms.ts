@@ -52,7 +52,20 @@ interface CmsFieldValue {
 // Queries
 // ============================================================================
 
-/** List all CMS pages for a store (with status from cmsPages table) */
+/**
+ * Every CMS page of a store with its editorial status.
+ *
+ * NOT PUBLIC, and it used to be (#97). It was registered as
+ * `query(cmsDefs.listPages)` with `@public-by-design: published storefront page
+ * content, no auth by design` — and what it actually returns is
+ * `hasUnpublishedChanges` and `draftUpdatedAt` for every page of the
+ * establishment, which is a list of what the staff are working on. Its only
+ * caller in the whole repository is the admin's own content screen.
+ *
+ * So this is guarded rather than narrowed: unlike `getPageBlocks` below, there
+ * was no anonymous reader to keep working. Wrapped with `content:read` in each
+ * app's `convex/`.
+ */
 export const listPages = {
   args: { storeId: v.id("stores") },
   handler: async (ctx: any, args: any) => {
@@ -96,7 +109,26 @@ export const getPage = {
   },
 }
 
-/** Get published blocks for storefront (public, no auth) */
+/**
+ * Published blocks for the storefront. Public, and therefore narrow (#97).
+ *
+ * WHAT IT USED TO HAND AN ANONYMOUS VISITOR. `pageMeta` carried
+ * `hasUnpublishedChanges`, `draftUpdatedAt` and `updatedBy` — editorial state and
+ * a STAFF USER ID — on a query documented "public, no auth". The audit called it
+ * public metadata leakage. Nothing on the storefront read any of the three:
+ * `lib/cms/server.ts` declares a `pageMeta` of three fields and the storefront
+ * reads none of them, while the admin editor reads what it needs from
+ * `getAdminPageBlocks`, which is guarded.
+ *
+ * WHAT IS LEFT, and why each survives. `hasPublished` says whether there is
+ * content — the caller has just asked for it and will see the answer either way.
+ * `publishedAt` is a publication date, which is the kind of thing a page's own
+ * `<meta>` may legitimately state. Neither says anything about the staff who
+ * wrote it or about work in progress.
+ *
+ * Narrowed rather than guarded, because the storefront genuinely has no session:
+ * the same treatment `orders.getPaymentState` gets, for the same reason.
+ */
 export const getPageBlocks = {
   args: {
     storeId: v.id("stores"),
@@ -110,13 +142,12 @@ export const getPageBlocks = {
       )
       .unique()
 
+    // Two fields, deliberately. See this function's docblock: the three that
+    // left were editorial state and a staff user id, on an anonymous read.
     const pageMeta = pageDoc
       ? {
           hasPublished: pageDoc.hasPublished,
-          hasUnpublishedChanges: pageDoc.hasUnpublishedChanges,
           publishedAt: pageDoc.publishedAt,
-          draftUpdatedAt: pageDoc.draftUpdatedAt,
-          updatedBy: pageDoc.updatedBy,
         }
       : null
 
