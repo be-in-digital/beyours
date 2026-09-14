@@ -31,6 +31,7 @@ import { useStoreId } from "@/lib/hooks/use-store-id"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"
 import { formatArticleDate } from "@/lib/blog/presentation"
 import { ProductGrid } from "@/components/storefront/product-grid"
+import { FormuleCard, type Formule } from "@/components/storefront/formule-card"
 import { ProductDetailClient } from "@/components/storefront/product-detail-client"
 import { MenuPagination } from "@/components/storefront/menu-pagination"
 import { toast } from "sonner"
@@ -114,6 +115,18 @@ function MenuContent() {
     api.categories.list,
     storeId ? { storeId: storeId as Id<"stores"> } : "skip"
   )
+  /**
+   * The *formules* on offer, with their sections resolved (#352).
+   *
+   * `listActive`, not `list`: the second is guarded and unfiltered, which is
+   * right for the screen that switches a formule off and wrong here — a diner
+   * must not be shown a deactivated bundle and must not need a session to see an
+   * active one. See the comment on `menus.list`.
+   */
+  const formules = useQuery(
+    api.menus.listActive,
+    storeId ? { storeId: storeId as Id<"stores"> } : "skip"
+  ) as Formule[] | undefined
   // The teaser below used to render three hard-coded posts, each linking back
   // to /blog. These are the owner's three most recent published articles.
   const latestArticles = useQuery(
@@ -402,6 +415,26 @@ function MenuContent() {
             </DropdownMenu>
           </div>
         </div>
+
+        {/* ─── FORMULES ───
+            Above the à-la-carte grid, and only when there are any. A formule is
+            what an establishment wants sold: it is the higher basket and the
+            thing the carte is built around at lunch.
+
+            Hidden entirely while the query is loading and when it answers
+            empty — not a skeleton, and not an empty state. « Aucune formule »
+            is a message about the establishment's offering that most
+            establishments would not want printed on their carte. */}
+        {formules && formules.length > 0 && (
+          <div className="mb-12">
+            <h2 className="mb-4 text-2xl font-black tracking-tight">Nos formules</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {formules.map((formule) => (
+                <FormuleCard key={formule._id} formule={formule} />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ─── GRID ─── */}
         <div className="mb-8">

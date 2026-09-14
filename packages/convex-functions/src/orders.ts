@@ -29,6 +29,7 @@ import {
   dashboardWindowStart,
   type DashboardStats,
 } from "./dashboardStats"
+import { verifyMenuSelection } from "./menuLine"
 import { clampPagination, clampPageSize } from "./pagination"
 import { refusePlatformStatus } from "./platformWebhook"
 import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
@@ -115,6 +116,16 @@ export type OrderRefusalCode =
   | "product_wrong_store"
   | "quote_required"
   | "promotion_not_found"
+  /*
+   * A *formule* (#352). The per-section reasons are `MenuRejectionReason` in
+   * `menuLine.ts` — those are about what the customer chose. These three are
+   * about the formule itself and the basket around it: a bundle that has been
+   * deleted, one belonging to another establishment, and a dish inside it that
+   * the rest of the same basket has already sold out.
+   */
+  | "menu_not_found"
+  | "menu_wrong_store"
+  | "menu_choice_sold_out"
 
 /**
  * An order the establishment cannot take, refused so the diner can read why.
@@ -579,6 +590,29 @@ interface OrderItemInput {
   taxRatePercent?: number
   notes?: string
   externalId?: string
+  /** Set on the dishes of a *formule*; absent on an à-la-carte line (#352). */
+  menuId?: string
+  menuName?: string
+  menuLineId?: string
+  menuSectionLabel?: string
+}
+
+/** A *formule* as the checkout sends it, before anything is verified. */
+interface MenuItemInput {
+  menuId: string
+  lineId: string
+  choices: Array<{
+    sectionId: string
+    productId: string
+    quantity?: number
+    selectedOptions?: Array<{
+      optionId?: string
+      optionName: string
+      choiceId?: string
+      choiceName?: string
+      priceModifier: number
+    }>
+  }>
 }
 
 interface CreateOrderArgs {
@@ -586,7 +620,8 @@ interface CreateOrderArgs {
   idempotencyKey?: string
   customerId?: string
   customerInfo: { name: string; email?: string; phone?: string }
-  items: OrderItemInput[]
+  /** What the checkout sent: à-la-carte lines, formule lines, or both. */
+  items: Array<OrderItemInput & { menu?: MenuItemInput }>
   type: "delivery" | "pickup" | "dine_in"
   /** Dine-in only; rejected on the other two types. */
   tableNumber?: string
@@ -688,6 +723,31 @@ export const create = {
       subtotal: v.number(),
       notes: v.optional(v.string()),
       externalId: v.optional(v.string()),
+      /**
+       * A *formule* the customer composed, instead of a single dish (#352).
+       *
+       * When present, `productId` is absent and every price on the line is
+       * ignored: the bundle price comes from the `menus` row and the shares are
+       * computed server-side, the same rule the à-la-carte path already applies
+       * to `unitPrice`. `lineId` is the cart's own line id, which becomes the
+       * `menuLineId` that groups the dishes on the order.
+       */
+      menu: v.optional(v.object({
+        menuId: v.id("menus"),
+        lineId: v.string(),
+        choices: v.array(v.object({
+          sectionId: v.string(),
+          productId: v.id("products"),
+          quantity: v.optional(v.number()),
+          selectedOptions: v.optional(v.array(v.object({
+            optionId: v.optional(v.string()),
+            optionName: v.string(),
+            choiceId: v.optional(v.string()),
+            choiceName: v.optional(v.string()),
+            priceModifier: v.number(),
+          }))),
+        })),
+      })),
     })),
     type: v.union(
       v.literal("delivery"),
@@ -963,6 +1023,124 @@ export const create = {
     // for any order, since the line was written (#413).
     let longestPrepTime = 0
     for (const item of args.items) {
+      /*
+       * A *formule* instead of a single dish (#352).
+       *
+       * This branch is what used to be the throw below. `orders.create` refused
+       * any line with no `productId`, which is exactly what a bundle is — so the
+       * admin could build formules, the tour promised them and the customer
+       * strings were translated into three languages, and no diner could ever
+       * buy one.
+       *
+       * The bundle becomes N rows sharing a `menuLineId`, one per chosen dish,
+       * each priced at its share of the fixed price. Every price is recomputed
+       * here from the `menus` row and the products: the client sends what was
+       * chosen, never what it costs, on the same rule as the à-la-carte path.
+       */
+      if (item.menu) {
+        const menu = await ctx.db.get(item.menu.menuId)
+        if (!menu) {
+          throw new OrderRefusedError(
+            "menu_not_found",
+            "Une formule de votre Box n'existe plus. Retirez-la pour continuer.",
+            { menuId: item.menu.menuId }
+          )
+        }
+        if (menu.storeId !== args.storeId) {
+          throw new OrderRefusedError(
+            "menu_wrong_store",
+            "Votre Box contient une formule d'un autre restaurant. Videz-la et recommencez.",
+            { menuId: item.menu.menuId }
+          )
+        }
+
+        // Every product the selection names, read once each. A formule naming
+        // the same dish in two sections reads it once, and `soldStock` below
+        // still counts both.
+        const chosen = new Map<string, any>()
+        for (const choice of item.menu.choices) {
+          if (chosen.has(choice.productId)) continue
+          const product = await ctx.db.get(choice.productId)
+          // A missing or out-of-store product is refused by
+          // `verifyMenuSelection` as a dish the formule does not offer, which
+          // is what it is from the diner's side.
+          if (product && product.storeId === args.storeId) {
+            chosen.set(choice.productId, product)
+          }
+        }
+
+        const verifiedMenu = verifyMenuSelection({
+          menu,
+          choices: item.menu.choices,
+          products: chosen,
+          taxRatePercent,
+          now,
+          timezone: globalSettings?.timezone,
+        })
+
+        for (const choice of verifiedMenu.choices) {
+          const product = chosen.get(choice.productId)
+
+          // The basket-wide stock ledger, as for an à-la-carte line: two
+          // formules can contain the same dish, and a stock of 3 must not
+          // accept 2 + 2. `verifyMenuSelection` checked each dish against the
+          // stored quantity; this is what catches the sum.
+          if (product?.stock?.tracked) {
+            const alreadySold = soldStock.get(choice.productId)?.ordered ?? 0
+            const ordered = alreadySold + choice.quantity
+            if (product.stock.quantity < ordered) {
+              throw new OrderRefusedError(
+                "menu_choice_sold_out",
+                product.stock.quantity > 0
+                  ? `« ${choice.productName} » : il n'en reste que ${product.stock.quantity}.`
+                  : `« ${choice.productName} » est épuisé.`,
+                { productId: choice.productId }
+              )
+            }
+            soldStock.set(choice.productId, { product, ordered })
+          }
+
+          verifiedItems.push({
+            productId: choice.productId,
+            productName: choice.productName,
+            quantity: choice.quantity,
+            // The share, not the à-la-carte price. `unitPrice * quantity` is
+            // the line, and a receipt that printed the à-la-carte price beside
+            // a bundle total would not add up.
+            unitPrice: Math.round(choice.subtotal / choice.quantity),
+            selectedOptions: choice.selectedOptions,
+            subtotal: choice.subtotal,
+            taxRatePercent: choice.taxRatePercent,
+            menuId: item.menu.menuId,
+            menuName: verifiedMenu.menuName,
+            menuLineId: item.menu.lineId,
+            menuSectionLabel: choice.sectionLabel,
+          })
+
+          taxedLines.push({
+            subtotal: choice.subtotal,
+            taxRatePercent: choice.taxRatePercent,
+          })
+
+          /*
+           * DELIBERATELY NOT PUSHED INTO `discountableLines`.
+           *
+           * The bundle price IS the owner's discount — they set it below the
+           * à-la-carte total on purpose — so letting « -20 % sur les desserts »
+           * also reach the dessert inside a formule discounts the same dish
+           * twice without the owner having asked. Order-level promotions still
+           * apply: those are about the order, not about a dish, and they see the
+           * formule through the subtotal like everything else.
+           *
+           * See `menuLine.ts`'s header for the decision, and
+           * `menu-promotions.test.ts` for the test that holds it.
+           */
+        }
+
+        longestPrepTime = Math.max(longestPrepTime, verifiedMenu.preparationTime)
+        continue
+      }
+
       if (!item.productId) {
         throw new OrderRefusedError(
           "line_without_product",
@@ -2217,7 +2395,24 @@ export function toKitchenTicketItems(
   items: OrderItemInput[]
 ): Array<{ productName: string; quantity: number; options: string[]; notes?: string }> {
   return items.map((item) => ({
-    productName: item.productName,
+    /*
+     * A dish bought inside a *formule* says so on the slip (#352).
+     *
+     * The kitchen cooks the dishes, not the bundle — that is why a formule is N
+     * rows and not one — but a cook who cannot see that the risotto and the
+     * burrata belong to the same cover will plate them apart. The formule's
+     * name and the row it fills are prefixed onto the dish, because
+     * `kitchenTickets.items` has three fields and inventing a fourth would need
+     * every display, every print template and the platform mappers to learn it.
+     *
+     * « Formule Midi · Plat — Risotto ». Unchanged for an à-la-carte line.
+     */
+    productName:
+      item.menuName !== undefined
+        ? `${item.menuName}${
+            item.menuSectionLabel ? ` · ${item.menuSectionLabel}` : ""
+          } — ${item.productName}`
+        : item.productName,
     quantity: item.quantity,
     options:
       item.selectedOptions?.map(

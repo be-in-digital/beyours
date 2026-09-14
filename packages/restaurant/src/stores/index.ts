@@ -3,6 +3,16 @@
  */
 
 export { useCartStore } from './cart'
+/**
+ * The persisted cart's schema version.
+ *
+ * Public because the e2e specs seed a cart straight into `localStorage` and have
+ * to seed it at the CURRENT version. `migrateCartState` recomputes every
+ * `lineId` when it runs, so a spec that seeded an older version had its own
+ * hand-written ids replaced and its `[data-line-id]` selectors found nothing —
+ * which is how the bump to 2 was caught.
+ */
+export { CART_STORAGE_VERSION } from './cart'
 export {
   useAdminStoreSelection,
   useStorefrontStoreSelection,

@@ -179,9 +179,9 @@ async function assertSectionsInStore(
  * a menu can be taken off the carte and put back, and the screen with that
  * button has to see what it switched off.
  *
- * Wrapped with `storeQuery` + `products:read` in each app's `convex/`. If a
- * storefront menu view is ever built, it needs its own filtered query — do not
- * open this one up.
+ * Wrapped with `storeQuery` + `products:read` in each app's `convex/`. The
+ * storefront menu view exists now and reads `listActive` below — the separate
+ * filtered query this comment asked for. Do not open this one up.
  */
 export const list = {
   args: { storeId: v.id("stores") },
@@ -190,6 +190,156 @@ export const list = {
       .query("menus")
       .withIndex("by_storeId", (q: any) => q.eq("storeId", args.storeId))
       .collect()
+  },
+}
+
+/**
+ * The formules a diner may actually order, with their sections resolved.
+ *
+ * THE SEPARATE QUERY THE COMMENT ABOVE ASKED FOR (#352). `list` is unfiltered
+ * and guarded, which is right for the screen that switches a formule off and
+ * wrong for a storefront: a diner must not be shown a deactivated bundle, and
+ * must not need a session to be shown an active one.
+ *
+ * IT RESOLVES `pick_category` SECTIONS HERE. That section type means "anything
+ * currently in this category", so the choices are not stored on the menu at all
+ * — they are a query the storefront would otherwise have to make one of per
+ * section, each of them a second round-trip before a diner can pick a dessert.
+ * Resolved once, server-side, where the category read is an index lookup.
+ *
+ * IT LEAVES OUT WHAT CANNOT BE ORDERED. A formule whose fixed dish has been
+ * deactivated cannot be composed, and offering it means a diner reaches the
+ * checkout and is refused by `verifyMenuSelection` after choosing everything
+ * else. An out-of-stock or out-of-window dish is NOT filtered out: those are
+ * true right now and false in an hour, and the order path refuses them with a
+ * sentence that says which dish — which is better than a formule that silently
+ * disappears from the carte at 14:31.
+ */
+export const listActive = {
+  args: { storeId: v.id("stores") },
+  handler: async (ctx: any, args: any) => {
+    const menus = await ctx.db
+      .query("menus")
+      .withIndex("by_storeId_isActive", (q: any) =>
+        q.eq("storeId", args.storeId).eq("isActive", true)
+      )
+      .collect()
+
+    // Products read once each across every formule: a lunch carte of six
+    // formules over the same dozen dishes is a dozen reads, not seventy.
+    const productCache = new Map<string, any>()
+    const readProduct = async (productId: string) => {
+      if (!productCache.has(productId)) {
+        productCache.set(productId, await ctx.db.get(productId))
+      }
+      return productCache.get(productId)
+    }
+
+    const categoryCache = new Map<string, any[]>()
+    const readCategory = async (categoryId: string) => {
+      if (!categoryCache.has(categoryId)) {
+        // `by_storeId_categoryId`, not a category-only index: there is none, and
+        // a formule's category always belongs to the formule's own store, so
+        // the compound key is both correct and the cheaper read.
+        const products = await ctx.db
+          .query("products")
+          .withIndex("by_storeId_categoryId", (q: any) =>
+            q.eq("storeId", args.storeId).eq("categoryId", categoryId)
+          )
+          .collect()
+        categoryCache.set(
+          categoryId,
+          products.filter((product: any) => product.isActive)
+        )
+        for (const product of products) productCache.set(product._id, product)
+      }
+      return categoryCache.get(categoryId) ?? []
+    }
+
+    /** What the storefront needs about one choosable dish. */
+    const choice = (product: any) => ({
+      productId: product._id as string,
+      name: product.name as string,
+      description: product.description as string | undefined,
+      imageUrl: (product.images?.[0] ?? undefined) as string | undefined,
+      /**
+       * The à-la-carte price, for information only.
+       *
+       * The diner pays the formule's price whatever they choose. It is shown so
+       * a « supplément » is visible where one exists, and it is never summed on
+       * the client: the split lives server-side in `allocateBundlePrice`.
+       */
+      price: product.price as number,
+      allergens: (product.allergens ?? []) as string[],
+      options: (product.options ?? []) as unknown[],
+      isAvailable:
+        product.isActive === true &&
+        !(product.stock?.tracked === true && product.stock.quantity <= 0),
+    })
+
+    const resolved: any[] = []
+    for (const menu of menus) {
+      const sections: any[] = []
+      let composable = true
+
+      for (const section of [...menu.sections].sort(
+        (a: any, b: any) => a.sortOrder - b.sortOrder
+      )) {
+        let choices: any[] = []
+
+        if (section.type === "fixed") {
+          const product = section.productId ? await readProduct(section.productId) : null
+          // A formule whose mandatory dish is gone or switched off cannot be
+          // composed at all, so it is not offered.
+          if (!product || product.isActive !== true) {
+            composable = false
+            break
+          }
+          choices = [choice(product)]
+        } else if (section.type === "pick_products") {
+          for (const productId of section.productIds ?? []) {
+            const product = await readProduct(productId)
+            if (product && product.isActive === true) choices.push(choice(product))
+          }
+        } else if (section.type === "pick_category") {
+          const products = section.categoryId ? await readCategory(section.categoryId) : []
+          choices = products.map(choice)
+        }
+
+        // A row with nothing left to choose from is the same problem as a
+        // missing fixed dish when it is required.
+        if (choices.length === 0 && section.required) {
+          composable = false
+          break
+        }
+        if (choices.length === 0) continue
+
+        sections.push({
+          sectionId: section.sectionId,
+          label: section.label,
+          type: section.type,
+          required: section.required,
+          minChoices: section.minChoices,
+          maxChoices: section.maxChoices,
+          allowDuplicates: section.allowDuplicates,
+          choices,
+        })
+      }
+
+      if (!composable || sections.length === 0) continue
+
+      resolved.push({
+        _id: menu._id,
+        name: menu.name,
+        description: menu.description,
+        price: menu.price,
+        imageUrl: menu.imageUrl,
+        sortOrder: menu.sortOrder,
+        sections,
+      })
+    }
+
+    return resolved.sort((a, b) => a.sortOrder - b.sortOrder)
   },
 }
 

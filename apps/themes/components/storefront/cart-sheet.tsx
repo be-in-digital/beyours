@@ -307,6 +307,28 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
                               ))}
                             </div>
                           )}
+
+                          {/* What a *formule* contains (#352).
+                              Listed, not summarised: two « Formule Midi » in one
+                              basket are two lines composed differently, and a
+                              diner reviewing their order has no other way to
+                              tell which is which. The prices are deliberately
+                              absent — the diner pays the formule's price, and
+                              printing the dishes' own prices beside it invites
+                              them to add up to a different number. */}
+                          {item.menu && item.menu.choices.length > 0 && (
+                            <ul className="mt-1 space-y-0.5">
+                              {item.menu.choices.map((choice, i) => (
+                                <li
+                                  key={`${choice.sectionId}-${choice.productId}-${i}`}
+                                  className="text-[10px] font-bold text-muted-foreground"
+                                >
+                                  {choice.sectionLabel} : {choice.productName}
+                                  {choice.quantity > 1 && ` × ${choice.quantity}`}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
 
                         {/* Quantity controls + line total */}

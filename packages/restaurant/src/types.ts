@@ -70,7 +70,21 @@ export interface CartItem {
    * see `cartLineId` in `services/cart`.
    */
   lineId: string
-  productId: string
+  /**
+   * The dish this line is, when the line is a dish.
+   *
+   * OPTIONAL SINCE #352, and that is the whole shape change. A *formule* — the
+   * fixed-price bundle the `menus` table holds — is one cart line with no
+   * single product behind it; `menu` below carries what was composed. Exactly
+   * one of `productId` and `menu` is set on any line.
+   *
+   * It was required, so every read of it is now forced to say what it means for
+   * a formule. That is deliberate: a formule silently reading as a product with
+   * an empty id is how a bundle reaches the kitchen as nothing.
+   */
+  productId?: string
+  /** Set on a *formule* line, and never together with `productId`. */
+  menu?: CartMenuSelection
   name: string
   price: number // in cents, tax included
   quantity: number
@@ -94,6 +108,35 @@ export interface CartItem {
    * order will not grant. Absent on a line added before this field.
    */
   categoryId?: string
+}
+
+/**
+ * A *formule* the customer composed, as the cart holds it.
+ *
+ * The DISHES are here and the PRICES are not. `price` on the line is the
+ * formule's fixed price, read from the `menus` row; how that price is split
+ * across the chosen dishes is decided server-side by `allocateBundlePrice`, and
+ * a client that computed shares would be a second implementation of a VAT rule.
+ */
+export interface CartMenuSelection {
+  menuId: string
+  /**
+   * What was chosen, in section order.
+   *
+   * `sectionLabel` and `productName` are carried for rendering the cart line
+   * without a second query. The server re-reads every product and re-resolves
+   * every section from the `menus` row, so neither is trusted.
+   */
+  choices: CartMenuChoice[]
+}
+
+export interface CartMenuChoice {
+  sectionId: string
+  sectionLabel: string
+  productId: string
+  productName: string
+  quantity: number
+  options?: CartSelectedOption[]
 }
 
 /**
