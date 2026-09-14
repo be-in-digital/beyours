@@ -86,7 +86,7 @@ const ALLOWED = [
   // `apps/themes/tests/security/client-site-trusted-origins.test.ts`.
   { file: "lib/convex.ts", reason: "the bench trusts localhost:3000-3001; a client site trusts only its domain" },
   { file: "convex/http.ts", reason: "the template keeps /api/webhooks/* as 410 tombstones for integrators" },
-  { file: "app/layout.tsx", reason: "metadata, fonts and theme come from the template's client zone" },
+  { file: "app/layout.tsx", reason: "metadata, fonts, theme and layout come from the template's client zone" },
 
   // Gamification used to sit here — seven rows of it. The template stubbed the
   // player flow and four admin screens, and this list documented the gap
