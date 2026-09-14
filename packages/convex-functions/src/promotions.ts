@@ -108,13 +108,75 @@ export const getByCouponCode = {
   },
   handler: async (ctx: any, args: any) => {
     const code = args.couponCode.toUpperCase()
-    return await ctx.db
+    const promotion = await ctx.db
       .query("promotions")
       .withIndex("by_storeId_couponCode", (q: any) =>
         q.eq("storeId", args.storeId).eq("couponCode", code)
       )
       .first()
+    return publicPromotion(promotion)
   },
+}
+
+/**
+ * A promotion as an anonymous caller may see it.
+ *
+ * WHAT IT USED TO RETURN: the whole row. `getByCouponCode` and `listActiveAuto`
+ * are public by design — a coupon is applied before the diner has an account —
+ * and they handed out `usageCount`, `maxTotalUsage`, `maxUsagePerCustomer`, the
+ * internal campaign name and the withdrawn BOGO product ids to anybody who asked.
+ * So a guessed code did not merely say "this exists": it said how much of the
+ * campaign's budget was left, which is a number a competitor and a coupon-sharing
+ * forum both find interesting. The audit calls it the public coupon oracle.
+ *
+ * WHAT SURVIVES IS THE RULE, because the storefront has to preview the discount
+ * before submitting: `resolvePromotionDiscount` runs on the checkout with exactly
+ * these fields, so the diner sees the same number the server will charge.
+ *
+ * THE BUDGET IS COLLAPSED TO A BOOLEAN. `exhausted` says whether the campaign has
+ * run out, which the storefront must be able to say — and says nothing about how
+ * big it was or how much is left. The resolver reads the flag when it is present
+ * and the counters when it is not, so the server keeps the exact check.
+ *
+ * WHAT THIS DOES NOT FIX, stated so nobody assumes otherwise: a public lookup is
+ * still an existence oracle, so codes remain guessable one request at a time.
+ * Closing that needs the lookup to become a mutation or an action, because a
+ * Convex query cannot write and therefore cannot be rate-limited. That is a
+ * larger change than narrowing a payload and it is not in this one.
+ */
+export function publicPromotion(promotion: any): any {
+  if (!promotion) return null
+  const exhausted =
+    typeof promotion.maxTotalUsage === "number" &&
+    promotion.usageCount >= promotion.maxTotalUsage
+
+  return {
+    _id: promotion._id,
+    storeId: promotion.storeId,
+    // The diner sees this on the applied-coupon line, so it is theirs to read.
+    name: promotion.name,
+    isActive: promotion.isActive,
+    startDate: promotion.startDate,
+    endDate: promotion.endDate,
+    discountType: promotion.discountType,
+    discountValue: promotion.discountValue,
+    maxDiscountAmount: promotion.maxDiscountAmount,
+    minimumOrderAmount: promotion.minimumOrderAmount,
+    scope: promotion.scope,
+    targetProductIds: promotion.targetProductIds,
+    targetCategoryIds: promotion.targetCategoryIds,
+    scheduling: promotion.scheduling,
+    exhausted,
+    /*
+     * Zero, always, and `maxTotalUsage` absent.
+     *
+     * `PromotionForDiscount` requires `usageCount`, so it cannot simply be
+     * dropped — and emitting the real pair is the leak. The resolver reads
+     * `exhausted` above when it is present, so these two carry no decision; they
+     * are here to satisfy the shape and they are deliberately uninformative.
+     */
+    usageCount: 0,
+  }
 }
 
 /**
@@ -129,7 +191,10 @@ export const listActiveAuto = {
         q.eq("storeId", args.storeId).eq("triggerMode", "auto")
       )
       .collect()
-    return all.filter((p: any) => p.isActive)
+    // Narrowed for the same reason as `getByCouponCode` above, and it matters
+    // more here: this one needs no code at all, so the whole list of automatic
+    // campaigns with their budgets was one anonymous request away.
+    return all.filter((p: any) => p.isActive).map(publicPromotion)
   },
 }
 

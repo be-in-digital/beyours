@@ -129,6 +129,15 @@ export interface PromotionForDiscount {
   maxTotalUsage?: number
   maxUsagePerCustomer?: number
   usageCount: number
+  /**
+   * Whether the campaign has run out, when the caller knows and will not say how.
+   *
+   * The public lookup emits this instead of the real counters — see
+   * `publicPromotion` in `promotions.ts` for why a budget is not a diner's
+   * business. When it is present it decides; when it is absent the counters do,
+   * which is the server's path and keeps the exact check.
+   */
+  exhausted?: boolean
   /** Defaults to "order" — the whole basket — when absent. */
   scope?: PromotionScope
   targetProductIds?: string[]
@@ -287,10 +296,22 @@ export function resolvePromotionDiscount(
     )
   }
 
-  if (
-    promotion.maxTotalUsage !== undefined &&
-    promotion.usageCount >= promotion.maxTotalUsage
-  ) {
+  /*
+   * Has the campaign run out?
+   *
+   * `exhausted` when the caller supplied it, the counters otherwise. The public
+   * lookup emits the flag and NOT the numbers — a diner has no business knowing
+   * how big a campaign was or how much of it is left — and the server reads whole
+   * rows, so it still counts. Same verdict from both, and the storefront can say
+   * « ce code promo a atteint sa limite » without being told the budget.
+   */
+  const exhausted =
+    promotion.exhausted !== undefined
+      ? promotion.exhausted
+      : promotion.maxTotalUsage !== undefined &&
+        promotion.usageCount >= promotion.maxTotalUsage
+
+  if (exhausted) {
     throw new PromotionRejectedError(
       "total_usage_exceeded",
       "Ce code promo a atteint sa limite d'utilisation."
