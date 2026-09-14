@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
+import { useAction } from "convex/react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2, Plus, X } from "lucide-react"
 import {
@@ -22,7 +23,9 @@ import {
   TabsTrigger,
 } from "@be-in-digital/ui"
 import { slugify, centsToEuros, eurosToCents } from "../../lib/formatters"
+import { useAdminApiStore } from "../../stores/admin-api-store"
 import { AllergenField } from "./allergen-field"
+import { ProductImagesField } from "./product-images-field"
 import { addChoiceAt, removeChoiceAt } from "./product-options"
 import { productFormSchema, type ProductFormData } from "./product-form-schema"
 
@@ -106,6 +109,26 @@ export function ProductForm({
     },
   })
 
+  /*
+   * The presigned upload, the same action the category form uses (#105).
+   *
+   * `products.images` is read by the storefront at three render sites and was
+   * written by nothing but the AI image-to-product flow: the form's defaults said
+   * `images: []` and there was no control. A category could be given an image and
+   * a dish could not.
+   */
+  const { api } = useAdminApiStore()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getPresignedUrl = useAction(api?.storageUpload?.getPresignedUploadUrl ?? (null as any))
+  const handleRequestUploadUrl = useCallback(
+    async (args: { folder: string; contentType: string }) => {
+      if (!getPresignedUrl) throw new Error("API non disponible")
+      return getPresignedUrl(args)
+    },
+    [getPresignedUrl]
+  )
+
+  const images = watch("images")
   const name = watch("name")
   const stockTracked = watch("stock.tracked")
   const options = watch("options")
@@ -234,6 +257,13 @@ export function ProductForm({
 
         {/* General Tab */}
         <TabsContent value="general" className="space-y-4 mt-4">
+          {/* Photos — first, because it is what a diner sees first (#105). */}
+          <ProductImagesField
+            value={images ?? []}
+            onChange={(next) => setValue("images", next, { shouldDirty: true })}
+            onRequestUploadUrl={handleRequestUploadUrl}
+          />
+
           {/* Name */}
           <div className="space-y-1.5">
             <Label htmlFor="name" className="text-sm">
