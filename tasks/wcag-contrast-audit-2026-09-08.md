@@ -269,6 +269,20 @@ template defines `--primary-hover` or `--accent-solid`, and the dark-mode
 `--muted-foreground` values include seven outliers around L 68–69% that need
 measuring against their own `--background`.
 
+> **Resolved, 14 September 2026 (#41).** The first remedy was taken:
+> `gen-templates.mjs` emits `:root, .storefront-theme` and
+> `.dark, .dark .storefront-theme`, and all 50 generated templates carry the
+> pair. The fifty-first, `templates/default/theme.css`, is the one the generator
+> does not write — a pure comment block whose worked example taught `:root`
+> alone, and the file `site/theme.css` starts as — and its example now teaches
+> the pair. `apps/themes/__tests__/template-storefront-scope.test.ts` reads the
+> token list out of `globals.css` and fails on any theme that sets one of those
+> tokens outside the shell's reach.
+>
+> The two trailing facts stand and are **not** addressed: templates still define
+> no `--primary-hover` or `--accent-solid`, and the seven dark-mode
+> `--muted-foreground` outliers are still unmeasured.
+
 **A branded establishment can still write a word in `text-primary`.** The
 default palette is measured clean, and `--primary` is now dark enough to be read
 as well as filled. Under an establishment's own branding it is not: `--primary`
@@ -397,9 +411,10 @@ went wrong the first time cannot recur quietly.
 
 **Still not done:** the game arena is measured against a declared literal rather
 than tokenised. A `[data-game-arena]` block in `globals.css` beside
-`.storefront-theme` remains the structural fix, and the 51 template
-stylesheets still target `:root`/`.dark` instead of `.storefront-theme` (see
-above). Neither is a contrast failure today.
+`.storefront-theme` remains the structural fix. Not a contrast failure today.
+
+The template stylesheets were listed here too, and are no longer: all 51 target
+`.storefront-theme` as of #41 — see the resolution note above.
 
 ### What the merge with #446 found
 
