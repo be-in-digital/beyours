@@ -5,6 +5,7 @@
  */
 
 import { ConvexError, v } from "convex/values"
+import { recordStockMovement } from "./stockLedger"
 import { requireStorePermission } from "./auth"
 import { clampPageSize } from "./pagination"
 import { WITHDRAWN_PROMOTION_PRODUCT_FIELDS } from "./promotionDiscount"
@@ -569,9 +570,25 @@ export const updateStock = {
     if (!product) throw new Error("Product not found")
     if (!product.stock) throw new Error("Product does not track stock")
 
+    const now = Date.now()
     await ctx.db.patch(args.id, {
       ...stockPatch(product, args.quantity),
-      updatedAt: Date.now(),
+      updatedAt: now,
+    })
+
+    // The ledger (#99). An owner retyping the number is the movement that most
+    // needs recording: it is the one with no order behind it, and the one a
+    // reconciliation later has to account for.
+    const identity = await ctx.auth.getUserIdentity()
+    await recordStockMovement(ctx, {
+      storeId: product.storeId,
+      productId: args.id,
+      productName: product.name,
+      reason: "adjustment",
+      before: product.stock.quantity,
+      after: args.quantity,
+      ...(identity?.subject ? { actorId: String(identity.subject) } : {}),
+      now,
     })
   },
 }
@@ -594,13 +611,33 @@ export const toggleStockTracking = {
       lowStockThreshold: 5,
     }
 
+    const now = Date.now()
     await ctx.db.patch(args.id, {
       stock: {
         ...currentStock,
         tracked: args.tracked,
       },
-      updatedAt: Date.now(),
+      updatedAt: now,
     })
+
+    // Recorded even though the quantity does not move: the switch IS the
+    // movement here. The number stops meaning anything until tracking is turned
+    // back on, and an owner reading the ledger a week later needs to see where
+    // it went quiet. Nothing is written when the switch was already in that
+    // position.
+    if (currentStock.tracked !== args.tracked) {
+      const identity = await ctx.auth.getUserIdentity()
+      await recordStockMovement(ctx, {
+        storeId: product.storeId,
+        productId: args.id,
+        productName: product.name,
+        reason: args.tracked ? "tracking_on" : "tracking_off",
+        before: currentStock.quantity,
+        after: currentStock.quantity,
+        ...(identity?.subject ? { actorId: String(identity.subject) } : {}),
+        now,
+      })
+    }
   },
 }
 

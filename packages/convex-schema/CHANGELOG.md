@@ -1,5 +1,101 @@
 # Changelog - @be-in-digital/convex-schema
 
+## 6.6.0
+
+### Minor Changes
+
+- 17e67d3: Make _formules_ orderable — the customer half that never shipped
+
+  An owner was told in three places in the product that they could sell formules:
+  the menus tab's empty state, the products page heading, and the guided tour
+  auto-launched on first login. No customer could ever order one.
+
+  The admin half was complete — schema, CRUD, RBAC, a 473-line tab over a 761-line
+  section builder — and the seven customer-facing strings were already translated
+  into French, English and Spanish. `menu.addComboToCart` (« Ajouter la formule au
+  panier ») was referenced nowhere in either app. Someone translated the button
+  before anyone built it.
+
+  What was missing, and is here now:
+  - **`menus.listActive`** — the filtered public query `menus.list`'s own comment
+    asked for. It resolves `pick_category` sections server-side, leaves out a
+    formule whose mandatory dish has been switched off (rather than offering it and
+    refusing the diner at the checkout), and keeps offering one whose dish is
+    merely sold out, marked so.
+  - **`menuLine.ts`** — a pure module that verifies a composed formule against its
+    sections and prices it. Every chosen dish passes the same gate an à-la-carte
+    line does, so a formule is refused for the same reasons: sold out, switched
+    off, outside its serving window.
+  - **`orders.create` accepts one.** It used to throw on any line with no
+    `productId`, which is exactly what a bundle is. A formule becomes N order rows
+    sharing a `menuLineId`, one per dish, each priced at its share — so the money,
+    the kitchen and the invoice all get what they need without a nested shape.
+  - **The cart can hold one.** `CartItem.productId` is optional and `menu` carries
+    the composition; `cartLineId` hashes the whole selection, so two « Formule
+    Midi » composed differently are two lines. `CART_STORAGE_VERSION` is 2 and
+    every persisted cart migrates without losing anything.
+  - **The storefront** renders the formules above the à-la-carte grid, composes one
+    in a dialog, lists its dishes in the cart, and sends it to the checkout.
+
+  **The two money decisions, stated because they were the reason this was its own
+  change:**
+  1. **VAT across a mixed-rate bundle** is split **pro rata on à-la-carte value**,
+     the standard treatment of an _offre composite à prix global_. A 15 € dish at
+     10 % and a 5 € glass of wine at 20 % sold at 20 € owes 1,36 € + 0,83 €. Split
+     evenly it would have declared 0,39 € more VAT than is owed, on a numbered
+     fiscal document. The leftover centime goes to the largest share,
+     deterministically, so the shares always sum to exactly the price and two runs
+     bill the same.
+  2. **A formule's dishes are not discountable** by product- or category-scoped
+     promotions. The bundle price is already the owner's discount; letting « -20 %
+     sur les desserts » reach the dessert inside it discounts the same dish twice
+     without the owner asking. Order-level promotions still apply. A coupon that
+     matches nothing but formules is **refused with a sentence** rather than
+     granted at zero — a diner charged full price with no explanation cannot tell a
+     rule from a bug.
+
+  Also: the kitchen slip prints « Formule Midi · Plat — Risotto », so a cook can
+  see which dishes are one cover; and `menu.sections` / `menu.fixedItem`, the two
+  translated strings this change does not use, are removed rather than left as dead
+  translations in three languages.
+
+- Record why the stock number changed
+
+  `products.stock.quantity` was a number with no history. An owner opening
+  Inventaire saw "3 portions" and had no way to learn whether that was three sold
+  and two cancelled or five sold and four restocked by hand — and when the number
+  is wrong, which it is the first time anybody miscounts, there was nothing to
+  reconcile against.
+
+  Four paths move stock, and each one patched the quantity and said nothing:
+  `orders.create` sells it, `orders.updateStatus` gives it back on a cancellation,
+  `products.updateStock` is an owner retyping it, and
+  `products.toggleStockTracking` turns the number on and off. All four now write a
+  `stockMovements` row **inside the same transaction as the movement**, so a
+  quantity cannot change without the ledger saying why.
+
+  The row records `before`, `after` and the delta — both ends, because a delta
+  alone is only meaningful against a number nobody recorded. A sale carries the
+  order number; a manual correction carries the member of staff who made it. A sale
+  records no `actorId` at all: the diner is not staff, and putting who bought the
+  last portion into a table the whole team reads would turn a dish screen into a
+  purchase history.
+
+  Nothing is written when nothing moved — a patch that sets 4 to 4 is not a
+  movement, and a ledger padded with them is a ledger nobody reads. The tracking
+  switch is the exception and is recorded at an unchanged quantity, because the
+  switch _is_ the movement there: the number stops meaning anything until it is
+  turned back on.
+
+  The history opens from the Inventaire row it explains, and the table goes with
+  the establishment in the store cascade and into backups after `orders`, since a
+  `sale` row references the order that caused it.
+
+  This is **not** a reservation system. The product sells stock when the order is
+  created and gives it back if it is cancelled, which is the honest model for a
+  restaurant where the gap is minutes. The ledger records that model; it does not
+  change it.
+
 ## 6.5.0
 
 ### Minor Changes

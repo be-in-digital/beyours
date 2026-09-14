@@ -100,3 +100,4 @@ export {
 } from "./cms"
 export { rateLimitsTable } from "./rateLimits"
 export * from "./customers"
+export * from "./stockMovements"

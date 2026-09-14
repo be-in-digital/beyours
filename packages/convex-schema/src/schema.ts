@@ -37,6 +37,7 @@ import {
   customerAddressesTable,
   contactMessagesTable,
   customersTable,
+  stockMovementsTable,
   emailSubscribersTable,
   emailTemplatesTable,
   emailCampaignsTable,
@@ -128,6 +129,7 @@ export default defineSchema({
   contactMessages: contactMessagesTable,
   // Email Marketing
   customers: customersTable,
+  stockMovements: stockMovementsTable,
   emailSubscribers: emailSubscribersTable,
   emailTemplates: emailTemplatesTable,
   emailCampaigns: emailCampaignsTable,
