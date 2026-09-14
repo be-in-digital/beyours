@@ -252,7 +252,7 @@ function MenuContent() {
         </div>
 
         <div className="max-w-7xl mx-auto relative z-10 text-center">
-          <Badge className="bg-white/20 text-primary-foreground border-white/30 backdrop-blur-md px-4 py-1.5 rounded-full mb-8 font-black tracking-widest uppercase text-[10px] shadow-lg">
+          <Badge className="bg-primary-hover text-primary-foreground border-white/30 backdrop-blur-md px-4 py-1.5 rounded-full mb-8 font-black tracking-widest uppercase text-[10px] shadow-lg">
             Notre Carte
           </Badge>
           <h1 className="text-6xl md:text-8xl font-black text-primary-foreground tracking-tighter leading-none mb-8 italic">
@@ -518,7 +518,7 @@ function MenuContent() {
         <div className="relative rounded-[4rem] bg-primary p-12 md:p-24 overflow-hidden text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-12">
           <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -mr-48 -mt-48" />
           <div className="relative z-10 max-w-2xl">
-            <Badge className="bg-white/20 text-primary-foreground border-white/30 backdrop-blur-md px-4 py-1.5 rounded-full mb-6 font-black tracking-widest uppercase text-[10px]">
+            <Badge className="bg-primary-hover text-primary-foreground border-white/30 backdrop-blur-md px-4 py-1.5 rounded-full mb-6 font-black tracking-widest uppercase text-[10px]">
               Une question ?
             </Badge>
             <h2 className="text-4xl md:text-6xl font-black text-primary-foreground tracking-tighter leading-none mb-6 italic">
