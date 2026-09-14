@@ -466,6 +466,48 @@ export const getAdminArticle = {
  * Create a new blog article (draft).
  * Auto-generates slug from title, verifies uniqueness.
  */
+/**
+ * Refuse a category that belongs to another establishment (#112).
+ *
+ * WHY IT IS NEEDED. `generateArticle` is guarded — `_reserveQuota` checks
+ * `content:write` on `storeId` — and that check says nothing about `categoryId`,
+ * which arrives as a separate argument. So a caller holding `content:write` on
+ * their OWN establishment could pass another one's `blogCategories` id, and the
+ * article was written with it.
+ *
+ * WHAT THAT ACTUALLY BROKE, measured rather than assumed. It is not a listing
+ * leak: `listByCategory` is keyed on `storeId` + `publishedCategoryId`, so the
+ * other establishment's blog never surfaces the article. Two things do go wrong.
+ *
+ *   - `getArticleBySlug` resolves the category with a bare `ctx.db.get` on
+ *     `publishedCategoryId` and renders `category.name` on the public article
+ *     page. So ANOTHER ESTABLISHMENT'S CATEGORY NAME appears on this one's blog.
+ *   - The article is unreachable from its own blog's category listing, because
+ *     that listing resolves categories by `by_storeId_slug` and this one is not
+ *     among them. It is published and filed under nothing.
+ *
+ * HERE, NOT AT THE CALLERS. `createArticleCore` is the single insert every path
+ * funnels through — the manual editor, the AI generation action, and the queue
+ * consumer — and a rule that lives in one caller is a rule the other two skip.
+ * Same argument as `assertSectionsInStore` in `menus.ts`.
+ */
+export async function assertCategoryInStore(
+  ctx: any,
+  storeId: string,
+  categoryId: string,
+): Promise<void> {
+  const category = await ctx.db.get(categoryId)
+  // Missing and foreign get the same refusal: which of the two it was is
+  // information about another establishment that this caller has no claim to.
+  if (!category || category.storeId !== storeId) {
+    throw new ConvexError({
+      code: "blog_category_not_in_store",
+      message:
+        "Cette rubrique n'appartient pas à cet établissement. Choisissez-en une dans la liste.",
+    })
+  }
+}
+
 export async function createArticleCore(
   ctx: any,
   args: {
@@ -475,6 +517,8 @@ export async function createArticleCore(
     authorId: string
   },
 ): Promise<string> {
+  await assertCategoryInStore(ctx, args.storeId, args.categoryId)
+
   const title = sanitizePlainText(args.title)
   const slug = await ensureUniqueSlug(ctx, args.storeId, generateSlug(title), null)
   const timestamp = now()
