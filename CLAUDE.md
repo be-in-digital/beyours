@@ -308,10 +308,22 @@ engine green. Measured in Chromium: a store that picked `#d32f2f` had a red
 admin and a green storefront. `buildBrandingCss` now takes `scopes`, and the
 storefront passes `[".storefront-theme"]` (`STOREFRONT_SCOPES`).
 
-The 51 vertical templates still have the identical defect — `site/theme.css`
-also targets `:root` and `.dark` — so `pnpm template:apply` repaints the admin
-and the sign-in pages and not the storefront. Recorded in
-`tasks/wcag-contrast-audit-2026-09-08.md`; not fixed.
+The 51 templates had the identical defect — `:root` and `.dark` only, so
+`pnpm template:apply` repainted the admin and the sign-in pages and not the
+storefront. **Measured again on 14 September 2026: 50 of the 51 are fixed.**
+`scripts/gen-templates.mjs` emits `:root, .storefront-theme` and
+`.dark, .dark .storefront-theme`, and states why at `:306-323`; the sidebar
+blocks deliberately stay on `:root`, since `.storefront-theme` declares no
+sidebar token.
+
+The fifty-first was `templates/default/theme.css` — the one file the generator
+does not write, the one a client edits after applying a template, and the one
+`site/theme.css` starts life as. It is entirely a comment block, and its worked
+example taught `:root { --primary: … }`. Fixed in #41, with
+`apps/themes/__tests__/template-storefront-scope.test.ts` reading the token list
+out of `globals.css` rather than restating it, so a token added to
+`.storefront-theme` is covered on the same commit. Original finding in
+`tasks/wcag-contrast-audit-2026-09-08.md`.
 
 So the template above is the starting point, not the ceiling. Only the role
 gates the Design screen now — `stores:write`, which `manager` does not hold.
