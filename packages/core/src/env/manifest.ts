@@ -275,6 +275,25 @@ const GROUP_DECLARATIONS: readonly Omit<EnvManifestGroup, 'requiredTogether'>[] 
       'BID_NOTIFY_EMAIL',
     ],
   },
+  {
+    /*
+     * Which engine version a deployment could move to (#328, NEW2-SECRETS-7).
+     *
+     * `convex/system.ts` in both apps fetches a packument and compares it against
+     * the installed version, and neither key was in this manifest or in the
+     * Infisical scopes. `infisical-bootstrap.mjs migrate` refuses an out-of-spec
+     * key, so there was no documented way to provision the feed at all — the
+     * Système screen reported "unconfigured" on every deployment and the only way
+     * to learn the names was to read the source.
+     *
+     * Unset is a real state, not a failure: the screen says the feed is not
+     * configured rather than blaming a registry. The token is separate because a
+     * public feed needs none.
+     */
+    feature: 'Flux des mises à jour du moteur (écran Système)',
+    tier: 'site',
+    vars: ['ENGINE_RELEASE_PACKUMENT_URL', 'ENGINE_RELEASE_REGISTRY_TOKEN'],
+  },
 ]
 
 /**
@@ -363,6 +382,11 @@ const CONVEX_KEYS: readonly string[] = [
   'STRIPE_BID_PRICE_ENTERPRISE_ANNUAL',
   'BID_APP_URL',
   'BID_NOTIFY_EMAIL',
+  // The engine update feed, read by `convex/system.ts` in both apps to tell an
+  // operator which version they could move to (#328, NEW2-SECRETS-7). Convex
+  // side because the fetch happens there.
+  'ENGINE_RELEASE_PACKUMENT_URL',
+  'ENGINE_RELEASE_REGISTRY_TOKEN',
 ]
 
 /**

@@ -314,6 +314,21 @@ const siteOptionalShape = {
   // Absolute app URL used to build checkout redirect and customer-email links.
   BID_APP_URL: opt(z.string().url()),
   BID_NOTIFY_EMAIL: opt(z.string().email()),
+  /*
+   * The engine update feed, read by `convex/system.ts` in both apps to tell an
+   * operator which version they could move to (#328, NEW2-SECRETS-7).
+   *
+   * Neither key was declared anywhere, and `infisical-bootstrap.mjs migrate`
+   * refuses an out-of-spec key — so there was no documented way to provision the
+   * feed at all. The Système screen reported "unconfigured" on every deployment
+   * and the only way to learn the names was to read the source.
+   *
+   * Unset is a real state, not a failure: the screen says the feed is not
+   * configured rather than blaming a registry that never let us down. The token
+   * is separate and optional because a public feed needs none.
+   */
+  ENGINE_RELEASE_PACKUMENT_URL: opt(z.string().url()),
+  ENGINE_RELEASE_REGISTRY_TOKEN: opt(z.string().min(1)),
 
   // Contact
   CONTACT_EMAIL: opt(z.string().email()),
@@ -425,6 +440,9 @@ const READER_RELAXED = new Set<string>([
   'STRIPE_BID_PRICE_MAINTENANCE',
   'BID_APP_URL',
   'BID_NOTIFY_EMAIL',
+  // The engine update feed — the fetch runs inside Convex (#328).
+  'ENGINE_RELEASE_PACKUMENT_URL',
+  'ENGINE_RELEASE_REGISTRY_TOKEN',
   'CONTACT_EMAIL',
   'NEXT_PUBLIC_BID_SUPPORT_EMAIL',
   'NEXT_PUBLIC_SENTRY_ENVIRONMENT',
