@@ -1,6 +1,6 @@
 {
   "name": "@be-in-digital/core",
-  "version": "4.2.0",
+  "version": "4.3.0",
   "publishConfig": {
     "access": "restricted"
   },
@@ -42,6 +42,7 @@
     "./dining": "./src/dining/table-number.ts",
     "./auth/rbac": "./src/auth/rbac.ts",
     "./aws/ses/order-confirmation": "./src/aws/ses/order-confirmation.ts",
+    "./aws/ses/order-ready": "./src/aws/ses/order-ready.ts",
     "./aws/media-url": "./src/aws/media-url.ts",
     "./aws/folders": "./src/aws/folders.ts",
     "./email/providers": "./src/email/providers.ts"

@@ -312,6 +312,22 @@ export const ordersTable = defineTable({
    * of every order written before this existed, so no backfill is needed.
    */
   confirmationEmailAt: v.optional(v.number()),
+
+  /**
+   * When the « votre commande est prête » notice was dispatched (#96).
+   *
+   * The same claim as `confirmationEmailAt` above and for the same reason: the
+   * `ready` transition can be reached more than once — a kitchen tablet marking
+   * a ticket ready, a second station finishing, a staff member correcting a
+   * status back and forward — and each of those would otherwise put another
+   * identical email in the diner's inbox.
+   *
+   * It records the DISPATCH, not the delivery. At most one attempt per order.
+   *
+   * Optional: unset means no notice has been dispatched, which is true of every
+   * order written before this existed.
+   */
+  readyEmailAt: v.optional(v.number()),
   /**
    * The invoice issued for this order, once the sale became definitive.
    *

@@ -448,6 +448,98 @@ export const getPrintStuckCount = {
  * Display screen query: returns preparing + ready tickets for the customer-facing TV.
  * Minimal payload: no customer data, no items, no allergens.
  */
+/**
+ * The same screen, read with a display token instead of a staff session (#96).
+ *
+ * WHAT THIS FIXES. `getForDisplay` is wrapped with `kitchen:read` in both apps,
+ * and `/display/[storeId]` is a tablet bolted to a wall in the dining room —
+ * so the screen a customer is meant to read could only be opened by somebody
+ * logged in as staff. The audit called it "the unusable unauthenticated display
+ * screen" and asked for a safe access mechanism rather than an open endpoint.
+ *
+ * The token is that mechanism: one per establishment, on `stores.displayToken`,
+ * created and rotated by the owner. What it guards is deliberately narrow —
+ * `getForDisplay` returns order numbers, statuses, timestamps and the
+ * establishment's own name, which is what is already legible to anybody standing
+ * in the room. It exists so a stranger cannot poll the endpoint and read how busy
+ * the kitchen is, not because the payload is sensitive.
+ *
+ * A STORE WITH NO TOKEN REFUSES. Absent is off, not open, so no deployment
+ * becomes readable by never generating one. Comparison is length-then-bytes, in
+ * full, for the same reason `timingSafeEqual` exists in `resendSignature.ts`.
+ */
+export const getForDisplayByToken = {
+  args: { storeId: v.id("stores"), token: v.string() },
+  handler: async (ctx: any, args: any) => {
+    const store = await ctx.db.get(args.storeId)
+    // The same answer for "no store", "no token configured" and "wrong token":
+    // which of the three it was is information about the establishment that a
+    // caller holding no token has no claim to.
+    if (
+      !store ||
+      typeof store.displayToken !== "string" ||
+      store.displayToken.length === 0 ||
+      !tokensMatch(store.displayToken, args.token)
+    ) {
+      return null
+    }
+
+    return await getForDisplay.handler(ctx, { storeId: args.storeId })
+  },
+}
+
+/**
+ * Compare two tokens without leaking where they diverge.
+ *
+ * `a === b` short-circuits at the first differing character, and the timing of
+ * that is measurable across enough requests. Length is compared first and is not
+ * secret; the bytes are then compared in full, every time.
+ */
+function tokensMatch(expected: string, given: string): boolean {
+  if (expected.length !== given.length) return false
+  let diff = 0
+  for (let i = 0; i < expected.length; i++) {
+    diff |= expected.charCodeAt(i) ^ given.charCodeAt(i)
+  }
+  return diff === 0
+}
+
+/**
+ * Issue or rotate the establishment's display token.
+ *
+ * Rotation is the point: a tablet that leaves the building keeps working until
+ * the owner turns the token over. Returns the new value, because it is the only
+ * time the screen's URL can be assembled — it is stored, not derived.
+ */
+export const rotateDisplayToken = {
+  args: { storeId: v.id("stores") },
+  handler: async (ctx: any, args: any) => {
+    const token = crypto.randomUUID()
+    await ctx.db.patch(args.storeId, { displayToken: token })
+    return { token }
+  },
+}
+
+/**
+ * Whether this establishment has a display screen credential, and nothing more.
+ *
+ * The VALUE is deliberately not returned. `stores.get` is read by every admin
+ * screen, and a token that travelled with it would sit in the browser memory of
+ * every page a member of staff opens — for a credential whose whole job is to be
+ * pasted into one tablet once. The admin shows the URL at the moment it is
+ * rotated and otherwise shows only whether one exists.
+ */
+export const displayTokenState = {
+  args: { storeId: v.id("stores") },
+  handler: async (ctx: any, args: any) => {
+    const store = await ctx.db.get(args.storeId)
+    return {
+      configured:
+        typeof store?.displayToken === "string" && store.displayToken.length > 0,
+    }
+  },
+}
+
 export const getForDisplay = {
   args: { storeId: v.id("stores") },
   handler: async (ctx: any, args: any) => {
