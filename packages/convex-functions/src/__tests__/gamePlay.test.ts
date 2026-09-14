@@ -6,6 +6,9 @@ import {
   pickPrize,
   remainingStock,
   cooldownMsForGame,
+  resolveCooldownHours,
+  MAX_COOLDOWN_HOURS,
+  DEFAULT_COOLDOWN_HOURS,
   play,
   recordScan,
   claim,
@@ -1289,5 +1292,76 @@ describe("getSession — telling the player only what play will honour", () => {
     if (session.status !== "ready") return
     expect(session.game.config).not.toHaveProperty("prizeBudget")
     expect(session.game.config?.primaryColor).toBe("#f97316")
+  })
+})
+
+/**
+ * How long one device waits between two plays (#107).
+ *
+ * `games.config.cooldownHours` was in the schema and read by `cooldownMsForGame`,
+ * and no screen wrote it — the admin declared it in a TypeScript interface and
+ * rendered nothing. Every game on every deployment was stuck on the 24-hour
+ * default, so the audit's "configurable cooldown" was a field with a reader and
+ * no writer.
+ *
+ * It reaches `games.update` through `config: v.any()`, which validates nothing —
+ * hence the clamp, and hence these tests.
+ */
+describe("resolveCooldownHours", () => {
+  it("falls back to the default when nothing is set", () => {
+    expect(resolveCooldownHours({})).toBe(DEFAULT_COOLDOWN_HOURS)
+    expect(resolveCooldownHours({ config: {} })).toBe(DEFAULT_COOLDOWN_HOURS)
+  })
+
+  it("honours what the owner set", () => {
+    expect(resolveCooldownHours({ config: { cooldownHours: 6 } })).toBe(6)
+  })
+
+  it("allows zero, which means no wait", () => {
+    /* A real choice — a one-evening event where every scan should play. It is
+       survivable because the cooldown is not the abuse bound: `consumeRateLimit`
+       bounds the rate and `prizeBudget` bounds the cost. */
+    expect(resolveCooldownHours({ config: { cooldownHours: 0 } })).toBe(0)
+    expect(cooldownMsForGame({ config: { cooldownHours: 0 } })).toBe(0)
+  })
+
+  it("refuses a negative wait", () => {
+    // `playedAt + cooldown` would lie in the past and every play would be
+    // allowed — a cooldown that reads as configured and is not.
+    expect(resolveCooldownHours({ config: { cooldownHours: -5 } })).toBe(0)
+  })
+
+  it("caps an absurd wait at a week", () => {
+    // Past a week the game is not on a cooldown, it is switched off — and
+    // `isActive` is the control for that, on the same screen.
+    expect(resolveCooldownHours({ config: { cooldownHours: 100_000 } })).toBe(
+      MAX_COOLDOWN_HOURS
+    )
+  })
+
+  it("refuses a value that is not a number", () => {
+    // `config` is `v.any()`, so this is reachable from the API.
+    expect(
+      resolveCooldownHours({ config: { cooldownHours: "12" as unknown as number } })
+    ).toBe(DEFAULT_COOLDOWN_HOURS)
+    expect(resolveCooldownHours({ config: { cooldownHours: NaN } })).toBe(
+      DEFAULT_COOLDOWN_HOURS
+    )
+    expect(resolveCooldownHours({ config: { cooldownHours: Infinity } })).toBe(
+      DEFAULT_COOLDOWN_HOURS
+    )
+  })
+
+  it("floors a fractional wait rather than carrying minutes nobody typed", () => {
+    expect(resolveCooldownHours({ config: { cooldownHours: 6.75 } })).toBe(6)
+  })
+
+  it("is what cooldownMsForGame converts, so the screen and the game agree", () => {
+    // The admin renders `resolveCooldownHours`; the player path calls
+    // `cooldownMsForGame`. If they diverged, the owner would be shown a number
+    // the game does not honour.
+    expect(cooldownMsForGame({ config: { cooldownHours: 100_000 } })).toBe(
+      MAX_COOLDOWN_HOURS * 60 * 60 * 1000
+    )
   })
 })

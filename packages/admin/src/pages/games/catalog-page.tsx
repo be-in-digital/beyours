@@ -35,6 +35,10 @@ import {
   PRIZE_BUDGET_LIMITS,
   resolvePrizeBudget,
 } from "@be-in-digital/convex-functions/prizeBudget"
+import {
+  MAX_COOLDOWN_HOURS,
+  resolveCooldownHours,
+} from "@be-in-digital/convex-functions/gamePlay"
 import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"
@@ -479,6 +483,21 @@ export function GameCatalogPage() {
                       aria-label="Activer le parrainage"
                     />
                   </div>
+                  <CooldownControl
+                    config={game.config}
+                    onSave={async (cooldownHours) => {
+                      try {
+                        await updateGame({
+                          id: game._id,
+                          config: { ...(game.config ?? {}), cooldownHours },
+                        })
+                        toast.success("Délai entre deux parties mis à jour")
+                      } catch (error) {
+                        toast.error("Mise à jour impossible — réessayez")
+                        console.error(error)
+                      }
+                    }}
+                  />
                   <PrizeBudgetControl
                     config={game.config}
                     onSave={async (prizeBudget) => {
@@ -748,6 +767,69 @@ export function GameCatalogPage() {
  * Values are clamped by `resolvePrizeBudget`, which is also what the player
  * path calls, so the form cannot promise a bound the game will not honour.
  */
+/**
+ * How long one device waits between two plays (#107).
+ *
+ * `games.config.cooldownHours` was in the schema and read by `cooldownMsForGame`,
+ * and **no screen wrote it** — `catalog-page.tsx` declared it in a TypeScript
+ * interface and rendered nothing. So every game on every deployment was stuck on
+ * the 24-hour default, and the audit's "configurable cooldown" was a field with a
+ * reader and no writer.
+ *
+ * Clamped by `resolveCooldownHours`, which is what the player path calls too, so
+ * the number shown here is the number the game will honour. Zero is a real
+ * choice and means no wait — the cooldown is fairness between honest devices,
+ * not the abuse bound; `consumeRateLimit` bounds the rate and `prizeBudget`
+ * bounds the cost.
+ */
+function CooldownControl({
+  config,
+  onSave,
+}: {
+  config?: { cooldownHours?: number }
+  onSave: (cooldownHours: number) => Promise<void>
+}) {
+  const inForce = resolveCooldownHours({ config })
+  const [hours, setHours] = useState(String(inForce))
+
+  const commit = async (typed: string) => {
+    const next = resolveCooldownHours({ config: { cooldownHours: Number(typed) } })
+    // Show what was actually stored, not what was typed: a value outside the
+    // bounds is clamped rather than refused, and an owner who typed 5000 must not
+    // be left believing the game will honour it. Same rule as the budget below.
+    setHours(String(next))
+    await onSave(next)
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="min-w-0">
+        <Label className="text-sm">Délai entre deux parties</Label>
+        <p className="text-xs text-muted-foreground">
+          Le temps qu&apos;un même appareil attend avant de rejouer. Par défaut :
+          24 h, {MAX_COOLDOWN_HOURS} h au maximum. À 0, il n&apos;y a pas
+          d&apos;attente — le budget de lots reste la limite de ce que la partie
+          peut coûter.
+        </p>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={MAX_COOLDOWN_HOURS}
+          value={hours}
+          onChange={(e) => setHours(e.target.value)}
+          onBlur={() => void commit(hours)}
+          className="w-24"
+          aria-label="Délai entre deux parties, en heures"
+        />
+        <span className="text-xs text-muted-foreground">heures</span>
+      </div>
+    </div>
+  )
+}
+
 function PrizeBudgetControl({
   config,
   onSave,

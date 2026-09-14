@@ -19,9 +19,23 @@ import { gameSounds, haptics, type GameAction, type GameActionType } from "./lib
  * Pre-game actions screen.
  *
  * - "sequential" mode (product default): ONE action per visit. The customer
- *   performs the action (we open the link, then a verification countdown runs
- *   on return), then plays. A stepper tracks progress from visit to visit.
+ *   performs the action — we open the link, then a dwell countdown runs on
+ *   return — then plays. A stepper tracks progress from visit to visit.
  * - "all" mode (legacy): every required action at once.
+ *
+ * NOTHING HERE VERIFIES ANYTHING, AND THE COPY NO LONGER SAYS IT DOES (#107).
+ * This screen used to show the diner « Vérification… 12s » and the owner a field
+ * labelled « Durée de vérification (s) ». There is no verification: the product
+ * opens a link and counts seconds. It cannot read whether a Google review was
+ * left — the Places API exposes reviews of a place, not the identity of the
+ * device that left one — and Instagram and Facebook have no follow-check for a
+ * visitor with no account link.
+ *
+ * So the countdown is what it is: a dwell timer, long enough that the tab was
+ * actually opened, and the action itself is the diner's own declaration. The
+ * words say that now, on both sides. This matters beyond honesty — an owner who
+ * believes the platform checks will set a win ratio as if the reviews were
+ * guaranteed, and the prize budget is real money.
  */
 
 interface ActionsScreenProps {
@@ -32,7 +46,13 @@ interface ActionsScreenProps {
   completedActionIds?: string[]
 }
 
-type QuestStatus = "todo" | "verifying" | "done"
+/**
+ * `waiting` is the dwell countdown, not a check.
+ *
+ * It was called `verifying`, which is what leaked into the diner's copy. The name
+ * stays honest so the next person rendering it cannot reintroduce the claim.
+ */
+type QuestStatus = "todo" | "waiting" | "done"
 
 const ACTION_META: Record<GameActionType, { icon: React.ReactNode; label: string }> = {
   google_review: { icon: <StarIcon className="h-5 w-5" />, label: "Avis Google" },
@@ -63,7 +83,7 @@ export function ActionsScreen({
   }, [])
 
   const startQuest = (action: GameAction) => {
-    if (statuses[action.id] === "done" || statuses[action.id] === "verifying") return
+    if (statuses[action.id] === "done" || statuses[action.id] === "waiting") return
     gameSounds.unlock()
     gameSounds.pop()
     haptics.light()
@@ -71,7 +91,7 @@ export function ActionsScreen({
       window.open(action.url, "_blank", "noopener,noreferrer")
     }
     const seconds = action.timerSeconds ?? DEFAULT_TIMER_SECONDS
-    setStatuses((prev) => ({ ...prev, [action.id]: "verifying" }))
+    setStatuses((prev) => ({ ...prev, [action.id]: "waiting" }))
     setCountdowns((prev) => ({ ...prev, [action.id]: seconds }))
 
     const intervalId = window.setInterval(() => {
@@ -166,12 +186,12 @@ export function ActionsScreen({
             className={`relative flex w-full flex-col items-center gap-4 overflow-hidden rounded-3xl border p-8 text-center transition-colors ${
               currentStatus === "done"
                 ? "border-emerald-400/40 bg-emerald-400/[0.08]"
-                : currentStatus === "verifying"
+                : currentStatus === "waiting"
                   ? "border-amber-300/40 bg-amber-300/[0.06]"
                   : "border-white/10 bg-white/[0.05] active:bg-white/[0.09]"
             }`}
           >
-            {currentStatus === "verifying" && total > 0 && (
+            {currentStatus === "waiting" && total > 0 && (
               <motion.div
                 className="absolute inset-x-0 bottom-0 h-1 bg-amber-300/40"
                 initial={{ width: 0 }}
@@ -207,7 +227,7 @@ export function ActionsScreen({
             <div>
               <p className="font-heading text-lg font-bold text-white/90">{current.name}</p>
               <p className="mt-1 text-sm text-white/50">
-                {currentStatus === "verifying"
+                {currentStatus === "waiting"
                   ? `Validation… ${remaining}s`
                   : currentStatus === "done"
                     ? "C'est fait, merci !"
@@ -349,12 +369,12 @@ function AllActionsView({
               className={`group relative flex items-center gap-3.5 overflow-hidden rounded-2xl border p-4 text-left transition-colors ${
                 status === "done"
                   ? "border-emerald-400/40 bg-emerald-400/[0.08]"
-                  : status === "verifying"
+                  : status === "waiting"
                     ? "border-amber-300/40 bg-amber-300/[0.06]"
                     : "border-white/10 bg-white/[0.05] active:bg-white/[0.09]"
               }`}
             >
-              {status === "verifying" && total > 0 && (
+              {status === "waiting" && total > 0 && (
                 <motion.div
                   className="absolute inset-y-0 left-0 bg-amber-300/10"
                   initial={{ width: 0 }}
@@ -390,8 +410,8 @@ function AllActionsView({
               <div className="relative min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-white/90">{action.name}</p>
                 <p className="mt-0.5 truncate text-xs text-white/70">
-                  {status === "verifying"
-                    ? `Vérification… ${remaining}s`
+                  {status === "waiting"
+                    ? `Encore ${remaining} s…`
                     : status === "done"
                       ? "C'est fait, merci !"
                       : (action.description ?? meta.label)}
@@ -404,7 +424,7 @@ function AllActionsView({
                   ) : (
                     <span className="text-[10px] font-semibold uppercase tracking-wide">Go</span>
                   ))}
-                {status === "verifying" && (
+                {status === "waiting" && (
                   <span className="font-mono text-sm font-bold text-amber-300">{remaining}</span>
                 )}
                 {!action.isRequired && status === "todo" && (
