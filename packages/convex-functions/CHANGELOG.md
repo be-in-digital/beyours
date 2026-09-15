@@ -1,5 +1,138 @@
 # Changelog
 
+## 7.6.0
+
+### Minor Changes
+
+- edff522: Let an order be cancelled while the kitchen is cooking
+
+  `ORDER_STATUS_TRANSITIONS` let `cancelled` be reached from `pending` and
+  `confirmed` and from nowhere else. Once an order was `preparing` it could never be
+  cancelled — so the commonest cancellation there is, the diner who telephones while
+  the kitchen is cooking, could not be recorded at all. The staff's only recourse was
+  to COMPLETE an order that never happened: money in the takings, an invoice in a
+  fiscal series, a sale in the customer book, for food nobody received.
+
+  The reason the window was narrow is a good one and it is about **one kind of
+  order**: Deliveroo and Uber Eats refuse a cancellation once the order is being
+  made, so honouring it on our side alone leaves the restaurant reading « annulée »
+  while a rider is still coming. The table is global and cannot express that, so the
+  constraint moved to `orders.updateStatus`, which has `order.source`.
+
+  `preparing`, `ready` and `out_for_delivery` can now reach `cancelled`, and the
+  admin offers « Annuler la commande » on all three. A marketplace order is refused
+  there with a sentence naming the platform's own dashboard — offered and explained
+  rather than hidden, so an operator is not left wondering why an order they can see
+  cannot be cancelled.
+
+  `delivered` and `completed` still cannot be cancelled: the diner has the food, and
+  money comes back through `payments.refundPayment`, which calls the provider.
+
+  The consequences of the wider window were checked rather than assumed. The stock
+  restore and the coupon release stay once-only — `cancelled` still has no outgoing
+  transition, so an order can only enter it once — and the kitchen ticket leaves the
+  pass, which is the whole point from the kitchen's side.
+
+- a8d2d08: Stop calling a countdown a verification, and let the cooldown be configured
+
+  **Two claims the gamification screens made that the product could not keep.**
+
+  The diner was shown « Vérification… 12s » while a countdown ran, and the owner
+  configured a field labelled « Durée de vérification (s) ». Nothing was verified in
+  either case: the product opens a link and counts seconds. It cannot be verified
+  either — Google's Places API exposes the reviews of a place, not the identity of
+  the device that left one, and neither Instagram nor Facebook offers a follow-check
+  for a visitor with no account link. So the fix is the words: the countdown is a
+  dwell timer, the action is the diner's own declaration, and both screens say so.
+  This is not only honesty — an owner sets the win ratio, and therefore the prize
+  budget, against what they believe the actions guarantee.
+
+  `games.config.cooldownHours` was in the schema and read by `cooldownMsForGame`,
+  and **no screen wrote it**: the admin declared it in a TypeScript interface and
+  rendered nothing. Every game on every deployment was stuck on the 24-hour default.
+  It is a control on the game card now, clamped by `resolveCooldownHours` — which is
+  what the player path calls too, so the number shown is the number the game
+  honours. Zero means no wait, which is a real choice and a survivable one: the
+  cooldown is fairness between honest devices, while `consumeRateLimit` bounds the
+  rate and `prizeBudget` bounds the cost.
+
+### Patch Changes
+
+- 39fe018: Refuse an article filed under another establishment's rubric
+
+  `generateArticle` is guarded — `_reserveQuota` checks `content:write` on
+  `storeId` — and that check said nothing about `categoryId`, which arrives as a
+  separate argument. A caller holding `content:write` on their own establishment
+  could pass another one's `blogCategories` id, and the article was written with it.
+  The manual editor had the same door.
+
+  Not a listing leak: `listByCategory` is keyed on `storeId` +
+  `publishedCategoryId`, so the other establishment's blog never surfaced the
+  article. Two things did go wrong. `getArticleBySlug` resolves the category with a
+  bare `ctx.db.get` and renders `category.name` on the public page, so another
+  establishment's rubric name appeared on this one's blog — and the article was
+  unreachable from its own category listing, which resolves rubrics by
+  `by_storeId_slug`. Published, and filed under nothing.
+
+  `assertCategoryInStore` sits in `createArticleCore`, the single insert the manual
+  editor, the generation action and the queue consumer all funnel through — a rule
+  that lives in one caller is a rule the other two skip.
+
+- 6a1595a: Stop a public coupon lookup publishing the campaign's budget
+
+  `promotions.getByCouponCode` and `promotions.listActiveAuto` are public by design
+  — a coupon is applied before the diner has an account — and they returned the
+  **whole promotion row**. So a guessed code did not merely say "this exists": it
+  said `usageCount` against `maxTotalUsage`, which is how much of the campaign's
+  budget is left, plus the per-customer cap and the withdrawn BOGO product ids.
+  `listActiveAuto` needed no code at all and handed over every automatic campaign
+  the same way.
+
+  Both now return the RULE — what the storefront needs to preview the discount the
+  server will charge — and the budget collapsed to one boolean, `exhausted`. The
+  resolver reads that flag when it is present and the real counters when it is not,
+  so the server keeps the exact check and the storefront can still say « ce code
+  promo a atteint sa limite » without being told how big the campaign was.
+
+  `promotions.list`, the owner's own screen, is guarded with `marketing:read` and
+  still carries everything — it is their campaign.
+
+  **What this does not fix**, stated rather than implied: a public lookup is still
+  an existence oracle, so codes remain guessable one request at a time. A Convex
+  query cannot write and therefore cannot be rate-limited; closing that needs the
+  lookup to become a mutation or an action, which is a larger change than narrowing
+  a payload.
+
+- 9ff9978: Stop backing up sixteen tables that cannot hold a row
+
+  `BACKUP_TABLES` carried all sixteen legacy `cms*` singletons — `cms`, `cmsHome`,
+  `cmsMenu`, `cmsAbout`, `cmsContact`, `cmsBlogPosts`, `cmsCart`, `cmsCheckout`,
+  `cmsTracking`, `cmsSignin`, `cmsSignup`, `cmsPrivacy`, `cmsTerms`, `cms404`,
+  `cmsMaintenance`, `cmsAccount` — on the reasoning that a backup without the pages
+  a client edits is not a backup of a website.
+
+  That was true of the CMS they were written for and is not true of the one that
+  shipped: all sixteen were superseded by the block-based `cmsPages` / `cmsBlocks` /
+  `cmsMedia`, and measure at zero reads, zero inserts and zero patches across the
+  functions package, each app's `convex` and each app's `components`. So the nightly
+  backup on every client deployment walked sixteen tables that cannot hold a row,
+  and a restore walked them again.
+
+  They move to `EXCLUDED_TABLES` with the reason rather than being dropped: the
+  coverage test requires every schema table to be in exactly one bucket, so an
+  omission cannot be silent. They stay declared in the schema because Convex refuses
+  a deploy that drops a table still holding rows, and nothing in this repository can
+  say whether a deployment provisioned two years ago still has one.
+
+  `privacy.ts` carried the same list for the same reason and lost it in #477; this
+  is the other half.
+
+- Updated dependencies [edff522]
+- Updated dependencies [bf17240]
+- Updated dependencies [0c172fa]
+  - @be-in-digital/convex-schema@6.8.0
+  - @be-in-digital/core@4.3.1
+
 ## 7.5.1
 
 ### Patch Changes

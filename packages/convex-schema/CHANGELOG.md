@@ -1,5 +1,63 @@
 # Changelog - @be-in-digital/convex-schema
 
+## 6.8.0
+
+### Minor Changes
+
+- edff522: Let an order be cancelled while the kitchen is cooking
+
+  `ORDER_STATUS_TRANSITIONS` let `cancelled` be reached from `pending` and
+  `confirmed` and from nowhere else. Once an order was `preparing` it could never be
+  cancelled — so the commonest cancellation there is, the diner who telephones while
+  the kitchen is cooking, could not be recorded at all. The staff's only recourse was
+  to COMPLETE an order that never happened: money in the takings, an invoice in a
+  fiscal series, a sale in the customer book, for food nobody received.
+
+  The reason the window was narrow is a good one and it is about **one kind of
+  order**: Deliveroo and Uber Eats refuse a cancellation once the order is being
+  made, so honouring it on our side alone leaves the restaurant reading « annulée »
+  while a rider is still coming. The table is global and cannot express that, so the
+  constraint moved to `orders.updateStatus`, which has `order.source`.
+
+  `preparing`, `ready` and `out_for_delivery` can now reach `cancelled`, and the
+  admin offers « Annuler la commande » on all three. A marketplace order is refused
+  there with a sentence naming the platform's own dashboard — offered and explained
+  rather than hidden, so an operator is not left wondering why an order they can see
+  cannot be cancelled.
+
+  `delivered` and `completed` still cannot be cancelled: the diner has the food, and
+  money comes back through `payments.refundPayment`, which calls the provider.
+
+  The consequences of the wider window were checked rather than assumed. The stock
+  restore and the coupon release stay once-only — `cancelled` still has no outgoing
+  transition, so an order can only enter it once — and the kitchen ticket leaves the
+  pass, which is the whole point from the kitchen's side.
+
+### Patch Changes
+
+- bf17240: Say which order and referral fields nothing writes
+
+  Four schema fields carried comments describing what they would hold —
+  "Human-readable display ID from platform", `delivery` / `collection` / `dine_in`,
+  "Flag for remake orders", a referrer's name — and each has **zero writers** across
+  `packages/convex-functions/src` and both apps' `convex`.
+
+  A descriptive comment on a field nothing populates reads as a shipped capability
+  to anybody auditing the schema, which is how the audit found them.
+  - `orders.externalDisplayId` — the number a kitchen matches against the tablet on
+    the wall. Worth having; `createFromWebhook` extracts it from neither platform's
+    payload, so it is `undefined` on every order.
+  - `orders.deliveryType` — duplicates `orders.type`, which is written and read.
+    Two fields for one fact, one always empty and spelled differently
+    (`collection` vs `pickup`).
+  - `orders.isRemake` — for Deliveroo's remake flow, which is not implemented.
+  - `gameReferrals.referrerName` — no path collects it and no screen asks for one.
+
+  They stay declared and optional: Convex validates a document against the schema on
+  the next write to it, so a stored field absent from the schema fails that write,
+  and nothing here can say whether an older deployment holds one. Same treatment as
+  `stores.integrations` — the field stays, and the comment says who reads it.
+
 ## 6.7.0
 
 ### Minor Changes
