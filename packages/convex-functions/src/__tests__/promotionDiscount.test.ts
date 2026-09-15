@@ -402,3 +402,80 @@ describe("happy hour", () => {
   })
 })
 
+
+// ============================================================================
+// The campaign's budget (#493, held here since #532)
+// ============================================================================
+
+/**
+ * A coupon that has run out is refused by the RESOLVER.
+ *
+ * WHY THIS WAS MISSING AND WHY IT MATTERS. #532 inverted #493 in an isolated
+ * worktree — the `exhausted` branch deleted, this file run — and all 38 cases
+ * stayed green. So the one check standing between a spent campaign and free
+ * money was held by nothing: every other guard in this file is about who may use
+ * a code and when, and none of them counts.
+ *
+ * TWO SOURCES, ONE VERDICT, and that is the part worth pinning. The public
+ * lookup emits `exhausted` and NOT the counters — a diner has no business
+ * knowing how big a campaign was or how much of it is left — while the server
+ * reads whole rows and counts. The resolver has to agree with itself whichever
+ * it is given, or the storefront and the order path disagree about the same
+ * coupon.
+ */
+describe("a campaign that has run out", () => {
+  it("is refused when the caller says so", () => {
+    // The storefront's shape: a flag, no numbers.
+    const error = rejection(() => resolve(promo({ exhausted: true })))
+
+    expect(error.reason).toBe("total_usage_exceeded")
+    expect(error.message).toMatch(/limite d'utilisation/)
+  })
+
+  it("is refused when the counters say so", () => {
+    // The server's shape: whole rows, and it counts them itself.
+    const error = rejection(() =>
+      resolve(promo({ usageCount: 50, maxTotalUsage: 50 }))
+    )
+
+    expect(error.reason).toBe("total_usage_exceeded")
+  })
+
+  it("is refused when the counters have gone past the cap", () => {
+    // `>=`, not `===`. Two orders racing each other past the last seat is the
+    // ordinary way a counter overshoots, and an equality test would let every
+    // order after the overshoot through.
+    expect(() => resolve(promo({ usageCount: 51, maxTotalUsage: 50 }))).toThrow(
+      PromotionRejectedError
+    )
+  })
+
+  it("resolves while the campaign still has room", () => {
+    /*
+     * Anti-vacuity, and the case that fails if the branch is written to refuse
+     * too much: a resolver that threw on every capped promotion would satisfy
+     * all three cases above and take a live campaign off the storefront.
+     */
+    expect(resolve(promo({ usageCount: 49, maxTotalUsage: 50 })).discount).toBe(1_000)
+  })
+
+  it("resolves when the caller says it is not exhausted, whatever the counters hold", () => {
+    /*
+     * The flag WINS when it is supplied, and this pins that order. The public
+     * lookup computes it against the same row the server would read, so a
+     * resolver that preferred the counters here would refuse a coupon the
+     * storefront had just offered — and the counters it would be reading are the
+     * ones the public shape deliberately does not carry.
+     */
+    expect(
+      resolve(promo({ exhausted: false, usageCount: 999, maxTotalUsage: 50 })).discount
+    ).toBe(1_000)
+  })
+
+  it("resolves when there is no cap at all", () => {
+    // `maxTotalUsage` absent is an uncapped campaign, not a spent one. Reading
+    // `undefined >= undefined` as exhausted would refuse every promotion that
+    // never set a budget, which is most of them.
+    expect(resolve(promo({ usageCount: 10_000 })).discount).toBe(1_000)
+  })
+})
