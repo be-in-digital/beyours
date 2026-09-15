@@ -95,8 +95,9 @@ function packageDefinitions(): string[] {
   for (const file of readdirSync(PACKAGE_SRC)) {
     if (!file.endsWith(".ts")) continue
     const source = readFileSync(join(PACKAGE_SRC, file), "utf8")
-    const module = file.replace(/\.ts$/, "")
-    for (const [, name] of source.matchAll(DEFINITION)) found.push(`${module}.${name}`)
+    // Not `module`: Next's `no-assign-module-variable` rule forbids the name.
+    const moduleName = file.replace(/\.ts$/, "")
+    for (const [, name] of source.matchAll(DEFINITION)) found.push(`${moduleName}.${name}`)
   }
   return found.sort()
 }
