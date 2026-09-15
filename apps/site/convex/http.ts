@@ -403,12 +403,32 @@ async function handleCheckoutCompleted(
   // (payment row, subscription) each have their own existence guard.
   const firstProcessing = order.status !== "paid";
 
-  // Payment method — payment_method_types holds the allowed methods, not the one used.
-  // Either use payment_method_collection or infer it: with a single allowed method, that is the one.
-  // Otherwise, check whether Stripe reports the method on the charges (not available on the session alone).
+  /* ── Which method the buyer actually paid with (#528) ──
+     `payment_method_types` holds the methods the session ALLOWED, not the one
+     used, and `convex/stripe.ts` always offers at least two — `["card",
+     "alma"]`, plus `"klarna"` for a personal buyer. So the "exactly one
+     allowed, therefore that one" inference below could never fire on a real
+     session, and 100% of orders recorded « card »: on the confirmation the
+     buyer reads, on the payment row, and in the ops console the team reads
+     before making the promised call.
+
+     The fact is on the intent's latest charge. That is a Stripe read, and the
+     action NEVER throws — it runs after the money is collected, on a webhook
+     that must not 500, so `null` means "we could not tell" and the inference
+     below stands. Losing the label is acceptable; losing the settlement is
+     not. */
+  const intentForMethod = refId(session.payment_intent);
+  const reported = intentForMethod
+    ? (
+        await ctx.runAction(internal.stripe.paymentMethodUsed, {
+          stripePaymentIntentId: intentForMethod,
+        })
+      ).method
+    : null;
+
   const paymentMethodTypes = session.payment_method_types;
-  let pmt: string = "card";
-  if (paymentMethodTypes && paymentMethodTypes.length === 1) {
+  let pmt: string = reported ?? "card";
+  if (!reported && paymentMethodTypes && paymentMethodTypes.length === 1) {
     pmt = paymentMethodTypes[0]!;
   }
   const paymentMethod = pmt === "alma" ? "alma" : pmt === "klarna" ? "klarna" : "card";
@@ -437,6 +457,34 @@ async function handleCheckoutCompleted(
       amountCents: session.amount_total ?? order.amountCents,
       paymentMethod,
       isFounders: order.isFounders ?? false,
+      // So the mail carries the link `kickoff-gate.tsx` tells the buyer to open.
+      orderId: order._id,
+    });
+
+    // And the team (#528). The mail above promises the buyer a call « sous 24h »
+    // and, until this line, nothing told anybody here that a sale had happened:
+    // `BID_NOTIFY_EMAIL` served contact leads and supervision alerts only. The
+    // clock starts when the buyer pays, not when somebody next opens the ops
+    // console, so the dashboard was not a substitute.
+    //
+    // Inside `firstProcessing` for the same reason the buyer's is: Stripe
+    // redelivers, and a second « nouvelle vente » for one order is how an
+    // internal alert stops being read.
+    await ctx.scheduler.runAfter(0, internal.email.send.sendOrderTeamNotification, {
+      orderId: order._id,
+      firstName: order.customerFirstName,
+      lastName: order.customerLastName,
+      email: order.customerEmail,
+      ...(order.customerPhone ? { phone: order.customerPhone } : {}),
+      restaurantName: order.restaurantName,
+      ...(order.city ? { city: order.city } : {}),
+      plan: order.plan,
+      orderType: order.orderType,
+      ...(order.billingPeriod ? { billingPeriod: order.billingPeriod } : {}),
+      amountCents: session.amount_total ?? order.amountCents,
+      paymentMethod,
+      isFounders: order.isFounders ?? false,
+      paidAtMs: Date.now(),
     });
   }
 

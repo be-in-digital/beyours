@@ -29,7 +29,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import schema from "../../convex/schema";
 import { api } from "../../convex/_generated/api";
 import { postSigned, stubWebhookSecrets } from "./helpers/stripeWebhook";
-import { drainScheduled } from "./helpers/scheduled";
+import { drainScheduled, scheduledCount } from "./helpers/scheduled";
 import type { Id } from "../../convex/_generated/dataModel";
 
 const modules = import.meta.glob("../../convex/**/*.ts");
@@ -490,3 +490,84 @@ describe("the events the route answers", () => {
     expect(await countRows(t)).toEqual({ payments: 0, subscriptions: 0 });
   });
 });
+
+describe("a sale tells the team, not only the buyer (#528)", () => {
+  /*
+   * WHAT WAS MISSING. `firstProcessing` scheduled exactly one send:
+   * `sendOrderConfirmation`, to the customer. That email promises the buyer a
+   * call « sous 24h », and nothing told anybody here that there was a call to
+   * make. `BID_NOTIFY_EMAIL` served contact leads and supervision alerts; the
+   * one event the business exists for went to nobody.
+   *
+   * A sale is not recoverable from a dashboard nobody is looking at: the
+   * promise is time-bounded, and the 24 hours start when the buyer pays, not
+   * when someone next opens the ops console.
+   */
+
+  test("a settled checkout schedules two sends, not one", async () => {
+    const t = testConvex();
+    await seedPendingOrder(t);
+
+    await postSigned(t, ROUTE, event("checkout.session.completed", session()), SECRET);
+
+    expect(await scheduledCount(t, "sendOrderConfirmation")).toBe(1);
+    expect(await scheduledCount(t, "sendOrderTeamNotification")).toBe(1);
+  });
+
+  test("an unpaid session tells nobody", async () => {
+    // The team mail rides the same `firstProcessing` guard as the buyer's, so
+    // an unsettled Klarna or Alma session must not page anyone about a sale
+    // that has not happened.
+    const t = testConvex();
+    await seedPendingOrder(t);
+
+    await postSigned(
+      t,
+      ROUTE,
+      event("checkout.session.completed", session({ payment_status: "unpaid" })),
+      SECRET,
+    );
+
+    expect(await scheduledCount(t, "sendOrderTeamNotification")).toBe(0);
+  });
+
+  test("a redelivered webhook does not tell the team twice", async () => {
+    /*
+     * The reason it goes inside `firstProcessing` rather than beside it. Stripe
+     * redelivers, and a second « nouvelle vente » for the same order is how an
+     * internal alert stops being read.
+     */
+    const t = testConvex();
+    await seedPendingOrder(t);
+    const body = event("checkout.session.completed", session());
+
+    await postSigned(t, ROUTE, body, SECRET);
+    await postSigned(t, ROUTE, event("checkout.session.completed", session()), SECRET);
+
+    expect(await scheduledCount(t, "sendOrderTeamNotification")).toBe(1);
+  });
+
+  test("an asynchronous settlement tells the team too", async () => {
+    // Klarna and Alma complete the session unpaid and settle later. The sale is
+    // no less a sale for arriving through the other door, and this is the door
+    // the two payment methods on the checkout actually use.
+    const t = testConvex();
+    await seedPendingOrder(t);
+
+    await postSigned(
+      t,
+      ROUTE,
+      event("checkout.session.completed", session({ payment_status: "unpaid" })),
+      SECRET,
+    );
+    await postSigned(
+      t,
+      ROUTE,
+      event("checkout.session.async_payment_succeeded", session()),
+      SECRET,
+    );
+
+    expect(await theOrder(t).then((order) => order.status)).toBe("paid");
+    expect(await scheduledCount(t, "sendOrderTeamNotification")).toBe(1);
+  });
+})

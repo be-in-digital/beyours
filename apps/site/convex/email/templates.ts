@@ -56,6 +56,13 @@ export interface OrderConfirmationData {
   isFounders?: boolean
   logoUrl: string
   bookingUrl?: string
+  /**
+   * Back to `/checkout/success?orderId=…` (#528).
+   *
+   * Optional, because the id is not always to hand at send time and a missing
+   * link must degrade to no line rather than to a broken one.
+   */
+  orderUrl?: string
 }
 
 export function orderConfirmationEmail(data: OrderConfirmationData): BuiltEmail {
@@ -78,6 +85,25 @@ export function orderConfirmationEmail(data: OrderConfirmationData): BuiltEmail 
     ? button("Réserver mon rendez-vous de lancement", data.bookingUrl)
     : ""
 
+  /*
+   * The link back to the order (#528).
+   *
+   * `components/checkout/kickoff-gate.tsx` tells a buyer who reaches
+   * `/checkout/success` without a valid `orderId`: « Si vous venez de payer,
+   * ouvrez le lien reçu par email. » This mail carried no such link. Its only
+   * CTA is the booking URL, which goes straight to the booking tool and past
+   * the gate — so the page's one instruction pointed at something that did not
+   * exist, and a buyer who closed the tab had no way back.
+   *
+   * Muted rather than a second button: the booking CTA is what we want pressed.
+   * This is the one that has to EXIST.
+   */
+  const backToOrder = data.orderUrl
+    ? muted(
+        `Besoin de revenir à votre commande ? <a href="${data.orderUrl}" style="color:${BRAND.ink};">Ouvrir ma commande</a>`,
+      )
+    : ""
+
   const contentHtml = [
     heading(`Merci ${escapeHtml(data.firstName)}, c'est confirmé.`),
     paragraph(
@@ -87,6 +113,7 @@ export function orderConfirmationEmail(data: OrderConfirmationData): BuiltEmail 
     totalLine("Payé", data.amountCents),
     nextSteps,
     cta,
+    backToOrder,
     muted("Une question ? Répondez simplement à cet email, on vous lit."),
   ].join("")
 
@@ -108,6 +135,7 @@ export function orderConfirmationEmail(data: OrderConfirmationData): BuiltEmail 
       "",
       "La suite : notre équipe vous contacte sous 24h ouvrées pour lancer votre projet.",
       data.bookingUrl ? `Réserver votre rendez-vous : ${data.bookingUrl}` : "",
+      data.orderUrl ? `Revenir à votre commande : ${data.orderUrl}` : "",
     ].filter(Boolean)),
   }
 }
@@ -280,6 +308,107 @@ export function contactTeamNotificationEmail(data: ContactTeamData): BuiltEmail 
       "Message :",
       data.message,
     ].filter(Boolean)),
+  }
+}
+
+// ── 5b. Team notification: a sale ────────────────────────────────────────────
+
+/**
+ * The sale nobody was told about (#528).
+ *
+ * `checkout.session.completed` scheduled exactly one send — the buyer's
+ * confirmation — and that email promises a call « sous 24h ». Nothing told
+ * anybody here that there was a call to make. `BID_NOTIFY_EMAIL` served contact
+ * leads and supervision alerts; the one event the business exists for went to
+ * nobody, and the 24 hours start when the buyer pays, not when somebody next
+ * opens the ops console.
+ *
+ * Everything needed to make that call is in the mail, because an alert whose
+ * only possible response is "go and look it up" has moved the work rather than
+ * done it: who bought, for which establishment, which plan, how much, and a
+ * `mailto:` and a `tel:` that work from a phone.
+ */
+export interface OrderTeamData {
+  orderId: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  restaurantName: string
+  city?: string
+  plan: string
+  orderType: string
+  billingPeriod?: string
+  amountCents: number
+  paymentMethod: string
+  isFounders: boolean
+  paidAtMs: number
+  logoUrl: string
+  consoleUrl?: string
+}
+
+export function orderTeamNotificationEmail(data: OrderTeamData): BuiltEmail {
+  const who = `${data.firstName} ${data.lastName}`.trim()
+
+  const rows: Array<[string, string]> = [
+    ["Établissement", escapeHtml(data.restaurantName)],
+    ["Client", escapeHtml(who)],
+    ["Email", escapeHtml(data.email)],
+  ]
+  if (data.phone) rows.push(["Téléphone", escapeHtml(data.phone)])
+  if (data.city) rows.push(["Ville", escapeHtml(data.city)])
+  rows.push(["Offre", escapeHtml(data.plan)])
+  rows.push(["Type", escapeHtml(data.orderType)])
+  if (data.billingPeriod) rows.push(["Facturation", escapeHtml(data.billingPeriod)])
+  rows.push(["Montant", euros(data.amountCents)])
+  rows.push(["Paiement", escapeHtml(data.paymentMethod)])
+  if (data.isFounders) rows.push(["Fondateurs", "oui"])
+  rows.push(["Payé le", dateFr(data.paidAtMs)])
+  rows.push(["Commande", escapeHtml(data.orderId)])
+
+  const contentHtml = [
+    heading("Nouvelle vente"),
+    paragraph(
+      // The deadline, on the screen, because it is the only part of this mail
+      // that is a decision rather than a fact.
+      `L'email de confirmation promet un appel <strong>sous 24h</strong> à ${escapeHtml(who)}.`,
+    ),
+    detailRows(rows),
+    button("Appeler le client", `tel:${encodeURIComponent(data.phone ?? "")}`),
+    data.consoleUrl ? button("Ouvrir la commande", data.consoleUrl) : "",
+  ]
+    .filter(Boolean)
+    .join("")
+
+  return {
+    subject: `[Vente] ${data.restaurantName} — ${data.plan} — ${euros(data.amountCents)}`,
+    html: emailShell({
+      preheader: `Nouvelle vente : ${data.restaurantName}`,
+      logoUrl: data.logoUrl,
+      contentHtml,
+      footerLines: ["Notification interne BeYours"],
+    }),
+    text: textDoc(
+      [
+        "Nouvelle vente",
+        "",
+        `L'email de confirmation promet un appel sous 24h à ${who}.`,
+        "",
+        `Établissement : ${data.restaurantName}`,
+        `Client : ${who}`,
+        `Email : ${data.email}`,
+        data.phone ? `Téléphone : ${data.phone}` : "",
+        data.city ? `Ville : ${data.city}` : "",
+        `Offre : ${data.plan}`,
+        `Type : ${data.orderType}`,
+        data.billingPeriod ? `Facturation : ${data.billingPeriod}` : "",
+        `Montant : ${euros(data.amountCents)}`,
+        `Paiement : ${data.paymentMethod}`,
+        data.isFounders ? "Fondateurs : oui" : "",
+        `Payé le : ${dateFr(data.paidAtMs)}`,
+        `Commande : ${data.orderId}`,
+      ].filter(Boolean),
+    ),
   }
 }
 

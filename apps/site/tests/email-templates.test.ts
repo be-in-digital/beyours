@@ -72,6 +72,44 @@ describe("orderConfirmationEmail", () => {
     expect(email.html).not.toContain("<b>Pizza</b>");
     expect(email.html).toContain("&lt;b&gt;Pizza&lt;/b&gt;");
   });
+
+  it("carries the link back to the order the success page asks for (#528)", () => {
+    /*
+     * THE CONTRADICTION. `components/checkout/kickoff-gate.tsx` tells a buyer
+     * who lands on `/checkout/success` without a valid `orderId`: « Si vous
+     * venez de payer, ouvrez le lien reçu par email. » This email carried no
+     * such link. Its only CTA is the booking URL, which goes straight to the
+     * booking tool and past the gate — so the one instruction the page gives
+     * pointed at something that did not exist, and a buyer who closed the tab
+     * had no way back to the kickoff booking.
+     */
+    const email = orderConfirmationEmail({
+      firstName: "Nadia",
+      restaurantName: "Chez Momo",
+      plan: "essentielle",
+      orderType: "creation",
+      amountCents: 350000,
+      logoUrl: LOGO,
+      orderUrl: "https://beyours.fr/checkout/success?orderId=abc123",
+    });
+    expect(email.html).toContain("https://beyours.fr/checkout/success?orderId=abc123");
+    expect(email.text).toContain("https://beyours.fr/checkout/success?orderId=abc123");
+  });
+
+  it("stays well-formed when there is no order link to give", () => {
+    // Anti-vacuity, and the real case: `orderUrl` is optional, so a template
+    // that required it would throw rather than degrade.
+    const email = orderConfirmationEmail({
+      firstName: "Nadia",
+      restaurantName: "Chez Momo",
+      plan: "essentielle",
+      orderType: "creation",
+      amountCents: 350000,
+      logoUrl: LOGO,
+    });
+    expectWellFormed(email);
+    expect(email.html).not.toContain("checkout/success");
+  });
 });
 
 describe("renewalReceiptEmail", () => {
