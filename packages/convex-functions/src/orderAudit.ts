@@ -75,11 +75,24 @@ export async function recordOrderStatusChange(
     // honest answer there, and it is better than failing the status change.
   }
 
-  await ctx.db.insert("systemAuditLog", {
-    action: "order_status_change",
-    performedBy: actor,
-    performedAt: input.now,
-    details: orderStatusAuditDetails(input),
-    result: "success" as const,
-  })
+  try {
+    await ctx.db.insert("systemAuditLog", {
+      action: "order_status_change",
+      performedBy: actor,
+      performedAt: input.now,
+      details: orderStatusAuditDetails(input),
+      result: "success" as const,
+    })
+  } catch {
+    // The insert sat OUTSIDE the try for as long as the docblock above promised
+    // it could not throw, and it runs in the caller's transaction: a write
+    // conflict or an oversized document took the order's own status patch down
+    // with it. A cook marking an order ready read « Erreur », the ticket stayed
+    // open, and the cause was a log line nobody on the pass had asked for.
+    //
+    // Swallowed deliberately and not rethrown: there is no caller that could do
+    // anything with it, and the alternative is the failure this guards against.
+    // The line is lost, which is the smaller harm and the one the promise
+    // already chose. Held by `__tests__/orderAudit.test.ts`.
+  }
 }

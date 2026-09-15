@@ -169,15 +169,39 @@ describe("the unmatched-import panel", () => {
   })
 
   it("stays out of the way when an import left nothing to resolve", async () => {
+    // Nothing to resolve is the ordinary state, and an empty card on every
+    // store's integrations tab is noise.
     state.orphans = []
 
     expect((await mountPanel("store_a")).textContent).toBe("")
   })
 
-  it("says nothing while the answer is still loading", async () => {
+  it("says it is still counting rather than looking clean (#531)", async () => {
+    /*
+     * THE DEFECT. `undefined` and `[]` both rendered nothing, and the two mean
+     * opposite things on this screen. An owner who has just run an import comes
+     * to this tab to see what did not match: an empty tab while the query is in
+     * flight reads as "everything matched", and by the time the panel appears
+     * they have drawn the conclusion or navigated away.
+     *
+     * The clean state stays silent — that is the sibling difference and it is
+     * deliberate. Only the unresolved one speaks.
+     */
     state.orphans = undefined
 
-    expect((await mountPanel("store_a")).textContent).toBe("")
+    const container = await mountPanel("store_a")
+
+    expect(container.textContent).not.toBe("")
+    expect(container.querySelector('[data-testid="orphan-products-loading"]')).not.toBeNull()
+  })
+
+  it("shows no loading state once the answer is in", async () => {
+    // Anti-vacuity for the two above: a marker that is always present would
+    // satisfy the loading assertion and say nothing.
+    state.orphans = []
+    expect(
+      (await mountPanel("store_a")).querySelector('[data-testid="orphan-products-loading"]')
+    ).toBeNull()
   })
 
   it("asks nothing of the backend before a store is selected", async () => {

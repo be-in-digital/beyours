@@ -142,3 +142,46 @@ export function resolvePaymentMethod(
   }
   return null
 }
+
+/**
+ * Is there a payment method other than card the diner could turn to (#531)?
+ *
+ * WHY THE CHECKOUT NEEDS THIS. When a card action is refused, the server says
+ * « Le paiement par carte est indisponible pour le moment. Choisissez un autre
+ * moyen de paiement. » — and the server does not know what is on the diner's
+ * screen. On a delivery order at an establishment that takes no cash and no
+ * PayPal, the card tile is the only tile there is, and that second sentence
+ * asks the diner to do something the page does not offer. They read it as their
+ * own mistake and look for a control that was never there.
+ *
+ * Deliberately the same `isPaymentMethodSelectable` the tiles are rendered from,
+ * rather than a second reading of the settings: the sentence has to be true of
+ * THIS screen, and the only way to keep it true is to ask the same question the
+ * screen asked.
+ *
+ * `card` is excluded by construction — it is the one that just failed.
+ */
+export function hasAlternativeToCard(context: PaymentMethodContext): boolean {
+  return (["paypal", "cash"] as const).some((method) =>
+    isPaymentMethodSelectable(method, context)
+  )
+}
+
+/**
+ * What the checkout tells a diner when the card action was refused (#531).
+ *
+ * The server's own sentence ends « Choisissez un autre moyen de paiement. »,
+ * which is right whenever there IS another one and wrong when card is the only
+ * tile on the page. The refusal is thrown from `convex/stripe.ts` and
+ * `convex/sumup.ts`, which know the deployment's settings and not the screen,
+ * so the second half of the sentence is decided here — on the client, against
+ * the same context the tiles were rendered from.
+ *
+ * The first half never changes: the fact is the same either way.
+ */
+export function cardUnavailableMessage(context: PaymentMethodContext): string {
+  const first = "Le paiement par carte est indisponible pour le moment."
+  return hasAlternativeToCard(context)
+    ? `${first} Choisissez un autre moyen de paiement.`
+    : `${first} Réessayez dans un instant ou contactez le restaurant.`
+}

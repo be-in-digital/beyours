@@ -460,13 +460,21 @@ export const dashboardStats = {
       .withIndex("by_storeId_lastOrderAt", (q: any) =>
         q.eq("storeId", args.storeId).gte("lastOrderAt", periodStart)
       )
-      .take(DASHBOARD_CUSTOMER_SCAN_LIMIT)
+      .take(DASHBOARD_CUSTOMER_SCAN_LIMIT + 1)
+
+    // One row past the cap, for the same reason the orders read above takes
+    // one past its own: `rows.length === LIMIT` cannot tell a book that ends
+    // there from one that was cut there. Without it « Taux de retour » was a
+    // percentage over an arbitrary 2,000 diners with nothing on the card
+    // saying so (#531).
+    const customersTruncated = customerRows.length > DASHBOARD_CUSTOMER_SCAN_LIMIT
 
     return computeDashboardStats(
       rows.slice(0, DASHBOARD_ORDER_SCAN_LIMIT),
       { ...args, now: Date.now() },
       truncated,
-      customerRows
+      customerRows.slice(0, DASHBOARD_CUSTOMER_SCAN_LIMIT),
+      customersTruncated
     )
   },
 }

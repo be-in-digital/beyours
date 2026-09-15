@@ -33,6 +33,7 @@ import {
   recent as ordersRecent,
   dashboardStats,
   DASHBOARD_ORDER_SCAN_LIMIT,
+  DASHBOARD_CUSTOMER_SCAN_LIMIT,
   RECENT_ORDERS_LIMIT,
 } from "../orders"
 import { getByStore as paymentsGetByStore } from "../payments"
@@ -177,6 +178,68 @@ describe("orders.dashboardStats", () => {
     expect(ctx.reads()).toBeLessThanOrEqual(DASHBOARD_ORDER_SCAN_LIMIT + 1)
     // And says so, rather than presenting a floor as a total.
     expect(stats.truncated).toBe(true)
+  })
+
+  /** `count` diners, all of whom ordered inside the window. */
+  function busyCustomers(count: number) {
+    const now = Date.now()
+    return Array.from({ length: count }, (_, i) => ({
+      _id: `customers:${i}`,
+      storeId: STORE,
+      // Half of them had been here before the period; the rate is beside the
+      // point here, the cap is not.
+      firstOrderAt: i % 2 === 0 ? now - 400 * DAY : now - 2 * 60 * 60 * 1000,
+      lastOrderAt: now - 60 * 60 * 1000,
+    }))
+  }
+
+  it("says so when the customer book is larger than one read (#531)", async () => {
+    /*
+     * THE DEFECT. The orders read beside this one answers `truncated` when it
+     * hits its cap; the customer read took 2,000 rows and said nothing. « Taux
+     * de retour » on an establishment with more than 2,000 distinct diners in
+     * the period was a rate over an arbitrary 2,000 of them, rendered as a
+     * plain percentage with no qualification anywhere on the card.
+     *
+     * `truncated` belongs on `diners` rather than beside the orders' flag
+     * because they are two reads with two caps: a period can exhaust either one
+     * alone.
+     */
+    const ctx = createCountingDb({
+      orders: busyOrders(10, 60_000),
+      customers: busyCustomers(DASHBOARD_CUSTOMER_SCAN_LIMIT + 500),
+    })
+    const stats = await dashboardStats.handler(ctx, { storeId: STORE, ...windows() })
+
+    expect(stats.diners?.truncated).toBe(true)
+    expect(stats.diners?.identified).toBe(DASHBOARD_CUSTOMER_SCAN_LIMIT)
+    // Still bounded: the extra row the cap detection reads, and no more.
+    expect(stats.diners!.identified).toBeLessThanOrEqual(DASHBOARD_CUSTOMER_SCAN_LIMIT)
+  })
+
+  it("does not claim truncation on a book that fits", async () => {
+    // Anti-vacuity: a flag hard-coded true would satisfy the case above.
+    const ctx = createCountingDb({
+      orders: busyOrders(10, 60_000),
+      customers: busyCustomers(12),
+    })
+    const stats = await dashboardStats.handler(ctx, { storeId: STORE, ...windows() })
+
+    expect(stats.diners?.truncated).toBe(false)
+    expect(stats.diners?.identified).toBe(12)
+  })
+
+  it("does not claim truncation on a book exactly at the cap", async () => {
+    // The off-by-one the `+ 1` read exists to get right: 2,000 rows read in
+    // full is not a truncated answer.
+    const ctx = createCountingDb({
+      orders: busyOrders(10, 60_000),
+      customers: busyCustomers(DASHBOARD_CUSTOMER_SCAN_LIMIT),
+    })
+    const stats = await dashboardStats.handler(ctx, { storeId: STORE, ...windows() })
+
+    expect(stats.diners?.truncated).toBe(false)
+    expect(stats.diners?.identified).toBe(DASHBOARD_CUSTOMER_SCAN_LIMIT)
   })
 
   it("answers with the aggregates rather than the orders", async () => {

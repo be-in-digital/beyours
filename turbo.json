@@ -288,6 +288,13 @@
         // resolver returns `null`, and every assertion about a report leaving
         // the process would pass while nothing left.
         "SENTRY_DSN",
+        // Where `apps/site` sends a Stripe buyer back. `siteOrigin()` reads it
+        // first and falls back to NEXT_PUBLIC_SITE_URL and then to the
+        // production host, so an undeclared SITE_URL does not fail — it quietly
+        // resolves to the fallback, and `checkout-return-urls.test.ts` asserts
+        // the precedence between the three. Undeclared, the first of the three
+        // is never observable and the case passes on the second.
+        "SITE_URL",
         // NEXT_PUBLIC_* already crosses the boundary — turbo passes the prefix
         // through unconditionally, measured. They are named anyway so they
         // belong to the CACHE KEY: a suite run against one VAT stance must not
@@ -494,6 +501,13 @@
         // resolver returns `null`, and every assertion about a report leaving
         // the process would pass while nothing left.
         "SENTRY_DSN",
+        // Where `apps/site` sends a Stripe buyer back. `siteOrigin()` reads it
+        // first and falls back to NEXT_PUBLIC_SITE_URL and then to the
+        // production host, so an undeclared SITE_URL does not fail — it quietly
+        // resolves to the fallback, and `checkout-return-urls.test.ts` asserts
+        // the precedence between the three. Undeclared, the first of the three
+        // is never observable and the case passes on the second.
+        "SITE_URL",
         // NEXT_PUBLIC_* already crosses the boundary — turbo passes the prefix
         // through unconditionally, measured. They are named anyway so they
         // belong to the CACHE KEY: a suite run against one VAT stance must not
