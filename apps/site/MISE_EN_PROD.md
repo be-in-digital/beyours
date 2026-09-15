@@ -15,8 +15,10 @@
 > reasoning below is kept as the record of what was done at the time.
 
 
-What is left to do before we can **really sell and take money** on `web-restaurant`
-(the site that commercializes the product). Its counterpart on the delivered
+What is left to do before we can **really sell and take money** on `apps/site`
+(the commercial site, `@beyours/site`, deployed to beyours.fr). It was called
+`web-restaurant` when this note was written and the directory has not carried
+that name for a long time; corrected in #534. Its counterpart on the delivered
 product side is `apps/reference/MISE_EN_PROD.md` — do not confuse the two.
 
 Status: the commercial foundation is **~70% real** (Stripe checkout, idempotent

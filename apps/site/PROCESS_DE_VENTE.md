@@ -1,5 +1,13 @@
 # Sales process — Be in Digital Restauration
 
+> **« Calendly » means the booking tool, whichever it is (#534).** Booking runs on
+> **bookself.app** (Cal.com) under the BeYours brand — see
+> `components/booking-modal.tsx`, which records that the old link pointed at
+> `calendly.com/hello-beindigital`, the agency, on a site selling BeYours. The
+> environment variable is `BOOKING_URL`; `CALENDLY_URL` is still read as a
+> fallback so deployed environments keep working until they are renamed. The
+> steps below are unchanged — only the vendor's name in them is.
+
 The procedure that was missing: how we get from an unknown restaurant owner to a
 paying customer, live and under maintenance. It covers **what is already wired
 into the product**, **what is still manual**, and **who does what**.

@@ -56,7 +56,14 @@ The most recent systematic measurement is
 `cdc6c81`: **70 ship, 6 are partial, and 17 are absent**, of 93 features. It lists
 every row with the evidence for its verdict, so it can be checked rather than
 believed, and `pnpm check:claude-md` fails when the commit it names stops being an
-ancestor of `HEAD`.
+ancestor of `HEAD`, when the heading and the prose disagree, or when the ledger
+file itself is gone.
+
+**Two sweeps have been taken since and neither left a ledger here (#534):**
+66 · 10 · 17 on 11 September 2026 and 71 · 7 · 15 on 15 September. Neither figure
+can be checked in this repository, so neither replaces the one above — that is
+the rule this section exists to state, applied to itself. Re-measure, commit the
+ledger, then move the number.
 
 It supersedes the **discovery audit of 1 September 2026**
 ([`tasks/fix-prompts.md:16-19`](tasks/fix-prompts.md)), taken at `009af63`:
@@ -124,9 +131,14 @@ LAUNCH-04 §4, tracked as #352.
 
 **Not built:** *Nutritional information* — `products.nutritionalInfo` exists
 (`packages/convex-schema/src/tables/catalog.ts:105`) and no component reads it
-(`grep -rn "nutritionalInfo" --include='*.tsx'` → 0). *Image gallery* — products
-carry an `images` array and every consumer reads `images[0]`; there is no
-multi-image uploader and no gallery.
+(`grep -rn "nutritionalInfo" --include='*.tsx'` → 0). *Image gallery* — a dish now HAS a
+multi-image uploader (`ProductImagesField`, up to `MAX_PRODUCT_IMAGES` = 6, with
+promote-to-first and remove), added by #105 because the form had no control for
+`products.images` at all and only the AI image-to-product flow ever wrote one.
+What is still absent is the gallery: every storefront consumer reads
+`images?.[0]` — the card, the grid and the detail page — so the second
+photograph an owner uploads is stored and shown nowhere. This paragraph said
+there was no uploader either, which stopped being true at #105.
 
 ### Orders
 
@@ -142,7 +154,11 @@ at `FIELD_LIMITS.orderNote` on both ends
 (`packages/convex-functions/src/rateLimit.ts`). Every part of that path existed
 before; the input did not, in either app, so the ticket's note line was always blank.
 
-**Not built — scheduled orders.** `orders.scheduledFor` exists in the schema, but
+**Not built — scheduled orders.** `orders.scheduledFor` no longer exists in the
+schema at all — the field has been removed, and `grep -rn scheduledFor
+packages/convex-schema` finds only `autoBlog`'s, which is a different thing. The
+paragraph below describes the state before that removal and is kept for the
+argument, not for the field. Still absent, and now absent from the schema too:
 `orders.create` **takes no `scheduledFor` argument** (see its validator block,
 `packages/convex-functions/src/orders.ts:349` onwards) and the field now has **no
 writer at all**: its only one was `uberEatsOrders.saveFromPlatform`, a dead
@@ -334,12 +350,18 @@ takes `scopes` and the storefront passes its own. The template chosen at clone
 time is the starting point, not the ceiling. `stores:write` is the only gate left, so
 a `manager` sees the screen and cannot save from it.
 
-**Not built — a vertical template does not reach the storefront.** The same
-cascade defect, in the other half of the design system: `site/theme.css`, written
-by `pnpm template:apply <slug>`, declares its 29 tokens on `:root` and `.dark`,
-so it repaints the admin and the sign-in pages and leaves the storefront on the
-engine's green. Measured with `templates/pizzeria-milano` in Chromium. See
+**Fixed — a vertical template reaches the storefront.** This read "not built",
+and described a real defect: `site/theme.css`, written by
+`pnpm template:apply <slug>`, declared its 29 tokens on `:root` and `.dark`
+only, so it repainted the admin and the sign-in pages and left the shop on the
+engine's green. Measured with `templates/pizzeria-milano` in Chromium; see
 `tasks/wcag-contrast-audit-2026-09-08.md`.
+
+`scripts/gen-templates.mjs` now emits `:root, .storefront-theme` and
+`.dark, .dark .storefront-theme`, and states why at `:306-323`; the sidebar
+blocks stay on `:root` deliberately, since `.storefront-theme` declares no
+sidebar token. `templates/default/theme.css` — the one file the generator does
+not write — was the fifty-first and was fixed in #41.
 
 **Partial — font selection.** The stored family reaches the page through that same
 chain, and nothing fetches a webfont: only Inter and Poppins are bundled, so any
@@ -348,10 +370,25 @@ The screen states this rather than leaving it to be discovered.
 
 **Not built:** a runtime theme selector. Theme choice is a developer running a script
 in the client's repository, not a setting an owner can change — `themeId` still has
-zero readers and zero writers, held there by `design-surface.test.ts`. Also not
-built: custom CSS and layout options — no field and no screen for either, and in the
-case of custom CSS deliberately so, since nothing interpolates a stored string into
-the emitted stylesheet.
+zero readers and zero writers, held there by `design-surface.test.ts`.
+
+**Layout is built, at clone time (#507, #510-#515).** This paragraph used to say
+"also not built: custom CSS and layout options — no field and no screen for
+either". Layout now travels with a template: seven families —
+`nav`, `hero`, `menu`, `btn`, `tex`, `foot`, `up` — declared once in
+`lib/layout-families.ts`, written by `pnpm template:apply` into
+`site/layout.ts`, and emitted as `data-*` attributes on `<html>` by rules
+confined to `.storefront-theme`.
+
+It is honoured **per value, not per family**, and the gap is measured rather
+than glossed: `HONOURED` names what `globals.css` actually paints, and since
+#529 an unpainted value is emitted as the engine's with the ask recorded beside
+it in `data-<family>-requested`, so the DOM stops claiming a layout the shop
+does not render. `templates/README.md` carries the per-family reasons, and
+`__tests__/layout-families.test.ts` pins the counts.
+
+Still not built, and deliberately: custom CSS. There is no field and no screen,
+and nothing interpolates a stored string into the emitted stylesheet.
 
 > `packages/themes` does not exist. It was an empty stub and was removed. Templates
 > live in `apps/themes/templates/`.
@@ -404,11 +441,11 @@ and repeating a stale finding is the same failure as inventing one.
 | # | Claim | State at `158019f` | Evidence |
 | --- | --- | --- | --- |
 | T-1 | Analytics is the paid tier's differentiator | **Still absent** | 0 files; `pricing-data.ts:119`. Premium is closed for sale, so it cannot currently be bought. |
-| T-2 | Customer management (CRM) | **Still absent** | `<ComingSoon title="Clients"/>` in both apps; no `customers` table among the 75; kept out of the nav on purpose (comment in `nav-config.ts`). |
+| T-2 | Customer management (CRM) | **Built, since #481** | `/dashboard/customers` renders `CustomersPage`, not a placeholder; the `customers` table exists (`packages/convex-schema/src/tables/customers.ts`) and #364 built the book behind it. It is still kept out of the nav on purpose, which is a different fact and the one the old comment in `nav-config.ts` states. This row read "Still absent" until #534. |
 | T-3 | Themes chosen at runtime | **Still absent** | `themeId` in 5 declarations, 0 readers, 0 writers. Theme = `pnpm template:apply` at clone time. |
 | T-4 | Sitemap emits `/s/{slug}` 404s; structured data unused | **Fixed** | `apps/themes/app/sitemap.ts:5` records the removal; `<JsonLd>` is mounted in the storefront layout, menu, product and blog pages. |
 | T-5 | Push notifications | **Still absent** | `grep -rniE "web-?push|firebase|fcm|expo-notifications|serviceWorker|PushManager"` over `apps/themes` and the four packages → 0. Sold as "planned" only (`pricing-data.ts:126`). |
-| T-6 | Scheduled orders / time-slot click-and-collect | **Still absent** | `orders.create` has no `scheduledFor` argument; only the Uber Eats importer writes the field. |
+| T-6 | Scheduled orders / time-slot click-and-collect | **Still absent** | `orders.create` has no `scheduledFor` argument, and the field is gone from the schema entirely — its only writer was a dead Uber Eats importer, so the column went with it. This row said the importer "writes the field", present tense, after both had been removed. |
 | T-7 | Daily backups and 24/7 monitoring | **Shipping, with two stated limits** | Monitoring: per-client Sentry ([`apps/docs/deployment/sentry.md`](apps/docs/deployment/sentry.md)), a `/health` route, and a prober whose health transitions now e-mail the team in both directions (`apps/site/convex/saMonitoring.ts`). Backups: a nightly cron writes every restorable table plus the fiscal archive to the client's S3 bucket under `backups/`, kept 30 days by a lifecycle rule (`apps/*/convex/systemBackupOffsite.ts`, coverage in `packages/convex-functions/src/backupTables.ts`). The two limits, both in the sold copy: the backup stays in the client's own AWS account, and the media is referenced rather than duplicated. A rota is what would make « 24/7 » literally true, and a destination is not a rota. |
 | T-8 | Fifteen features that are schema fields, dead exports, or nothing | **Mostly still true**, two corrections | See the per-domain sections above. Corrections: `translationJobs` **does** have a writer now (`autoTranslate.ts:998`); *order assignment* has a real mutation exported in both apps but still no caller and nothing that renders it. |
 | T-9 | Reviews, ratings, SMS, suppliers, purchase orders have no schema | **Still true** | `grep -inE "review|rating|reservation|sms|push" packages/convex-schema/src/schema.ts` → no match among the 75 tables. Table reservations were resolved differently — see §6. |

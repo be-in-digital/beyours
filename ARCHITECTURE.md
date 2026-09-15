@@ -296,7 +296,10 @@ that keep getting re-litigated:
 
 `packages/admin/src/config/nav-config.ts` is what an owner can actually *reach*. Two
 routes exist and are deliberately kept out of the nav, each with a comment saying so:
-`customers` and `contentComponents`. Both render `<ComingSoon/>` in both apps.
+`customers` and `contentComponents`. Only `contentComponents` renders
+`<ComingSoon/>`; `customers` has been a real screen since #481 — the customer
+book #364 built — and is kept out of the nav for its own reason, not for being
+empty. This line said "both" until #534.
 
 `navTourId(href)` in the same file is the one place that computes a sidebar
 entry's `data-tour` anchor. It is a function rather than a template literal because
