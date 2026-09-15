@@ -1,4 +1,29 @@
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 import { defineConfig } from 'tsup'
+
+/**
+ * Every `@be-in-digital/core` subpath whose export target is raw TypeScript.
+ *
+ * READ, NOT LISTED. This was two literals — `./allergens` and, after a client's
+ * Playwright run found it, `./status-labels`. Core declares NINE such subpaths
+ * and gains more; a hand-written list is one import away from being wrong
+ * again, and wrong here means a `dist` that a consumer cannot load at all.
+ *
+ * Subpaths that are absent from this list because their target is `dist` stay
+ * external, which they must: core's root entry pulls in the AWS SDK.
+ */
+function rawSourceSubpathsOfCore(): string[] {
+  const here = dirname(fileURLToPath(import.meta.url))
+  const manifest = JSON.parse(
+    readFileSync(join(here, '../core/package.json'), 'utf8')
+  ) as { exports?: Record<string, unknown> }
+
+  return Object.entries(manifest.exports ?? {})
+    .filter(([, target]) => typeof target === 'string' && target.endsWith('.ts'))
+    .map(([subpath]) => `@be-in-digital/core${subpath.replace(/^\./, '')}`)
+}
 
 export default defineConfig({
   // One entry per subpath declared in package.json "exports". Building only
@@ -42,5 +67,12 @@ export default defineConfig({
   // because the Convex bundler compiles it and the schema has to stay readable
   // as source. The four helpers this package uses are pure functions and a
   // constant — no singleton to duplicate, unlike the stores above.
-  noExternal: ['@be-in-digital/core/allergens', '@be-in-digital/convex-schema'],
+  //
+  // THE LIST IS DERIVED (#516 follow-up). `@be-in-digital/core/status-labels` is
+  // a third subpath of the same shape and was missed by the two literals that
+  // used to be here — found by `engine-bundle-loads.test.ts` on CI, whose Node
+  // 20 cannot strip types AT ALL, where a developer's Node 24 strips them
+  // happily and the guard passed. Reading core's own export map is what stops a
+  // fourth.
+  noExternal: [...rawSourceSubpathsOfCore(), '@be-in-digital/convex-schema'],
 })
