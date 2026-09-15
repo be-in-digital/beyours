@@ -1,5 +1,20 @@
 # @be-in-digital/mcp-server
 
+## 1.1.12
+
+### Patch Changes
+
+- Carry the versions this release cut
+
+  `src/package-versions.ts` is generated from the workspace `package.json` files
+  and is `mcp-server`'s own source, so a bump of the four engine packages changes
+  it. Without a release of its own the table would say 22.0.0 while every client
+  installing `mcp-server` still received the one naming 21.0.0 — the registry
+  serving a version index that is a release behind the versions it indexes.
+
+  `check:source-drift` is what refuses that, and it refused this release until the
+  changeset existed. Nothing else changed here.
+
 ## 1.1.11
 
 ### Patch Changes
