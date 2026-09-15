@@ -2,6 +2,7 @@
 
 import Stripe from "stripe";
 import { v } from "convex/values";
+import { siteOrigin } from "./siteOrigin";
 import { action, internalAction } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
@@ -144,8 +145,7 @@ export const createCheckoutSession = action({
     restaurantName: v.string(),
     city: v.string(),
     siret: v.optional(v.string()),
-    successUrl: v.string(),
-    cancelUrl: v.string(),
+
     /* ── art. L. 221-28: the express request for immediate performance ──
        Required, never defaulted. It used to live only in React state
        (components/checkout/checkout-flow.tsx), which meant two things: the
@@ -409,7 +409,7 @@ export const createCheckoutSession = action({
       }
 
       return {
-        url: `${args.successUrl}?orderId=${orderId}&test=1`,
+        url: `${siteOrigin()}/checkout/success?orderId=${orderId}&test=1`,
         orderId,
         testMode: true,
       };
@@ -546,8 +546,15 @@ export const createCheckoutSession = action({
         founders: String(isFounders),
         ...referralMetadata,
       },
-      success_url: `${args.successUrl}?orderId=${orderId}`,
-      cancel_url: `${args.cancelUrl}?orderId=${orderId}`,
+      /* ── Where Stripe sends the buyer back ──
+         Derived from `SITE_URL`, never from the caller. This action is public
+         and unauthenticated, and these two used to be arguments — so a genuine
+         BeYours Checkout session, with the real company name and the real card
+         form, could be made to land on any domain after payment (#527). The
+         origin is the server's own address, not something the caller knows and
+         the server does not. */
+      success_url: `${siteOrigin()}/checkout/success?orderId=${orderId}`,
+      cancel_url: `${siteOrigin()}/checkout/cancel?orderId=${orderId}`,
     });
 
     await ctx.runMutation(internal.orders.setStripeSessionId, {

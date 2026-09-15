@@ -31,8 +31,6 @@ const CHECKOUT = {
   restaurantName: "Trattoria Rossi",
   city: "Lyon",
   siret: "12345678901234",
-  successUrl: "https://beyours.fr/checkout/success",
-  cancelUrl: "https://beyours.fr/checkout",
   // What the summary rendered. Aligned with the regime for the same reason
   // STRIPE_TAX_ENABLED is pinned below: these cases are about the Stripe key,
   // and the third refusal must not answer for the first.

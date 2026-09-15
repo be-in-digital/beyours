@@ -56,8 +56,6 @@ function checkoutArgs() {
     customerPhone: "+33600000000",
     restaurantName: "Pizzeria Napoli",
     city: "Paris",
-    successUrl: "https://beyours.fr/merci",
-    cancelUrl: "https://beyours.fr/tarifs",
     // The stance the summary rendered, which is what the deployment's flags
     // require of it. Overridden in the cross-env cases below, which are about
     // the two disagreeing.

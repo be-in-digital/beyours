@@ -40,8 +40,6 @@ function checkoutArgs(plan: (typeof PLAN_SLUGS)[number]) {
     customerPhone: "+33600000000",
     restaurantName: "Pizzeria Napoli",
     city: "Paris",
-    successUrl: "https://beyours.fr/merci",
-    cancelUrl: "https://beyours.fr/tarifs",
     // Both required since #349 and #346, and both given the value that keeps
     // the guards below quiet, so a refusal in these cases can only be about
     // plan availability. `taxDisplayed` has to agree with STRIPE_TAX_ENABLED,

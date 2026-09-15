@@ -36,8 +36,6 @@ const CHECKOUT = {
   customerPhone: "+33612345678",
   restaurantName: "Chez Flood",
   city: "Lyon",
-  successUrl: "https://beyours.fr/checkout/success",
-  cancelUrl: "https://beyours.fr/checkout",
   /* Required since #349: the express request for immediate performance
      (art. L. 221-28). The handler refuses a checkout without it, so every
      case here has to carry it to reach the behaviour it is testing. */

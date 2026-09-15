@@ -28,17 +28,12 @@ import {
   renewalReceiptEmail,
   type BuiltEmail,
 } from "./templates";
+import { siteOrigin } from "../siteOrigin";
 
 // ── Runtime config ───────────────────────────────────────────────────────────
 
 /** Public marketing site (absolute links + logo). */
-function appUrl(): string {
-  return (
-    process.env.SITE_URL ??
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    "https://beyours.fr"
-  ).replace(/\/$/, "");
-}
+const appUrl = siteOrigin;
 
 function logoUrl(): string {
   return `${appUrl()}/logo.png`;
