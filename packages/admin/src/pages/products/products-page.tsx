@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useQuery, useMutation } from "convex/react"
-import { Plus, Grid3x3, List, X, ShoppingBag, ImagePlus } from "lucide-react"
+import { Plus, Grid3x3, List, X, ShoppingBag, ImagePlus, Copy } from "lucide-react"
 import { useAdminStoreId, useDebounce, useAdminApi } from "../../hooks/admin-hooks"
 import { toast } from "sonner"
 import { adminRoutes } from "../../config/admin-routes"
@@ -36,6 +36,7 @@ import {
   EmptyContent,
 } from "@be-in-digital/ui"
 import { ProductsTable } from "./products-table"
+import { DuplicateCatalogModal } from "./duplicate-catalog-modal"
 import { MenusTab } from "./menus-tab"
 import { ResolvingStore } from "../../components/resolving-store"
 
@@ -65,6 +66,7 @@ export function ProductsPage() {
   const [sourceFilter, setSourceFilter] = useState<string>("all")
   const [viewMode, setViewMode] = useState<"table" | "grid">("table")
   const [currentPage, setCurrentPage] = useState(1)
+  const [duplicateOpen, setDuplicateOpen] = useState(false)
 
   const debouncedSearch = useDebounce(searchQuery, 300)
 
@@ -83,6 +85,26 @@ export function ProductsPage() {
   )
 
   const reorderProducts = useMutation(api?.products?.reorder)
+
+  /*
+   * MULTI-STORE CATALOGUE DUPLICATION, WHICH HAD NO DOOR (#525).
+   *
+   * `products.duplicateCatalog` is registered as a `storeMutation` in both apps,
+   * guarded on `products:write` on the TARGET and `products:read` on the source,
+   * and covered by `catalogue-scope.test.ts`. `DuplicateCatalogModal` is
+   * exported from this package's barrel and was rendered by nothing, so the
+   * feature — one of the things "1 restaurant owner = 1-∞ locations" is made of
+   * — could not be reached from any screen.
+   *
+   * The control appears only for an owner who HAS another establishment:
+   * duplicating a catalogue into the one establishment you have is not an
+   * action, and offering it would be a button that can only ever refuse.
+   */
+  const stores = useQuery(api?.stores?.listAll ?? ("skip" as any)) as
+    | Array<{ _id: string; name: string }>
+    | undefined
+  const duplicateCatalog = useMutation(api?.products?.duplicateCatalog)
+  const canDuplicate = (stores?.length ?? 0) > 1
 
   // The catalogue in the order the storefront serves it: `sortOrder` first —
   // what "Recommandé" reads — then the name, so two products left at 0 do not
@@ -193,6 +215,12 @@ export function ProductsPage() {
         </div>
         {activeTab === "products" ? (
           <div className="flex items-center gap-2">
+            {canDuplicate && (
+              <Button variant="outline" onClick={() => setDuplicateOpen(true)}>
+                <Copy className="mr-2 h-4 w-4" aria-hidden="true" />
+                Dupliquer la carte
+              </Button>
+            )}
             <Button variant="outline" asChild>
               <Link href={adminRoutes.fromImage}>
                 <ImagePlus className="mr-2 h-4 w-4" />
@@ -210,6 +238,18 @@ export function ProductsPage() {
           <MenusTabAddButton />
         )}
       </div>
+
+      {storeId && (
+        <DuplicateCatalogModal
+          open={duplicateOpen}
+          onOpenChange={setDuplicateOpen}
+          stores={stores ?? []}
+          currentStoreId={storeId}
+          onConfirm={async (sourceStoreId, targetStoreId) =>
+            duplicateCatalog({ sourceStoreId, targetStoreId })
+          }
+        />
+      )}
 
       {/* Tabs: Produits | Menus */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>

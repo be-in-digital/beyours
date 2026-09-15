@@ -10,6 +10,7 @@ import { useAdminStoreId, useAdminApi } from "../../hooks/admin-hooks"
 import { eurosToCents, centsToEuros } from "../../lib/formatters"
 import { adminRoutes } from "../../config/admin-routes"
 import { ProductForm } from "./product-form"
+import { PropagationModal } from "./propagation-modal"
 import { Button } from "@be-in-digital/ui"
 import { ResolvingStore } from "../../components/resolving-store"
 
@@ -25,6 +26,35 @@ export function EditProductPage({ params }: EditProductPageProps) {
   const [isLoading, setIsLoading] = useState(false)
 
   const updateProduct = useMutation(api?.products?.update)
+
+  /*
+   * MULTI-STORE PROPAGATION, WHICH HAD NO DOOR (#525).
+   *
+   * `products.updateWithPropagation` is registered as a `storeMutation` in both
+   * apps and covered by `catalogue-scope.test.ts`; `PropagationModal` is
+   * exported from this package's barrel and was rendered by nothing. A chain
+   * could not push one dish's new price to its other establishments from any
+   * screen.
+   *
+   * TWO CALLS, NOT ONE, and the reason is the validator.
+   * `updateWithPropagation.updates` carries only what means the same thing in
+   * another establishment — name, description, price, images, allergens, tags,
+   * the two flags, preparation time. It has no `slug`, `sku`, `options`,
+   * `stock`, `scheduling` or `categoryId`, and it must not: a slug is unique per
+   * establishment and a stock count is one kitchen's. So the save is always the
+   * full `products.update` on THIS establishment, and propagation is a second,
+   * explicit step over the shared attributes.
+   *
+   * The modal is offered only to an owner with another establishment. `self` is
+   * its default and costs nothing — the save has already happened.
+   */
+  const stores = useQuery(api?.stores?.listAll ?? ("skip" as any)) as
+    | Array<{ _id: string; name: string }>
+    | undefined
+  const updateWithPropagation = useMutation(api?.products?.updateWithPropagation)
+  const [propagateOpen, setPropagateOpen] = useState(false)
+  /** What the last successful save wrote, narrowed to what may travel. */
+  const [propagatable, setPropagatable] = useState<Record<string, unknown> | null>(null)
 
   // Fetch the product
   const product = useQuery(
@@ -88,6 +118,27 @@ export function EditProductPage({ params }: EditProductPageProps) {
       })
 
       toast.success("Produit mis à jour avec succès")
+
+      // More than one establishment: ask whether this should travel, rather
+      // than leaving the answer on a screen nobody could open.
+      if ((stores?.length ?? 0) > 1) {
+        setPropagatable({
+          name: data.name,
+          description: data.description,
+          price: priceInCents,
+          compareAtPrice: compareAtPriceInCents,
+          taxRate: data.taxRate,
+          preparationTime: data.preparationTime,
+          images: data.images || [],
+          allergens: data.allergens || [],
+          tags: data.tags || [],
+          isActive: data.isActive,
+          isFeatured: data.isFeatured,
+        })
+        setPropagateOpen(true)
+        return
+      }
+
       router.push(adminRoutes.products)
     } catch (error) {
       toast.error("Échec de la mise à jour du produit")
@@ -149,6 +200,48 @@ export function EditProductPage({ params }: EditProductPageProps) {
           submitLabel="Mettre à jour le produit"
         />
       </div>
+
+      {storeId && propagatable && (
+        <PropagationModal
+          open={propagateOpen}
+          onOpenChange={(open) => {
+            setPropagateOpen(open)
+            // Dismissing is « self »: the save has already happened, so closing
+            // the dialog must not look like losing the edit.
+            if (!open) router.push(adminRoutes.products)
+          }}
+          stores={stores ?? []}
+          currentStoreId={storeId}
+          isLoading={isLoading}
+          onConfirm={async (scope, targetStoreIds) => {
+            if (scope === "self") {
+              router.push(adminRoutes.products)
+              return
+            }
+            setIsLoading(true)
+            try {
+              const result = await updateWithPropagation({
+                productId,
+                updates: propagatable,
+                scope,
+                ...(targetStoreIds ? { targetStoreIds } : {}),
+              })
+              const count = (result?.storeIds?.length ?? 1) - 1
+              toast.success(
+                count > 0
+                  ? `Appliqué à ${count} autre${count > 1 ? "s" : ""} établissement${count > 1 ? "s" : ""}`
+                  : "Aucun autre établissement n'avait ce produit"
+              )
+              router.push(adminRoutes.products)
+            } catch (error) {
+              toast.error("Échec de la propagation — la modification locale est enregistrée")
+              console.error(error)
+            } finally {
+              setIsLoading(false)
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

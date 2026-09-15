@@ -5,6 +5,7 @@ import type { StoreIntegration } from "./store-detail-types"
 import { StoreUberEatsCard } from "./store-uber-eats-card"
 import { StoreDeliverooCard } from "./store-deliveroo-card"
 import { OrphanProductsPanel } from "./orphan-products-panel"
+import { WebhookFailuresPanel } from "./webhook-failures-panel"
 import { UberEatsConnectionCard } from "./uber-eats-connection-card"
 
 interface StoreIntegrationsTabProps {
@@ -112,6 +113,13 @@ export function StoreIntegrationsTab({
           first thing to resolve, and the cards are where the next import is
           launched from. */}
       <OrphanProductsPanel storeId={storeId} />
+
+      {/* Above everything: a platform order that never reached the kitchen is
+          the most urgent thing this tab can be carrying, and it is the one
+          failure every other screen looks normal through. Deployment-wide, not
+          per store — an entry whose reason is `unidentified_store` has no
+          establishment by definition. */}
+      <WebhookFailuresPanel />
 
       {/* The merchant account is one connection for the whole deployment, so it
           sits above the per-store cards rather than inside one of them. */}
