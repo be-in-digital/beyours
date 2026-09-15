@@ -611,6 +611,63 @@ async function resolveReusablePaymentMethod(
 }
 
 /* ═══════════════════════════════════════════════
+   Which method the buyer actually paid with
+   Called by the checkout.session.completed webhook
+   ═══════════════════════════════════════════════ */
+
+/**
+ * The method on the intent's latest charge (#528).
+ *
+ * WHY THE WEBHOOK CANNOT ANSWER THIS ITSELF. It used to infer the method from
+ * `session.payment_method_types`, which holds the methods the session ALLOWED,
+ * not the one used — and this file always offers at least two (`["card",
+ * "alma"]`, plus `"klarna"` for a personal buyer). So the "exactly one allowed,
+ * therefore that one" branch could never fire on a real session, and every
+ * order recorded « card », including a purchase paid with Alma or Klarna.
+ *
+ * `payment_method_details.type` on the charge is the fact. It costs one Stripe
+ * read, which is the same read `resolveReusablePaymentMethod` already makes for
+ * the renewals, on the same event.
+ *
+ * NEVER THROWS, for the reason stated there: this runs after the money is
+ * collected, on a webhook that must not 500 — Stripe would replay in a loop and
+ * stack up effects. `null` means "we could not tell", and the caller keeps what
+ * it had rather than losing the settlement over a label.
+ */
+export const paymentMethodUsed = internalAction({
+  args: { stripePaymentIntentId: v.string() },
+  handler: async (_ctx, args): Promise<{ method: string | null }> => {
+    try {
+      /* INSIDE the try, and that is not tidiness. `getStripeOrTestMode` THROWS
+         `StripeNotConfiguredError` on a deployment with no key — it does not
+         answer null — and an action that throws inside `handleCheckoutCompleted`
+         makes the route answer 500, which sends Stripe into a replay loop over
+         a label. Measured: constructing it above the try turned nine settlement
+         cases from 200 into 500. The test-mode client is null, which is the
+         deliberate no-payment path and equally not an answer. */
+      const stripe = getStripeOrTestMode("lire le moyen de paiement");
+      if (!stripe) return { method: null };
+      const intent = await stripe.paymentIntents.retrieve(args.stripePaymentIntentId, {
+        expand: ["latest_charge"],
+      });
+      const charge = intent.latest_charge;
+      // A string here is an unexpanded id, which tells us nothing — answer
+      // `null` rather than reading it as a method name.
+      if (!charge || typeof charge === "string") return { method: null };
+      const type = charge.payment_method_details?.type;
+      return { method: typeof type === "string" ? type : null };
+    } catch (err) {
+      console.error(
+        `[STRIPE] Lecture du moyen de paiement de ${args.stripePaymentIntentId} impossible — ` +
+          `la commande gardera le moyen déduit:`,
+        err,
+      );
+      return { method: null };
+    }
+  },
+});
+
+/* ═══════════════════════════════════════════════
    Create the maintenance subscription after the 1st payment
    Called by the checkout.session.completed webhook
    ═══════════════════════════════════════════════ */

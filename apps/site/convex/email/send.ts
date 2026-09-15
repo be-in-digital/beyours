@@ -24,6 +24,7 @@ import {
   contactTeamNotificationEmail,
   deploymentHealthEmail,
   orderConfirmationEmail,
+  orderTeamNotificationEmail,
   paymentFailedEmail,
   renewalReceiptEmail,
   type BuiltEmail,
@@ -118,6 +119,9 @@ export const sendOrderConfirmation = internalAction({
     amountCents: v.number(),
     paymentMethod: v.optional(v.string()),
     isFounders: v.optional(v.boolean()),
+    /* The id behind `/checkout/success?orderId=…` (#528). Optional so an
+       older scheduled job, or a caller that does not have it, still sends. */
+    orderId: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
     return deliver(
@@ -132,6 +136,12 @@ export const sendOrderConfirmation = internalAction({
         isFounders: args.isFounders,
         logoUrl: logoUrl(),
         bookingUrl: bookingUrl(),
+        /* The one instruction `kickoff-gate.tsx` gives a buyer who lands on
+           the success page without a valid id: « ouvrez le lien reçu par
+           email ». Until this line there was no such link in any mail. */
+        ...(args.orderId
+          ? { orderUrl: `${appUrl()}/checkout/success?orderId=${encodeURIComponent(args.orderId)}` }
+          : {}),
       }),
     );
   },
@@ -218,6 +228,70 @@ export const sendContactTeamNotification = internalAction({
         message: args.message,
         submittedAtMs: args.submittedAtMs,
         logoUrl: logoUrl(),
+      }),
+    );
+  },
+});
+
+/**
+ * The sale nobody was told about (#528).
+ *
+ * `checkout.session.completed` scheduled exactly one send — the buyer's
+ * confirmation — and that mail promises a call « sous 24h ». Nothing told
+ * anybody here that there was a call to make: `BID_NOTIFY_EMAIL` served contact
+ * leads and supervision alerts, and the one event the business exists for went
+ * nowhere. The clock starts when the buyer pays, not when somebody next opens
+ * the ops console, so a dashboard is not a substitute for this.
+ *
+ * Scheduled from INSIDE the webhook's `firstProcessing` branch, beside the
+ * buyer's mail and under the same guard. Stripe redelivers, and a second
+ * « nouvelle vente » for one order is how an internal alert stops being read.
+ *
+ * Best-effort like every other send here: `deliver` never throws, so a team
+ * mail that fails cannot fail a webhook that has already taken the money.
+ */
+export const sendOrderTeamNotification = internalAction({
+  args: {
+    orderId: v.string(),
+    firstName: v.string(),
+    lastName: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    restaurantName: v.string(),
+    city: v.optional(v.string()),
+    plan: v.string(),
+    orderType: v.string(),
+    billingPeriod: v.optional(v.string()),
+    amountCents: v.number(),
+    paymentMethod: v.string(),
+    isFounders: v.boolean(),
+    paidAtMs: v.number(),
+  },
+  handler: async (_ctx, args) => {
+    const to = teamEmail();
+    if (!to) {
+      console.warn("[email] BID_NOTIFY_EMAIL non configuré — vente non notifiée");
+      return { sent: false };
+    }
+    return deliver(
+      to,
+      orderTeamNotificationEmail({
+        orderId: args.orderId,
+        firstName: args.firstName,
+        lastName: args.lastName,
+        email: args.email,
+        ...(args.phone ? { phone: args.phone } : {}),
+        restaurantName: args.restaurantName,
+        ...(args.city ? { city: args.city } : {}),
+        plan: args.plan,
+        orderType: args.orderType,
+        ...(args.billingPeriod ? { billingPeriod: args.billingPeriod } : {}),
+        amountCents: args.amountCents,
+        paymentMethod: args.paymentMethod,
+        isFounders: args.isFounders,
+        paidAtMs: args.paidAtMs,
+        logoUrl: logoUrl(),
+        consoleUrl: `${appUrl()}/admin/commandes`,
       }),
     );
   },
