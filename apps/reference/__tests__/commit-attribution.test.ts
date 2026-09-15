@@ -923,6 +923,40 @@ describe("the pull request's own text", () => {
     expect(step?.if ?? "").toMatch(/pull_request/)
   })
 
+  test("and CI re-runs when the title is EDITED (#519)", () => {
+    /*
+     * THE HOLE THIS CLOSES. `main` squashes with GitHub's "default to pull
+     * request title, commit details", so the squash SUBJECT is the pull request
+     * title and lands on protected history verbatim. It is also the field an
+     * author writes LAST, in a web form, after `Lint` is already green — and
+     * `pull_request` with no `types:` defaults to
+     * `[opened, synchronize, reopened]`. Editing the title fires
+     * `pull_request/edited`, which started nothing, so the one check that reads
+     * the title could be walked straight past on the one field the hook cannot
+     * reach.
+     *
+     * The test above asserts only that the step is gated on `pull_request`,
+     * which was true throughout. What was missing is that the event ever
+     * happens.
+     */
+    const ci = parse(
+      fs.readFileSync(
+        path.join(__dirname, "../../../.github/workflows/ci.yml"),
+        "utf8",
+      ),
+    ) as { on?: { pull_request?: { types?: string[] } } }
+
+    const types = ci.on?.pull_request?.types ?? []
+
+    expect(types, "ci.yml no longer declares pull_request types").toContain("edited")
+    // The three GitHub would have defaulted to. Declaring `types:` REPLACES the
+    // default rather than adding to it, so leaving one out silently stops CI
+    // running on that event — a push to the branch, most of all.
+    for (const kind of ["opened", "synchronize", "reopened"]) {
+      expect(types, `declaring types: dropped ${kind}`).toContain(kind)
+    }
+  })
+
   test("the two checks share their matchers rather than each keeping a copy", () => {
     // A second copy would drift, and the half that drifts is whichever nobody
     // exercises — which is exactly how the title came to be unread.

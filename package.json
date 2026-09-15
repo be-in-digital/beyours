@@ -15,6 +15,7 @@
     "check:pr-attribution": "node scripts/check-pr-attribution.mjs",
     "check:source-drift": "node scripts/check-source-drift.mjs",
     "check:mirror-build": "node scripts/check-mirror-build.mjs",
+    "check:mirror-ci": "node scripts/check-mirror-ci.mjs",
     "type-check": "turbo run type-check",
     "test": "turbo run test",
     "test:coverage": "turbo run test:coverage",
