@@ -113,9 +113,42 @@ export function CampaignWizardDialog({ open, onOpenChange }: CampaignWizardDialo
   const selectedTemplate = templates?.find((t: Template) => t._id === form.templateId)
   const selectedSegment = segments?.find((s: Segment) => s._id === form.segmentId)
 
-  const audienceCount = form.segmentId
-    ? (selectedSegment?.subscriberCount ?? 0)
-    : (subscriberCount ?? 0)
+  /*
+   * THE AUDIENCE, COUNTED (#524).
+   *
+   * This read `selectedSegment.subscriberCount`, and that field is written in
+   * exactly two places: `emailSegments.create` writes 0, and `duplicate` copies
+   * whatever the original held — which is 0. The one function that could write
+   * a real figure, `refreshCount`, was wrapped by no app and called by nothing.
+   * So « Destinataires estimés » read 0 for every segment ever made, including
+   * one matching the whole list, on the screen an operator checks immediately
+   * before sending.
+   *
+   * Counted rather than cached: `countMatchingSubscribers` is the same query
+   * `segment-form-dialog.tsx` already uses to preview a rule set as it is
+   * edited, so the number here is the number that was previewed there. A cache
+   * would have needed a refresh policy, and a stale figure on THIS screen is
+   * worse than none — it is read one click before a send.
+   */
+  const segmentAudience = useQuery(
+    api?.emailSegments?.countMatchingSubscribers,
+    selectedSegment && storeId && step >= 2
+      ? {
+          storeId,
+          rules: selectedSegment.rules ?? [],
+          ruleOperator: selectedSegment.ruleOperator ?? "and",
+        }
+      : "skip"
+  ) as { count: number; scanned: number; truncated: boolean } | undefined
+
+  // `undefined` while either count is in flight, so the screen says "..." rather
+  // than a zero it would have to take back.
+  const audienceCount = form.segmentId ? segmentAudience?.count : subscriberCount
+
+  /** Did the read that produced `audienceCount` stop at its cap? */
+  const audienceTruncated = form.segmentId
+    ? (segmentAudience?.truncated ?? false)
+    : (subscriberCounts?.truncated ?? false)
 
   const patchForm = (patch: Partial<CampaignWizardState>) =>
     setForm((prev) => ({ ...prev, ...patch }))
@@ -157,7 +190,14 @@ export function CampaignWizardDialog({ open, onOpenChange }: CampaignWizardDialo
       subject: form.subject,
       templateId: form.templateId,
       templateBlockCount: selectedTemplate?.blocks?.length ?? 0,
-      audienceCount,
+      /*
+       * `undefined` is the count still in flight, and it is refused as an empty
+       * audience on purpose: a send whose size is unknown is not a send to
+       * approve. It resolves in a moment and the button works — which is the
+       * opposite of the defect this fixed, where the number was 0 for ever and
+       * `validateCampaign` was the only thing that noticed.
+       */
+      audienceCount: audienceCount ?? 0,
       abTestEnabled: form.abTestEnabled,
       variants: form.abTestEnabled ? form.variants : undefined,
       scheduledAt,
@@ -309,7 +349,12 @@ export function CampaignWizardDialog({ open, onOpenChange }: CampaignWizardDialo
                     <SelectItem value="all">Tous les abonnés actifs</SelectItem>
                     {segments?.map((s: Segment) => (
                       <SelectItem key={s._id} value={s._id}>
-                        {s.name} ({s.subscriberCount} abonnés)
+                        {/* No count here. It cannot be live for every option
+                            at once, and the stored one is 0 for all of them —
+                            « Habitués (0 abonnés) » beside a segment matching
+                            half the list is worse than a bare name. The chosen
+                            segment's audience is counted below. */}
+                        {s.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -321,11 +366,11 @@ export function CampaignWizardDialog({ open, onOpenChange }: CampaignWizardDialo
                   {audienceCount === undefined
                     ? "..."
                     : `${audienceCount.toLocaleString("fr-FR")}${
-                        !form.segmentId && subscriberCounts?.truncated ? "+" : ""
+                        audienceTruncated ? "+" : ""
                       }`}{" "}
                   abonnés actifs
                 </span>
-                {!form.segmentId && subscriberCounts?.truncated && (
+                {audienceTruncated && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Votre liste dépasse ce que le décompte lit en une fois : l&apos;envoi
                     couvrira tous les abonnés actifs, pas seulement ce chiffre.

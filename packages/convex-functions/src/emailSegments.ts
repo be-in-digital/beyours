@@ -278,15 +278,24 @@ export const duplicate = {
   },
 }
 
-export const refreshCount = {
-  args: {
-    id: v.id("emailSegments"),
-    count: v.number(),
-  },
-  handler: async (ctx: any, args: any) => {
-    await ctx.db.patch(args.id, {
-      subscriberCount: args.count,
-      updatedAt: Date.now(),
-    })
-  },
-}
+/*
+ * `refreshCount` USED TO BE HERE, and it was the only writer of a real
+ * `subscriberCount` (#524).
+ *
+ * No app ever wrapped it and nothing ever called it, so the field held what
+ * `create` put there — 0 — for every segment ever made, while three screens
+ * presented it as a subscriber count. The schema called it a "cached count,
+ * refreshed periodically"; nothing refreshed it and nothing was periodic.
+ *
+ * Deleted rather than wrapped, because wrapping it means choosing when to run
+ * it, and the screens that read the figure read it immediately before a send —
+ * where a count that is stale in the wrong direction is worse than no count at
+ * all. They call `countMatchingSubscribers` now, which is the same query the
+ * segment editor already uses to preview a rule set as it is typed, so the
+ * number an operator approves is the number they were shown while writing the
+ * rules.
+ *
+ * `subscriberCount` stays in the schema: `create` and `duplicate` must write
+ * something, and dropping a field nothing reads is a migration for no gain.
+ * `segment-audience-is-counted.test.ts` holds it unread.
+ */

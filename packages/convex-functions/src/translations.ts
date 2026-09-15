@@ -139,61 +139,24 @@ export const upsert = {
 /**
  * Bulk upsert translations
  */
-export const bulkUpsert = {
-  args: {
-    translations: v.array(v.object({
-      storeId: v.id("stores"),
-      entityType: v.string(),
-      entityId: v.string(),
-      field: v.string(),
-      languageCode: v.string(),
-      value: v.string(),
-      isAutoTranslated: v.boolean(),
-    })),
-  },
-  handler: async (ctx: any, args: any) => {
-    const now = Date.now()
-    const results = []
-
-    for (const translation of args.translations) {
-      // Check if translation already exists
-      const existing = await ctx.db
-        .query("translations")
-        .withIndex("by_storeId_entity", (q: any) =>
-          q.eq("storeId", translation.storeId)
-            .eq("entityType", translation.entityType)
-            .eq("entityId", translation.entityId)
-        )
-        .filter((q: any) =>
-          q.and(
-            q.eq(q.field("field"), translation.field),
-            q.eq(q.field("languageCode"), translation.languageCode)
-          )
-        )
-        .unique()
-
-      if (existing) {
-        // Update existing translation
-        await ctx.db.patch(existing._id, {
-          value: translation.value,
-          isAutoTranslated: translation.isAutoTranslated,
-          updatedAt: now,
-        })
-        results.push(existing._id)
-      } else {
-        // Create new translation
-        const id = await ctx.db.insert("translations", {
-          ...translation,
-          createdAt: now,
-          updatedAt: now,
-        })
-        results.push(id)
-      }
-    }
-
-    return results
-  },
-}
+/*
+ * `bulkUpsert` USED TO BE HERE (#524).
+ *
+ * It took an array whose every element carried its own `storeId`, which is a
+ * shape `authorize()` cannot gate: a store-scoped guard reads ONE establishment
+ * off the arguments, and this asked for as many as the caller cared to send.
+ * So it could never be wrapped as written, and no app ever wrapped it.
+ *
+ * Deleted rather than rewritten, because there is nothing to call it. The
+ * catalogue's bulk translation goes through `autoTranslate`, and UI strings are
+ * translated one at a time through the admin's « Traductions UI » tab
+ * (`translations.upsert`) — see CLAUDE.md § i18n, which records that the one
+ * bulk UI-string translator this product had was deleted for having no callers
+ * and a docblock claiming otherwise.
+ *
+ * If a bulk path is ever wanted, the shape is `storeId` as a top-level argument
+ * and the rows beneath it, so one `authorize()` covers the whole batch.
+ */
 
 /**
  * Delete a translation

@@ -24,17 +24,20 @@ interface BlockFieldDef {
   hasCodeFallback?: boolean
 }
 
-/** Publish all draft blocks for a page atomically */
-export const publishPage = {
-  args: {
-    storeId: v.id("stores"),
-    pageSlug: v.string(),
-    updatedBy: v.string(),
-  },
-  handler: async (ctx: any, args: any) => {
-    return publishPageCore(ctx, args)
-  },
-}
+/*
+ * `publishPage` USED TO BE HERE, and it was superseded rather than unfinished
+ * (#524).
+ *
+ * Each app's own `convex/cms.ts:148` is what runs: a `storeMutation` that takes
+ * `updatedBy` from the session identity and calls `publishPageCore` directly.
+ * This definition took `updatedBy` as an ARGUMENT — from the client — so a
+ * caller could have signed somebody else's name to a publish. Nothing wrapped
+ * it, so nothing ever could; it was a shape waiting for someone to reach for
+ * the wrong one.
+ *
+ * Deleted rather than left as a second way in. `publishPageCore` below is the
+ * shared logic, and it is what both apps call.
+ */
 
 /**
  * Core publish logic with optional callback for translation scheduling.
