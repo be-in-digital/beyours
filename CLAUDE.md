@@ -167,6 +167,15 @@ This section used to be headed "181+", a number copied from
 things that are not features (six themes as six, seven team roles as seven).
 Neither figure was ever measured.
 
+> **Stale, and knowingly so (#534).** This was last measured on 7 September
+> 2026. Two further sweeps have been taken since — 66 · 10 · 17 on 11 September
+> and 71 · 7 · 15 on 15 September — and **neither left a ledger in this
+> repository**, so neither figure can be checked here and neither is quoted as
+> the heading. The rule below has not changed and is the reason: a count with no
+> ledger beside it is not a measurement. Re-measure, commit the ledger, then
+> move the heading — `pnpm check:claude-md` now refuses a heading whose ledger
+> file is missing.
+
 **The figure above was measured on 7 September 2026, against the tree at
 `cdc6c81`, and it is true of that commit and of no other.** It counts the 93
 leaf features of the nine `FEATURES_DIAGRAM` categories this section reproduces:
@@ -239,8 +248,11 @@ Uber Eats, Deliveroo (menu sync, orders), Uber Direct (delivery)
   the admin languages page called it, and has been deleted. UI strings are
   translated one at a time through the « Traductions UI » tab of the admin
   languages screen (`translations.upsert`).
-- `translationJobs` rows are written but **read by nothing**, so a batch that
-  stops on the daily quota looks exactly like one that finished.
+- `translationJobs` rows are written **and read**, since #480:
+  `autoTranslate.listJobs` is wrapped as a `storeQuery` in both apps and the
+  admin languages screen renders the recent runs. This file said "read by
+  nothing" for as long as that was true — a batch stopped by the daily quota
+  looked exactly like one that finished — and kept saying it afterwards.
 - **RTL, currency and date locale do not reach the storefront.** The « Droite à
   gauche » switch and the « Devise » picker are therefore **disabled with a
   stated reason**; the value is still stored, and nothing on the storefront reads
@@ -281,10 +293,14 @@ deliberately not `customers:read`, which a waiter holds. Operator guide and the
 ### Design
 Design system in `packages/ui`. A site's look is fixed **at clone time** by
 `pnpm template:apply <slug>` — 5 verticals, 51 templates under
-`apps/themes/templates/`, each **four** files: `theme.css`, `fonts.ts`,
-`template.json` and `DESIGN.md`. `template.json` is load-bearing, not
-documentation — the applier reads it — so a template written from the "two
-files" this line used to claim would not apply. Those are
+`apps/themes/templates/`, each **five** files: `theme.css`, `fonts.ts`,
+`layout.ts`, `template.json` and `DESIGN.md`. `template.json` is load-bearing,
+not documentation — the applier reads it — so a template written from the "two
+files" this line first claimed would not apply. `layout.ts` is the fifth and
+arrived with #507: the applier copies it like the other two source files and
+**fails loudly** when it is missing, rather than leaving a site on the engine's
+layout while its palette says otherwise. This line said "four" from #507 until
+#534. Those are
 the storefront's *defaults*, compile-time constants in `apps/*/app/globals.css`
 and `apps/*/site/fonts.ts`; per-store branding overrides them at runtime — see
 below.
