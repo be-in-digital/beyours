@@ -2,13 +2,17 @@
 "@be-in-digital/convex-functions": patch
 ---
 
-`pnpm template:apply` no longer half-applies a template it is about to refuse.
+No behaviour change in this package: the coupon-budget refusal in
+`resolvePromotionDiscount` is now held by tests.
 
-The existence check sat inside the copy loop, one file at a time, so a template
+#532 measured that deleting the `exhausted` branch left all 38 cases of
+`promotionDiscount.test.ts` green — every other guard there is about who may use
+a code and when, and none of them counts. Six cases now pin both sources of the
+verdict (the public lookup's flag, the server's counters) and the precedence
+between them, so both inversions fail.
+
+The same change fixes `pnpm template:apply`, which half-applied a template it was
+about to refuse: the existence check sat inside the copy loop, so a template
 missing its last source had already had `theme.css` and `fonts.ts` written over
-it before the throw — the new template's colours and type over the old one's
-layout, reached through an error telling the operator to fix something else.
-Every source is checked before any is copied.
-
-Found by writing the test `apply-template.test.mjs`'s own fixture had been citing
-since #507 and which did not exist.
+it before the throw. That fix lives in `apps/themes`, which this repository does
+not version, so it carries no release note of its own.
