@@ -83,7 +83,6 @@ export function CheckoutFlow() {
     store.setError(null);
 
     try {
-      const origin = window.location.origin;
       const referral = store.appliedReferral;
       /* The code and nothing else. The percent, the code id and the affiliate
          id that used to travel with it were attacker-chosen on a public,
@@ -104,8 +103,7 @@ export function CheckoutFlow() {
         restaurantName: info.restaurantName,
         city: info.city,
         siret: info.siret || undefined,
-        successUrl: `${origin}/checkout/success`,
-        cancelUrl: `${origin}/checkout/cancel`,
+
         /* What OrderSummary just rendered above this button — the same
            constant, so the two cannot drift. The Convex side compares this
            with what Stripe is about to do and refuses the sale when the two

@@ -51,8 +51,6 @@ const CHECKOUT = {
   customerPhone: "+33612345678",
   restaurantName: "Trattoria Rossi",
   city: "Lyon",
-  successUrl: "https://beyours.fr/checkout/success",
-  cancelUrl: "https://beyours.fr/checkout",
   withdrawalWaiverConsent: true,
   taxDisplayed: VAT.regime === "reel",
 };
