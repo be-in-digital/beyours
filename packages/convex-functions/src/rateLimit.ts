@@ -344,6 +344,24 @@ export async function consumeRateLimit(
   subject: string,
   now: number = Date.now()
 ): Promise<void> {
+  /*
+   * The subject is capped HERE, not in the wrappers (#521).
+   *
+   * `FIELD_LIMITS.subject` existed and nothing applied it on this path.
+   * `rateLimits.consume` is an internal mutation reached from public actions,
+   * and `stripe.createCheckoutSession` passes `args.sessionId` straight through
+   * — caller-controlled, no session required. A 200 000-character subject was
+   * accepted and became a `rateLimits.key` on the `by_key` INDEX, which is the
+   * same shape as the `fingerprint` hole the cap was written for.
+   *
+   * In the function rather than in the two wrappers because a wrapper can be
+   * added without remembering: this is the single door every caller already
+   * goes through, and the cap's whole job is to hold for the caller nobody has
+   * written yet. The refusal is `FieldTooLongError`, which every caller here
+   * already surfaces.
+   */
+  assertFieldLengths({ subject })
+
   const key = rateLimitKey(name, subject)
   const rule = RATE_LIMITS[name]
 
