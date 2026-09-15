@@ -158,10 +158,7 @@ export function EmailSegmentsPage() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1.5 text-sm">
-                      <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{segment.subscriberCount ?? 0}</span>
-                    </div>
+                    <SegmentAudience storeId={storeId} segment={segment} />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatShortDate(segment.updatedAt)}
@@ -221,6 +218,50 @@ export function EmailSegmentsPage() {
         description="Cette action est irréversible. Les campagnes utilisant ce segment ne seront pas affectées."
         isDeleting={isDeleting}
       />
+    </div>
+  )
+}
+
+/**
+ * How many subscribers this segment matches, right now (#524).
+ *
+ * `segment.subscriberCount` used to be read here and it is always 0:
+ * `emailSegments.create` writes 0, `duplicate` copies it, and the one function
+ * that could write a real figure — `refreshCount` — was wrapped by no app and
+ * called by nothing. So this column showed 0 for every segment an
+ * establishment had ever made.
+ *
+ * ONE QUERY PER ROW, deliberately. `countMatchingSubscribers` takes a rule set,
+ * not a segment id, so there is no batched form of this question; and the
+ * alternative — a cached figure and a refresh policy — is what has been failing
+ * silently. A segments table is a handful of rows, and each subscription is the
+ * same read the segment editor already makes while a rule set is typed.
+ */
+function SegmentAudience({
+  storeId,
+  segment,
+}: {
+  storeId: string | undefined
+  segment: Segment
+}) {
+  const { api } = useAdminApiStore()
+  const audience = useQuery(
+    api?.emailSegments?.countMatchingSubscribers,
+    storeId
+      ? {
+          storeId,
+          rules: segment.rules ?? [],
+          ruleOperator: segment.ruleOperator ?? "and",
+        }
+      : "skip"
+  ) as { count: number; truncated: boolean } | undefined
+
+  return (
+    <div className="flex items-center gap-1.5 text-sm">
+      <Users className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+      {/* An em dash while it is in flight, not a zero: a zero is an answer and
+          this is the absence of one. */}
+      <span>{audience === undefined ? "—" : `${audience.count}${audience.truncated ? "+" : ""}`}</span>
     </div>
   )
 }

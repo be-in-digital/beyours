@@ -469,7 +469,19 @@ export const emailSegmentsTable = defineTable({
   description: v.optional(v.string()),
   rules: v.array(segmentRuleValidator),
   ruleOperator: v.union(v.literal("and"), v.literal("or")),
-  subscriberCount: v.number(), // Cached count, refreshed periodically
+  /*
+   * Legacy, and read by nothing (#524). It says 0 on every row: `create` writes
+   * 0 and `duplicate` copies it, and the only function that ever wrote a real
+   * figure — `refreshCount` — was wrapped by no app and called by nothing. It
+   * was documented here as a "cached count, refreshed periodically"; nothing
+   * refreshed it and nothing was periodic, and three screens presented it as a
+   * subscriber count for as long as segments have existed.
+   *
+   * The screens count live now, through `emailSegments.countMatchingSubscribers`.
+   * The field stays because `create` and `duplicate` must write something and a
+   * migration to drop it buys nothing.
+   */
+  subscriberCount: v.number(),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
