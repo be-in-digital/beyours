@@ -567,6 +567,28 @@ export async function saveDraftCore(
   const article = await ctx.db.get(args.articleId)
   if (!article) throw new Error("Article not found")
 
+  /*
+   * The rubric, on the EDIT path (#526).
+   *
+   * #499 put this check in `createArticleCore` and stopped there, and the
+   * wrapper's own guard does not close the gap: `saveDraft` validates the
+   * ARTICLE's store through `storeIdFromArticle` and never the `categoryId`
+   * beside it, which arrives from the browser. So a member holding
+   * `content:write` on their own establishment could edit their own article
+   * with another establishment's rubric id.
+   *
+   * It does not stay in the draft. `publishArticleCore` copies
+   * `draftCategoryId` to `publishedCategoryId` unconditionally, three public
+   * readers resolve it with a bare `ctx.db.get`, and `category.name` renders on
+   * the page — the other establishment's rubric on this one's blog. The article
+   * also self-orphans: its own category listing seeks on
+   * `storeId` + `publishedCategoryId`, which now matches nothing.
+   *
+   * `article.storeId`, not an argument: the store is the article's, and taking
+   * it from the caller would reopen the door one field along.
+   */
+  await assertCategoryInStore(ctx, article.storeId, args.categoryId)
+
   const timestamp = now()
 
   // Media usage delta for coverImageId
