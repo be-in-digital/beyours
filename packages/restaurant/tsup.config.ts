@@ -25,5 +25,22 @@ export default defineConfig({
   // list the engine packages in `transpilePackages`. Bundling this one subpath
   // keeps the rest of core external, as it has to be: core's root entry pulls
   // in the AWS SDK. Same reasoning as `packages/ui/tsup.config.ts`.
-  noExternal: ['@be-in-digital/core/allergens'],
+  // `@be-in-digital/convex-schema` is the same shape and was left external, so
+  // `dist` carried a runtime `require` for TypeScript. It worked everywhere it
+  // was tried: in this monorepo the package resolves OUTSIDE `node_modules`, and
+  // Node strips types there. A client site installs it from the registry, where
+  // it is under `node_modules` and Node refuses —
+  //
+  //   Error: Stripping types is currently unsupported for files under
+  //   node_modules, for ".../@be-in-digital/convex-schema/src/index.ts"
+  //
+  // — which is every Playwright spec importing a value from this package, on
+  // every client repo. It surfaced on the mirror's own CI the first time that
+  // suite got far enough to run (#516).
+  //
+  // Bundled, not repackaged: `convex-schema` publishes raw `.ts` deliberately,
+  // because the Convex bundler compiles it and the schema has to stay readable
+  // as source. The four helpers this package uses are pure functions and a
+  // constant — no singleton to duplicate, unlike the stores above.
+  noExternal: ['@be-in-digital/core/allergens', '@be-in-digital/convex-schema'],
 })
