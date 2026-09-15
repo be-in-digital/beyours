@@ -33,9 +33,13 @@ export default function OpengraphImage() {
             letterSpacing: "-0.02em",
           }}
         >
+          {/* BeYours, not BeInDigital (#535). This card is what appears when
+              anybody shares a link to this site, and it carried the AGENCY's
+              name on a page selling the PRODUCT — the one place the wrong brand
+              reaches an audience that has not arrived yet. See README.md §
+              Naming, which exists because the two are routinely confused. */}
           <span>Be</span>
-          <span style={{ color: "#c5542c" }}>in</span>
-          <span>Digital</span>
+          <span style={{ color: "#c5542c" }}>Yours</span>
         </div>
 
         {/* Message */}

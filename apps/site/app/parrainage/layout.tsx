@@ -6,7 +6,11 @@ export const metadata: Metadata = {
   title: "Programme Apporteur d'Affaires — BeYours",
   description:
     "Devenez apporteur d'affaires BeYours et gagnez 500 € pour chaque client parrainé. Contrat signé en ligne, commissions suivies depuis votre tableau de bord.",
-  alternates: { canonical: "/parrainage" },
+  /* NO `alternates.canonical` HERE (#535). A layout's metadata is inherited by
+     every route beneath it — `connexion`, `contrat`, `inscription` and the whole
+     dashboard — so a canonical declared at this level told a crawler that four
+     distinct pages were duplicates of the landing page. A canonical is a claim
+     about ONE url and belongs on the page making it; `page.tsx` makes it. */
 };
 
 export default function ParrainageLayout({

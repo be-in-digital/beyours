@@ -1,4 +1,19 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+/**
+ * The canonical for the affiliate landing page (#535).
+ *
+ * It used to live on `layout.tsx`, where every route beneath it inherited the
+ * claim — `connexion`, `contrat`, `inscription` and the dashboard all told a
+ * crawler they were this page. A canonical is a claim about ONE url.
+ *
+ * The title and description stay on the layout: those are the section's, and
+ * inheriting them is correct.
+ */
+export const metadata: Metadata = {
+  alternates: { canonical: "/parrainage" },
+};
 
 export default function ParrainagePage() {
   return (
