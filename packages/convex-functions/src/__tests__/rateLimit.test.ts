@@ -8,6 +8,7 @@
 
 import { describe, expect, it } from "vitest"
 import {
+  consumeRateLimit,
   FIELD_LIMITS,
   FieldTooLongError,
   RATE_LIMITS,
@@ -139,6 +140,66 @@ describe("assertFieldLengths", () => {
       expect(error).toBeInstanceOf(FieldTooLongError)
       expect((error as FieldTooLongError).field).toBe("subject")
     }
+  })
+
+  it("refuses an over-long subject BEFORE it writes a row", async () => {
+    // The defect #521 measured: `rateLimits.consume` is an internal mutation
+    // reached from public actions, and `stripe.createCheckoutSession` passes
+    // `args.sessionId` straight through — caller-controlled, no session needed.
+    // A 200 000-character subject became a `rateLimits.key` on the `by_key`
+    // INDEX.
+    //
+    // The cap lives in `consumeRateLimit` rather than in the two wrappers, so
+    // the assertion is that the FUNCTION refuses: a wrapper added later cannot
+    // forget what it never had to remember.
+    const writes: unknown[] = []
+    const ctx = {
+      db: {
+        query: () => ({ withIndex: () => ({ first: async () => null }) }),
+        insert: async (...args: unknown[]) => {
+          writes.push(args)
+        },
+        patch: async (...args: unknown[]) => {
+          writes.push(args)
+        },
+      },
+    }
+
+    await expect(
+      consumeRateLimit(ctx, "gamePlayPerFingerprint", "a".repeat(200_001))
+    ).rejects.toBeInstanceOf(FieldTooLongError)
+
+    // Before, not merely instead of: a refusal after the insert would still
+    // have put the key on the index.
+    expect(writes).toEqual([])
+  })
+
+  it("lets a subject of a realistic length through", async () => {
+    // Anti-vacuity. Without this the test above would pass on a
+    // `consumeRateLimit` that refused everything.
+    const writes: unknown[] = []
+    const ctx = {
+      db: {
+        query: () => ({ withIndex: () => ({ first: async () => null }) }),
+        insert: async (...args: unknown[]) => {
+          writes.push(args)
+        },
+        patch: async () => {},
+      },
+    }
+
+    await consumeRateLimit(ctx, "gamePlayPerFingerprint", "fingerprint-abc123")
+
+    expect(writes).toHaveLength(1)
+  })
+
+  it("caps the subject at 200, written out rather than imported", () => {
+    // Deliberately NOT `FIELD_LIMITS.subject`. The tests above are relative to
+    // the constant, so raising it from 200 to 200 000 leaves every one of them
+    // green — which is exactly what #521 measured: the constant landed, the
+    // call site did not, and nothing noticed. A literal is the only assertion
+    // that fails when the number moves.
+    expect(FIELD_LIMITS.subject).toBe(200)
   })
 
   it("accepts a field of exactly the limit", () => {
