@@ -20,6 +20,19 @@ import { TRANSLATION_JOB_PAGE, listJobs } from "../autoTranslate"
  * `languages-page.tsx` said so in its own comment — *"The row is not the
  * missing half: a query over `by_storeId` and somewhere on this page to render
  * it is"*.
+ *
+ * WHAT THIS FILE CANNOT SEE, and where the rest of it lives (#532). `ctxWith`
+ * below is a hand-written `ctx`: its `query` ignores the table name and its
+ * `withIndex` ignores both the index and the range, so the handler gets the
+ * fixture back whatever it asks for. Measured — pointing `listJobs` at
+ * `translations` leaves all eight cases here green.
+ *
+ * These cases are good at the SHAPING: which fields come back, the ordering,
+ * the clamping, a row written before `error` existed. The two facts a fake
+ * defines away — that the rows come from `translationJobs`, and from ONE
+ * establishment — are held by
+ * `apps/{themes,reference}/tests/convex/translation-jobs-read.test.ts`, which
+ * drives the same handler through `convex-test` against the real schema.
  */
 
 const NOW = 1_700_000_000_000
