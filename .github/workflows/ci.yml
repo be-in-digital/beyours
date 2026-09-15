@@ -7,6 +7,21 @@ on:
   pull_request:
     branches:
       - main
+    # `edited` is here for one check and it is load-bearing (#519).
+    #
+    # `main` squashes with GitHub's "default to pull request title, commit
+    # details", so the squash SUBJECT is the pull request title and lands on
+    # protected history verbatim. `check:pr-attribution` is what reads it — and
+    # the title is the field an author writes LAST, in a web form, after `Lint`
+    # has already gone green. Without `edited` nothing re-runs, so the one check
+    # that can see the title could be walked past on the one field the
+    # commit-msg hook cannot reach.
+    #
+    # The other three are GitHub's own default set, restated because declaring
+    # `types:` REPLACES the default rather than adding to it. Dropping one here
+    # would silently stop CI running on that event — `synchronize` above all,
+    # which is every push to the branch.
+    types: [opened, synchronize, reopened, edited]
   # The merge queue. It builds the prospective merged state of the batch and
   # asks these same jobs about it, so the checks branch protection requires have
   # to answer here too — a queue whose required checks never run is a queue that

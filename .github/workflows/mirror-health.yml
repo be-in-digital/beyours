@@ -515,3 +515,241 @@ jobs:
           else
             gh issue create --title "$TITLE" --body-file /tmp/mirror-health.md
           fi
+
+  # ── The third question ─────────────────────────────────────────────────────
+  #
+  # Does the mirror pass its OWN tests?
+  #
+  # Neither job above asks. The observer fires on a non-success conclusion of
+  # *our* `Publish mirror` run; `stale` asks whether the mirror is CURRENT.
+  # Measured on 15 September 2026 at `6707b699`: the boilerplate's CI had failed
+  # four runs in a row while `Publish mirror` succeeded here. So the observer was
+  # skipped, `stale` found the mirror current — because it WAS current, and red —
+  # and a broken client template was reported to nobody.
+  #
+  # Current and red is the combination neither existing job can see, and it is
+  # the one that matters most: every client repository is cloned from that tree
+  # and merges from it with `pnpm update:template`.
+  #
+  # ON THE SCHEDULE, NOT ON A `workflow_run`. Gating this the way the observer is
+  # gated would skip it in exactly the case it exists for, since our run
+  # succeeded throughout the incident. `mirror-ci-watch.test.ts` asserts both
+  # halves of that.
+  #
+  # IT NEEDS `actions: read`, WHICH `MIRROR_READ_TOKEN` MAY NOT HAVE. The token
+  # was created for `contents: read` — that is what the clone in `stale` needs.
+  # Without `actions: read` the API answers 403, the script reads that as
+  # UNKNOWN, exits 0 and says which grant is missing. It does not open an issue:
+  # "this token needs another grant" is a one-time decision, not news every
+  # morning. It does not go green pretending to have checked either — the step
+  # summary is where a green job says what it did.
+  mirror-ci:
+    name: Does the mirror pass its own CI?
+    if: github.event_name != 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # `shell: bash` for the reason the `stale` job states at length: GitHub's
+      # default `run:` shell is `bash -e {0}`, without `-o pipefail`, so a
+      # pipeline reports `tee`'s status and a failing check goes green.
+      - name: Read the mirror's latest CI conclusion
+        id: mirror
+        if: always()
+        continue-on-error: true
+        shell: bash
+        env:
+          MIRROR_READ_TOKEN: ${{ secrets.MIRROR_READ_TOKEN }}
+        run: |
+          set -euo pipefail
+          node scripts/check-mirror-ci.mjs 2>&1 | tee /tmp/mirror-ci.log
+
+      - name: Say what the mirror's CI said
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          {
+            echo "### The mirror's own CI"
+            echo
+            echo '```'
+            cat /tmp/mirror-ci.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Only a measured RED opens an issue. `steps.mirror.outcome` is `failure`
+      # exactly when the script exited 1, which it does for no other reason —
+      # unknown exits 0 on purpose.
+      - name: Report a red mirror
+        if: steps.mirror.outcome == 'failure'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: "Mirror health: the boilerplate does not pass its own CI"
+        run: |
+          set -uo pipefail
+          {
+            echo "\`be-in-digital/beyours-boilerplate\` is the repository every client"
+            echo "site is cloned from and merges from with \`pnpm update:template\`, and"
+            echo "its latest run on its default branch did not pass."
+            echo
+            echo "**The mirror being CURRENT does not help here.** A current mirror of a"
+            echo "tree whose tests fail is a broken template delivered promptly. The two"
+            echo "other jobs in this workflow both read green through this state, which"
+            echo "is why this job exists."
+            echo
+            echo "Read the failing jobs named below before re-running anything. The two"
+            echo "causes that look identical from here and need opposite actions:"
+            echo
+            echo "- **The mirror pins PUBLISHED engine versions.** A fix that is merged"
+            echo "  here but not released does not exist for the mirror, so its tests"
+            echo "  fail against the build the registry still serves. The fix is a"
+            echo "  Release — \`pnpm check:pending-release\` says what is waiting — not a"
+            echo "  re-run."
+            echo "- **A defect that only appears outside the workspace.** Every check"
+            echo "  here runs \`apps/themes\` with \`packages/*\` symlinked at HEAD and the"
+            echo "  monorepo all around it. A client has none of that."
+            echo "  \`pnpm check:mirror-build\` reproduces the delivered shape locally."
+            echo
+            echo '```'
+            cat /tmp/mirror-ci.log
+            echo '```'
+            echo
+            echo "[This report](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+          } > /tmp/mirror-ci-report.md
+
+          cat /tmp/mirror-ci-report.md >> "$GITHUB_STEP_SUMMARY"
+
+          # One issue, commented on rather than duplicated — the same rule the
+          # two jobs above follow, and for the same reason: a mirror that stays
+          # red produces this verdict every single morning.
+          existing=$(gh issue list --state open --search "in:title \"$TITLE\"" \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file /tmp/mirror-ci-report.md
+          else
+            gh issue create --title "$TITLE" --body-file /tmp/mirror-ci-report.md
+          fi
+
+  # ── The fourth question ────────────────────────────────────────────────────
+  #
+  # Is a release still owed, and for how long?
+  #
+  # `check:source-drift` reports three states. `drift` — source moved and no
+  # changeset exists — already GATES, in `ci.yml`'s `Lint`, because it never
+  # resolves itself. `waiting` — a changeset exists and no release has been cut —
+  # does not gate, and must not: batching a few fixes into one release is the
+  # intended workflow, so `Lint` would fail every pull request opened while a
+  # changeset sits in `.changeset/`. Measured on 15 September 2026 at
+  # `a92a0e51`: `@be-in-digital/admin` was `waiting`, so passing `--fail-waiting`
+  # in `Lint` would have turned `main` itself red that day, and every branch off
+  # it. #519 asked for that placement or an argument against it; this is the
+  # argument, and this job is where the flag belongs instead.
+  #
+  # WHY IT BELONGS ON A SCHEDULE. `waiting` is not wrong, it is a clock. A
+  # changeset that has sat for an hour is a normal batch; one that has sat for a
+  # week means every client site is installing the build made before those files
+  # moved, and nobody noticed. A daily question about the fleet is exactly the
+  # shape of this workflow's other three, and a red here blocks nobody's merge.
+  #
+  # `--no-registry` is NOT passed: the subpath half is the deadlock case — a
+  # package declaring an export its published version does not carry refuses
+  # every sync until a release lands — and it is worth a daily answer. The
+  # registry read is what `packages: read` is for.
+  release-waiting:
+    name: Is a release still owed?
+    if: github.event_name != 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+      issues: write
+    steps:
+      # `fetch-depth: 0`, and it is load-bearing. `check-source-drift` finds each
+      # package's last version bump with `git log -G`, and a depth-1 clone has no
+      # commit to find: the check reports `unknown` rather than guessing, so the
+      # whole job would answer nothing while looking like it had answered.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.4.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@be-in-digital"
+          cache: "pnpm"
+
+      - name: How long has a release been owed?
+        id: waiting
+        continue-on-error: true
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          node scripts/check-source-drift.mjs --fail-waiting 2>&1 | tee /tmp/source-drift.log
+
+      - name: Say what is waiting
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          {
+            echo "### Releases owed"
+            echo
+            echo '```'
+            cat /tmp/source-drift.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report a release that has not been cut
+        if: steps.waiting.outcome == 'failure'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: "Mirror health: a release is owed and client sites do not have it"
+        run: |
+          set -uo pipefail
+          {
+            echo "One or more engine packages have source that no release has carried."
+            echo "Each has a changeset, so nothing is missing and nothing is wrong with"
+            echo "the workflow — but until a Release runs, the registry serves the build"
+            echo "made **before** those files moved, and that is what every client site"
+            echo "installs."
+            echo
+            echo "This is a clock, not a defect. An hour is a normal batch. A week means"
+            echo "a fix that was merged here reaches nobody, which is what #516 was."
+            echo
+            echo "**To clear it:** run \`Release\` from the Actions tab on \`main\`. The"
+            echo "table below says which packages and how many files."
+            echo
+            echo '```'
+            cat /tmp/source-drift.log
+            echo '```'
+            echo
+            echo "[This report](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+          } > /tmp/release-waiting.md
+
+          cat /tmp/release-waiting.md >> "$GITHUB_STEP_SUMMARY"
+
+          existing=$(gh issue list --state open --search "in:title \"$TITLE\"" \
+            --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file /tmp/release-waiting.md
+          else
+            gh issue create --title "$TITLE" --body-file /tmp/release-waiting.md
+          fi
