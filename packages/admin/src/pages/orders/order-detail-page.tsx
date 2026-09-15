@@ -3,6 +3,7 @@
 import { use, useState } from "react"
 import { useQuery, useMutation, useAction } from "convex/react"
 import { useAdminApiStore } from "../../stores/admin-api-store"
+import { usePermittedQuery } from "../../lib/use-permitted-query"
 import { formatPrice, formatOrderNumber, formatDate } from "../../lib/formatters"
 import {
   Alert,
@@ -288,15 +289,35 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
     isValidOrderId ? { id: orderId } : "skip"
   ) as Order | null | undefined
 
-  // Fetch associated payments
+  // `payments:read` gets a role onto the money on this screen; `payments:refund`
+  // is what the server checks on the click. They are not the same set of people.
+  const role = useAdminAuthStore((s) => s.role)
+
+  /*
+   * THE QUERY IS GATED, NOT JUST THE BLOCK THAT RENDERS IT (#522).
+   *
+   * `kitchen` and `delivery` hold `orders:read`, so « Commandes » is drawn for
+   * them and every row links here — to a page that mounted `payments.getByOrder`
+   * unconditionally, which their role may not run. A cook opening an order they
+   * are allowed to read got a permission refusal for the whole page, because
+   * Convex rethrows one out of `useQuery` during render.
+   *
+   * Hiding the block would not have fixed it: a mounted `useQuery` runs whether
+   * or not its result is rendered. `usePermittedQuery` names the permission
+   * beside the call so `nav-permission-surface.test.ts` — which reads source,
+   * there being no type between a screen and the function it calls — can tell a
+   * gated mount from an ungated one.
+   */
   const globalSettings = useQuery(
     api?.globalSettings?.get ?? ("skip" as never),
     api ? {} : "skip"
   )
-  const payments = useQuery(
-    api?.payments?.getByOrder ?? ("skip" as never),
+  const payments = usePermittedQuery<Payment[]>(
+    role,
+    "payments:read",
+    api?.payments?.getByOrder,
     order ? { orderId: order._id } : "skip"
-  ) as Payment[] | undefined
+  )
 
   // Find the primary payment (first succeeded or most recent)
   const primaryPayment = payments?.find(
@@ -334,9 +355,6 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
     }
   }
 
-  // `payments:read` gets a role onto this screen; `payments:refund` is what the
-  // server checks on the click. They are not the same set of people.
-  const role = useAdminAuthStore((s) => s.role)
   const refund = refundControlState(primaryPayment, role)
 
   /**
