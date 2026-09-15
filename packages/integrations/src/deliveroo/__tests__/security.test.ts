@@ -13,7 +13,7 @@
  *     printf '%s %s' "$GUID" "$BODY" | openssl dgst -sha256 -hmac "$SECRET"
  */
 
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { verifyWebhookSignature } from "../security"
 
 const SECRET = "whsec_deliveroo_test_secret"
@@ -170,5 +170,110 @@ describe("verifyWebhookSignature", () => {
         SECRET
       )
     ).resolves.toBe(false)
+  })
+})
+
+// ==========================================================================
+// What the shape checks actually buy (#476, held here since #532)
+// ==========================================================================
+
+/**
+ * A malformed signature never reaches the comparison.
+ *
+ * WHY THE CASES ABOVE DO NOT SAY THIS. Every "rejects …" case asserts
+ * `resolves.toBe(false)`, and #532 measured what that is worth: drop the hex
+ * check, the length check and the `sha256=` refusal, rebuild, and all of them
+ * stay green. They have to — none of those inputs is a valid HMAC for the body,
+ * so the comparison refuses them whichever gate they arrive at. The assertions
+ * are true and they hold nothing.
+ *
+ * WHAT IS ACTUALLY DIFFERENT is stated in the function's own comment: *"Checked
+ * before decoding so a truncated header cannot reach the comparison."* With the
+ * checks, a malformed header returns `false` having called `crypto.subtle`
+ * **not at all**; without them it imports a key and runs a verify over
+ * attacker-controlled bytes.
+ *
+ * That difference is observable, and this is what observes it. The alternative
+ * #532 offers — dropping the claim that the checks harden anything — is the
+ * wrong one here: the claim is true, it was simply untested.
+ */
+describe("the shape checks, and what they are for", () => {
+  const subtle = crypto.subtle
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  /** Every `crypto.subtle` entry point the verifier could reach. */
+  function watchSubtle() {
+    return {
+      importKey: vi.spyOn(subtle, "importKey"),
+      verify: vi.spyOn(subtle, "verify"),
+      digest: vi.spyOn(subtle, "digest"),
+    }
+  }
+
+  it.each([
+    ["non-hex", "not-a-hex-signature-that-is-long-enough-to-be-sixty-four-ch"],
+    ["upper-case non-hex", "ZZ".repeat(32)],
+    ["truncated", VALID_SIGNATURE.slice(0, 32)],
+    ["over-long", `${VALID_SIGNATURE}00`],
+    ["odd-length", VALID_SIGNATURE.slice(0, 63)],
+    ["prefixed with sha256=", `sha256=${VALID_SIGNATURE}`],
+  ])("refuses a %s signature without touching crypto.subtle", async (_label, signature) => {
+    const spies = watchSubtle()
+
+    await expect(
+      verifyWebhookSignature(BODY_BYTES, signature, SEQUENCE_GUID, SECRET)
+    ).resolves.toBe(false)
+
+    expect(spies.importKey).not.toHaveBeenCalled()
+    expect(spies.verify).not.toHaveBeenCalled()
+    expect(spies.digest).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ["no signature", "", SEQUENCE_GUID, SECRET],
+    ["no secret", VALID_SIGNATURE, SEQUENCE_GUID, ""],
+    ["no sequence GUID", VALID_SIGNATURE, "", SECRET],
+  ])("refuses %s without touching crypto.subtle either", async (_l, signature, guid, secret) => {
+    const spies = watchSubtle()
+
+    await expect(
+      verifyWebhookSignature(BODY_BYTES, signature, guid, secret)
+    ).resolves.toBe(false)
+
+    expect(spies.importKey).not.toHaveBeenCalled()
+    expect(spies.verify).not.toHaveBeenCalled()
+  })
+
+  it("DOES reach the comparison for a well-formed signature", async () => {
+    /*
+     * The anti-vacuity, and the whole test rests on it: a verifier that refused
+     * everything before the crypto would satisfy every case above and accept
+     * nothing at all. Well-formed and WRONG — the comparison has to run and
+     * answer false.
+     */
+    const spies = watchSubtle()
+    const wellFormedButWrong = "a".repeat(64)
+
+    await expect(
+      verifyWebhookSignature(BODY_BYTES, wellFormedButWrong, SEQUENCE_GUID, SECRET)
+    ).resolves.toBe(false)
+
+    expect(spies.importKey).toHaveBeenCalledOnce()
+    expect(spies.verify).toHaveBeenCalledOnce()
+  })
+
+  it("and for the real one, which it accepts", async () => {
+    // The other end of the same anti-vacuity: the spies must not be what makes
+    // a valid signature fail.
+    const spies = watchSubtle()
+
+    await expect(
+      verifyWebhookSignature(BODY_BYTES, VALID_SIGNATURE, SEQUENCE_GUID, SECRET)
+    ).resolves.toBe(true)
+
+    expect(spies.verify).toHaveBeenCalledOnce()
   })
 })
