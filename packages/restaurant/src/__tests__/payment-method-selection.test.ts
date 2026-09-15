@@ -9,6 +9,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   isPaymentMethodSelectable,
+  cardUnavailableMessage,
+  hasAlternativeToCard,
   nothingIsDue,
   resolvePaymentMethod,
   type PaymentMethodContext,
@@ -176,5 +178,83 @@ describe("nothingIsDue", () => {
     expect(nothingIsDue(context({ amountDue: 1 }))).toBe(false)
     // Not priced yet is not free.
     expect(nothingIsDue(context())).toBe(false)
+  })
+})
+
+/**
+ * The sentence a refused card gets, and the half of it that is about the screen
+ * rather than the deployment (#531).
+ */
+describe("cardUnavailableMessage", () => {
+  it("points at another method when the page offers one", () => {
+    const withCash = context({ cashEnabled: true, isDelivery: false, isAuthenticated: true })
+
+    expect(cardUnavailableMessage(withCash)).toContain("Choisissez un autre moyen de paiement")
+  })
+
+  it("does not point at another method when card is the only tile", () => {
+    /*
+     * THE DEFECT. A delivery order at an establishment that takes no cash and
+     * no PayPal renders exactly one tile. « Choisissez un autre moyen de
+     * paiement » in front of a single tile reads as the diner's own oversight,
+     * and they hunt for a control that was never on the page.
+     *
+     * Cash is refused here by `isDelivery`, not by `cashEnabled` — the tighter
+     * of the two, so this also covers an establishment that does take cash and
+     * simply cannot for this order.
+     */
+    const cardOnly = context({
+      cashEnabled: true,
+      isDelivery: true,
+      isAuthenticated: true,
+      paypalEnabled: false,
+    })
+
+    expect(cardUnavailableMessage(cardOnly)).not.toContain("autre moyen de paiement")
+    expect(cardUnavailableMessage(cardOnly)).toContain("contactez le restaurant")
+  })
+
+  it("states the fact either way", () => {
+    // The half that is about the deployment and not the screen.
+    for (const isDelivery of [true, false]) {
+      expect(
+        cardUnavailableMessage(context({ cashEnabled: true, isDelivery, isAuthenticated: true }))
+      ).toContain("Le paiement par carte est indisponible pour le moment.")
+    }
+  })
+
+  it("counts PayPal as an alternative", () => {
+    const paypalOnly = context({
+      cashEnabled: false,
+      isDelivery: true,
+      paypalEnabled: true,
+      amountDue: 2_000,
+    })
+
+    expect(hasAlternativeToCard(paypalOnly)).toBe(true)
+    expect(cardUnavailableMessage(paypalOnly)).toContain("Choisissez un autre moyen")
+  })
+
+  it("does not count PayPal under its own floor", () => {
+    // A tile the page will not render is not an alternative, and this is the
+    // reason the check runs `isPaymentMethodSelectable` rather than reading the
+    // settings a second time.
+    const tooSmall = context({
+      cashEnabled: false,
+      isDelivery: true,
+      paypalEnabled: true,
+      amountDue: 10,
+      cardMinimum: 50,
+    })
+
+    expect(hasAlternativeToCard(tooSmall)).toBe(false)
+  })
+
+  it("never suggests card itself", () => {
+    // Anti-vacuity on the exclusion: card is the method that just failed, so a
+    // helper that folded it in would call every screen an alternative.
+    const cardOnly = context({ cashEnabled: false, paypalEnabled: false, isDelivery: true })
+
+    expect(hasAlternativeToCard(cardOnly)).toBe(false)
   })
 })

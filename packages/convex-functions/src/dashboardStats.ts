@@ -236,6 +236,16 @@ export interface DashboardDiners {
   returningRate: number
   /** Orders in the period that carry no address, so belong to no diner here. */
   anonymousOrders: number
+  /**
+   * True when the customer read hit its own cap, so every number here is a
+   * floor over an arbitrary slice of the book (#531).
+   *
+   * Separate from `DashboardStats.truncated`, which is the ORDERS read. They
+   * are two reads with two caps and a period can exhaust either one alone: a
+   * busy month of small orders fills the order cap, a mailing-list-heavy year
+   * fills this one.
+   */
+  truncated: boolean
 }
 
 export interface DashboardStats {
@@ -506,7 +516,15 @@ export interface DashboardCustomerRow {
 export function diners(
   customers: DashboardCustomerRow[],
   periodStart: number,
-  anonymousOrders: number
+  anonymousOrders: number,
+  /**
+   * Whether the caller's customer read hit its cap.
+   *
+   * Passed in rather than derived: this function is pure and has no idea what
+   * limit the read used, which is the same reason `computeDashboardStats` takes
+   * the orders' flag rather than inferring it from the array's length.
+   */
+  truncated = false
 ): DashboardDiners {
   let returning = 0
   for (const customer of customers) {
@@ -519,6 +537,7 @@ export function diners(
     newcomers: identified - returning,
     returningRate: identified > 0 ? returning / identified : 0,
     anonymousOrders,
+    truncated,
   }
 }
 
@@ -540,7 +559,9 @@ export function computeDashboardStats(
    * not be made to fabricate a customer book. `null` is a screen that says it
    * does not know; a zero would be a screen claiming nobody came back.
    */
-  customerRows?: DashboardCustomerRow[]
+  customerRows?: DashboardCustomerRow[],
+  /** Whether `customerRows` was cut short by its read's cap. See `DashboardDiners.truncated`. */
+  customersTruncated = false
 ): DashboardStats {
   assertDayStarts(windows.dayStarts, windows.todayEnd)
 
@@ -616,7 +637,8 @@ export function computeDashboardStats(
           // Orders in the period that belong to no diner this establishment can
           // recognise. Counted here rather than in `diners` because it is a
           // fact about the ORDERS, and `diners` only ever sees the customers.
-          ofPeriod.filter((order) => !order.customerEmailKey).length
+          ofPeriod.filter((order) => !order.customerEmailKey).length,
+          customersTruncated
         )
       : null,
     truncated,

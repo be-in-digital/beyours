@@ -85,6 +85,15 @@ export interface DashboardDiners {
   newcomers: number
   returningRate: number
   anonymousOrders: number
+  /**
+   * True when the customer read hit its own cap, so the rate is over a slice
+   * of the book (#531).
+   *
+   * Distinct from `DashboardStats.truncated`, which is the orders read. A
+   * period can exhaust either cap alone, so the card that shows the rate has to
+   * read this one and not that one.
+   */
+  truncated: boolean
 }
 
 export interface DashboardStats {

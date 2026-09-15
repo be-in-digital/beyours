@@ -39,6 +39,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Skeleton,
 } from "@be-in-digital/ui"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { convexErrorMessage } from "../../lib/convex-error"
@@ -112,9 +113,46 @@ export function OrphanProductsPanel({ storeId }: { storeId: string | undefined }
     }
   }
 
-  // Nothing to resolve is the ordinary state, and an empty card on every store's
-  // integrations tab is noise. The panel appears when there is work in it.
-  if (!storeId || orphans === undefined || orphans.length === 0) return null
+  if (!storeId) return null
+
+  /*
+   * THREE STATES, NOT TWO (#531). `undefined` and `[]` used to render the same
+   * nothing, and on this screen they mean opposite things. An owner comes here
+   * straight after an import to see what did not match; an empty tab while the
+   * query is in flight reads as "everything matched", and the conclusion is
+   * drawn before the panel arrives.
+   *
+   * So the unresolved state speaks and the clean one does not. Nothing to
+   * resolve IS the ordinary state — a permanent empty card on every store's
+   * integrations tab would be noise on every visit — while a row that says it
+   * is still counting is on screen for as long as the query takes and no
+   * longer.
+   */
+  if (orphans === undefined) {
+    return (
+      <Card data-testid="orphan-products-loading">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base">
+            <PackageSearch
+              className="mr-2 inline h-4 w-4 align-[-3px] text-muted-foreground"
+              aria-hidden="true"
+            />
+            Plats importés sans correspondance
+          </CardTitle>
+          <CardDescription className="mt-1">
+            Recherche des plats importés qui n&apos;ont pas encore de
+            correspondance dans votre carte…
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-14 w-full rounded-lg" />
+          <Skeleton className="h-14 w-full rounded-lg" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (orphans.length === 0) return null
 
   return (
     <Card>

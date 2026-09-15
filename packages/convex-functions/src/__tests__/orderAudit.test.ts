@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   MAX_ORDER_AUDIT_DETAILS,
   orderStatusAuditDetails,
+  recordOrderStatusChange,
 } from "../orderAudit"
 
 /**
@@ -83,5 +84,92 @@ describe("orderStatusAuditDetails", () => {
       reason: undefined,
     })
     expect(details).toBe("commande ORD-2026-0042 — pending → confirmed")
+  })
+})
+
+/**
+ * The promise in the docblock, kept (#531).
+ *
+ * `recordOrderStatusChange` says "Never throws. An audit line is not a reason
+ * for a kitchen status change to fail" — and only the identity lookup was
+ * inside the `try`. The `ctx.db.insert` sat outside it, in the same transaction
+ * as the order's own status patch, so an insert that failed rolled the status
+ * change back and gave the caller a generic error about an audit line they
+ * never asked for.
+ *
+ * A promise in a comment is not a control. This is the control.
+ */
+describe("recordOrderStatusChange", () => {
+  const input = {
+    orderNumber: "ORD-2026-0042",
+    from: "pending",
+    to: "confirmed",
+    now: 1_800_000_000_000,
+  }
+
+  function ctxWith(insert: (table: string, doc: any) => unknown, identity?: unknown) {
+    const written: any[] = []
+    return {
+      written,
+      ctx: {
+        auth: { getUserIdentity: async () => identity ?? null },
+        db: {
+          insert: async (table: string, doc: any) => {
+            written.push({ table, doc })
+            return insert(table, doc)
+          },
+        },
+      },
+    }
+  }
+
+  it("writes the line when the insert works", async () => {
+    // Anti-vacuity: without this, "does not throw" would also pass on a
+    // function that writes nothing at all.
+    const { ctx, written } = ctxWith(() => "audit_1")
+    await recordOrderStatusChange(ctx as any, input)
+
+    expect(written).toHaveLength(1)
+    expect(written[0].table).toBe("systemAuditLog")
+    expect(written[0].doc.action).toBe("order_status_change")
+    expect(written[0].doc.details).toContain("ORD-2026-0042")
+  })
+
+  it("does not throw when the insert fails", async () => {
+    /*
+     * THE DEFECT. This rejected, and it runs inside the caller's transaction:
+     * a failed audit line took the status change with it. A cook marking an
+     * order ready got « Erreur », the ticket stayed open, and the reason was a
+     * write nobody on the pass had asked for.
+     */
+    const { ctx } = ctxWith(() => {
+      throw new Error("write conflict")
+    })
+
+    await expect(recordOrderStatusChange(ctx as any, input)).resolves.toBeUndefined()
+  })
+
+  it("does not throw when the insert rejects asynchronously", async () => {
+    // A `try` around a call whose promise is not awaited catches nothing. The
+    // insert IS awaited here, and this is what proves it.
+    const { ctx } = ctxWith(() => Promise.reject(new Error("document too large")))
+
+    await expect(recordOrderStatusChange(ctx as any, input)).resolves.toBeUndefined()
+  })
+
+  it("records the identity's subject as the actor", async () => {
+    const { ctx, written } = ctxWith(() => "audit_1", { subject: "user_42" })
+    await recordOrderStatusChange(ctx as any, input)
+
+    expect(written[0].doc.performedBy).toBe("user_42")
+  })
+
+  it("falls back to « système » when there is no identity", async () => {
+    // A platform webhook, the scheduler and a payment confirmation all move
+    // orders with no session.
+    const { ctx, written } = ctxWith(() => "audit_1")
+    await recordOrderStatusChange(ctx as any, input)
+
+    expect(written[0].doc.performedBy).toBe("système")
   })
 })

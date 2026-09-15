@@ -131,6 +131,7 @@ describe("labelDashboardStats", () => {
       newcomers: 2,
       returningRate: 1 / 3,
       anonymousOrders: 1,
+      truncated: false,
     },
     truncated: false,
   }
@@ -190,5 +191,17 @@ describe("labelDashboardStats", () => {
 
   it("carries the truncation flag through to the screen", () => {
     expect(labelDashboardStats({ ...server, truncated: true }).truncated).toBe(true)
+  })
+
+  it("carries the customer book's own truncation flag, which is a different one", () => {
+    // Two reads, two caps (#531). Labelling used to drop everything it was not
+    // asked about, and a flag added to `diners` that never reached the screen
+    // would be a figure qualified on the server and unqualified on the card.
+    const labelled = labelDashboardStats({
+      ...server,
+      diners: { ...server.diners!, truncated: true },
+    })
+    expect(labelled.diners?.truncated).toBe(true)
+    expect(labelled.truncated).toBe(false)
   })
 })
