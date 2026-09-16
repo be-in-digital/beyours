@@ -7,14 +7,14 @@
  */
 
 export const PACKAGE_VERSIONS = {
-  "admin": "22.0.0",
+  "admin": "22.0.1",
   "cms": "3.1.0",
-  "convex-functions": "7.6.0",
-  "convex-schema": "6.8.0",
+  "convex-functions": "7.6.1",
+  "convex-schema": "6.8.1",
   "core": "4.3.1",
   "integrations": "2.2.2",
   "marketing": "3.0.0",
-  "restaurant": "4.2.0",
+  "restaurant": "4.2.1",
   "ui": "4.3.3",
 } as const;
 
