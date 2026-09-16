@@ -1,5 +1,116 @@
 # Changelog
 
+## 7.6.1
+
+### Patch Changes
+
+- 01c7cfd: No behaviour change in this package: the coupon-budget refusal in
+  `resolvePromotionDiscount` is now held by tests.
+
+  #532 measured that deleting the `exhausted` branch left all 38 cases of
+  `promotionDiscount.test.ts` green — every other guard there is about who may use
+  a code and when, and none of them counts. Six cases now pin both sources of the
+  verdict (the public lookup's flag, the server's counters) and the precedence
+  between them, so both inversions fail.
+
+  The same change fixes `pnpm template:apply`, which half-applied a template it was
+  about to refuse: the existence check sat inside the copy loop, so a template
+  missing its last source had already had `theme.css` and `fonts.ts` written over
+  it before the throw. That fix lives in `apps/themes`, which this repository does
+  not version, so it carries no release note of its own.
+
+- 69da88d: Refuse another establishment's rubric on the EDIT path too
+
+  #499 put `assertCategoryInStore` in `createArticleCore` and stopped there. The
+  wrapper's own guard does not close the gap: `saveDraft` validates the ARTICLE's
+  store through `storeIdFromArticle` and never the `categoryId` beside it, which
+  arrives from the browser. A member holding `content:write` on their own
+  establishment could edit their own article with another establishment's rubric
+  id.
+
+  It does not stay in the draft. `publishArticleCore` copies `draftCategoryId` to
+  `publishedCategoryId` unconditionally, three public readers resolve it with a
+  bare `ctx.db.get`, and `category.name` renders on the page — the other
+  establishment's rubric on this one's blog. The article also self-orphans: its own
+  category listing seeks on `storeId` + `publishedCategoryId`, which now matches
+  nothing.
+
+  The store comes from `article.storeId`, not from an argument: taking it from the
+  caller would reopen the door one field along. `saveDraftCore` has no `storeId`
+  argument at all, and a test pins that it stays that way.
+
+- 1d9f5e1: Four places where a failure or a limit was invisible to the person it affected.
+
+  `recordOrderStatusChange` promised "Never throws" and wrapped only the identity
+  lookup; the insert sat outside the try, in the caller's transaction, so a failed
+  audit line took the order's status change with it. It is inside now.
+
+  The unmatched-import panel rendered nothing for both "still loading" and
+  "nothing to resolve", which mean opposite things on a screen an owner opens
+  right after an import. The unresolved state now says it is still counting; the
+  clean one stays silent.
+
+  « Taux de retour » read 2,000 customer rows and said nothing when it stopped
+  there, so an establishment with more distinct diners than that in the period
+  read a rate over an arbitrary slice of its book. `DashboardDiners` carries its
+  own `truncated` — the orders read beside it has its own, and a period can
+  exhaust either cap alone — and the card qualifies the figure when it is set.
+
+  A refused card payment told every diner « Choisissez un autre moyen de
+  paiement », including on a delivery order at an establishment that takes neither
+  cash nor PayPal, where card is the only tile on the page. `cardUnavailableMessage`
+  decides the second sentence from the same context the tiles were rendered from.
+
+- 975f8c7: Cap the rate-limit subject where no caller can forget it
+
+  `FIELD_LIMITS.subject` was declared at 200 and nothing on this path applied it.
+  `rateLimits.consume` is an internal mutation reached from public actions, and
+  `stripe.createCheckoutSession` passes `args.sessionId` straight through —
+  caller-controlled, reachable with no session at all. A 200 000-character subject
+  was accepted and became a `rateLimits.key` on the `by_key` **index**, which is
+  the same shape as the `fingerprint` hole the cap was written for. Bounded by the
+  daily purge, so a day's growth per attacker rather than unbounded.
+
+  The cap goes in `consumeRateLimit` rather than in the two app wrappers. Both
+  would work today; only one holds for the wrapper nobody has written yet, and a
+  limiter whose bound depends on every future caller remembering is the failure
+  this defect already is.
+
+  The refusal is `FieldTooLongError`, which every caller on this path already
+  surfaces.
+
+  `FIELD_LIMITS.subject` is now pinned by a test that writes **200** out rather
+  than importing the constant. Every existing length test is relative to it, so
+  raising it to 200 000 left all of them green — which is precisely how the
+  constant landed while the call site did not.
+
+- 2a0e474: Three package functions the product needed and no app wrapped.
+
+  `emailSegments.refreshCount` was the only writer of a real `subscriberCount`,
+  and nothing wrapped it — so `create` wrote 0, `duplicate` copied 0, and three
+  screens presented that as a subscriber count for as long as segments have
+  existed. The campaign wizard's audience estimate, read one click before a send,
+  said « 0 abonnés » for every segment. Those screens count live now, through
+  `emailSegments.countMatchingSubscribers`, which is the same query the segment
+  editor already uses to preview a rule set as it is typed. `refreshCount` is
+  deleted: caching needed a refresh policy, and a stale figure on that screen is
+  worse than none.
+
+  `blog.deleteTag` existed, join cleanup and all, and no app wrapped it. The
+  editor has created tags since it was written and nothing deleted one, so every
+  typo stayed in the picker for the life of the establishment. It is wrapped on
+  `content:delete` with `storeIdFrom` resolving the establishment from the tag
+  itself — the core takes a bare `tagId`, and a caller that supplies the
+  establishment its own permission is checked against is not a check.
+
+  `translations.bulkUpsert` is deleted: its `storeId` sat inside each array
+  element, where no store guard can read it, so it could never be wrapped as
+  written and nothing needs it. `cmsPublish.publishPage` is deleted too — it took
+  `updatedBy` from the client, and each app's own wrapper supersedes it.
+
+- Updated dependencies [2a0e474]
+  - @be-in-digital/convex-schema@6.8.1
+
 ## 7.6.0
 
 ### Minor Changes
@@ -190,6 +301,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   would not match what the owner wrote.
 
   Three server-side changes came with it:
+
   - **`inactiveAfterDays` is accepted by `create` and `update`.** It was on the
     table and read by the win-back sweep, and on neither mutation — so no caller,
     UI or API, could ever set it, and every win-back automation in existence was
@@ -217,6 +329,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   before anyone built it.
 
   What was missing, and is here now:
+
   - **`menus.listActive`** — the filtered public query `menus.list`'s own comment
     asked for. It resolves `pick_category` sections server-side, leaves out a
     formule whose mandatory dish has been switched off (rather than offering it and
@@ -239,6 +352,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
 
   **The two money decisions, stated because they were the reason this was its own
   change:**
+
   1. **VAT across a mixed-rate bundle** is split **pro rata on à-la-carte value**,
      the standard treatment of an _offre composite à prix global_. A 15 € dish at
      10 % and a 5 € glass of wine at 20 % sold at 20 € owes 1,36 € + 0,83 €. Split
@@ -301,6 +415,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   `apps/site` listed five figures. Two existed as today-only cards. Three did not
   exist in any form — `grep -riE 'plats populaires|topProduct|peakHour|returnRate'`
   over `apps/themes` and `packages` returned nothing at all:
+
   - **Plats populaires** — there was no product-level aggregation anywhere.
   - **Heures de pointe** — there was no time-of-day bucketing.
   - **Taux de retour** — there was no notion of a returning customer until #364
@@ -324,6 +439,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   e-mail address, which belong to neither side.
 
   Two things the issue also asked for:
+
   - **The period is now a choice** — 7, 14 or 30 days. Every window on this screen
     was a literal while the site sold « analyse des tendances et des performances
     par période ». The breakdown pies follow the picker too; they used to sit on
@@ -440,6 +556,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   leaving them out of every total.
 
   Also in this change, because the book has to agree with the orders behind it:
+
   - `customerEmailKey` is stamped on the order at the confirmation transition
     rather than only at creation, so an order inserted by any other path still
     has the key the detail view looks it up by.
@@ -522,6 +639,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
 ### Patch Changes
 
 - b8c6f3e: Stop three deletes leaving a reference behind.
+
   - `categories.remove` left `stores.stationMapping[].categoryId` — a required
     `v.id("categories")` inside an array — naming a row that no longer exists.
     Inert only because `orders.ts` compares strings rather than dereferencing,
@@ -582,6 +700,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   it, so nothing suppressed a dead address, nothing recorded a spam report, and
   `delivered` read 0 for ever. The first symptom available to anybody was the
   sending domain being throttled.
+
   - `convex-functions` gains `./resendSignature`: the Svix scheme's testable
     half — which headers carry the signature, exactly which bytes are signed,
     how old a message may be, and which Resend event maps onto which of ours.
@@ -720,6 +839,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   the engine's: what the handler needs to act on a notification that arrives
   without those headers, which is every notification any client provisioned before
   today will send.
+
   - `emailSubscribers` gains `.index("by_email", ["email"])` — the address alone,
     no store.
   - `emailSubscribers.listByEmail` reads it, capped at 32 rows.
@@ -1060,6 +1180,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   kept the whole admin suite green.)
 
   **And five more removes were still leaving rows pointing at nothing.**
+
   - **A subscriber's rows go with them.** `emailSubscribers.remove` was a bare
     delete over TWO non-optional foreign keys — `emailEvents.subscriberId` and
     `emailAutomationRuns.subscriberId` — behind a live button. `privacy.ts` has
@@ -2398,6 +2519,7 @@ Server Error`. `SettlementRejectedError` joins the family, so the sentence that
   **The decision is per referencing table, and it splits on authorship**, which is
   the reasoning `categories.remove` already established: a cascade destroys an
   afternoon's work on a click meant to tidy up.
+
   - **Refused** while they point at the dish — `menus`, `promotions`, `prizes`.
     Each is a selling decision the owner made, and each has a screen to unmake it
     on. The refusal names them: _Ce produit est utilisé dans 1 formule : "Formule
@@ -2544,6 +2666,7 @@ Server Error`. `SettlementRejectedError` joins the family, so the sentence that
 
   The chain was broken at every link, and each surface had drifted because each
   carried its own idea of what an allergen was:
+
   - the printed kitchen ticket rendered `{allergens.join(", ")}` — whatever text
     was in the array is what a cook read before plating;
   - the admin product form had **no allergen control at all**, only a zod field
@@ -2727,6 +2850,7 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
   permanent on every deployment ever cloned.
 
   Three surfaces now exist, and one form:
+
   - **The paid order says it.** New `orderInvoiceSurface` computes the invoice
     number or the refusal fresh on every read — never persisted, so completing
     the identity clears it by itself — and `orders.getById` in both apps
@@ -3183,6 +3307,7 @@ element/`), so it has been rewritten to assert the corrected message.
   empty. Every mutation in the stores module now appends an entry naming the
   actor, the establishment, the operation, the timestamp and the before/after of
   the fields the edit moved.
+
   - `systemAuditLog` gains `store_created` / `store_updated` / `store_deleted`,
     an optional `targetStoreId`, and an index to read one establishment's history.
   - The printer API key is redacted on both sides of a `printConfig` diff, and
@@ -3231,6 +3356,7 @@ element/`), so it has been rewritten to assert the corrected message.
 ### Patch Changes
 
 - 7f0122b: Republished from main. Fixes two problems with the 2.0.1 tarballs that broke consumers:
+
   - `@be-in-digital/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
   - The type fixes that were on main but never published (promotion-form/email-config in admin, Uber Eats signatures in integrations/convex-functions) go out with this patch — they had been committed without a changeset.
 
@@ -3244,6 +3370,7 @@ element/`), so it has been rewritten to assert the corrected message.
 ### Patch Changes
 
 - 321adad: Production-readiness audit fixes for delivery integrations:
+
   - **integrations**: the Uber Eats order mapper now keeps money in integer **cents**
     instead of dividing by 100. Previously Uber order totals were stored 100× too
     small while Deliveroo and website orders used cents. `UnifiedOrder` money fields
@@ -3279,6 +3406,7 @@ element/`), so it has been rewritten to assert the corrected message.
 - 7c3d4da: Configure private npm publishing for all @beindigital-engine packages
 
   ### What changed
+
   - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
   - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
   - Added `"files"` field to control published contents.
@@ -3308,6 +3436,7 @@ element/`), so it has been rewritten to assert the corrected message.
 - ad4d8d2: Configure private npm publishing for all @beindigital-engine packages
 
   ### What changed
+
   - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
   - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
   - Added `"files"` field to control published contents.
