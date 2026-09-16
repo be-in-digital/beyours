@@ -333,6 +333,10 @@ jobs:
       outcome: ${{ steps.sync.outputs.mirror_outcome }}
       ran: ${{ steps.sync.outcome }}
       can_push: ${{ steps.gate.outputs.can_push }}
+      # `true` when a Release for this commit is still to publish, so this
+      # `push` run stood down and the `workflow_run` one owns the sync. Read by
+      # `report` to tell that stand-down from a sync that was owed and missing.
+      deferred: ${{ steps.plan.outputs.publishing }}
     steps:
       - name: Check the push secret
         id: gate
@@ -444,11 +448,69 @@ jobs:
           scope: "@be-in-digital"
           cache: "pnpm"
 
+      # The mirror image of "Did that Release publish anything?" above, asked on
+      # the other path and for the opposite reason.
+      #
+      # WHAT IT FIXES. `push` fires at merge; `Release` takes about fourteen
+      # minutes to publish. A commit that CUTS a release is therefore raced by
+      # its own mirror run: the sync reaches the registry before the new
+      # versions are on it, pins the old ones, and the compile gate correctly
+      # refuses a template that would not build for a client.
+      #
+      # Measured on `0e9461f` (#557), the two runs for one commit:
+      #
+      #   549  push          21:52:07  pinned restaurant@^4.2.0  → refused
+      #        Release #344  21:53:43  published restaurant@4.2.1
+      #   550  workflow_run  21:59:54  pinned restaurant@^4.2.1  → pushed
+      #
+      #   app/(storefront)/checkout/page.tsx(22,3): error TS2305: Module
+      #   '"@be-in-digital/restaurant"' has no exported member
+      #   'cardUnavailableMessage'.
+      #
+      # Ninety-six seconds apart. The refusal was right and the run was early,
+      # and `main` kept a red `Publish mirror` for a commit that WAS delivered —
+      # indistinguishable, at a glance, from the five-day outage #550 was about.
+      # The one signal a person uses to decide whether clients are receiving
+      # code cannot also mean "ask again in two minutes".
+      #
+      # WHY STAND DOWN RATHER THAN WAIT. The `workflow_run` path already exists
+      # for exactly this commit and already gates on that Release having
+      # succeeded. Waiting here would be a second implementation of it, and a
+      # slower one.
+      #
+      # WHY THE HOLE THIS LEAVES IS COVERED. If the Release then fails, nothing
+      # syncs and this run is green — but a failed Release is itself red on
+      # `main`, loudly, and that is where a broken publish belongs. What must
+      # never happen is BOTH paths standing down over the same commit: the
+      # `workflow_run` stand-down below says "the push path owns any template
+      # change", so this one is deliberately narrow — it holds only when a
+      # release for this very commit is pending, which is the one case where
+      # that sibling is guaranteed to run and to sync.
+      #
+      # `publish-plan.mjs` fails safe towards `publishing=true` when the
+      # registry will not answer, which points the right way here too: an
+      # unanswerable question defers to the path that checks the tags rather
+      # than pinning versions nobody could verify.
+      # `push` ONLY, and not `workflow_dispatch`, which is the other trigger
+      # that reaches here. A dispatch is a person asking for a sync now; giving
+      # them a green run that pushed nothing is the ambiguity the `report` job
+      # below was built to remove. They get the refusal and its typecheck error,
+      # which names the package whose version is behind.
+      - name: Will a Release carry this commit?
+        id: plan
+        if: github.event_name == 'push'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/publish-plan.mjs
+
       - name: Sync
         id: sync
         # On `workflow_run`, only for a Release that published — see above.
-        # Every other trigger reaches here having passed `verify` and `e2e`.
-        if: github.event_name != 'workflow_run' || steps.released.outputs.published == 'true'
+        # On `push`, only when no Release is about to publish for this commit;
+        # otherwise the run above owns it and this one would pin stale versions.
+        if: >-
+          ${{ (github.event_name != 'workflow_run' && steps.plan.outputs.publishing != 'true')
+            || steps.released.outputs.published == 'true' }}
         env:
           # Registry read: the packages are published by this repository, so
           # GITHUB_TOKEN is enough with `packages: read`.
@@ -494,6 +556,7 @@ jobs:
           SYNC_RAN: ${{ needs.publish.outputs.ran }}
           OUTCOME: ${{ needs.publish.outputs.outcome }}
           CAN_PUSH: ${{ needs.publish.outputs.can_push }}
+          DEFERRED: ${{ needs.publish.outputs.deferred }}
           CHECK_ONLY: ${{ inputs.check_only }}
           EVENT: ${{ github.event_name }}
         run: |
@@ -523,6 +586,26 @@ jobs:
               exit 0
               ;;
           esac
+
+          # The second designed stand-down, and the mirror image of the one
+          # below: a `push` run for a commit whose Release has not published
+          # yet. The `workflow_run` run that follows that Release owns this
+          # commit, so refusing here is early rather than wrong — and a red mark
+          # would say "clients are not receiving this code" about a commit they
+          # are about to receive.
+          #
+          # Narrow three ways on purpose. `push` only, so a person's dispatch
+          # still gets the truth. It reads the PLAN rather than the outcome, so
+          # a sync that failed for any other reason still goes red even when a
+          # release happens to be pending. And `DEFERRED` can only be `true` on
+          # the push path at all, because the step that sets it is gated there.
+          if [ "$EVENT" = "push" ] && [ "$DEFERRED" = "true" ]; then
+            say "**Stood down.** A Release for this commit has not published yet, so the versions this sync would pin are still the previous ones."
+            say ""
+            say "The \`workflow_run\` run that follows that Release owns this commit and will carry it. If that Release fails, IT goes red — a broken publish belongs there, not here."
+            echo "::notice title=Deferred to the Release::The workflow_run path owns this commit."
+            exit 0
+          fi
 
           # Past here, no sync happened and none was explicitly requested to be
           # skipped. Say which of the ways it was, then fail — a run that was
