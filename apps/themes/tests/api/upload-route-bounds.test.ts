@@ -37,8 +37,8 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { readFileSync } from "node:fs"
-import { join } from "node:path"
 import { ALLOWED_MIME_TYPES, MAX_FILE_SIZES } from "@be-in-digital/core"
+import { enginePackageFile } from "../lib/repo-layout"
 
 const send = vi.fn()
 const sanitizeSvg = vi.fn((svg: string) => ({ sanitized: svg, removed: [] }))
@@ -172,11 +172,24 @@ describe("the types a dish photograph may be", () => {
   })
 })
 
+/** The uploader component's source, at whichever address this checkout uses. */
+function fieldSource(): string {
+  const file = enginePackageFile("admin", "src/pages/products/product-images-field.tsx")
+  if (file === null) {
+    throw new Error(
+      "product-images-field.tsx is not in this checkout, so what the field " +
+        "advertises would be compared against nothing"
+    )
+  }
+  return file
+}
+
 describe("what the product field advertises", () => {
-  const FIELD = readFileSync(
-    join(process.cwd(), "../../packages/admin/src/pages/products/product-images-field.tsx"),
-    "utf8"
-  )
+  // Resolved through `repo-layout`, not from the working directory: this file
+  // ships, and `../../packages/admin` is an address only the engine monorepo
+  // has. `admin` publishes `src`, so a client HAS this component — under
+  // `node_modules/@be-in-digital/admin` — and only the path to it was wrong.
+  const FIELD = readFileSync(fieldSource(), "utf8")
 
   /** `accept="…"` on the uploader, as the field declares it. */
   function advertisedTypes(): string[] {
