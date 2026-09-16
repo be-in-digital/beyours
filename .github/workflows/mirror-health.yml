@@ -734,8 +734,22 @@ jobs:
             echo "This is a clock, not a defect. An hour is a normal batch. A week means"
             echo "a fix that was merged here reaches nobody, which is what #516 was."
             echo
-            echo "**To clear it:** run \`Release\` from the Actions tab on \`main\`. The"
-            echo "table below says which packages and how many files."
+            echo "**To clear it:** \`pnpm version-packages\`, commit the bumped manifests"
+            echo "and CHANGELOGs, and merge. \`Release\` publishes on that merge and"
+            echo "\`Publish mirror\` syncs behind it. The table below says which packages"
+            echo "and how many files."
+            echo
+            echo "This used to say to run \`Release\` from the Actions tab. It has no"
+            echo "\`workflow_dispatch\` — push to \`main\` and nothing else — so there was"
+            echo "no such button, and the one instruction this report exists to give"
+            echo "could not be followed. \`release.yml\` and \`publish-plan.mjs\` have both"
+            echo "printed the command above all along; only this report disagreed."
+            echo
+            echo "If a package's registry file is generated from the manifests — the MCP"
+            echo "registry is — it needs a changeset of ITS own, and \`sync:versions\` run"
+            echo "AFTER \`changeset version\`, in the same commit. That file is the"
+            echo "package's own source, so a release leaving it behind ships a version"
+            echo "index one release behind the versions it indexes."
             echo
             echo '```'
             cat /tmp/source-drift.log
