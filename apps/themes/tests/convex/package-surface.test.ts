@@ -43,9 +43,31 @@ import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, test } from "vitest"
 
-const APP = process.cwd()
-const REPO_ROOT = join(APP, "../..")
-const PACKAGE_SRC = join(REPO_ROOT, "packages/convex-functions/src")
+import { IN_MONOREPO, MONOREPO_ROOT } from "../lib/repo-layout"
+
+/*
+ * WHY THIS SUITE DOES NOT RUN IN A DELIVERED SITE.
+ *
+ * It ships, like every file under `tests/`. It used to derive its roots as
+ * `join(process.cwd(), "../..")` — an address only this monorepo has — and in
+ * the tree a client receives that resolves to the directory ABOVE the
+ * repository, so all five cases died on ENOENT and the mirror refused to sync.
+ *
+ * The right answer here is to stand down rather than to re-address, which makes
+ * it the exception among its neighbours. `enginePackageFile` would find the
+ * package half — `convex-functions` publishes `src`, so a client has it — but
+ * the question this file asks is *is this definition wrapped by AN APP*, and
+ * "an app" means `themes` AND `reference` together. A client has one, and the
+ * `UNWRAPPED` ledger below was measured against both: read against one, every
+ * definition the sibling wraps would read as unwrapped. That is not a failure a
+ * client could act on — the ledger is the agency's, and so is the convention it
+ * pins.
+ *
+ * `IN_MONOREPO` is a positive test for the engine checkout (`pnpm-workspace.yaml`
+ * next to `packages/`), not "the file I wanted is missing" — a suite that
+ * shrugged at a missing file would be the vacuum this ledger exists to refuse.
+ */
+const PACKAGE_SRC = join(MONOREPO_ROOT ?? "", "packages/convex-functions/src")
 
 /**
  * Definitions no app references. Not approved — unreviewed.
@@ -106,7 +128,7 @@ function packageDefinitions(): string[] {
 function appConvexSources(): string {
   let haystack = ""
   for (const app of ["themes", "reference"]) {
-    const dir = join(REPO_ROOT, "apps", app, "convex")
+    const dir = join(MONOREPO_ROOT ?? "", "apps", app, "convex")
     for (const file of readdirSync(dir)) {
       if (file.endsWith(".ts")) haystack += "\n" + readFileSync(join(dir, file), "utf8")
     }
@@ -121,7 +143,7 @@ function unwrapped(): string[] {
     .sort()
 }
 
-describe("every definition the engine package exports", () => {
+describe.skipIf(!IN_MONOREPO)("every definition the engine package exports", () => {
   test("there are definitions and app wrappers to compare", () => {
     // Anti-vacuity, both sides: a broken path makes the ledger empty or total,
     // and either reads as a clean result.

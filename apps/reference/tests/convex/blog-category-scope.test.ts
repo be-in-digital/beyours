@@ -26,7 +26,7 @@ import { convexTest } from "convex-test"
 import { describe, expect, test } from "vitest"
 import { ConvexError } from "convex/values"
 import fs from "node:fs"
-import path from "node:path"
+import { enginePackageFile } from "../lib/repo-layout"
 import {
   createArticleCore,
   saveDraftCore,
@@ -277,10 +277,19 @@ describe("re-filing an article under a rubric", () => {
     // The store is the article's. Taking it from the caller would reopen the
     // door one field along — `saveDraftCore` has no `storeId` argument at all,
     // and this pins that it stays that way.
-    const source = fs.readFileSync(
-      path.resolve(__dirname, "../../../../packages/convex-functions/src/blog.ts"),
-      "utf8"
-    )
+    // Resolved through `repo-layout` rather than by walking up to `packages/`:
+    // this file SHIPS, and that path exists only in the engine monorepo. A
+    // client's copy is under `node_modules/@be-in-digital/convex-functions`,
+    // which `enginePackageFile` knows about and a `../../../../` does not.
+    const blog = enginePackageFile("convex-functions", "src/blog.ts")
+    if (blog === null) {
+      throw new Error(
+        "blog.ts is not in this checkout, so the rule about saveDraftCore's " +
+          "arguments would be checked against nothing"
+      )
+    }
+
+    const source = fs.readFileSync(blog, "utf8")
     expect(source).toContain("assertCategoryInStore(ctx, article.storeId, args.categoryId)")
   })
 })

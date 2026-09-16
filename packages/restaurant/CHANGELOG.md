@@ -1,5 +1,56 @@
 # @be-in-digital/restaurant
 
+## 4.2.1
+
+### Patch Changes
+
+- 1d9f5e1: Four places where a failure or a limit was invisible to the person it affected.
+
+  `recordOrderStatusChange` promised "Never throws" and wrapped only the identity
+  lookup; the insert sat outside the try, in the caller's transaction, so a failed
+  audit line took the order's status change with it. It is inside now.
+
+  The unmatched-import panel rendered nothing for both "still loading" and
+  "nothing to resolve", which mean opposite things on a screen an owner opens
+  right after an import. The unresolved state now says it is still counting; the
+  clean one stays silent.
+
+  « Taux de retour » read 2,000 customer rows and said nothing when it stopped
+  there, so an establishment with more distinct diners than that in the period
+  read a rate over an arbitrary slice of its book. `DashboardDiners` carries its
+  own `truncated` — the orders read beside it has its own, and a period can
+  exhaust either cap alone — and the card qualifies the figure when it is set.
+
+  A refused card payment told every diner « Choisissez un autre moyen de
+  paiement », including on a delivery order at an establishment that takes neither
+  cash nor PayPal, where card is the only tile on the page. `cardUnavailableMessage`
+  decides the second sentence from the same context the tiles were rendered from.
+
+- 4f44255: Bundle convex-schema so the package loads under plain Node
+
+  `dist` left `@be-in-digital/convex-schema` external, and that package publishes
+  raw `.ts` on purpose — the Convex bundler compiles it, and a schema has to stay
+  readable as source. So the bundle carried a runtime import of TypeScript.
+
+  It worked everywhere it was tried. In the monorepo `convex-schema` resolves
+  outside `node_modules` and Node strips types there. A client installs it from the
+  registry, where it is under `node_modules`, and Node refuses:
+
+      Error: Stripping types is currently unsupported for files under
+      node_modules, for ".../@be-in-digital/convex-schema/src/index.ts"
+
+  That is every Playwright spec importing a value from this package — the client
+  template's own `e2e/storefront/cart-line-identity.spec.ts` imports
+  `CART_STORAGE_VERSION` — on every client repo.
+
+  `tsup.config.ts` already had this exact reasoning written down for
+  `@be-in-digital/core/allergens`, one package along. `convex-schema` joins it in
+  `noExternal`. Bundled rather than repackaged: the four helpers used here are pure
+  functions and a constant, with no singleton to duplicate.
+
+- Updated dependencies [2a0e474]
+  - @be-in-digital/convex-schema@6.8.1
+
 ## 4.2.0
 
 ### Minor Changes
@@ -17,6 +68,7 @@
   before anyone built it.
 
   What was missing, and is here now:
+
   - **`menus.listActive`** — the filtered public query `menus.list`'s own comment
     asked for. It resolves `pick_category` sections server-side, leaves out a
     formule whose mandatory dish has been switched off (rather than offering it and
@@ -39,6 +91,7 @@
 
   **The two money decisions, stated because they were the reason this was its own
   change:**
+
   1. **VAT across a mixed-rate bundle** is split **pro rata on à-la-carte value**,
      the standard treatment of an _offre composite à prix global_. A 15 € dish at
      10 % and a 5 € glass of wine at 20 % sold at 20 € owes 1,36 € + 0,83 €. Split
@@ -851,6 +904,7 @@ close`. For an 18:00–02:00 restaurant that is false at 23:00 (`"23:00" <
 ### Patch Changes
 
 - 7f0122b: Republished from main. Fixes two problems with the 2.0.1 tarballs that broke consumers:
+
   - `@be-in-digital/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
   - The type fixes that were on main but never published (promotion-form/email-config in admin, Uber Eats signatures in integrations/convex-functions) go out with this patch — they had been committed without a changeset.
 
@@ -875,6 +929,7 @@ close`. For an 18:00–02:00 restaurant that is false at 23:00 (`"23:00" <
 - 7c3d4da: Configure private npm publishing for all @beindigital-engine packages
 
   ### What changed
+
   - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
   - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
   - Added `"files"` field to control published contents.
@@ -903,6 +958,7 @@ close`. For an 18:00–02:00 restaurant that is false at 23:00 (`"23:00" <
 - ad4d8d2: Configure private npm publishing for all @beindigital-engine packages
 
   ### What changed
+
   - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
   - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
   - Added `"files"` field to control published contents.

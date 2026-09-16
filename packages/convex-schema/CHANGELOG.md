@@ -1,5 +1,33 @@
 # Changelog - @be-in-digital/convex-schema
 
+## 6.8.1
+
+### Patch Changes
+
+- 2a0e474: Three package functions the product needed and no app wrapped.
+
+  `emailSegments.refreshCount` was the only writer of a real `subscriberCount`,
+  and nothing wrapped it — so `create` wrote 0, `duplicate` copied 0, and three
+  screens presented that as a subscriber count for as long as segments have
+  existed. The campaign wizard's audience estimate, read one click before a send,
+  said « 0 abonnés » for every segment. Those screens count live now, through
+  `emailSegments.countMatchingSubscribers`, which is the same query the segment
+  editor already uses to preview a rule set as it is typed. `refreshCount` is
+  deleted: caching needed a refresh policy, and a stale figure on that screen is
+  worse than none.
+
+  `blog.deleteTag` existed, join cleanup and all, and no app wrapped it. The
+  editor has created tags since it was written and nothing deleted one, so every
+  typo stayed in the picker for the life of the establishment. It is wrapped on
+  `content:delete` with `storeIdFrom` resolving the establishment from the tag
+  itself — the core takes a bare `tagId`, and a caller that supplies the
+  establishment its own permission is checked against is not a check.
+
+  `translations.bulkUpsert` is deleted: its `storeId` sat inside each array
+  element, where no store guard can read it, so it could never be wrapped as
+  written and nothing needs it. `cmsPublish.publishPage` is deleted too — it took
+  `updatedBy` from the client, and each app's own wrapper supersedes it.
+
 ## 6.8.0
 
 ### Minor Changes
@@ -44,6 +72,7 @@
 
   A descriptive comment on a field nothing populates reads as a shipped capability
   to anybody auditing the schema, which is how the audit found them.
+
   - `orders.externalDisplayId` — the number a kitchen matches against the tablet on
     the wall. Worth having; `createFromWebhook` extracts it from neither platform's
     payload, so it is `undefined` on every order.
@@ -104,6 +133,7 @@
   before anyone built it.
 
   What was missing, and is here now:
+
   - **`menus.listActive`** — the filtered public query `menus.list`'s own comment
     asked for. It resolves `pick_category` sections server-side, leaves out a
     formule whose mandatory dish has been switched off (rather than offering it and
@@ -126,6 +156,7 @@
 
   **The two money decisions, stated because they were the reason this was its own
   change:**
+
   1. **VAT across a mixed-rate bundle** is split **pro rata on à-la-carte value**,
      the standard treatment of an _offre composite à prix global_. A 15 € dish at
      10 % and a 5 € glass of wine at 20 % sold at 20 € owes 1,36 € + 0,83 €. Split
@@ -258,6 +289,7 @@
   leaving them out of every total.
 
   Also in this change, because the book has to agree with the orders behind it:
+
   - `customerEmailKey` is stamped on the order at the confirmation transition
     rather than only at creation, so an order inserted by any other path still
     has the key the detail view looks it up by.
@@ -290,6 +322,7 @@
 ### Minor Changes
 
 - b8c6f3e: Stop three deletes leaving a reference behind.
+
   - `categories.remove` left `stores.stationMapping[].categoryId` — a required
     `v.id("categories")` inside an array — naming a row that no longer exists.
     Inert only because `orders.ts` compares strings rather than dereferencing,
@@ -505,6 +538,7 @@
   the engine's: what the handler needs to act on a notification that arrives
   without those headers, which is every notification any client provisioned before
   today will send.
+
   - `emailSubscribers` gains `.index("by_email", ["email"])` — the address alone,
     no store.
   - `emailSubscribers.listByEmail` reads it, capped at 32 rows.
@@ -684,6 +718,7 @@
   kept the whole admin suite green.)
 
   **And five more removes were still leaving rows pointing at nothing.**
+
   - **A subscriber's rows go with them.** `emailSubscribers.remove` was a bare
     delete over TWO non-optional foreign keys — `emailEvents.subscriberId` and
     `emailAutomationRuns.subscriberId` — behind a live button. `privacy.ts` has
@@ -1389,6 +1424,7 @@ Server Error`. `SettlementRejectedError` joins the family, so the sentence that
   **The decision is per referencing table, and it splits on authorship**, which is
   the reasoning `categories.remove` already established: a cascade destroys an
   afternoon's work on a click meant to tidy up.
+
   - **Refused** while they point at the dish — `menus`, `promotions`, `prizes`.
     Each is a selling decision the owner made, and each has a screen to unmake it
     on. The refusal names them: _Ce produit est utilisé dans 1 formule : "Formule
@@ -1535,6 +1571,7 @@ Server Error`. `SettlementRejectedError` joins the family, so the sentence that
 
   The chain was broken at every link, and each surface had drifted because each
   carried its own idea of what an allergen was:
+
   - the printed kitchen ticket rendered `{allergens.join(", ")}` — whatever text
     was in the array is what a cook read before plating;
   - the admin product form had **no allergen control at all**, only a zod field
@@ -1657,6 +1694,7 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
   `packages/ui`, on the newer shadcn generation, reached through one specifier.
 
   Breaking changes for `@be-in-digital/ui`:
+
   - `Input`, `Textarea` and `Checkbox` are bare primitives. The composed-field
     API (`label`, `error`, `description` props and a wrapping `div`) is gone —
     pair them with a `Label`, which is what every call site but two already did.
@@ -1895,6 +1933,7 @@ element/`), so it has been rewritten to assert the corrected message.
   empty. Every mutation in the stores module now appends an entry naming the
   actor, the establishment, the operation, the timestamp and the before/after of
   the fields the edit moved.
+
   - `systemAuditLog` gains `store_created` / `store_updated` / `store_deleted`,
     an optional `targetStoreId`, and an index to read one establishment's history.
   - The printer API key is redacted on both sides of a `printConfig` diff, and
@@ -1932,6 +1971,7 @@ element/`), so it has been rewritten to assert the corrected message.
 ### Patch Changes
 
 - 321adad: Production-readiness audit fixes for delivery integrations:
+
   - **integrations**: the Uber Eats order mapper now keeps money in integer **cents**
     instead of dividing by 100. Previously Uber order totals were stored 100× too
     small while Deliveroo and website orders used cents. `UnifiedOrder` money fields
@@ -1952,6 +1992,7 @@ element/`), so it has been rewritten to assert the corrected message.
 - 7c3d4da: Configure private npm publishing for all @beindigital-engine packages
 
   ### What changed
+
   - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
   - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
   - Added `"files"` field to control published contents.
@@ -1974,6 +2015,7 @@ element/`), so it has been rewritten to assert the corrected message.
 - ad4d8d2: Configure private npm publishing for all @beindigital-engine packages
 
   ### What changed
+
   - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
   - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
   - Added `"files"` field to control published contents.

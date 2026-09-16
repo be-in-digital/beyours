@@ -34,9 +34,30 @@ import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, test } from "vitest"
 
-const APP = process.cwd()
-const CONVEX = join(APP, "convex")
-const ENV_DIR = join(APP, "../../packages/core/src/env")
+import { APP_ROOT, enginePackageFile } from "../lib/repo-layout"
+
+const CONVEX = join(APP_ROOT, "convex")
+
+/**
+ * A file in `@be-in-digital/core`'s env module, at whichever of its two
+ * addresses this checkout uses.
+ *
+ * This file SHIPS. `join(process.cwd(), "../../packages/core/src/env")` is an
+ * address only the engine monorepo has, so in a delivered site both reads below
+ * died on ENOENT and took the whole suite with them — `core` publishes `src`
+ * as well as `dist`, so the file a client has is perfectly readable and only
+ * the path to it was wrong.
+ */
+function envSource(name: string): string {
+  const file = enginePackageFile("core", `src/env/${name}`)
+  if (file === null) {
+    throw new Error(
+      `@be-in-digital/core/src/env/${name} is not in this checkout, so every ` +
+        "variable below would read as undeclared"
+    )
+  }
+  return readFileSync(file, "utf8")
+}
 
 /**
  * Names a Convex module may read without anybody provisioning them.
@@ -74,8 +95,8 @@ function envReads(): Map<string, string[]> {
   return found
 }
 
-const SCHEMAS = readFileSync(join(ENV_DIR, "schemas.ts"), "utf8")
-const MANIFEST = readFileSync(join(ENV_DIR, "manifest.ts"), "utf8")
+const SCHEMAS = envSource("schemas.ts")
+const MANIFEST = envSource("manifest.ts")
 
 /** Declared, whichever list is asked — a whole-word match on the name. */
 const declaredIn = (source: string, name: string) =>
