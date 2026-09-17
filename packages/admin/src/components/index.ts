@@ -6,6 +6,7 @@
 export { AuthGuard } from "./auth-guard"
 export { AppSidebar } from "./app-sidebar"
 export { AdminHeader } from "./admin-header"
+export { AdminTheme } from "./admin-theme"
 
 // Shared
 export { ComingSoon } from "./coming-soon"

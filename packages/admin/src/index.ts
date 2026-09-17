@@ -7,6 +7,7 @@
 
 // Components
 export {
+  AdminTheme,
   AuthGuard,
   AppSidebar,
   AdminHeader,
