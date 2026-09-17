@@ -208,7 +208,7 @@ export interface Order {
    * rather than imported because this file restates the whole order shape — the
    * admin reads Convex through a runtime-resolved `api` object and has no
    * generated `Doc` to lean on. Held to the schema by
-   * `order-notice-failure.test.ts`.
+   * `order-notice-failure-shape.test.ts`.
    */
   confirmationEmailFailure?: OrderNoticeFailure
   readyEmailFailure?: OrderNoticeFailure
