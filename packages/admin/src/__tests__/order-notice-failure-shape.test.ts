@@ -45,16 +45,25 @@ function schemaReasons(): string[] {
   const union = source.match(
     /export const noticeFailureReasonValidator = v\.union\(([\s\S]*?)\n\)/
   )
-  if (!union) return []
-  return [...union[1].matchAll(/v\.literal\("([a-z_]+)"\)/g)].map((m) => m[1])
+  // `union?.[1]` and `flatMap`, not `union[1]` and `map`: `noUncheckedIndexedAccess`
+  // is on, so both a match group and a capture are `string | undefined` to the
+  // compiler even where this regex cannot produce one. Narrowing keeps the
+  // return `string[]` without an assertion; the anti-vacuity test below is what
+  // catches a capture that really did go missing.
+  const body = union?.[1]
+  if (!body) return []
+  return [...body.matchAll(/v\.literal\("([a-z_]+)"\)/g)].flatMap((m) =>
+    m[1] ? [m[1]] : []
+  )
 }
 
 /** The members of the admin's own union, in declaration order. */
 function adminReasons(): string[] {
   const source = readFileSync(ADMIN_TYPES, "utf8")
   const declared = source.match(/reason:\s*((?:"[a-z_]+"\s*\|?\s*)+)/)
-  if (!declared) return []
-  return [...declared[1].matchAll(/"([a-z_]+)"/g)].map((m) => m[1])
+  const body = declared?.[1]
+  if (!body) return []
+  return [...body.matchAll(/"([a-z_]+)"/g)].flatMap((m) => (m[1] ? [m[1]] : []))
 }
 
 describe("the order-notice failure shape", () => {
