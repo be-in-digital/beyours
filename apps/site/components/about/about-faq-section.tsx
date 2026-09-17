@@ -6,7 +6,7 @@ const aboutFaqItems = [
   {
     question: "Combien de temps pour mettre en place la plateforme ?",
     answer:
-      "Le déploiement initial prend entre 2 et 4 semaines selon la complexité de votre projet. Votre site et vos outils sont opérationnels rapidement.",
+      "Le déploiement initial prend entre 4 et 6 semaines selon la complexité de votre projet. Votre site et vos outils sont opérationnels rapidement.",
   },
   {
     question: "Est-ce que vous travaillez avec tous types de restaurants ?",
