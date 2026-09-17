@@ -362,6 +362,63 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+
+  /*
+   * The radius scale, derived from `--radius` (#512).
+   *
+   * WHAT WAS BROKEN. Fifty of the fifty-one templates end `theme.css` with a
+   * `Shape language` heading and a `--radius`, and `templates/default/theme.css`
+   * — the file a client edits — lists it among the tokens they tune. It reached
+   * nothing a diner saw. Tailwind v4 builds the `rounded-*` utilities from the
+   * `--radius-*` NAMESPACE, and this block mapped none of it, so every one of
+   * them resolved to Tailwind's own default scale and `--radius` had two
+   * readers in the whole product: `packages/ui`'s `InputGroup`, and the demos'
+   * own stylesheet. Measured on 14 September 2026: 405 hard-coded `rounded-*`
+   * literals across 44 storefront files, not one reachable by a template.
+   * `pizzeria-verace` at `0.25rem` and `fast-food-verte` at `1.5rem` rendered
+   * the same shapes.
+   *
+   * A RATIO, NOT AN OFFSET, AND THE CATALOGUE IS WHY. shadcn's own convention
+   * is additive — `calc(var(--radius) - 2px)` and friends — and it fails at the
+   * sharp end, which is where this catalogue lives: 30 of the 50 sit at or
+   * below `0.5rem` and three ask for `0rem` outright. An offset leaves
+   * `rounded-2xl` — the storefront's most-used radius, 114 of the 405 — at 6px
+   * on a template that asked for square corners, which is the same half-kept
+   * promise this token already was. A ratio cannot do that, and cannot reach a
+   * negative radius either, so it needs no `max()` guard.
+   *
+   * ANCHORED SO TODAY DOES NOT MOVE. Each multiplier is that token's Tailwind
+   * 4.2.2 default divided by the engine's own `--radius: 0.625rem`, so at the
+   * engine value every one resolves to the byte-identical default — 2, 4, 6, 8,
+   * 12, 16, 24 and 32px. Nothing changes shape, in the storefront or the
+   * dashboard, until a template is applied; and a template already repaints the
+   * dashboard on purpose, since `theme.css` sets the sidebar tokens on `:root`.
+   * `__tests__/radius-scale.test.ts` reads both ends of that arithmetic out of
+   * this file and out of Tailwind's own `theme.css`, so a multiplier cannot be
+   * retuned into a silent redesign of every delivered site, and a Tailwind
+   * upgrade that moves the defaults is a failing test rather than a surprise.
+   *
+   * THE WHOLE NAMED SCALE, INCLUDING THE TWO STEPS THE SHOP DOES NOT SPELL.
+   * `xs` and `sm` appear only in `packages/ui` and `packages/admin` today, and
+   * `4xl` nowhere. They are mapped anyway: a scale with two steps pinned to
+   * Tailwind while the other six follow the establishment is not a shape
+   * language, and the anchor makes each of them a no-op until it is used.
+   *
+   * WHAT IS DELIBERATELY NOT MAPPED. `rounded-full` (107 uses) and the bracket
+   * literals (63) stay literal. `rounded-full` is a SHAPE and not a step on a
+   * scale — an avatar and a pill button both spell it, and only one of them is
+   * a radius language — and `rounded-[6rem]` on the hero is art direction, the
+   * way the four colour literals in #41 stayed literal with their reasons
+   * stated beside them.
+   */
+  --radius-xs: calc(var(--radius) * 0.2);
+  --radius-sm: calc(var(--radius) * 0.4);
+  --radius-md: calc(var(--radius) * 0.6);
+  --radius-lg: calc(var(--radius) * 0.8);
+  --radius-xl: calc(var(--radius) * 1.2);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-3xl: calc(var(--radius) * 2.4);
+  --radius-4xl: calc(var(--radius) * 3.2);
 }
 
 @layer base {
