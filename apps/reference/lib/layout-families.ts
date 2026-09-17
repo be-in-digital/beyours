@@ -96,8 +96,8 @@ export const HONOURED: { readonly [F in LayoutFamily]: readonly SiteLayout[F][] 
   foot: ["columns", "center", "heavy"],
   up: ["0", "1"],
   hero: ["split", "zen", "banner"],
-  menu: ["cards", "zen", "ledger"],
-  btn: [],
+  menu: ["cards", "zen", "ledger", "tickets", "dotted"],
+  btn: ["soft", "pill", "square"],
 }
 
 /** The families with at least one value the storefront honours. */
@@ -142,7 +142,9 @@ export function isLayoutValue(family: LayoutFamily, value: unknown): boolean {
  * legal value with zero rules in `globals.css`, so the shop rendered `split`
  * while `<html>` said `poster`. Measured at `a92a0e51`: 31 of the 51 templates
  * named a hero the storefront does not paint, 26 a menu, and 51 a button style —
- * the whole `btn` family, since `HONOURED.btn` is empty.
+ * the whole `btn` family, which then had no painted value at all. `btn` is now
+ * three of five and that last figure is 13: `soft`, `pill` and `square` reach
+ * the shop, `brutal` and `underline` do not.
  *
  * THE DECLARATION IS NOT LOST. It moves to `data-<family>-requested`, so the
  * markup says both what it renders and what the template asked for. Painting a
@@ -151,9 +153,10 @@ export function isLayoutValue(family: LayoutFamily, value: unknown): boolean {
  * answer in the DOM rather than in a stylesheet they have to search.
  *
  * `templates/README.md` carries the measured reason each value is unpainted —
- * `btn` waits on `--radius` reaching the shop at all, and the heroes and menus
- * want a photograph, a second image or a board the engine's components do not
- * carry.
+ * `brutal` and `underline` restyle a control's FILL, which needs every filled
+ * button in the shop told apart from the dish name, itself a `<button>`; and
+ * the heroes and menus want a photograph, a second image or a board the
+ * engine's components do not carry.
  */
 export function layoutAttributes(
   layout: Partial<SiteLayout> | undefined

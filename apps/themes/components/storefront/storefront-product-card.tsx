@@ -123,7 +123,7 @@ export function StorefrontProductCard({
             e.stopPropagation()
             onToggleFavorite()
           }}
-          className="absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-card/90 shadow-sm backdrop-blur-sm transition-all hover:bg-card hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="storefront-menu-fav absolute top-4 right-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-card/90 shadow-sm backdrop-blur-sm transition-all hover:bg-card hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <Heart
             aria-hidden="true"
@@ -142,7 +142,13 @@ export function StorefrontProductCard({
       </div>
 
       {/* Content */}
-      <div className="p-8 flex flex-col flex-1">
+      {/* `storefront-menu-*` below are hooks for the `menu` layout family
+          (#507), not styling. `tickets` turns this card into a row and `dotted`
+          into a priced line, and neither can be written against Tailwind's
+          generated class names — those are not a contract. The default is
+          `cards`, which is what this markup already renders, so an unstyled
+          card is correct. */}
+      <div className="storefront-menu-body p-8 flex flex-col flex-1">
         {/*
           THE DISH'S NAME IS THE CONTROL, and that is what makes the card
           reachable from a keyboard at all.
@@ -160,7 +166,7 @@ export function StorefrontProductCard({
           card's own click handler for pointer users, where it was never a
           problem.
         */}
-        <h3 className="mb-3 leading-tight">
+        <h3 className="storefront-menu-name mb-3 leading-tight">
           {onClick ? (
             <button
               type="button"
@@ -180,13 +186,13 @@ export function StorefrontProductCard({
         </h3>
 
         {product.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
+          <p className="storefront-menu-desc text-xs text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
             {product.description}
           </p>
         )}
 
-        <div className="mt-auto flex items-center justify-between gap-4">
-          <div className="flex flex-col">
+        <div className="storefront-menu-foot mt-auto flex items-center justify-between gap-4">
+          <div className="storefront-menu-price flex flex-col">
             <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">
               {t("product.price")}
             </span>
@@ -203,7 +209,7 @@ export function StorefrontProductCard({
                 e.stopPropagation()
                 onAddToCart()
               }}
-              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/10 transition-all hover:scale-110 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+              className="storefront-menu-add flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/10 transition-all hover:scale-110 hover:bg-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
             >
               <Plus className="h-6 w-6" aria-hidden="true" />
             </button>
@@ -213,7 +219,7 @@ export function StorefrontProductCard({
             // offers a screen-reader user something that does not exist.
             <div
               aria-hidden="true"
-              className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground"
+              className="storefront-menu-add flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground"
             >
               <Plus className="h-6 w-6" />
             </div>
