@@ -1009,3 +1009,59 @@ body:has(.pac-container:not(:empty)) [data-slot="dialog-overlay"] {
 
 /* `cards` is the default and has no rule: a grid of photo cards is what the
  * component already renders. */
+
+/* `btn` — the shape language of a control, and the first family whose rules act
+ * on a COMPONENT rather than on a section of the page.
+ *
+ * WHY THIS COULD NOT BE WRITTEN BEFORE #512. Three of the five values are
+ * radius languages, and `--radius` reached nothing on the shop: `@theme inline`
+ * mapped no `--radius-*` token, so the 405 hard-coded `rounded-*` literals
+ * resolved to Tailwind's own scale whatever the template asked for. Writing
+ * `pill` and `square` over that would have been two rules fighting 405
+ * literals. They now sit on the same scale, so a `square` template gets sharp
+ * cards AND sharp buttons rather than sharp buttons on round cards.
+ *
+ * WHAT THE SELECTOR REACHES, AND WHY IT IS NOT A HOOK CLASS. Every other family
+ * here hooks a `storefront-*` class the component carries, because Tailwind's
+ * generated names are not a contract. `data-slot="button"` is a different
+ * thing: it is written by hand in `packages/ui/src/components/Button.tsx` and
+ * is the design system's own contract, so it needs no second name. The bare
+ * `button` beside it is what covers the 56 RAW `<button>` elements the
+ * storefront renders — among them the add-to-cart, which is the most pressed
+ * control on the shop and is not a `Button` at all.
+ *
+ * A RADIUS IS SAFE ON ALL OF THEM; A FILL IS NOT. That bare `button` also
+ * catches controls that are not shape languages — the dish NAME on a card is a
+ * `<button>`, with no ground and no border. Giving it a border-radius is
+ * invisible, because a radius on an element with no background, border or
+ * shadow paints nothing, so `pill` and `square` can cover every control in the
+ * shop and be wrong about none of them.
+ *
+ * `brutal` and `underline` cannot take that shortcut, which is why they are NOT
+ * BUILT and `HONOURED.btn` names three of five. Both restyle the fill:
+ * `brutal` adds a hard border and shadow, `underline` removes the ground
+ * entirely. On the dish name they would draw a box around a line of text, and
+ * on the favourite heart they would frame an icon. Telling those apart needs
+ * every filled control in the shop named by hand — 56 raw buttons across some
+ * twenty files, most composing their classes through `cn()`, so no selector and
+ * no scan can sort them. That is a sweep with a judgement per button, not a
+ * rule, and it is the same reason seven of `hero`'s ten values are unbuilt.
+ * Measured against the catalogue: `soft`, `pill` and `square` are what 38 of
+ * the 51 templates ask for; `underline` is 8 and `brutal` 5.
+ *
+ * `soft` is the engine's own and deliberately has no rule — a template asking
+ * for it is asking for what the components already render, now scaled by its
+ * own `--radius`. */
+[data-btn="pill"] .storefront-theme :is(button, [data-slot="button"]) {
+  /* The stadium, not a number: `calc(infinity * 1px)` is what Tailwind's own
+   * `rounded-full` compiles to, and the browser clamps it to half the shorter
+   * side — so a wide CTA becomes a stadium and a square icon button a circle,
+   * from one declaration. */
+  border-radius: calc(infinity * 1px);
+}
+
+[data-btn="square"] .storefront-theme :is(button, [data-slot="button"]) {
+  /* 2px rather than 0, following the demo engine: a hairline reads as a chosen
+   * shape, where a true zero reads as a stylesheet that failed to load. */
+  border-radius: 2px;
+}

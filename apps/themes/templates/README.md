@@ -34,12 +34,14 @@ code, and a test holds the two against the stylesheet in both directions.
 | `nav` | `left` · `center` · `bar` · `minimal` | **yes** — `left` is what the bar already does; `center` puts the name on the bar's centre line (desktop only, since below `md` the links give way to a hamburger); `bar` states a bottom edge; `minimal` drops the edge and steps the links back |
 | `hero` | `split` · `zen` · `banner` — **yes**<br>`editorial` · `fullbleed` · `poster` · `board` · `magazine` · `collage` · `duo` — no | **partly**, and the rest are not a backlog. The three are arrangements of what the hero already holds (a text column, one image, two badges). The others want a photograph, a second image, a locations board, a marquee — or, for `editorial`, a rating stamp this product refuses to invent (CLAUDE.md § social proof). An unhonoured value renders `split`. |
 | `menu` | `cards` · `zen` · `ledger` — **yes**<br>`dotted` · `tickets` · `mosaic` · `tabs` · `bento` — no | **partly**. `cards` is the grid the page already renders; `zen` is one column with hairline rules; `ledger` numbers the dishes with a CSS counter. The rest want the card's body restructured, a thumbnail crop, mixed photo spans, or a sticky bar that lives in another component. An unhonoured value renders `cards`. |
-| `btn` | `soft` · `pill` · `square` · `brutal` · `underline` | not yet, and **blocked**: three of the five are radius languages, and `--radius` reaches nothing on the shop. Measured 14 Sep 2026 — 405 hard-coded `rounded-*` literals across 44 storefront files, and `@theme inline` maps no `--radius-*` token, so no Tailwind utility resolves to it. Its only readers anywhere are the demos and `packages/ui`'s `InputGroup` |
+| `btn` | `soft` · `pill` · `square` — **yes**<br>`brutal` · `underline` — no | **partly**. Unblocked by #512, which mapped `--radius-xs … --radius-4xl` onto `--radius` so the shop's 405 `rounded-*` literals finally resolve to the template's own shape. `soft` is what the components already render; `pill` and `square` are one declaration each, over every control in the shop — a radius on an element with no ground, border or shadow paints nothing, so they can reach the dish NAME (itself a `<button>`) and be wrong about none of it. `brutal` and `underline` restyle the FILL — a hard border and shadow, or no ground at all — so they need every filled control told apart from the text ones: 56 raw `<button>` across some twenty files, most composing classes through `cn()`. An unhonoured value renders `soft`. |
 
 **What the catalogue actually asks for, measured (#529).** Of the 51 installed
-templates, 31 name a hero outside the built three, 26 a menu, and 51 a button
-style — the whole `btn` family, since none of its five is built. That is not
-drift: the values are the design, and the rules are what has not caught up.
+templates, 31 name a hero outside the built three, 26 a menu, and **13** a
+button style — `underline` in 8 and `brutal` in 5. That last figure was 51, the
+whole catalogue, while none of `btn`'s five values was built; `soft` (14),
+`pill` (13) and `square` (11) now account for 38 of them. That is not drift:
+the values are the design, and the rules are what has not caught up.
 
 So `layoutAttributes` emits **the engine's value** for an unpainted one and
 records the ask beside it as `data-<family>-requested`. `<html>` used to read

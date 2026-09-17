@@ -236,14 +236,28 @@ describe("what the stylesheet honours", () => {
     expect(unclaimed, "has rules in globals.css but is not in HONOURED").toEqual([])
   })
 
-  test("a family with no honoured value has no rules at all", () => {
-    // `menu` and `btn` are carried, typed and refused-when-invalid, and paint
-    // nothing. A stray rule for one would make the README's "not yet" false.
+  test("an unbuilt value has no rules at all", () => {
+    // This used to be stated per FAMILY — "a family with no honoured value has
+    // no rules" — and `btn` was its last subject. Painting three of `btn`'s five
+    // left every family at least partly built, so the guard had nothing to hold
+    // and its own anti-vacuity assertion was what failed. The rule it was
+    // reaching for is per value, which is the grain everything else here uses:
+    // a value the README calls unbuilt must paint nothing, or the catalogue
+    // tells whoever picks a template the opposite of what the shop does.
     const painted = valuesInCss()
-    const silent = FAMILY_NAMES.filter((family) => HONOURED[family].length === 0)
+    const unbuilt = FAMILY_NAMES.flatMap((family) =>
+      LAYOUT_FAMILIES[family]
+        .filter((value) => !isHonoured(family, value))
+        .map((value) => ({ family, value }))
+    )
 
-    expect(silent.length, "no family is unbuilt — this test has nothing to guard").toBeGreaterThan(0)
-    expect(silent.filter((family) => painted[family])).toEqual([])
+    expect(unbuilt.length, "every value is built — this test has nothing to guard").toBeGreaterThan(0)
+    expect(
+      unbuilt
+        .filter(({ family, value }) => painted[family]?.has(value))
+        .map(({ family, value }) => `${family}="${value}"`),
+      "has rules in globals.css but is not in HONOURED"
+    ).toEqual([])
   })
 
   test("no rule reading a family can reach the dashboard", () => {
@@ -396,9 +410,10 @@ describe("what reaches the DOM", () => {
   })
 
   test("the engine's own value is never noted as requested-and-refused", () => {
-    // `btn: "soft"` IS the engine's value and is still unpainted, so it must
-    // fall through silently rather than telling a reader their default was
-    // overruled.
+    // The engine's own value must fall through silently rather than telling a
+    // reader their default was overruled. This mattered most while `btn: "soft"`
+    // was both the engine's value AND unpainted; `soft` is painted now, and the
+    // rule it proved is the one that outlives it.
     const attributes = layoutAttributes(ENGINE_LAYOUT)
 
     for (const family of FAMILY_NAMES) {
@@ -459,14 +474,14 @@ describe("templates naming a layout the shop does not paint", () => {
   const PINNED: Record<string, number> = {
     hero: 31,
     menu: 26,
-    btn: 51,
+    btn: 13,
   }
 
   /** Every unpainted value the catalogue names today, per family. */
   const PINNED_VALUES: Record<string, string[]> = {
     hero: ["board", "collage", "duo", "editorial", "fullbleed", "magazine", "poster"],
     menu: ["bento", "dotted", "mosaic", "tabs", "tickets"],
-    btn: ["brutal", "pill", "soft", "square", "underline"],
+    btn: ["brutal", "underline"],
   }
 
   /** `{ family: { count, values } }` over the installed catalogue. */

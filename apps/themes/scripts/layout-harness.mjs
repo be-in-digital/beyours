@@ -39,6 +39,12 @@ const CASES = [
   { family: "hero", fragment: "hero", values: ["split", "zen", "banner"] },
   { family: "menu", fragment: "menu", values: ["cards", "zen", "ledger"] },
   { family: "foot", fragment: "footer", values: ["columns", "center", "heavy"] },
+  // `btn` twice, because its two kinds of control live in different fragments:
+  // the hero carries a labelled CTA, the dish grid the icon-only add-to-cart
+  // and the favourite heart. Reviewing one would leave the other unseen, and
+  // the add button is the most pressed control on the shop.
+  { family: "btn", fragment: "hero", values: ["soft", "pill", "square"] },
+  { family: "btn", fragment: "menu", values: ["soft", "pill", "square"] },
   { family: "tex", fragment: "footer", values: ["none", "dots", "lines", "grain", "checker"] },
   { family: "up", fragment: "footer", values: ["0", "1"] },
 ];
