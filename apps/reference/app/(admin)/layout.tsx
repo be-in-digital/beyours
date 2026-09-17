@@ -7,6 +7,7 @@ import { AdminAuthSync } from "@/components/admin/AdminAuthSync"
 import { useCmsPage } from "@/lib/cms/useCmsPage"
 import {
   AuthGuard,
+  AdminTheme,
   AppSidebar,
   AdminHeader,
   SidebarProvider,
@@ -30,6 +31,14 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
+      {/*
+        The establishment's own palette, on the dashboard. Mounted here rather
+        than in the root layout because it needs `useAdminStore`, which only
+        answers inside the admin tree — and because these are the pages whose
+        tokens `buildBrandingCss` derives. See the component's own note for why
+        it passes no `scopes` where the storefront must.
+      */}
+      <AdminTheme />
       <AppSidebar
         userFooter={
           <>

@@ -51,10 +51,20 @@ const APPS = ["reference", "themes"] as const
 const DESIGN_ROUTE = "app/(admin)/dashboard/design/page.tsx"
 const STOREFRONT_LAYOUT = "app/(storefront)/layout.tsx"
 const STORE_THEME = "components/storefront/store-theme.tsx"
+const ADMIN_LAYOUT = "app/(admin)/layout.tsx"
+const ADMIN_THEME = path.join(ADMIN_SRC, "components/admin-theme.tsx")
 const GLOBALS = "app/globals.css"
 const DESIGN_PAGE = path.join(ADMIN_SRC, "pages/design/design-page.tsx")
 const source = fs.readFileSync(DESIGN_PAGE, "utf8")
 const read = (file: string): string => fs.readFileSync(file, "utf8")
+
+/**
+ * Source with its comments removed, for an assertion about what the code DOES.
+ * A file that explains a trap necessarily names it, and a scanner reading its
+ * own prose reports the explanation as the trap.
+ */
+const withoutComments = (src: string): string =>
+  src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1")
 
 /** Every `.ts`/`.tsx` under `dir`, for the sweeps that ask about a whole tree. */
 function walkTsx(dir: string): string[] {
@@ -408,6 +418,18 @@ describe("what the screen saves reaches a diner", () => {
       expect(fs.existsSync(path.join(REPO, "apps", app, STORE_THEME))).toBe(true)
     })
 
+    it(`apps/${app} paints the dashboard with it too`, () => {
+      // The other half, and it was missing for as long as the deriver has
+      // existed. `buildBrandingCss` writes `--sidebar-primary`, its label,
+      // `--sidebar-accent`, `--sidebar-ring` and `--chart-1` — tokens only the
+      // admin reads — and no admin page ever mounted the stylesheet. An owner
+      // who picked a colour got a branded shop and an orange dashboard.
+      const layout = read(path.join(REPO, "apps", app, ADMIN_LAYOUT))
+      expect(layout, "admin layout does not mount AdminTheme").toContain(
+        "<AdminTheme"
+      )
+    })
+
     // The logo and the favicon are deliberately NOT asserted here. `logoUrl`
     // and `faviconUrl` stay in `BRANDING_FIELDS` because deployed stores hold
     // them, but the Design screen sends the owner to the CMS `branding` block
@@ -431,6 +453,47 @@ describe("what the screen saves reaches a diner", () => {
       }
     })
   }
+
+  it("aims the dashboard stylesheet at :root, not at the storefront shell", () => {
+    // The failure mode this guards is a copy of `StoreTheme` rather than a
+    // sibling of it. `.storefront-theme` is a `<div>` the admin never renders,
+    // so a scope passed here would produce a stylesheet that matches nothing
+    // and a dashboard that silently stays on the defaults — the mirror image
+    // of #410, and just as invisible.
+    // Read WITHOUT comments: the component's own docblock explains at length
+    // why it passes no scope where the storefront must, so a naive
+    // `not.toContain("storefront-theme")` accuses the explanation of being the
+    // defect. Measured — that is exactly what this assertion did first.
+    const component = withoutComments(read(ADMIN_THEME))
+    expect(component, "AdminTheme scopes itself to the storefront shell").not.toContain(
+      "storefront-theme"
+    )
+    // The call carries the branding and nothing else. An options object here
+    // would be the copy rather than the sibling.
+    expect(component).toContain("buildBrandingCss(store.branding)")
+    // And it must follow the ADMINISTERED establishment, not the one a
+    // customer tab last browsed.
+    expect(component).toContain("useAdminStore")
+  })
+
+  it("derives the tokens only the dashboard reads", () => {
+    // Anti-vacuity for the two tests above: mounting the stylesheet is worth
+    // nothing if the deriver stops writing the tokens the admin is painted
+    // with. These five have no reader on the storefront at all.
+    const css = buildBrandingCss({
+      primaryColor: SAMPLES.primaryColor,
+      accentColor: SAMPLES.accentColor,
+    })
+    for (const token of [
+      "--sidebar-primary:",
+      "--sidebar-primary-foreground:",
+      "--sidebar-ring:",
+      "--sidebar-accent:",
+      "--chart-1:",
+    ]) {
+      expect(css, `the deriver stopped writing ${token}`).toContain(token)
+    }
+  })
 
   it("does not promise a font it cannot deliver", () => {
     // Nothing fetches a webfont, so a stored family renders only where the
