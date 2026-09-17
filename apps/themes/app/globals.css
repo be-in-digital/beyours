@@ -1065,3 +1065,211 @@ body:has(.pac-container:not(:empty)) [data-slot="dialog-overlay"] {
    * shape, where a true zero reads as a stylesheet that failed to load. */
   border-radius: 2px;
 }
+
+/* `tickets` — the dish as a row: a square thumbnail, the name and description
+ * beside it, the price and the add button at the end. The demo engine's
+ * `.menu-tickets .dish` is `grid-template-columns: 72px 1fr auto auto`, and
+ * this is that over the engine's own card.
+ *
+ * It needs no photograph, which is what separates it from `mosaic` and `bento`.
+ * Those two overlay white text on the dish's own image, and this engine renders
+ * a placeholder glyph on `--muted` when a dish has none — so white-on-light,
+ * unreadable, on exactly the dishes an owner has not photographed yet. The
+ * contrast sweep cannot see it either: it reads source files, and this would be
+ * text over a photograph. That is why they are still unbuilt and this is not.
+ *
+ * The thumbnail overrides the 4:3 block rather than cropping it: `aspect-ratio`
+ * gives way to a fixed square, and `object-fit: cover` on the image inside is
+ * already what the component sets. A dish with no photo keeps the grey square,
+ * which is a thumbnail-shaped absence rather than a broken row. */
+[data-menu="tickets"] .storefront-theme .storefront-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+[data-menu="tickets"] .storefront-theme .storefront-menu-item {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius);
+  box-shadow: none;
+  border: 1px solid hsl(var(--border));
+}
+
+[data-menu="tickets"] .storefront-theme .storefront-menu-photo {
+  width: 4.5rem;
+  height: 4.5rem;
+  aspect-ratio: auto;
+  border-radius: calc(var(--radius) * 0.6);
+}
+
+[data-menu="tickets"] .storefront-theme .storefront-menu-body {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0 0.9rem;
+  padding: 0;
+}
+
+/* The name and the description stack in the first column; the footer — price
+ * and add button — moves out of the flow and onto the same row, which is the
+ * whole shape of a ticket. `grid-row: 1 / span 2` rather than `span 2` alone,
+ * because the description is conditional: a dish without one leaves a single
+ * row and an unanchored end would drop below it. */
+[data-menu="tickets"] .storefront-theme .storefront-menu-name {
+  grid-column: 1;
+  margin-bottom: 0;
+}
+
+[data-menu="tickets"] .storefront-theme .storefront-menu-desc {
+  grid-column: 1;
+  margin-bottom: 0;
+}
+
+[data-menu="tickets"] .storefront-theme .storefront-menu-foot {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  margin-top: 0;
+  gap: 0.9rem;
+}
+
+/* Under 40rem the end wraps beneath the text rather than squeezing the name to
+ * nothing — the demos do the same at 620px. */
+@media (max-width: 40rem) {
+  [data-menu="tickets"] .storefront-theme .storefront-menu-body {
+    grid-template-columns: 1fr;
+  }
+
+  [data-menu="tickets"] .storefront-theme .storefront-menu-foot {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 0.5rem;
+  }
+}
+
+/* `dotted` — the printed carte: the dish name, a dotted leader, the price. No
+ * photograph at all, in two columns on a wide screen.
+ *
+ * WHY AN EARLIER ATTEMPT DID NOT WORK, recorded because the markup still looks
+ * as though it should. The card's body is `flex flex-col`, so the name and the
+ * price stacked and the leader had no two ends to span — a dotted rule needs a
+ * row. The body becomes a baseline grid here, which is the whole fix.
+ *
+ * The photograph is hidden rather than dropped from the DOM: this is a
+ * presentation choice a template makes, and a value that removed content would
+ * change what a screen reader is offered depending on the palette bought. The
+ * favourite button lives inside that block, so it goes with it — which is a
+ * real loss, and the reason this value suits a carte-style establishment rather
+ * than a click-and-collect one. It is the demos' own trade: `.menu-dotted` has
+ * no image and no favourite either. */
+[data-menu="dotted"] .storefront-theme .storefront-menu {
+  display: block;
+  columns: 2;
+  column-gap: 3.5rem;
+}
+
+[data-menu="dotted"] .storefront-theme .storefront-menu-item {
+  break-inside: avoid;
+  display: block;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  margin-bottom: 0.25rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px dotted hsl(var(--border));
+}
+
+[data-menu="dotted"] .storefront-theme .storefront-menu-photo {
+  display: none;
+}
+
+[data-menu="dotted"] .storefront-theme .storefront-menu-body {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 0 0.75rem;
+  padding: 0;
+}
+
+[data-menu="dotted"] .storefront-theme .storefront-menu-name {
+  grid-column: 1;
+  margin-bottom: 0;
+}
+
+/* The description belongs under the name and not beside the price, so it is
+ * pinned to the first column rather than left to flow into the second. */
+[data-menu="dotted"] .storefront-theme .storefront-menu-desc {
+  grid-column: 1;
+  margin-bottom: 0;
+}
+
+[data-menu="dotted"] .storefront-theme .storefront-menu-foot {
+  grid-column: 2;
+  grid-row: 1;
+  margin-top: 0;
+  gap: 0.6rem;
+}
+
+/* The price label — the word « Prix » above the figure — is chrome a carte does
+ * not have: the column IS the price. The figure keeps its own element, so
+ * nothing about the reading order changes. */
+[data-menu="dotted"] .storefront-theme .storefront-menu-price > span:first-child {
+  display: none;
+}
+
+/* One column below 54rem, as the demos do at 860px: two columns of a carte on a
+ * phone gives about twelve characters a line. */
+@media (max-width: 54rem) {
+  [data-menu="dotted"] .storefront-theme .storefront-menu {
+    columns: 1;
+  }
+}
+
+/* The favourite toggle lives INSIDE the photo block, so it shrinks with it. At
+ * `top-4 right-4` on a 4.5rem thumbnail it lands in the middle and covers the
+ * dish; measured in Chromium before this rule, on the placeholder, where it was
+ * merely ugly — on a real photograph it hides the food. Cornered and halved
+ * rather than hidden: the demos' own `tickets` has no favourite at all, and
+ * removing a control because a template was applied is not a presentation
+ * choice. */
+[data-menu="tickets"] .storefront-theme .storefront-menu-fav {
+  top: 0.15rem;
+  right: 0.15rem;
+  height: 1.4rem;
+  width: 1.4rem;
+}
+
+[data-menu="tickets"] .storefront-theme .storefront-menu-fav svg {
+  height: 0.8rem;
+  width: 0.8rem;
+}
+
+/* The add button, at carte scale. The engine's is a 3rem filled square, which
+ * on a printed-menu line is heavier than the dish name and — measured in
+ * Chromium at 1280 — pushed past the right edge of the second column. The demo
+ * engine's `.menu-dotted .addbtn` is a 29px outlined circle, and that is the
+ * design this value is taken from.
+ *
+ * `--primary-ink` and not `--primary`: this is a WORD's worth of colour on the
+ * page's own ground rather than a fill, which is the distinction `globals.css`
+ * draws at `:root` and the reason both tokens exist. Under an establishment's
+ * branding the two part company, and using the fill here would put a colour
+ * chosen to carry white text onto a light background. */
+[data-menu="dotted"] .storefront-theme .storefront-menu-add {
+  height: 1.9rem;
+  width: 1.9rem;
+  border-radius: calc(infinity * 1px);
+  background: none;
+  border: 1.5px solid hsl(var(--primary-ink));
+  color: hsl(var(--primary-ink));
+  box-shadow: none;
+}
+
+[data-menu="dotted"] .storefront-theme .storefront-menu-add svg {
+  height: 1rem;
+  width: 1rem;
+}

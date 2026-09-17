@@ -473,14 +473,14 @@ describe("templates naming a layout the shop does not paint", () => {
   /** Per family: how many of the 51 templates name an unpainted value. */
   const PINNED: Record<string, number> = {
     hero: 31,
-    menu: 26,
+    menu: 17,
     btn: 13,
   }
 
   /** Every unpainted value the catalogue names today, per family. */
   const PINNED_VALUES: Record<string, string[]> = {
     hero: ["board", "collage", "duo", "editorial", "fullbleed", "magazine", "poster"],
-    menu: ["bento", "dotted", "mosaic", "tabs", "tickets"],
+    menu: ["bento", "mosaic", "tabs"],
     btn: ["brutal", "underline"],
   }
 

@@ -37,7 +37,7 @@ const CASES = [
   { family: "nav", fragment: "header-transparent", values: ["left", "center", "bar", "minimal"] },
   { family: "nav", fragment: "header-opaque", values: ["left", "center", "bar", "minimal"] },
   { family: "hero", fragment: "hero", values: ["split", "zen", "banner"] },
-  { family: "menu", fragment: "menu", values: ["cards", "zen", "ledger"] },
+  { family: "menu", fragment: "menu", values: ["cards", "zen", "ledger", "tickets", "dotted"] },
   { family: "foot", fragment: "footer", values: ["columns", "center", "heavy"] },
   // `btn` twice, because its two kinds of control live in different fragments:
   // the hero carries a labelled CTA, the dish grid the icon-only add-to-cart
