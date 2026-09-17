@@ -81,6 +81,19 @@ function blockAt(text: string, from: number): string {
   return ""
 }
 
+/** The body of `if (<condition>) { … }` inside one send, by brace balancing. */
+function branchBody(fn: string, condition: string): string {
+  const text = source()
+  const start = text.indexOf(`export const ${fn}`)
+  if (start === -1) return ""
+
+  const body = blockAt(text, start)
+  const at = body.indexOf(`if (${condition})`)
+  if (at === -1) return ""
+
+  return blockAt(body, at)
+}
+
 /** The `catch (…) { … }` body of the try around the transport call, for one send. */
 function catchBody(fn: string): string {
   const text = source()
@@ -153,6 +166,60 @@ describe("a transactional send that fails gives its claim back", () => {
     expect(caught).not.toBe("")
     expect(/\breleaseReadyNoticeClaim\b/.test(caught)).toBe(false)
     expect(/console\.error\([^)]*,\s*error\s*\)/.test(caught)).toBe(true)
+  })
+
+  test("the failure is recorded with the same string that was logged", (): void => {
+    // Not the raw error object, for the reason the log test above gives: the
+    // order detail screen is read by every member who can open an order, and
+    // some SES rejections carry the recipient's address inside the object.
+    for (const send of SENDS) {
+      const body = catchBody(send.fn)
+      expect(body, `${send.fn} should record reason "transport"`).toMatch(
+        /reason:\s*"transport"/
+      )
+      expect(
+        /failure:\s*\{[^}]*detail\s*\}/.test(body),
+        `${send.fn} should pass the detail it logged, not the error object`
+      ).toBe(true)
+    }
+  })
+
+  test("the branches that report and the branch that stays quiet are found", () => {
+    // Anti-vacuity for the two below. A renamed condition makes both run
+    // against "" — one would pass for the wrong reason and the other would
+    // pass for no reason at all.
+    for (const send of SENDS) {
+      expect(branchBody(send.fn, "!payload").length).toBeGreaterThan(40)
+      expect(branchBody(send.fn, "!fromAddress").length).toBeGreaterThan(40)
+    }
+  })
+
+  test.each(SENDS)("$fn names the configuration gap when no sender is set", (send) => {
+    // The one failure an owner can repair themselves, so it is the one most
+    // worth putting on the order.
+    expect(branchBody(send.fn, "!fromAddress")).toMatch(
+      /reason:\s*"no_sender_address"/
+    )
+  })
+
+  test.each(SENDS)("$fn reports nothing when the order itself is gone", (send) => {
+    /*
+     * THE ASYMMETRY THIS WHOLE CHANGE RESTS ON (#530).
+     *
+     * This branch releases the claim too, but nothing failed: the order was
+     * cancelled, refunded or deleted between the claim and the send. Recording
+     * a failed notice here would put « e-mail non parti » on the screen of an
+     * order that no longer exists, which is worse than silence — and it is the
+     * mistake an implementation makes by hanging the record on the release
+     * itself rather than on the caller.
+     */
+    const body = branchBody(send.fn, "!payload")
+
+    expect(body, `${send.fn}: the claim still goes back here`).toContain(send.release)
+    expect(
+      /failure:/.test(body),
+      `${send.fn} must NOT report a failure for an order that is gone`
+    ).toBe(false)
   })
 
   test("the claim is still written before the transport is called", () => {

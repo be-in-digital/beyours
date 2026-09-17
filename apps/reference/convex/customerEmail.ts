@@ -257,8 +257,12 @@ export const sendOrderConfirmation = internalAction({
       console.error(
         "[orderConfirmation] no sender address: neither the establishment's email config nor AWS_SES_FROM_EMAIL is set"
       );
+      // The one failure an owner can fix themselves, so it is the one most worth
+      // putting on the order (#530). No `detail`: nothing was attempted, so
+      // there is no provider message to quote.
       await ctx.runMutation(internal.orders.releaseConfirmationClaim, {
         orderId: args.orderId,
+        failure: { reason: "no_sender_address" },
       });
       return { sent: false };
     }
@@ -305,12 +309,17 @@ export const sendOrderConfirmation = internalAction({
       // because every refusal this product chooses is made before the claim.
       //
       // `error.message` and the order id, never the raw SDK error object.
+      const detail = error instanceof Error ? error.message : String(error);
       console.error(
         `[orderConfirmation] send failed for order ${args.orderId}:`,
-        error instanceof Error ? error.message : String(error)
+        detail
       );
+      // And the order says so, so an owner is no longer left comparing an
+      // outage with a delivered receipt (#530). The same string the log gets:
+      // the message, never the SDK object.
       await ctx.runMutation(internal.orders.releaseConfirmationClaim, {
         orderId: args.orderId,
+        failure: { reason: "transport", detail },
       });
       return { sent: false };
     }
@@ -362,8 +371,10 @@ export const sendOrderReady = internalAction({
       console.error(
         "[orderReady] no sender address: neither the establishment's email config nor AWS_SES_FROM_EMAIL is set"
       );
+      // Put on the order, as the confirmation's is (#530).
       await ctx.runMutation(internal.orders.releaseReadyNoticeClaim, {
         orderId: args.orderId,
+        failure: { reason: "no_sender_address" },
       });
       return { sent: false };
     }
@@ -427,12 +438,15 @@ export const sendOrderReady = internalAction({
       // `error.message` and the order id, never the raw SDK error: some SES
       // rejections carry the recipient's address inside the object, and this
       // line lands in a log an operator reads.
+      const detail = error instanceof Error ? error.message : String(error);
       console.error(
         `[orderReady] send failed for order ${args.orderId}:`,
-        error instanceof Error ? error.message : String(error)
+        detail
       );
+      // And the order says so (#530), with the same string the log gets.
       await ctx.runMutation(internal.orders.releaseReadyNoticeClaim, {
         orderId: args.orderId,
+        failure: { reason: "transport", detail },
       });
       return { sent: false };
     }

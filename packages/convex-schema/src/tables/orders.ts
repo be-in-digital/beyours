@@ -1,5 +1,62 @@
 import { defineTable } from "convex/server"
-import { v } from "convex/values"
+import { type Infer, v } from "convex/values"
+
+/**
+ * Why a transactional notice did not reach the diner (#530).
+ *
+ * Shared by the two notices below, so they cannot describe a failure in two
+ * different vocabularies.
+ *
+ * `reason` is a closed set of two, and both are known where the send gives up
+ * rather than inferred from the exception: nothing here classifies an error.
+ * That is deliberate — the send path refuses to sort failures into transient
+ * and permanent, and a field that exists to be displayed must not smuggle that
+ * decision back in.
+ */
+/**
+ * `no_sender_address` — neither the establishment's email config nor
+ * `AWS_SES_FROM_EMAIL` is set. An onboarding step, and the owner's to close.
+ *
+ * `transport` — the provider was reached and the send did not complete.
+ *
+ * Declared once and shared by the stored shape and the argument below, so the
+ * set a caller may name and the set the table accepts cannot drift apart.
+ */
+export const noticeFailureReasonValidator = v.union(
+  v.literal("no_sender_address"),
+  v.literal("transport")
+)
+
+/**
+ * What a caller supplies when a notice gives up.
+ *
+ * `at` is absent on purpose: the moment a notice gave up is the moment the
+ * mutation recording it runs, and an action computing that separately is a
+ * second clock this does not need.
+ */
+export const noticeFailureInputValidator = v.object({
+  reason: noticeFailureReasonValidator,
+  /**
+   * The provider's own message, for whoever the owner calls about it.
+   *
+   * `error.message`, never the SDK error object: some SES rejections carry the
+   * recipient's address inside one, and this field is read by every member who
+   * can open an order.
+   *
+   * Absent for `no_sender_address`, which has nothing to quote.
+   */
+  detail: v.optional(v.string()),
+})
+
+/** What the table stores: the caller's two fields, plus when it happened. */
+export const noticeFailureValidator = v.object({
+  at: v.number(),
+  reason: noticeFailureReasonValidator,
+  detail: v.optional(v.string()),
+})
+
+export type NoticeFailure = Infer<typeof noticeFailureValidator>
+export type NoticeFailureInput = Infer<typeof noticeFailureInputValidator>
 
 /**
  * Orders table
@@ -359,6 +416,43 @@ export const ordersTable = defineTable({
    * order written before this existed.
    */
   readyEmailAt: v.optional(v.number()),
+
+  /**
+   * Why the last « votre commande est prête » notice did not go out (#530).
+   *
+   * THE HALF THAT WAS MISSING. `readyEmailAt` is given back when a send fails,
+   * so a later legitimate `ready` transition can still write — but nobody is
+   * TOLD. An outage and a delivered notice looked identical to the owner, and
+   * the diner waited for a mail that no longer existed anywhere.
+   *
+   * `reason` is a closed set because both members are decided at the call site
+   * rather than sniffed out of an error. `no_sender_address` is a configuration
+   * gap the owner can close; `transport` is the provider failing. Nothing
+   * classifies an exception to choose between them, and nothing should: the
+   * send path deliberately does not sort failures into transient and permanent,
+   * and a display field must not reintroduce that by the back door.
+   *
+   * `detail` is the provider's own message, for whoever the owner calls. It is
+   * never the raw SDK error object — some SES rejections carry the recipient's
+   * address inside one.
+   *
+   * Cleared when a new send is claimed, so a repaired notice does not leave a
+   * stale failure on the screen.
+   *
+   * Optional: unset means the last dispatch did not fail, which is true of
+   * every order written before this existed.
+   */
+  readyEmailFailure: v.optional(noticeFailureValidator),
+
+  /**
+   * The same, for the confirmation (#530).
+   *
+   * Separate from `readyEmailFailure` rather than one field with a discriminator
+   * because the two notices fail independently: an order whose confirmation was
+   * lost to an outage can have its ready notice arrive normally an hour later,
+   * and an owner needs to see which of the two is missing.
+   */
+  confirmationEmailFailure: v.optional(noticeFailureValidator),
   /**
    * The invoice issued for this order, once the sale became definitive.
    *

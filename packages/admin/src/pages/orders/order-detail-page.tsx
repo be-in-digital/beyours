@@ -408,6 +408,27 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
    */
   const awaitingRefund = order?.paymentStatus === "refund_pending"
 
+  /**
+   * The transactional notices this order tried to send and could not (#530).
+   *
+   * Built as a list rather than two booleans because the two notices fail
+   * independently: a confirmation lost to an outage and a ready notice that went
+   * out normally an hour later is an ordinary shape, and an owner needs to see
+   * which of the two is missing rather than that "something" was.
+   *
+   * Ordered as they happen — the confirmation is dispatched at settlement, the
+   * ready notice when the kitchen is done — so the banner reads chronologically
+   * when both are there.
+   */
+  const noticeFailures = (
+    [
+      { label: "Confirmation de commande", failure: order?.confirmationEmailFailure },
+      { label: "Commande prête", failure: order?.readyEmailFailure },
+    ] as const
+  ).flatMap(({ label, failure }) =>
+    failure ? [{ label, at: failure.at, reason: failure.reason, detail: failure.detail }] : []
+  )
+
   if (!isValidOrderId || order === null) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -474,6 +495,44 @@ export function OrderDetailPage({ params }: OrderDetailPageProps) {
               </Button>
             </RefundControl>
           )}
+        </div>
+      )}
+
+      {/* A transactional notice that did not reach the diner (#530).
+          Same shape as the refund banner above, and for the same reason: this is
+          something the order needs a person to know about, not a field to go
+          hunting for. Until now the claim was released on failure and nobody was
+          told, so an outage and a delivered mail looked identical from here. */}
+      {noticeFailures.length > 0 && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+          <div className="flex-1 space-y-1">
+            <p className="text-sm font-semibold text-amber-900">
+              {noticeFailures.length > 1
+                ? "Deux e-mails ne sont pas partis"
+                : "Un e-mail n'est pas parti"}
+            </p>
+            {noticeFailures.map((notice) => (
+              <p key={notice.label} className="text-sm text-amber-800">
+                <span className="font-medium">{notice.label}</span> — {formatDate(notice.at)}.{" "}
+                {notice.reason === "no_sender_address" ? (
+                  <>
+                    Aucune adresse d&apos;expédition n&apos;est configurée pour cet
+                    établissement. Renseignez-la dans Réglages → E-mail : les prochains
+                    envois partiront, celui-ci est à refaire à la main.
+                  </>
+                ) : (
+                  <>
+                    Le prestataire d&apos;envoi n&apos;a pas pu traiter le message.
+                    Prévenez le client autrement.
+                    {notice.detail ? (
+                      <span className="block text-xs text-amber-700">{notice.detail}</span>
+                    ) : null}
+                  </>
+                )}
+              </p>
+            ))}
+          </div>
         </div>
       )}
 

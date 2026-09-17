@@ -16,6 +16,10 @@
  * claim has to be transactional, and a mutation is the only place it can be.
  */
 
+// Type-only, so this module stays import-free at runtime: the shape belongs to
+// the schema that stores it, and restating it here would let the two drift.
+import type { NoticeFailureInput } from "@be-in-digital/convex-schema"
+
 /** Why this order gets no "it's ready" notice. `null` means it does. */
 export type OrderReadyRefusal =
   | "no_email"
@@ -103,7 +107,13 @@ export async function planOrderReady(
   const standing = await readSubscriberStanding(ctx, order.storeId, email)
   if (orderReadyRefusal(order, standing) !== null) return null
 
-  await ctx.db.patch(orderId, { readyEmailAt: Date.now() })
+  // The failure goes with the claim: a new dispatch supersedes whatever the
+  // last one reported, and leaving it would show an owner an outage that has
+  // since been repaired (#530).
+  await ctx.db.patch(orderId, {
+    readyEmailAt: Date.now(),
+    readyEmailFailure: undefined,
+  })
 
   return { orderId: String(orderId) }
 }
@@ -178,8 +188,19 @@ export async function readyPayload(
  * ever, including after the address was set. Same treatment as
  * `releaseConfirmationClaim`.
  */
-export async function releaseReadyClaim(ctx: any, orderId: string): Promise<void> {
+export async function releaseReadyClaim(
+  ctx: any,
+  orderId: string,
+  failure?: NoticeFailureInput
+): Promise<void> {
   const order = await ctx.db.get(orderId)
   if (!order) return
-  await ctx.db.patch(orderId, { readyEmailAt: undefined })
+  await ctx.db.patch(orderId, {
+    readyEmailAt: undefined,
+    // Only when the caller names one. Two of the three sites that release this
+    // claim do so because the order was cancelled or deleted between the claim
+    // and the send — nothing failed there, and telling an owner a notice failed
+    // on an order that no longer exists would be worse than silence (#530).
+    ...(failure ? { readyEmailFailure: { at: Date.now(), ...failure } } : {}),
+  })
 }
