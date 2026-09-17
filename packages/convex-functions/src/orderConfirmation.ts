@@ -19,6 +19,7 @@
  */
 
 import type { OrderConfirmationInput } from "@be-in-digital/core/aws/ses/order-confirmation"
+import type { NoticeFailureInput } from "@be-in-digital/convex-schema"
 
 /** What the app hands to the sender. Deliberately small — the action re-reads. */
 export interface OrderConfirmationDispatch {
@@ -176,7 +177,12 @@ export async function planOrderConfirmation(
   const standing = await readSubscriberStanding(ctx, order.storeId, email)
   if (orderConfirmationRefusal(order, standing) !== null) return null
 
-  await ctx.db.patch(orderId, { confirmationEmailAt: Date.now() })
+  // The failure goes with the claim, as on the ready notice: a new dispatch
+  // supersedes whatever the last one reported (#530).
+  await ctx.db.patch(orderId, {
+    confirmationEmailAt: Date.now(),
+    confirmationEmailFailure: undefined,
+  })
 
   return { orderId: String(orderId) }
 }
@@ -243,12 +249,35 @@ export interface OrderConfirmationPayload {
  */
 export async function releaseOrderConfirmationClaim(
   ctx: any,
-  orderId: string
+  orderId: string,
+  failure?: NoticeFailureInput
 ): Promise<void> {
   const order = await ctx.db.get(orderId)
   if (!order) return
-  if (typeof order.confirmationEmailAt !== "number") return
-  await ctx.db.patch(orderId, { confirmationEmailAt: undefined })
+
+  /*
+   * The two halves are separately conditional, and that is the point (#530).
+   *
+   * The claim is given back only when it is held — the pre-existing guard,
+   * kept. The failure is written only when the caller names one, because two of
+   * the three sites that release this claim do so for an order that was
+   * cancelled or deleted between the claim and the send. Nothing failed there,
+   * and reporting a failed notice on an order that no longer exists would be
+   * worse than silence.
+   *
+   * A caller that names a failure is therefore still recorded even if the claim
+   * has already gone: the owner's question is "did my diner get the mail", and
+   * the answer does not depend on who released what first.
+   */
+  const patch: Record<string, unknown> = {}
+  if (typeof order.confirmationEmailAt === "number") {
+    patch.confirmationEmailAt = undefined
+  }
+  if (failure) {
+    patch.confirmationEmailFailure = { at: Date.now(), ...failure }
+  }
+  if (Object.keys(patch).length === 0) return
+  await ctx.db.patch(orderId, patch)
 }
 
 /**

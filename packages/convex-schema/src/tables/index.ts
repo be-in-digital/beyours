@@ -7,7 +7,13 @@ export { externalProductMappingsTable } from "./externalProductMappings"
 export { orphanProductsTable } from "./orphanProducts"
 export { teamMembersTable } from "./teamMembers"
 export { categoriesTable, productsTable, menuSectionValidator, menusTable } from "./catalog"
-export { ordersTable } from "./orders"
+export {
+  ordersTable,
+  noticeFailureReasonValidator,
+  noticeFailureInputValidator,
+  noticeFailureValidator,
+} from "./orders"
+export type { NoticeFailure, NoticeFailureInput } from "./orders"
 export { numberSequencesTable } from "./numberSequences"
 export { invoicesTable } from "./invoices"
 export { kitchenTicketsTable } from "./kitchen"

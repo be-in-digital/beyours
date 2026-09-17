@@ -201,8 +201,26 @@ export interface Order {
   completedAt?: number
   cancelledAt?: number
   cancellationReason?: string
+  /**
+   * Why a transactional notice did not reach the diner (#530).
+   *
+   * Mirrors `noticeFailureValidator` in `@be-in-digital/convex-schema`. Restated
+   * rather than imported because this file restates the whole order shape — the
+   * admin reads Convex through a runtime-resolved `api` object and has no
+   * generated `Doc` to lean on. Held to the schema by
+   * `order-notice-failure.test.ts`.
+   */
+  confirmationEmailFailure?: OrderNoticeFailure
+  readyEmailFailure?: OrderNoticeFailure
   createdAt: number
   updatedAt: number
+}
+
+/** The two ways a notice gives up, as the order records them (#530). */
+export interface OrderNoticeFailure {
+  at: number
+  reason: "no_sender_address" | "transport"
+  detail?: string
 }
 
 // === Payment Types ===

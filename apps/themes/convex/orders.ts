@@ -13,6 +13,7 @@ import {
   readyPayload,
   releaseReadyClaim,
 } from "@be-in-digital/convex-functions/orderReady";
+import { noticeFailureInputValidator } from "@be-in-digital/convex-schema";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 import { v } from "convex/values";
 
@@ -402,16 +403,27 @@ export const confirmationPayload = internalQuery({
 });
 
 /**
- * Give back a confirmation claim the sender could not use.
+ * Give back a confirmation claim the sender could not use, and say why.
  *
- * Only for the case where nothing was sent because nothing COULD be — no
- * sender address configured, or the order gone. A send that reached SES and
- * failed keeps its claim: retrying a provider that already refused is how a
- * diner ends up with three receipts.
+ * WHAT THIS COMMENT USED TO SAY, and why it was wrong. It read: "A send that
+ * reached SES and failed keeps its claim: retrying a provider that already
+ * refused is how a diner ends up with three receipts." #530 changed that, and
+ * this docblock did not follow — the catch block now releases, because
+ * releasing is not retrying. Nothing reschedules the action; the claim only
+ * makes a LATER legitimate settlement able to send. The fear was real and it
+ * was about a different act.
+ *
+ * `failure` is optional and the three callers differ on purpose. An order
+ * cancelled or deleted between the claim and the send passes none — nothing
+ * failed. No sender address, and a transport failure, each pass their own.
  */
 export const releaseConfirmationClaim = internalMutation({
-  args: { orderId: v.id("orders") },
-  handler: (ctx, args) => releaseOrderConfirmationClaim(ctx, args.orderId),
+  args: {
+    orderId: v.id("orders"),
+    failure: v.optional(noticeFailureInputValidator),
+  },
+  handler: (ctx, args) =>
+    releaseOrderConfirmationClaim(ctx, args.orderId, args.failure),
 });
 
 /** What the « votre commande est prête » notice needs (#96). */
@@ -421,15 +433,20 @@ export const readyNoticePayload = internalQuery({
 });
 
 /**
- * Give back a ready-notice claim the sender could not use.
+ * Give back a ready-notice claim the sender could not use, and say why.
  *
- * Same reason as the confirmation's: `AWS_SES_FROM_EMAIL` unset is the day-one
- * state of a new backend, and keeping the claim would silence that
- * establishment's notices for ever — including after the address was configured.
+ * Same shape as the confirmation's above, including what `failure` is for:
+ * `AWS_SES_FROM_EMAIL` unset is the day-one state of a new backend, and keeping
+ * the claim would silence that establishment's notices for ever — but until
+ * #530 nobody was told it had happened, so the notice was lost in silence
+ * rather than in error.
  */
 export const releaseReadyNoticeClaim = internalMutation({
-  args: { orderId: v.id("orders") },
-  handler: (ctx, args) => releaseReadyClaim(ctx, args.orderId),
+  args: {
+    orderId: v.id("orders"),
+    failure: v.optional(noticeFailureInputValidator),
+  },
+  handler: (ctx, args) => releaseReadyClaim(ctx, args.orderId, args.failure),
 });
 
 /**
