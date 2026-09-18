@@ -1,9 +1,9 @@
 import { mutation, internalMutation, internalQuery } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/paymentConnections";
+import * as defs from "@be-yours/convex-functions/paymentConnections";
 import { v } from "convex/values";
 import { authedQuery } from "./lib/storeFunctions";
-import { getAuthUser } from "@be-in-digital/convex-functions/auth";
-import { hasPermission, type Role } from "@be-in-digital/core/auth/rbac";
+import { getAuthUser } from "@be-yours/convex-functions/auth";
+import { hasPermission, type Role } from "@be-yours/core/auth/rbac";
 
 /**
  * Payment connections are deployment-level, not store-level, so the store-scoped

@@ -30,7 +30,7 @@
 import { describe, it, expect } from "vitest"
 import fs from "node:fs"
 import path from "node:path"
-import { Role, hasPermission, type Permission } from "@be-in-digital/core"
+import { Role, hasPermission, type Permission } from "@be-yours/core"
 
 import { navGroups, isCollapsible, type NavEntry } from "../config/nav-config"
 
@@ -120,7 +120,7 @@ function packageFileFor(name: string): string | null {
 
 /** UI primitives never call Convex; walking them only slows the sweep down. */
 function isUiOnly(spec: string): boolean {
-  return spec.startsWith("@be-in-digital/ui") || /(^|\/)components\/ui(\/|$)/.test(spec)
+  return spec.startsWith("@be-yours/ui") || /(^|\/)components\/ui(\/|$)/.test(spec)
 }
 
 function entryFileFor(fromFile: string, spec: string, appDir: string): string | null {
@@ -146,7 +146,7 @@ function mountQueriesOf(routeFile: string, appDir: string): string[] {
     for (const m of src.matchAll(GATED_QUERY)) gated.set(`${m[2]}.${m[3]}`, m[1] as Permission)
 
     const follow = (spec: string, names: string[]): void => {
-      if (spec === "@be-in-digital/admin") {
+      if (spec === "@be-yours/admin") {
         for (const n of names) {
           const f = packageFileFor(n)
           if (f) visit(f, depth + 1)

@@ -1,6 +1,6 @@
 "use client"
 
-import { CustomersPage } from "@be-in-digital/admin"
+import { CustomersPage } from "@be-yours/admin"
 
 /**
  * The Clients screen comes from the engine.

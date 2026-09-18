@@ -33,7 +33,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { Repeat } from "lucide-react"
 import type { DashboardDiners } from "./use-dashboard-stats"
 

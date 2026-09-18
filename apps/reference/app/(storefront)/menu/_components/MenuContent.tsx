@@ -17,15 +17,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import {
   filterProducts,
   sortProducts,
   useCartStore,
   isProductAvailable,
   useLocalizedDocuments,
-} from "@be-in-digital/restaurant"
-import type { CategoryDoc, ProductDoc, ProductSortBy } from "@be-in-digital/restaurant"
+} from "@be-yours/restaurant"
+import type { CategoryDoc, ProductDoc, ProductSortBy } from "@be-yours/restaurant"
 import type { Id } from "@/convex/_generated/dataModel"
 import { useStoreId } from "@/lib/hooks/use-store-id"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"

@@ -6,11 +6,11 @@ import { captureBackendError } from "./errorReporting";
 import type { ActionCtx } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { toKitchenTicketItemsFromPlatform } from "@be-in-digital/convex-functions/orders";
+import { toKitchenTicketItemsFromPlatform } from "@be-yours/convex-functions/orders";
 import {
   resolveMenuStoreIntegration,
   resolveStoreIntegration,
-} from "@be-in-digital/convex-functions/platformWebhook";
+} from "@be-yours/convex-functions/platformWebhook";
 
 // ============================================================================
 // Types
@@ -124,7 +124,7 @@ type StoreIntegrationRecord = {
 // ============================================================================
 
 async function getDeliverooCredentials() {
-  const { getPackageEnv, isSandbox } = await import("@be-in-digital/core/env");
+  const { getPackageEnv, isSandbox } = await import("@be-yours/core/env");
   const pkg = getPackageEnv();
   const clientId = pkg.DELIVEROO_CLIENT_ID;
   const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
@@ -526,7 +526,7 @@ async function handleNewOrder(
     return { success: true, internalOrderId };
   }
 
-  const { deliveroo } = await import("@be-in-digital/integrations");
+  const { deliveroo } = await import("@be-yours/integrations");
 
   // ----------------------------------------------------------------
   // Deliveroo flow (per docs):
@@ -693,7 +693,7 @@ async function handleStatusUpdate(
   const isAccepted = status === "accepted" || hasAcceptedInLog;
 
   if (credentials && isAccepted) {
-    const { deliveroo } = await import("@be-in-digital/integrations");
+    const { deliveroo } = await import("@be-yours/integrations");
 
     // Fetch full order from API if webhook doesn't include items
     // (status_update webhooks may only contain id + status)
@@ -808,7 +808,7 @@ export const confirmScheduledOrder = internalAction({
       console.error("No Deliveroo credentials for confirmScheduledOrder");
       return;
     }
-    const { deliveroo } = await import("@be-in-digital/integrations");
+    const { deliveroo } = await import("@be-yours/integrations");
     try {
       await deliveroo.confirmOrder(credentials, args.orderId);
       await ctx.runMutation(internal.orders.internalUpdateStatus, {

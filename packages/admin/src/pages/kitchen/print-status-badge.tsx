@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react"
 import { useAdminApiStore } from "../../stores/admin-api-store"
-import { Badge } from "@be-in-digital/ui"
+import { Badge } from "@be-yours/ui"
 import { AlertTriangle, Printer } from "lucide-react"
 
 interface PrintStatusBadgeProps {

@@ -4,7 +4,7 @@
  * Export plain { args, handler } objects for Convex internalMutation/internalAction wrappers.
  * Scheduling (ctx.scheduler) is handled in the app wrapper since it needs `internal.*` refs.
  *
- * NOTE: This file must NOT import @be-in-digital/core to avoid pulling
+ * NOTE: This file must NOT import @be-yours/core to avoid pulling
  * Node.js-only modules (crypto) into the Convex default runtime bundle.
  * Hash and translation utilities are inlined below.
  */

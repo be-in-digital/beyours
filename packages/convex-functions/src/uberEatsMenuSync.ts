@@ -10,9 +10,9 @@
 import {
   toUberEatsAllergens,
   type UberEatsAllergenType,
-} from "@be-in-digital/core/allergens"
+} from "@be-yours/core/allergens"
 
-// === Uber Eats Menu Payload type (mirrored from @be-in-digital/integrations) ===
+// === Uber Eats Menu Payload type (mirrored from @be-yours/integrations) ===
 
 export interface UberEatsMenuPayload {
   menus: Array<{

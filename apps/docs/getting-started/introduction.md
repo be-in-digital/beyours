@@ -26,22 +26,22 @@ BeYours Engine is a collection of 10+ TypeScript packages that work together to 
 
 ## How Packages Work Together
 
-Each package is independently published on GitHub Packages under the `@be-in-digital` scope. You install only what you need:
+Each package is independently published on GitHub Packages under the `@be-yours` scope. You install only what you need:
 
 ```bash
 # Core essentials
-pnpm add @be-in-digital/ui @be-in-digital/core
+pnpm add @be-yours/ui @be-yours/core
 
 # Business logic
-pnpm add @be-in-digital/restaurant @be-in-digital/admin
+pnpm add @be-yours/restaurant @be-yours/admin
 
 # Backend
-pnpm add @be-in-digital/convex-schema @be-in-digital/convex-functions
+pnpm add @be-yours/convex-schema @be-yours/convex-functions
 
 # Optional features
-pnpm add @be-in-digital/integrations  # Uber Eats, Deliveroo
-pnpm add @be-in-digital/marketing     # Email campaigns
-pnpm add @be-in-digital/cms           # Content management
+pnpm add @be-yours/integrations  # Uber Eats, Deliveroo
+pnpm add @be-yours/marketing     # Email campaigns
+pnpm add @be-yours/cms           # Content management
 ```
 
 ## Prerequisites
@@ -49,7 +49,7 @@ pnpm add @be-in-digital/cms           # Content management
 - **Node.js** 20+
 - **pnpm** 9+
 - **Convex** account (for backend)
-- **GitHub** account with access to be-in-digital organization
+- **GitHub** account with access to beyours organization
 - **AWS** account (for S3 storage and SES email)
 
 ## Next Steps

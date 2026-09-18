@@ -5,8 +5,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@be-in-digital/ui"
-import { computeStatRates } from "@be-in-digital/marketing"
+} from "@be-yours/ui"
+import { computeStatRates } from "@be-yours/marketing"
 import { formatDate } from "../../../lib/formatters"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

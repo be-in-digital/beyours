@@ -33,7 +33,7 @@ import {
   Skeleton,
   Slider,
   Switch,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import {
   KITCHEN_ALERTS,
   playAlertBeep,

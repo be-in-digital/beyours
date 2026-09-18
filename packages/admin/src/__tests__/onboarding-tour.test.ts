@@ -37,7 +37,7 @@ import { describe, it, expect, afterEach, vi } from "vitest"
 import fs from "node:fs"
 import path from "node:path"
 
-import { Role } from "@be-in-digital/core"
+import { Role } from "@be-yours/core"
 import { adminRoutes } from "../config/admin-routes"
 import {
   navGroups,
@@ -263,7 +263,7 @@ describe("onboarding tour — destinations", () => {
           deadEnds.push(`${app}${route}`)
           continue
         }
-        const component = /import\s*\{\s*(\w+)\s*\}\s*from\s*"@be-in-digital\/admin"/.exec(wrapper)
+        const component = /import\s*\{\s*(\w+)\s*\}\s*from\s*"@be-yours\/admin"/.exec(wrapper)
         if (!component) continue
         const pagesDir = path.join(ADMIN_SRC, "pages")
         if (!fs.existsSync(pagesDir)) continue

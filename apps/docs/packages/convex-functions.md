@@ -1,4 +1,4 @@
-# @be-in-digital/convex-functions
+# @be-yours/convex-functions
 
 > 48 backend function modules covering auth, CRUD, kitchen, payments, gamification, i18n, email, CMS, integrations, and AI.
 
@@ -11,7 +11,7 @@
 ## Installation
 
 ```bash
-pnpm add @be-in-digital/convex-functions
+pnpm add @be-yours/convex-functions
 ```
 
 ## Modules

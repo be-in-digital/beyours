@@ -1,4 +1,4 @@
-# @be-in-digital/admin
+# @be-yours/admin
 
 > Complete admin dashboard with 20+ page components, layout, stores, hooks, and utility functions.
 
@@ -13,7 +13,7 @@
 ## Installation
 
 ```bash
-pnpm add @be-in-digital/admin
+pnpm add @be-yours/admin
 ```
 
 ## Pages
@@ -22,20 +22,20 @@ Pre-built, full-featured admin pages ready to use.
 
 | Page | Import | Description |
 |------|--------|-------------|
-| `DashboardPage` | `@be-in-digital/admin/pages` | KPIs, charts, recent orders |
-| `OrdersPage` | `@be-in-digital/admin/pages` | Order list with filters and status |
-| `ProductsPage` | `@be-in-digital/admin/pages` | Product catalog management |
-| `KitchenPage` | `@be-in-digital/admin/pages` | Kitchen Display System |
-| `GamesPage` | `@be-in-digital/admin/pages` | Gamification management |
-| `LanguagesPage` | `@be-in-digital/admin/pages` | i18n with GPT translation |
-| `PaymentsPage` | `@be-in-digital/admin/pages` | Payment integrations |
-| `EmailDashboardPage` | `@be-in-digital/admin/pages` | Email marketing dashboard |
+| `DashboardPage` | `@be-yours/admin/pages` | KPIs, charts, recent orders |
+| `OrdersPage` | `@be-yours/admin/pages` | Order list with filters and status |
+| `ProductsPage` | `@be-yours/admin/pages` | Product catalog management |
+| `KitchenPage` | `@be-yours/admin/pages` | Kitchen Display System |
+| `GamesPage` | `@be-yours/admin/pages` | Gamification management |
+| `LanguagesPage` | `@be-yours/admin/pages` | i18n with GPT translation |
+| `PaymentsPage` | `@be-yours/admin/pages` | Payment integrations |
+| `EmailDashboardPage` | `@be-yours/admin/pages` | Email marketing dashboard |
 
 ### Usage
 
 ```tsx
 // app/(admin)/dashboard/page.tsx
-import { DashboardPage } from "@be-in-digital/admin/pages";
+import { DashboardPage } from "@be-yours/admin/pages";
 
 export default function Dashboard() {
   return <DashboardPage />;
@@ -44,7 +44,7 @@ export default function Dashboard() {
 
 ```tsx
 // app/(admin)/orders/page.tsx
-import { OrdersPage } from "@be-in-digital/admin/pages";
+import { OrdersPage } from "@be-yours/admin/pages";
 
 export default function Orders() {
   return <OrdersPage />;
@@ -53,7 +53,7 @@ export default function Orders() {
 
 ```tsx
 // app/(admin)/kitchen/page.tsx
-import { KitchenPage } from "@be-in-digital/admin/pages";
+import { KitchenPage } from "@be-yours/admin/pages";
 
 export default function Kitchen() {
   return <KitchenPage />;
@@ -67,7 +67,7 @@ export default function Kitchen() {
 Admin authentication state (Zustand).
 
 ```typescript
-import { useAdminAuthStore } from "@be-in-digital/admin/stores";
+import { useAdminAuthStore } from "@be-yours/admin/stores";
 
 function AdminHeader() {
   const { user, role, signOut } = useAdminAuthStore();
@@ -88,7 +88,7 @@ function AdminHeader() {
 Get the current admin store context.
 
 ```typescript
-import { useAdminStoreId } from "@be-in-digital/admin/hooks";
+import { useAdminStoreId } from "@be-yours/admin/hooks";
 
 function ProductList() {
   const storeId = useAdminStoreId();
@@ -102,7 +102,7 @@ function ProductList() {
 Debounce values for search inputs.
 
 ```typescript
-import { useDebounce } from "@be-in-digital/admin/hooks";
+import { useDebounce } from "@be-yours/admin/hooks";
 
 function SearchProducts() {
   const [query, setQuery] = useState("");
@@ -121,7 +121,7 @@ function SearchProducts() {
 ### formatPrice
 
 ```typescript
-import { formatPrice } from "@be-in-digital/admin/lib";
+import { formatPrice } from "@be-yours/admin/lib";
 
 formatPrice(1299);    // "12,99 EUR"
 formatPrice(0);       // "0,00 EUR"
@@ -131,7 +131,7 @@ formatPrice(100000);  // "1 000,00 EUR"
 ### formatDate
 
 ```typescript
-import { formatDate } from "@be-in-digital/admin/lib";
+import { formatDate } from "@be-yours/admin/lib";
 
 formatDate(new Date());               // "1 avr. 2026"
 formatDate(new Date(), "en", "long"); // "April 1, 2026"
@@ -140,7 +140,7 @@ formatDate(new Date(), "en", "long"); // "April 1, 2026"
 ### eurosToCents / centsToEuros
 
 ```typescript
-import { eurosToCents } from "@be-in-digital/admin/lib";
+import { eurosToCents } from "@be-yours/admin/lib";
 
 eurosToCents(12.99);  // 1299
 ```
@@ -148,7 +148,7 @@ eurosToCents(12.99);  // 1299
 ### slugify
 
 ```typescript
-import { slugify } from "@be-in-digital/admin/lib";
+import { slugify } from "@be-yours/admin/lib";
 
 slugify("Margherita Pizza");  // "margherita-pizza"
 slugify("Crème Brûlée");     // "creme-brulee"
@@ -161,7 +161,7 @@ slugify("Crème Brûlée");     // "creme-brulee"
 Admin sidebar with navigation, dynamic logo, and user footer.
 
 ```tsx
-import { AppSidebar, SidebarUserMenu } from "@be-in-digital/admin";
+import { AppSidebar, SidebarUserMenu } from "@be-yours/admin";
 
 <AppSidebar
   userFooter={<SidebarUserMenu />}
@@ -177,7 +177,7 @@ When `logoUrl` is provided, the sidebar shows the logo image. Otherwise, it show
 Compact store dropdown for the sidebar/header. **Auto-selects when only one store exists** and hides the dropdown.
 
 ```tsx
-import { StoreSelector } from "@be-in-digital/admin";
+import { StoreSelector } from "@be-yours/admin";
 
 <AdminHeader storeSelector={<StoreSelector />} />
 ```
@@ -188,7 +188,7 @@ Protects dashboard routes by requiring a selected store. When the persisted sele
 missing from the list `stores.list` returns, it selects the first establishment instead.
 
 ```tsx
-import { StoreGuard } from "@be-in-digital/admin";
+import { StoreGuard } from "@be-yours/admin";
 
 <StoreGuard>{children}</StoreGuard>
 ```

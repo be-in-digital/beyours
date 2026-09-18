@@ -27,7 +27,7 @@
  */
 
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { canTransitionTo } from "@be-in-digital/restaurant";
+import { canTransitionTo } from "@be-yours/restaurant";
 import { internal as convexInternal } from "../../convex/_generated/api";
 import { mapDeliverooStatus } from "../../convex/deliverooWebhook";
 import {

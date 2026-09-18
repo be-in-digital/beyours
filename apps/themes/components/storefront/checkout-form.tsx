@@ -26,7 +26,7 @@ import {
   Label,
   Separator,
   Textarea,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import {
   formatPrice,
   isPaymentMethodSelectable,
@@ -35,19 +35,19 @@ import {
   useCartStore,
   type OrderType,
   type PaymentMethodContext,
-} from "@be-in-digital/restaurant"
-import { isOrderTypeOffered, type StoreServices } from "@be-in-digital/convex-schema"
+} from "@be-yours/restaurant"
+import { isOrderTypeOffered, type StoreServices } from "@be-yours/convex-schema"
 import {
   MAX_TABLE_NUMBER_LENGTH,
   normalizeTableNumber,
-} from "@be-in-digital/core/dining"
+} from "@be-yours/core/dining"
 // The server's own cap on the note, read from the server. A textarea that
 // accepts more than `orders.create` stores turns a diner's allergy warning
 // into a refused order at the moment of payment.
-import { FIELD_LIMITS } from "@be-in-digital/convex-functions/rateLimit"
+import { FIELD_LIMITS } from "@be-yours/convex-functions/rateLimit"
 // The floor the three card money paths enforce, read from the same module
 // they enforce it with, so the tile and the refusal cannot drift apart.
-import { cardMinimumFor } from "@be-in-digital/convex-functions/cardChargeFloor"
+import { cardMinimumFor } from "@be-yours/convex-functions/cardChargeFloor"
 import { useGooglePlacesAutocomplete } from "@/hooks/useGooglePlacesAutocomplete"
 import type { AddressValue } from "@/lib/address"
 import type { SavedAddress } from "@/lib/stores/addresses-store"

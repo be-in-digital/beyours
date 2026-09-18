@@ -11,10 +11,10 @@
  *
  * WHY IT DOES NOT IMPORT THE ENGINE'S SCANNER. Two reasons, both structural.
  *
- *   1. `apps/site` depends on NONE of the `@be-in-digital/*` packages, on
+ *   1. `apps/site` depends on NONE of the `@be-yours/*` packages, on
  *      purpose — it is a website, not an instance of the product, and
  *      `dependency-hygiene.test.ts` next door is what keeps it that way.
- *      Importing `@be-in-digital/ui/contrast-scan` here would be the first
+ *      Importing `@be-yours/ui/contrast-scan` here would be the first
  *      engine dependency this app has ever had, to run a test.
  *   2. It would not work if it did. `loadTokens` parses `--token: H S% L%`
  *      triples, because that is what the engine's `globals.css` declares. This

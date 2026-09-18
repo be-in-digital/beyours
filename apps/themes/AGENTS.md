@@ -10,8 +10,8 @@ notices.
 This repo is the **template** for BeYours restaurant sites. A client site is a
 clone of this repo. The shipped code comes from two sources:
 
-1. **The npm packages `@be-in-digital/*`** (private GitHub Packages, published
-   from [be-in-digital/beyours](https://github.com/be-in-digital/beyours)).
+1. **The npm packages `@be-yours/*`** (private GitHub Packages, published
+   from [be-yours/beyours](https://github.com/be-yours/beyours)).
    `NODE_AUTH_TOKEN` (a `read:packages` PAT) is required for `pnpm install`.
    Without a token: `pnpm engine:link <engine-clone>` (local symlinks).
 2. **The application shell** (`app/`, `components/`, `lib/`, `hooks/`, `cms/`,
@@ -46,7 +46,7 @@ not a local patch.
 
 ## Updates (2 channels)
 
-- `pnpm update:engine` — bumps the `@be-in-digital/*` packages (npm).
+- `pnpm update:engine` — bumps the `@be-yours/*` packages (npm).
 - `pnpm update:template` — git merge from the `template` remote
   (boilerplate). See `docs/UPDATES.md`.
 
@@ -65,7 +65,7 @@ one onboarding step that waits on an AWS review, see
 ## Convex
 
 `convex/*.ts` are thin wrappers: they re-export the definitions from
-`@be-in-digital/convex-functions` (`export const list = query(defs.list)`).
-The schema composes tables from `@be-in-digital/convex-schema`. Do not write
+`@be-yours/convex-functions` (`export const list = query(defs.list)`).
+The schema composes tables from `@be-yours/convex-schema`. Do not write
 business logic in `convex/` — it lives in the engine.
 `convex/_generated/` is committed; regenerate it with `pnpm convex:codegen`.

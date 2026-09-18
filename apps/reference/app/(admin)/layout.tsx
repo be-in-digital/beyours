@@ -19,7 +19,7 @@ import {
   useAdminStoreId,
   OnboardingTourProvider,
   ReplayTourButton,
-} from "@be-in-digital/admin"
+} from "@be-yours/admin"
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   // The branding shown in the admin follows the establishment being

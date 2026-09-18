@@ -1,4 +1,4 @@
-import * as defs from "@be-in-digital/convex-functions/prizes";
+import * as defs from "@be-yours/convex-functions/prizes";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // Prizes are admin data: the catalogue and its remaining stock. `list` used to

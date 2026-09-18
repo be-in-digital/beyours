@@ -1,5 +1,5 @@
 ---
-"@be-in-digital/admin": minor
+"@be-yours/admin": minor
 ---
 
 Paint the dashboard with the establishment's own colours (#512).

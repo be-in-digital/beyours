@@ -9,7 +9,7 @@ import { internal } from "./_generated/api";
 // @guarded-inline: consumes a single-use OAuth state we issued, with a TTL,
 // before exchanging the code
 export const uberEatsConnectCallback = httpAction(async (ctx, request) => {
-  const { getSiteEnv } = await import("@be-in-digital/core/env");
+  const { getSiteEnv } = await import("@be-yours/core/env");
   const site = getSiteEnv();
   const adminUrl = site.ADMIN_URL ?? "http://localhost:3000";
 

@@ -39,7 +39,7 @@ Owner Account
 ### Store Configuration
 
 ```typescript
-import { storesTable } from "@be-in-digital/convex-schema/tables";
+import { storesTable } from "@be-yours/convex-schema/tables";
 
 // Each store has:
 {
@@ -99,7 +99,7 @@ tab and a visitor browsing Paris in another used to overwrite each other's
 answer, so a visitor's geolocation could silently move the dashboard.
 
 ```typescript
-import { useAdminStoreSelection } from "@be-in-digital/restaurant/stores";
+import { useAdminStoreSelection } from "@be-yours/restaurant/stores";
 // storefront side: useStorefrontStoreSelection, same shape
 
 function StoreSwitcher() {
@@ -125,7 +125,7 @@ Each exposes `{ storeId, setStoreId }` and nothing else — no `store`, no
 `useNearestStore` sorts a list you pass in; it does not fetch the stores itself.
 
 ```typescript
-import { useNearestStore } from "@be-in-digital/restaurant/hooks";
+import { useNearestStore } from "@be-yours/restaurant/hooks";
 
 function StoreLocator({ stores }: { stores: StoreDoc[] }) {
   const { nearestStore, storesWithDistance, isLocating, locationError, requestLocation } =
@@ -156,7 +156,7 @@ Opening hours are answered by a pure function in the services barrel, not by a
 store:
 
 ```typescript
-import { isStoreOpen, resolveStoreHours } from "@be-in-digital/restaurant/services";
+import { isStoreOpen, resolveStoreHours } from "@be-yours/restaurant/services";
 
 // A store may follow the global hours instead of carrying its own
 const hours = resolveStoreHours(store, globalSettings);
@@ -176,7 +176,7 @@ reopens.
 
 ### Store Status
 
-The real union is `StoreStatus` in `@be-in-digital/convex-schema`. See
+The real union is `StoreStatus` in `@be-yours/convex-schema`. See
 [Store Statuses](#store-statuses) below for the four values — `active` and
 `paused` are not among them.
 

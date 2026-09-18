@@ -248,9 +248,9 @@ export function bumpedAhead(workspaceVersion, publishedVersion) {
  * #427 measured what that costs. Eight commits, 129 files under `apps/themes`,
  * on no client site for two days, because three subpaths sat unpublished:
  *
- *     @be-in-digital/ui@3.1.0 does not export ./contrast
- *     @be-in-digital/ui@3.1.0 does not export ./contrast-scan
- *     @be-in-digital/convex-functions@5.0.0 does not export ./paymentLedger
+ *     @be-yours/ui@3.1.0 does not export ./contrast
+ *     @be-yours/ui@3.1.0 does not export ./contrast-scan
+ *     @be-yours/convex-functions@5.0.0 does not export ./paymentLedger
  *
  * Every signal a human would check was green throughout, this one included: it
  * printed a warning and exited 0. Five occurrences merged that way. The audit

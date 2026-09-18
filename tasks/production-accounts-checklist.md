@@ -1,4 +1,4 @@
-# Accounts to create under `developers@beyours.fr` before production
+# Accounts to create under `developers@be-yours.fr` before production
 
 > **⚠️ Superseded in part, 2026-09-01 — Convex deployments.** This file names
 > deployments whose roles have changed. The cutover to the dedicated account
@@ -16,12 +16,12 @@
 
 
 Every third-party account the product depends on must be owned by
-**`developers@beyours.fr`**, not by a personal address. Compiled from the
+**`developers@be-yours.fr`**, not by a personal address. Compiled from the
 environment variables the code actually reads (`_project/ENVIRONMENT_VARIABLES.md`,
 the six `.env.example` templates) plus `apps/site/MISE_EN_PROD.md` and
 `apps/reference/MISE_EN_PROD.md`.
 
-> **Prerequisite:** the mailbox `developers@beyours.fr` itself has to exist and be
+> **Prerequisite:** the mailbox `developers@be-yours.fr` itself has to exist and be
 > reachable before anything below — every signup sends a verification mail, and
 > several providers also send the account-recovery codes there.
 
@@ -66,7 +66,7 @@ one). Decide per service which brand owns it before creating duplicates.
 
 | Service | Used for | Env vars | Notes |
 |---|---|---|---|
-| **GitHub** | org `be-in-digital`, private Packages `@be-in-digital/*` | `NODE_AUTH_TOKEN` | Needs a `read:packages` PAT. Actions budget must stay funded — it hit zero on 2026-08-16 and every workflow died. |
+| **GitHub** | org `beyours`, private Packages `@be-yours/*` | `NODE_AUTH_TOKEN` | Needs a `read:packages` PAT. Actions budget must stay funded — it hit zero on 2026-08-16 and every workflow died. |
 | **Convex** | backend, 1 deployment per client + `apps/site` | `CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_SITE_URL` | See §0. |
 | **Vercel** | `beyours.fr` + 1 project per client | — | |
 | **AWS** | S3 (uploads) + SES (transactional email) — **one account per client**, see [`aws-ownership.md`](../apps/docs/deployment/aws-ownership.md) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME`, `AWS_SES_*` | SES starts **in sandbox** (eu-west-3) and production access is granted **per account** — one request per client, reviewed by hand, and **already refused once** on the BeYours account. Sequence it early: a refusal leaves a client site unable to email at all, since only `apps/site` has a Resend fallback. Check where a request stands with `DOMAIN=<domain> pnpm ses:check`. Procedure: [`client-aws-onboarding-runbook.md`](./client-aws-onboarding-runbook.md). |
@@ -144,11 +144,11 @@ Per `_project/ENVIRONMENT_VARIABLES.md`, credentials split in two:
 
 - **Package level — BeYours owns them, shared across every client:** OpenAI,
   Uber Eats, Deliveroo. These are the ones that must sit under
-  `developers@beyours.fr`.
+  `developers@be-yours.fr`.
 - **Site level — the restaurant owns them, one per client:** its Convex instance,
   its **AWS account** (S3 bucket + SES sender), its Stripe/PayPal/SumUp account,
   its Sentry project, its Google Maps key. Do **not** create these under
-  `developers@beyours.fr` — they belong to the client and follow the client if
+  `developers@be-yours.fr` — they belong to the client and follow the client if
   they leave.
 
 > **AWS moved from package level to site level on 2026-08-28**, and the code
@@ -166,7 +166,7 @@ they serve the commercial site and the fleet, not one restaurant.
 
 ## Checklist
 
-- [ ] `developers@beyours.fr` mailbox exists and is monitored
+- [ ] `developers@be-yours.fr` mailbox exists and is monitored
 - [ ] Decide BeYours vs BeInDigital ownership per service (§0)
 - [ ] Convex: transferred to team `be-yours` (2026-09-01) — spending cap **on `be-yours`** funded, and a second Admin able to reach the account (`convex-spending-cap-runbook.md`)
 - [ ] GitHub: PAT `read:packages` issued; Actions budget funded

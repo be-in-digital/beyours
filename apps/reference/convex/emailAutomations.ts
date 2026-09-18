@@ -1,5 +1,5 @@
 import { internalMutation, internalQuery } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/emailAutomations";
+import * as defs from "@be-yours/convex-functions/emailAutomations";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 const emailAutomationsStoreId = storeIdFromDocument("Automation not found");
@@ -66,7 +66,7 @@ export const pause = storeMutation({
  * Delete an automation — unless it has already mailed somebody.
  *
  * The refusal lives in the handler and says why, and offers `pause` instead. See
- * the docblock on `remove` in `@be-in-digital/convex-functions/emailAutomations`:
+ * the docblock on `remove` in `@be-yours/convex-functions/emailAutomations`:
  * `emailAutomationRuns` is the record of who received what and the dedupe that
  * stops a rescheduled step mailing the same person twice, and those rows outlive
  * the trigger by days.

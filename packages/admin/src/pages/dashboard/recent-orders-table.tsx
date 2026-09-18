@@ -19,7 +19,7 @@ import {
   TableCell,
   Badge,
   Button,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 type OrderStatus =
   | "pending" | "confirmed" | "preparing" | "ready"

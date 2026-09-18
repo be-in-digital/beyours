@@ -1,6 +1,6 @@
 "use client"
 
-import { LanguagesPage } from "@be-in-digital/admin"
+import { LanguagesPage } from "@be-yours/admin"
 import { UIOverridesContent } from "@/components/admin/languages"
 
 /**

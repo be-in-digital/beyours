@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test"
 // The version the seed below must carry. `migrateCartState` recomputes every
 // `lineId` when it runs, so a stale version here silently replaces the ids this
 // spec selects on.
-import { CART_STORAGE_VERSION } from "@be-in-digital/restaurant"
+import { CART_STORAGE_VERSION } from "@be-yours/restaurant"
 
 /**
  * Two configurations of one dish are two lines.

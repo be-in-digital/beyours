@@ -5,7 +5,7 @@
  * The five removes of #412, through the real schema and the real auth wrappers.
  *
  * WHY AN APP-LEVEL FILE AS WELL. `destructivePaths.test.ts` in
- * `@be-in-digital/convex-functions` proves each handler refuses or cascades; it
+ * `@be-yours/convex-functions` proves each handler refuses or cascades; it
  * runs against a double. What it cannot prove is that the indexes those guards
  * seek exist in the schema THIS app deploys, that the wrappers export what the
  * screens call, and that the two multi-pass deletes actually book their next

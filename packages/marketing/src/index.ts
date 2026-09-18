@@ -1,4 +1,4 @@
-// @be-in-digital/marketing
+// @be-yours/marketing
 // Package exports
 
 export {

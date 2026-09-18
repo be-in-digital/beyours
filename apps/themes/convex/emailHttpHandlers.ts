@@ -3,7 +3,7 @@ import type { ActionCtx } from "./_generated/server";
 import { captureBackendError } from "./errorReporting";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { normalizeBounceType } from "@be-in-digital/convex-functions/emailSubscribers";
+import { normalizeBounceType } from "@be-yours/convex-functions/emailSubscribers";
 
 
 // ─── Helper: minimal HTML response page ─────────────────────────────────────
@@ -744,7 +744,7 @@ async function verifyResendSignature(
     parseWebhookSecret,
     readSvixHeaders,
     timingSafeEqual,
-  } = await import("@be-in-digital/convex-functions/resendSignature");
+  } = await import("@be-yours/convex-functions/resendSignature");
 
   const secret = parseWebhookSecret(process.env[RESEND_WEBHOOK_SECRET_ENV]);
   if (!secret) {
@@ -834,7 +834,7 @@ export const handleResendWebhook = httpAction(async (ctx, request) => {
   }
 
   const { recordedEventFor, suppressesRecipient } = await import(
-    "@be-in-digital/convex-functions/resendSignature"
+    "@be-yours/convex-functions/resendSignature"
   );
 
   let payload: ResendWebhookPayload;

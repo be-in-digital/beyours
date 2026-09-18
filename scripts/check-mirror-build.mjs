@@ -17,9 +17,9 @@
  * already serves, and all it can do by then is refuse to deliver. This runs
  * before, against the code you are about to publish.
  *
- * The cost of that gap, measured: `be-in-digital/beyours-boilerplate` ran 71
+ * The cost of that gap, measured: `be-yours/beyours-boilerplate` ran 71
  * failures to 1 success over its last 100 CI runs, failing Typecheck with
- * `Cannot find module '@be-in-digital/admin/game'`, while every required check
+ * `Cannot find module '@be-yours/admin/game'`, while every required check
  * in THIS repository was green (#321). The subpath had been added to
  * `packages/admin` without a version bump, so it existed at HEAD and not in
  * the published `admin@8.0.0`. Every site created from the boilerplate for
@@ -154,7 +154,7 @@ try {
   pkg.name = MIRROR_PKG_NAME
   pkg.packageManager = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")).packageManager
   for (const dep of Object.keys(pkg.dependencies)) {
-    if (!dep.startsWith("@be-in-digital/")) continue
+    if (!dep.startsWith("@be-yours/")) continue
     if (!tarballs[dep]) throw new Error(`${dep} is a dependency but no package in packages/ provides it`)
     pkg.dependencies[dep] = `file:${tarballs[dep]}`
   }
@@ -231,7 +231,7 @@ try {
         "needs its own equivalent (Vitest: `test.server.deps.inline`).",
         "",
         "ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING, or a bare `React is not",
-        "defined` from a path inside `node_modules/@be-in-digital/`, is that and",
+        "defined` from a path inside `node_modules/@be-yours/`, is that and",
         "nothing else.",
       ].join("\n"),
     )

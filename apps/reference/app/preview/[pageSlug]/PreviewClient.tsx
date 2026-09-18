@@ -2,7 +2,7 @@
 
 import "@/lib/cms/init"
 import { useStoreId } from "@/lib/hooks/use-store-id"
-import { getPageDefinition } from "@be-in-digital/cms"
+import { getPageDefinition } from "@be-yours/cms"
 
 interface PreviewClientProps {
   pageSlug: string

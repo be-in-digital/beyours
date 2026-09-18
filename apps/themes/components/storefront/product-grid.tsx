@@ -8,9 +8,9 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@be-in-digital/ui"
-import { isProductAvailable, useTranslation } from "@be-in-digital/restaurant"
-import type { ProductDoc } from "@be-in-digital/restaurant"
+} from "@be-yours/ui"
+import { isProductAvailable, useTranslation } from "@be-yours/restaurant"
+import type { ProductDoc } from "@be-yours/restaurant"
 import { useFavorites } from "@/lib/hooks/use-favorites"
 import { StorefrontProductCard } from "./storefront-product-card"
 

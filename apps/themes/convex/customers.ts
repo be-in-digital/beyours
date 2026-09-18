@@ -1,11 +1,11 @@
 import { v } from "convex/values";
 
 import { internalMutation } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/customers";
+import * as defs from "@be-yours/convex-functions/customers";
 import {
   customerKey,
   recordOrder as recordCustomerOrder,
-} from "@be-in-digital/convex-functions/customers";
+} from "@be-yours/convex-functions/customers";
 import { storeQuery } from "./lib/storeFunctions";
 
 /**

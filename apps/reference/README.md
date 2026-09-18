@@ -1,6 +1,6 @@
 # `apps/reference` — the engine's reference application
 
-All ten `@be-in-digital/*` packages wired together into an application that
+All ten `@be-yours/*` packages wired together into an application that
 runs: storefront, admin dashboard, CMS, kitchen display, QR games, i18n.
 
 **It is sold to nobody.** It is the test bench: an engine feature is built here,
@@ -98,7 +98,7 @@ enough — this app has a production deployment
 (`optimistic-swordfish-937`), but nothing is sold from it.
 
 ⚠️ **With no `CONVEX_DEPLOYMENT` set, `npx convex dev` offers to create a *new
-project*** and proposes a name derived from the package: `@beyours/reference` →
+project*** and proposes a name derived from the package: `@be-yours/reference` →
 `beyours-reference`. That is how a stray project was created once.
 `.env.example` says to pick the existing `beindigital-engine` instead.
 
@@ -141,7 +141,7 @@ exactly that test fail.
 
 ## Commands
 
-From this directory, or via `pnpm --filter @beyours/reference <cmd>`:
+From this directory, or via `pnpm --filter @be-yours/reference <cmd>`:
 
 | Command | Effect |
 | --- | --- |

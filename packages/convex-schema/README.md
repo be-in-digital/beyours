@@ -1,4 +1,4 @@
-# `@be-in-digital/convex-schema`
+# `@be-yours/convex-schema`
 
 The data model. 77 tables across 33 table modules, plus the validators and the
 generated data-model types every other package builds on.
@@ -28,8 +28,8 @@ this package's own scripts.
 | `./dataModel` | `SchemaDataModel`, `TableName`, `Doc<T>`, `DocId<T>`, and the three ctx types |
 
 ```ts
-import { schema } from "@be-in-digital/convex-schema"
-import type { Doc, DocId } from "@be-in-digital/convex-schema/dataModel"
+import { schema } from "@be-yours/convex-schema"
+import type { Doc, DocId } from "@be-yours/convex-schema/dataModel"
 ```
 
 ---
@@ -90,7 +90,7 @@ import {
   productsTable,
   menusTable,
   ordersTable,
-} from "@be-in-digital/convex-schema/tables"
+} from "@be-yours/convex-schema/tables"
 
 export default defineSchema({
   stores: storesTable,
@@ -105,13 +105,13 @@ export default defineSchema({
 Both apps take the composed schema instead, which is the supported path:
 
 ```ts
-export { default } from "@be-in-digital/convex-schema"
+export { default } from "@be-yours/convex-schema"
 ```
 
 Validating a mutation input:
 
 ```ts
-import { createProductSchema, updateStoreSchema } from "@be-in-digital/convex-schema/validators"
+import { createProductSchema, updateStoreSchema } from "@be-yours/convex-schema/validators"
 
 const parsed = createProductSchema.parse(args)
 ```
@@ -119,7 +119,7 @@ const parsed = createProductSchema.parse(args)
 Typing a document or an id:
 
 ```ts
-import type { Doc, DocId } from "@be-in-digital/convex-schema/dataModel"
+import type { Doc, DocId } from "@be-yours/convex-schema/dataModel"
 
 function priceOf(product: Doc<"products">): number { … }
 function forStore(storeId: DocId<"stores">) { … }

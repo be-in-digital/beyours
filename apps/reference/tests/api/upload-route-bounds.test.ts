@@ -12,13 +12,13 @@
  *   - `maxSizeMB` is checked in `ImageUploader.validateFile`, in the page.
  *
  * Neither reaches the route. `/api/upload` enforces `ALLOWED_MIME_TYPES` and
- * `MAX_FILE_SIZES` from `@be-in-digital/core`, and nothing exercised either for
+ * `MAX_FILE_SIZES` from `@be-yours/core`, and nothing exercised either for
  * the `products` folder. That is the gap: the field advertises three types and
  * five megabytes, the server admits five types and ten.
  *
  * WHAT THIS CANNOT SEE, stated because it was measured. `MAX_FILE_SIZES` and
  * `ALLOWED_MIME_TYPES` reach both the route and this file from
- * `@be-in-digital/core`'s `dist`, not its `src`. Editing `packages/core/src`
+ * `@be-yours/core`'s `dist`, not its `src`. Editing `packages/core/src`
  * changes neither until the package is rebuilt — verified: raising
  * `products` to 50MB in `src` left all nineteen cases green. What these cases
  * hold is the route's ENFORCEMENT, which is where the defect would live:
@@ -37,7 +37,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { readFileSync } from "node:fs"
-import { ALLOWED_MIME_TYPES, MAX_FILE_SIZES } from "@be-in-digital/core"
+import { ALLOWED_MIME_TYPES, MAX_FILE_SIZES } from "@be-yours/core"
 import { enginePackageFile } from "../lib/repo-layout"
 
 const send = vi.fn()
@@ -53,7 +53,7 @@ vi.mock("@/lib/convex", () => ({
   fetchAuthQuery: async () => ({ role: "client_admin" }),
 }))
 
-vi.mock("@be-in-digital/cms/sanitize", () => ({
+vi.mock("@be-yours/cms/sanitize", () => ({
   sanitizeSvg: (svg: string) => sanitizeSvg(svg),
 }))
 
@@ -188,7 +188,7 @@ describe("what the product field advertises", () => {
   // Resolved through `repo-layout`, not from the working directory: this file
   // ships, and `../../packages/admin` is an address only the engine monorepo
   // has. `admin` publishes `src`, so a client HAS this component — under
-  // `node_modules/@be-in-digital/admin` — and only the path to it was wrong.
+  // `node_modules/@be-yours/admin` — and only the path to it was wrong.
   const FIELD = readFileSync(fieldSource(), "utf8")
 
   /** `accept="…"` on the uploader, as the field declares it. */

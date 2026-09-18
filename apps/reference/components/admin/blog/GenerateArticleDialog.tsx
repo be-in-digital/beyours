@@ -24,7 +24,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import Link from "next/link"
 import type { Id } from "@/convex/_generated/dataModel"
 

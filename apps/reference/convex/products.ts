@@ -1,9 +1,9 @@
 import { query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import * as defs from "@be-in-digital/convex-functions/products";
-import { requireStorePermission } from "@be-in-digital/convex-functions/auth";
-import { touchesTranslatableText } from "@be-in-digital/convex-functions/autoTranslate";
+import * as defs from "@be-yours/convex-functions/products";
+import { requireStorePermission } from "@be-yours/convex-functions/auth";
+import { touchesTranslatableText } from "@be-yours/convex-functions/autoTranslate";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 import { scheduleMenuSync } from "./lib/menuSync";
 import { scheduleTranslation } from "./autoTranslate";

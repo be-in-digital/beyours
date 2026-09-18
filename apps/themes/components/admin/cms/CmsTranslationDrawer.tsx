@@ -12,8 +12,8 @@ import {
   Label,
   Badge,
   Textarea,
-} from "@be-in-digital/ui"
-import type { FieldDefinition } from "@be-in-digital/cms"
+} from "@be-yours/ui"
+import type { FieldDefinition } from "@be-yours/cms"
 
 interface TranslationEntry {
   value: string

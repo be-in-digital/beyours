@@ -1,4 +1,4 @@
-import type { PageDefinition } from "@be-in-digital/cms"
+import type { PageDefinition } from "@be-yours/cms"
 
 export const forgotPasswordPage: PageDefinition = {
   slug: "forgot-password",

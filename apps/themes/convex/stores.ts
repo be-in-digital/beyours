@@ -2,16 +2,16 @@ import { query, internalQuery, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { QueryCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
-import * as defs from "@be-in-digital/convex-functions/stores";
+import * as defs from "@be-yours/convex-functions/stores";
 import { storeQuery, storeMutation, authedQuery, authedMutation } from "./lib/storeFunctions";
 import {
   getAuthUser,
   isStaff,
   requireStaff,
   seesEveryStore,
-} from "@be-in-digital/convex-functions/auth";
-import { hasPermission, type Role } from "@be-in-digital/core/auth/rbac";
-import { isPublishedStore } from "@be-in-digital/convex-schema";
+} from "@be-yours/convex-functions/auth";
+import { hasPermission, type Role } from "@be-yours/core/auth/rbac";
+import { isPublishedStore } from "@be-yours/convex-schema";
 
 // === Queries (public for storefront) ===
 // Strip sensitive data (printConfig.apiKey) from public queries

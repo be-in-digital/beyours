@@ -20,7 +20,7 @@
  * and nothing outside one can import from it — which would exclude every
  * `httpAction` (they cannot be `"use node"` at all) and therefore every webhook,
  * i.e. exactly the surface this exists for. The default Convex runtime has
- * `fetch`, and `@be-in-digital/core/sentry` builds the envelope with no SDK.
+ * `fetch`, and `@be-yours/core/sentry` builds the envelope with no SDK.
  *
  * ## How to use it
  *
@@ -61,7 +61,7 @@ import {
   resolveSentryOptions,
   sentryAuthHeader,
   type SentryEnvSource,
-} from "@be-in-digital/core/sentry";
+} from "@be-yours/core/sentry";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";

@@ -1,12 +1,12 @@
 {
-  "name": "@be-in-digital/admin",
+  "name": "@be-yours/admin",
   "version": "22.0.1",
   "publishConfig": {
     "access": "restricted"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/be-in-digital/beyours.git",
+    "url": "https://github.com/be-yours/beyours.git",
     "directory": "packages/admin"
   },
   "files": [
@@ -33,12 +33,12 @@
     "./game": "./src/game/index.ts"
   },
   "peerDependencies": {
-    "@be-in-digital/convex-functions": "workspace:^",
-    "@be-in-digital/convex-schema": "workspace:^",
-    "@be-in-digital/core": "workspace:^",
-    "@be-in-digital/marketing": "workspace:^",
-    "@be-in-digital/restaurant": "workspace:^",
-    "@be-in-digital/ui": "workspace:^",
+    "@be-yours/convex-functions": "workspace:^",
+    "@be-yours/convex-schema": "workspace:^",
+    "@be-yours/core": "workspace:^",
+    "@be-yours/marketing": "workspace:^",
+    "@be-yours/restaurant": "workspace:^",
+    "@be-yours/ui": "workspace:^",
     "@hookform/resolvers": ">=5.0.0",
     "convex": "^1.44.0",
     "framer-motion": ">=12.0.0",

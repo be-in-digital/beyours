@@ -24,7 +24,7 @@ hosted, world-readable file.
 ## What that means in practice
 
 A stored S3 key becomes a URL in exactly one place: `buildMediaUrl()` in
-[`@be-in-digital/core/aws/media-url`](../../../packages/core/src/aws/media-url.ts).
+[`@be-yours/core/aws/media-url`](../../../packages/core/src/aws/media-url.ts).
 
 | `AWS_S3_PUBLIC_BASE_URL` | URL handed to the browser | Who reads S3 |
 |---|---|---|
@@ -74,7 +74,7 @@ changes what a delete means, in a way that is easy to get wrong and was:
 
 So the media library said « définitivement supprimé », the offboarding runbook
 ticked an erasure box, and every byte was still there. Issue
-[#331](https://github.com/be-in-digital/beyours/issues/331).
+[#331](https://github.com/be-yours/beyours/issues/331).
 
 Three things close that, and all three are applied by `setup-aws.sh`:
 
@@ -85,7 +85,7 @@ Three things close that, and all three are applied by `setup-aws.sh`:
    file talks to the AWS SDK directly, and it is the only media-deletion path
    the delivered app runs.
 
-   `S3Service.delete` in `@be-in-digital/core` carries the same logic for a
+   `S3Service.delete` in `@be-yours/core` carries the same logic for a
    **consumer of the package** — nothing in `apps/*` calls it. And it purges
    only when the `S3Operations` adapter you injected implements
    `listObjectVersions` and `deleteObjectVersion`, which are optional on the
@@ -153,7 +153,7 @@ Worth knowing before writing code that touches media:
   takes a `siteUrl` and rewrites those paths — see `absolutiseUrls`.
 - **`/api/files` only serves the folders the product uploads to.** That list is
   defined once, in
-  [`@be-in-digital/core/aws/folders`](../../../packages/core/src/aws/folders.ts),
+  [`@be-yours/core/aws/folders`](../../../packages/core/src/aws/folders.ts),
   and every upload path derives its allowlist from it. Anything else in the
   bucket is not reachable through the app.
 
@@ -187,12 +187,12 @@ Worth knowing before writing code that touches media:
 
 ## Related
 
-- Issues [#158](https://github.com/be-in-digital/beyours/issues/158) (P0-34) and
-  [#176](https://github.com/be-in-digital/beyours/issues/176) (LANCEMENT-05).
+- Issues [#158](https://github.com/be-yours/beyours/issues/158) (P0-34) and
+  [#176](https://github.com/be-yours/beyours/issues/176) (LANCEMENT-05).
 - The `users/` and `avatars/` gate is
-  [#188](https://github.com/be-in-digital/beyours/issues/188), decided as
+  [#188](https://github.com/be-yours/beyours/issues/188), decided as
   option 2 (prefix split) of the three that issue offered.
 - [Environment variables](./environment-variables.md)
 - Hardening of the proxy's `Content-Type` handling and of the upload role check
   is tracked separately in
-  [#151](https://github.com/be-in-digital/beyours/issues/151) (P0-27).
+  [#151](https://github.com/be-yours/beyours/issues/151) (P0-27).

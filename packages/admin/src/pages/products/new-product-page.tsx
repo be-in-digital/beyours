@@ -10,7 +10,7 @@ import { useAdminStoreId, useAdminApi } from "../../hooks/admin-hooks"
 import { eurosToCents } from "../../lib/formatters"
 import { adminRoutes } from "../../config/admin-routes"
 import { ProductForm } from "./product-form"
-import { Button } from "@be-in-digital/ui"
+import { Button } from "@be-yours/ui"
 import { ResolvingStore } from "../../components/resolving-store"
 
 export function NewProductPage() {

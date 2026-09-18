@@ -1,5 +1,5 @@
-import type { PageDefinition } from "@be-in-digital/cms"
-import { seoBlock } from "@be-in-digital/cms"
+import type { PageDefinition } from "@be-yours/cms"
+import { seoBlock } from "@be-yours/cms"
 
 export const productDetailPage: PageDefinition = {
   slug: "product-detail",

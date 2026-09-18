@@ -26,7 +26,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import type { StoreIntegration } from "./store-detail-types"
 
 interface StoreDeliverooCardProps {

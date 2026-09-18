@@ -175,14 +175,14 @@ describe("the design system has one home", () => {
   })
 
   it("is reached through one specifier", () => {
-    // `@be-in-digital/ui/components` and the root now resolve to the same
+    // `@be-yours/ui/components` and the root now resolve to the same
     // modules, so two spellings would not fork the code — but they would hide
     // which system a line is talking about, which is how the last one grew.
     const offenders: string[] = []
     for (const dir of CONSUMERS) {
       for (const file of walk(path.join(REPO, dir))) {
         const src = fs.readFileSync(file, "utf8")
-        if (/from ["']@be-in-digital\/ui\/(components|restaurant|admin)["']/.test(src)) {
+        if (/from ["']@be-yours\/ui\/(components|restaurant|admin)["']/.test(src)) {
           offenders.push(path.relative(REPO, file))
         }
       }

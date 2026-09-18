@@ -17,7 +17,7 @@
 import {
   TRIGGER_READINESS,
   type AutomationTrigger,
-} from "@be-in-digital/convex-functions/automationDispatch"
+} from "@be-yours/convex-functions/automationDispatch"
 
 /** The `emailConfig.automationSettings` booleans, as the form names them. */
 export type AutomationSettingKey =

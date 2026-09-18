@@ -2,8 +2,8 @@
 
 import { useEffect } from "react"
 import { useQuery } from "convex/react"
-import { useAdminStoreSelection, type StoreDoc } from "@be-in-digital/restaurant"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@be-in-digital/ui"
+import { useAdminStoreSelection, type StoreDoc } from "@be-yours/restaurant"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@be-yours/ui"
 import { toast } from "sonner"
 import { useAdminApiStore } from "../stores/admin-api-store"
 

@@ -8,7 +8,7 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 interface MenuPaginationProps {
   currentPage: number

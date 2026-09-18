@@ -57,27 +57,27 @@ describe("parseChangeset", () => {
     // Verbatim from `.changeset/product-choices-immutable.md`, the one #387
     // left and #388 consumed.
     const text = `---
-"@be-in-digital/admin": patch
+"@be-yours/admin": patch
 ---
 
 Fix the product form's "Ajouter un choix" button doing nothing.
 `
-    expect(parseChangeset(text)).toEqual([{ name: "@be-in-digital/admin", bump: "patch" }])
+    expect(parseChangeset(text)).toEqual([{ name: "@be-yours/admin", bump: "patch" }])
   })
 
   test("reads several packages, quoted or not, at any bump", () => {
     const text = `---
-"@be-in-digital/core": major
-@be-in-digital/ui: minor
-'@be-in-digital/cms': patch
+"@be-yours/core": major
+@be-yours/ui: minor
+'@be-yours/cms': patch
 ---
 
 Summary.
 `
     expect(parseChangeset(text)).toEqual([
-      { name: "@be-in-digital/core", bump: "major" },
-      { name: "@be-in-digital/ui", bump: "minor" },
-      { name: "@be-in-digital/cms", bump: "patch" },
+      { name: "@be-yours/core", bump: "major" },
+      { name: "@be-yours/ui", bump: "minor" },
+      { name: "@be-yours/cms", bump: "patch" },
     ])
   })
 
@@ -85,7 +85,7 @@ Summary.
     // No fences, a bump changesets does not define, and an empty block. Each
     // is worth reporting; none is worth taking a CI job down over.
     expect(parseChangeset("just prose, no frontmatter")).toBeNull()
-    expect(parseChangeset('---\n"@be-in-digital/ui": huge\n---\n\nSummary.\n')).toBeNull()
+    expect(parseChangeset('---\n"@be-yours/ui": huge\n---\n\nSummary.\n')).toBeNull()
     expect(parseChangeset("---\n\n---\n\nSummary.\n")).toBeNull()
   })
 })
@@ -108,17 +108,17 @@ describe("summarise", () => {
   test("one row per package, oldest first, undated last", () => {
     const { rows } = summarise(
       [
-        entry("recent.md", "@be-in-digital/ui", "patch", days(1)),
-        entry("undated.md", "@be-in-digital/cms", "patch", null),
-        entry("old.md", "@be-in-digital/admin", "minor", days(30)),
+        entry("recent.md", "@be-yours/ui", "patch", days(1)),
+        entry("undated.md", "@be-yours/cms", "patch", null),
+        entry("old.md", "@be-yours/admin", "minor", days(30)),
       ],
       { now: NOW, maxAgeDays: 7 },
     )
 
     expect(rows.map((row) => row.name)).toEqual([
-      "@be-in-digital/admin",
-      "@be-in-digital/ui",
-      "@be-in-digital/cms",
+      "@be-yours/admin",
+      "@be-yours/ui",
+      "@be-yours/cms",
     ])
   })
 
@@ -128,8 +128,8 @@ describe("summarise", () => {
         {
           file: "wide.md",
           releases: [
-            { name: "@be-in-digital/core", bump: "patch" },
-            { name: "@be-in-digital/ui", bump: "patch" },
+            { name: "@be-yours/core", bump: "patch" },
+            { name: "@be-yours/ui", bump: "patch" },
           ],
           addedAt: days(2),
         },
@@ -142,7 +142,7 @@ describe("summarise", () => {
   })
 
   test("stale is the threshold and its boundary, not a guess", () => {
-    const at = (n: number) => entry(`d${n}.md`, `@be-in-digital/p${n}`, "patch", days(n))
+    const at = (n: number) => entry(`d${n}.md`, `@be-yours/p${n}`, "patch", days(n))
     const { stale } = summarise([at(6), at(7), at(8)], { now: NOW, maxAgeDays: 7 })
 
     // 7 days is stale at exactly 7, so the threshold means what it says.
@@ -153,7 +153,7 @@ describe("summarise", () => {
     // The shallow-clone case. Losing the age must not lose the row — the count
     // is the fact this whole check exists to surface.
     const { rows, stale, oldestDays } = summarise(
-      [entry("undated.md", "@be-in-digital/admin", "patch", null)],
+      [entry("undated.md", "@be-yours/admin", "patch", null)],
       { now: NOW, maxAgeDays: 0 },
     )
 
@@ -167,13 +167,13 @@ describe("summarise", () => {
     const { rows, unparseable } = summarise(
       [
         { file: "broken.md", releases: null, addedAt: days(1) },
-        entry("fine.md", "@be-in-digital/ui", "patch", days(1)),
+        entry("fine.md", "@be-yours/ui", "patch", days(1)),
       ],
       { now: NOW, maxAgeDays: 7 },
     )
 
     expect(unparseable).toEqual(["broken.md"])
-    expect(rows.map((row) => row.name)).toEqual(["@be-in-digital/ui"])
+    expect(rows.map((row) => row.name)).toEqual(["@be-yours/ui"])
   })
 
   test("nothing pending is the healthy case and says nothing", () => {
@@ -189,19 +189,19 @@ describe("summarise", () => {
 describe("formatting", () => {
   const rows = [
     {
-      name: "@be-in-digital/admin",
+      name: "@be-yours/admin",
       bump: "patch",
       file: "product-choices-immutable.md",
       addedAt: days(9),
       ageDays: 9,
     },
-    { name: "@be-in-digital/ui", bump: "minor", file: "later.md", addedAt: null, ageDays: null },
+    { name: "@be-yours/ui", bump: "minor", file: "later.md", addedAt: null, ageDays: null },
   ]
 
   test("the log block names the package, the bump and the wait", () => {
     const table = formatTable(rows)
 
-    expect(table).toContain("@be-in-digital/admin")
+    expect(table).toContain("@be-yours/admin")
     expect(table).toContain("patch")
     expect(table).toContain("9d")
     expect(table).toContain("product-choices-immutable.md")
@@ -216,7 +216,7 @@ describe("formatting", () => {
     const summary = formatSummary(rows)
 
     expect(summary).toContain("| Package | Bump | Waiting | Changeset |")
-    expect(summary).toContain("| `@be-in-digital/admin` | patch | 9 day(s) |")
-    expect(summary).toContain("| `@be-in-digital/ui` | minor | unknown |")
+    expect(summary).toContain("| `@be-yours/admin` | patch | 9 day(s) |")
+    expect(summary).toContain("| `@be-yours/ui` | minor | unknown |")
   })
 })

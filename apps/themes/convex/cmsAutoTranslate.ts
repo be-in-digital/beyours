@@ -12,7 +12,7 @@
  */
 
 // Initialize CMS registry (must run before any handler)
-import { setCmsRegistry } from "@be-in-digital/cms"
+import { setCmsRegistry } from "@be-yours/cms"
 import { appCmsConfig } from "../cms"
 setCmsRegistry(appCmsConfig)
 
@@ -25,11 +25,11 @@ import {
 import { internal } from "./_generated/api"
 import { v } from "convex/values"
 import type { Id } from "./_generated/dataModel"
-import { getBlockDefinition, getPageDefinition } from "@be-in-digital/cms"
+import { getBlockDefinition, getPageDefinition } from "@be-yours/cms"
 import {
   DEBOUNCE_MS,
   MAX_TRANSLATION_TEXT_LENGTH,
-} from "@be-in-digital/convex-functions/autoTranslate"
+} from "@be-yours/convex-functions/autoTranslate"
 
 // ── Helper: schedule CMS translation with debounce ────────────────────
 

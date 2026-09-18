@@ -19,8 +19,8 @@
 
 import { convexTest } from "convex-test"
 import { describe, expect, test } from "vitest"
-import { planOrderReady } from "@be-in-digital/convex-functions/orderReady"
-import { readSubscriberStanding } from "@be-in-digital/convex-functions/orderConfirmation"
+import { planOrderReady } from "@be-yours/convex-functions/orderReady"
+import { readSubscriberStanding } from "@be-yours/convex-functions/orderConfirmation"
 import { internal } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"

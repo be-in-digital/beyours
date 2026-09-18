@@ -5,8 +5,8 @@
  *
  * It lives here, next to the schema, because the layers that need the same
  * answer cannot depend on one another: the `stores.list` query and the order
- * mutation (`@be-in-digital/convex-functions`), and the storefront selector
- * (`@be-in-digital/restaurant`).
+ * mutation (`@be-yours/convex-functions`), and the storefront selector
+ * (`@be-yours/restaurant`).
  *
  * `stores.create` opens every new establishment in `draft`, and nothing used to
  * take it back out of the storefront: the selector listed it beside the real

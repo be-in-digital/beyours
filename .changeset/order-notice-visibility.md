@@ -1,7 +1,7 @@
 ---
-"@be-in-digital/convex-schema": minor
-"@be-in-digital/convex-functions": minor
-"@be-in-digital/admin": minor
+"@be-yours/convex-schema": minor
+"@be-yours/convex-functions": minor
+"@be-yours/admin": minor
 ---
 
 Tell the owner when a transactional notice did not reach the diner (#530).

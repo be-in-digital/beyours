@@ -13,8 +13,8 @@ import {
   getExtensionFromMimeType,
   getMediaKind,
   validateMediaUpload,
-} from "@be-in-digital/cms"
-import { mediaKeyFromUrl } from "@be-in-digital/core/aws/media-url"
+} from "@be-yours/cms"
+import { mediaKeyFromUrl } from "@be-yours/core/aws/media-url"
 
 // ============================================================================
 // Queries

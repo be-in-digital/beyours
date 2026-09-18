@@ -52,7 +52,7 @@ export interface PackageInfo {
 export const packages: PackageInfo[] = [
   {
     name: "ui",
-    scope: "@be-in-digital/ui",
+    scope: "@be-yours/ui",
     description:
       "React UI component library built on Radix UI and Tailwind CSS v4. The engine's one design system: 59 accessible, themeable components for storefront and admin interfaces, published as TypeScript source and imported from the root specifier.",
     version: PACKAGE_VERSIONS["ui"],
@@ -72,32 +72,32 @@ export const packages: PackageInfo[] = [
       "react-hook-form@^7",
       "@hookform/resolvers@^3",
     ],
-    installCommand: "pnpm add @be-in-digital/ui",
+    installCommand: "pnpm add @be-yours/ui",
     setupSteps: [
-      "Add the package: pnpm add @be-in-digital/ui",
-      "Configure Tailwind to scan: content: ['./node_modules/@be-in-digital/ui/**/*.{js,ts,jsx,tsx}']",
-      "Import components: import { Button, Card } from '@be-in-digital/ui'",
+      "Add the package: pnpm add @be-yours/ui",
+      "Configure Tailwind to scan: content: ['./node_modules/@be-yours/ui/**/*.{js,ts,jsx,tsx}']",
+      "Import components: import { Button, Card } from '@be-yours/ui'",
     ],
     exports: [
       {
         name: "Container",
         type: "component",
         description: "Responsive container with max-width constraint",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["layout"],
       },
       {
         name: "Section",
         type: "component",
         description: "Semantic section wrapper with consistent spacing",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["layout"],
       },
       {
         name: "PageHeader",
         type: "component",
         description: "Page title with optional breadcrumb and actions",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["layout"],
         props: {
           title: {
@@ -122,7 +122,7 @@ export const packages: PackageInfo[] = [
         type: "component",
         description:
           "Primary action button with variants and sizes",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["form", "action"],
         props: {
           variant: {
@@ -147,7 +147,7 @@ export const packages: PackageInfo[] = [
         name: "Input",
         type: "component",
         description: "Text input field",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["form"],
         example: '<Input placeholder="Email" type="email" />',
       },
@@ -155,49 +155,49 @@ export const packages: PackageInfo[] = [
         name: "SearchInput",
         type: "component",
         description: "Search input with icon and clear button",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["form", "search"],
       },
       {
         name: "Textarea",
         type: "component",
         description: "Multi-line text input",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["form"],
       },
       {
         name: "Select",
         type: "component",
         description: "Dropdown select with Radix UI",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["form"],
       },
       {
         name: "Checkbox",
         type: "component",
         description: "Checkbox input with label",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["form"],
       },
       {
         name: "Switch",
         type: "component",
         description: "Toggle switch",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["form"],
       },
       {
         name: "Slider",
         type: "component",
         description: "Range slider input",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["form"],
       },
       {
         name: "FormField",
         type: "component",
         description: "Form field with label, input, error and description",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["form"],
       },
       {
@@ -205,7 +205,7 @@ export const packages: PackageInfo[] = [
         type: "component",
         description:
           "Status badge. Variants: default, secondary, destructive, outline, ghost, link.",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["display"],
         example: '<Badge variant="secondary">Active</Badge>',
       },
@@ -213,21 +213,21 @@ export const packages: PackageInfo[] = [
         name: "Card",
         type: "component",
         description: "Content card with header, body, footer",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["display", "layout"],
       },
       {
         name: "Avatar",
         type: "component",
         description: "User avatar with fallback initials",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["display"],
       },
       {
         name: "Table",
         type: "component",
         description: "Data table with header, body, footer",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["display", "data"],
       },
       {
@@ -235,21 +235,21 @@ export const packages: PackageInfo[] = [
         type: "component",
         description:
           "Advanced data table with sorting, filtering, pagination",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["display", "data"],
       },
       {
         name: "Dialog",
         type: "component",
         description: "Modal dialog with Radix UI",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["overlay"],
       },
       {
         name: "AlertDialog",
         type: "component",
         description: "Confirmation dialog for destructive actions",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["overlay"],
       },
       {
@@ -259,63 +259,63 @@ export const packages: PackageInfo[] = [
         // this a system were removed — the hook threw on every call because
         // nothing mounted the provider. `sonner` is the toast system.
         description: "Toast notification box (presentational; sonner drives toasts)",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["feedback"],
       },
       {
         name: "Skeleton",
         type: "component",
         description: "Loading skeleton placeholder",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["feedback", "loading"],
       },
       {
         name: "Spinner",
         type: "component",
         description: "Loading spinner animation",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["feedback", "loading"],
       },
       {
         name: "EmptyState",
         type: "component",
         description: "Empty state with icon, title and action",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["feedback"],
       },
       {
         name: "Tooltip",
         type: "component",
         description: "Hover tooltip",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["overlay"],
       },
       {
         name: "Popover",
         type: "component",
         description: "Floating content popover",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["overlay"],
       },
       {
         name: "DropdownMenu",
         type: "component",
         description: "Context menu dropdown",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["navigation", "overlay"],
       },
       {
         name: "Pagination",
         type: "component",
         description: "Page navigation controls",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["navigation"],
       },
       {
         name: "AddressAutocomplete",
         type: "component",
         description: "Google Maps address autocomplete input",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["form", "maps"],
       },
       {
@@ -323,99 +323,99 @@ export const packages: PackageInfo[] = [
         type: "component",
         description:
           "Product display card with image, name, price and add-to-cart",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["restaurant", "product"],
       },
       {
         name: "CartItem",
         type: "component",
         description: "Cart line item with quantity controls",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["restaurant", "cart"],
       },
       {
         name: "OrderStatusBadge",
         type: "component",
         description: "Order status badge with color coding",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["restaurant", "order"],
       },
       {
         name: "QuantitySelector",
         type: "component",
         description: "Increment/decrement quantity control",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["restaurant", "form"],
       },
       {
         name: "PriceDisplay",
         type: "component",
         description: "Formatted price display with currency",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["restaurant", "display"],
       },
       {
         name: "AllergenBadge",
         type: "component",
         description:
-          "Food allergen badge. Takes any string from products.allergens — never cast it to Allergen. Recognised names (French or English) render with an icon and their canonical label; an unrecognised one renders as the owner typed it and is announced as the restaurant's own wording, not as an allergen. Vocabulary and matching live in @be-in-digital/core/allergens.",
-        importPath: "@be-in-digital/ui",
+          "Food allergen badge. Takes any string from products.allergens — never cast it to Allergen. Recognised names (French or English) render with an icon and their canonical label; an unrecognised one renders as the owner typed it and is announced as the restaurant's own wording, not as an allergen. Vocabulary and matching live in @be-yours/core/allergens.",
+        importPath: "@be-yours/ui",
         tags: ["restaurant", "product", "allergens"],
       },
       {
         name: "SpiceLevelIndicator",
         type: "component",
         description: "Spice level visual indicator (1-5)",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["restaurant", "product"],
       },
       {
         name: "StoreStatusBadge",
         type: "component",
         description: "Store open/closed status badge",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["restaurant", "store"],
       },
       {
         name: "AdminLayout",
         type: "component",
         description: "Admin dashboard layout with sidebar navigation",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["admin", "layout"],
       },
       {
         name: "StatCard",
         type: "component",
         description: "KPI statistic card with trend indicator",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["admin", "display"],
       },
       {
         name: "ActionBar",
         type: "component",
         description: "Action toolbar for page-level actions",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["admin", "layout"],
       },
       {
         name: "FilterBar",
         type: "component",
         description: "Filter controls bar for lists",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["admin", "filter"],
       },
       {
         name: "StatusTimeline",
         type: "component",
         description: "Timeline of status changes",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["admin", "display"],
       },
       {
         name: "cn",
         type: "utility",
         description: "Merge class names with clsx + tailwind-merge",
-        importPath: "@be-in-digital/ui",
+        importPath: "@be-yours/ui",
         tags: ["utility"],
         example: "cn('px-4 py-2', isActive && 'bg-primary text-white')",
         returnType: "string",
@@ -424,16 +424,16 @@ export const packages: PackageInfo[] = [
   },
   {
     name: "core",
-    scope: "@be-in-digital/core",
+    scope: "@be-yours/core",
     description:
       "Core services: authentication with RBAC (7 roles, 15 resources, 10 actions), i18n with GPT auto-translation, AWS (S3 + SES), and Sentry.",
     version: PACKAGE_VERSIONS["core"],
     category: "shared",
     dependencies: ["zod"],
     peerDependencies: ["react@^19", "react-dom@^19"],
-    installCommand: "pnpm add @be-in-digital/core",
+    installCommand: "pnpm add @be-yours/core",
     setupSteps: [
-      "Install: pnpm add @be-in-digital/core",
+      "Install: pnpm add @be-yours/core",
       "Set env vars: OPENAI_API_KEY, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_S3_BUCKET_NAME, AWS_SES_FROM_EMAIL",
       "Wrap app with AuthProvider: <AuthProvider>{children}</AuthProvider>",
       "Use auth hooks: const { user, isAuthenticated } = useAuth()",
@@ -444,7 +444,7 @@ export const packages: PackageInfo[] = [
         type: "enum",
         description:
           "User roles: SUPER_ADMIN, OWNER, MANAGER, CHEF, CASHIER, WAITER, VIEWER",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "rbac"],
       },
       {
@@ -452,7 +452,7 @@ export const packages: PackageInfo[] = [
         type: "enum",
         description:
           "15 protected resources: STORE, PRODUCT, ORDER, KITCHEN, PAYMENT, LANGUAGE, GAME, TEAM, SETTINGS, DESIGN, INTEGRATION, EMAIL, CMS, BLOG, SYSTEM",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "rbac"],
       },
       {
@@ -460,14 +460,14 @@ export const packages: PackageInfo[] = [
         type: "enum",
         description:
           "10 actions: CREATE, READ, UPDATE, DELETE, MANAGE, EXPORT, IMPORT, APPROVE, REJECT, PUBLISH",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "rbac"],
       },
       {
         name: "hasPermission",
         type: "function",
         description: "Check if a role has a specific permission",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "rbac"],
         params: {
           role: { type: "Role", description: "User's role" },
@@ -484,21 +484,21 @@ export const packages: PackageInfo[] = [
         type: "function",
         description:
           "Throw PermissionDeniedError if role lacks permission",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "rbac"],
       },
       {
         name: "PermissionDeniedError",
         type: "class",
         description: "Error thrown when permission check fails",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "rbac", "error"],
       },
       {
         name: "AuthProvider",
         type: "provider",
         description: "React context provider for authentication state",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "react"],
         example: "<AuthProvider><App /></AuthProvider>",
       },
@@ -507,7 +507,7 @@ export const packages: PackageInfo[] = [
         type: "hook",
         description:
           "Access auth state: user, session, isAuthenticated, signIn, signOut",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "react"],
         returnType:
           "{ user, session, isAuthenticated, signIn, signOut, signUp }",
@@ -516,7 +516,7 @@ export const packages: PackageInfo[] = [
         name: "useUser",
         type: "hook",
         description: "Get current user data",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "react"],
         returnType: "User | null",
       },
@@ -524,7 +524,7 @@ export const packages: PackageInfo[] = [
         name: "usePermission",
         type: "hook",
         description: "Check if current user has a specific permission",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "react", "rbac"],
         example: "const canCreate = usePermission('product:create')",
       },
@@ -533,7 +533,7 @@ export const packages: PackageInfo[] = [
         type: "type",
         description:
           "Props of the permission gate. The component itself is NOT shipped — it needs JSX, so each app implements it over usePermission and types it with CanAccessComponent.",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "react", "rbac"],
         example:
           "export function CanAccess({ permission, children, fallback }: CanAccessProps) {\n  const { allowed, loading } = usePermission(permission)\n  if (loading) return null\n  return allowed ? <>{children}</> : fallback ? <>{fallback}</> : null\n}",
@@ -543,7 +543,7 @@ export const packages: PackageInfo[] = [
         type: "type",
         description:
           "Signature the app's CanAccess implementation must satisfy: (props: CanAccessProps) => ReactNode",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "react", "rbac"],
       },
       {
@@ -551,7 +551,7 @@ export const packages: PackageInfo[] = [
         type: "type",
         description:
           "Props of the role gate. As with CanAccess, the component is implemented in the app — the package ships the contract, not the JSX.",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "react", "rbac"],
       },
       {
@@ -559,28 +559,28 @@ export const packages: PackageInfo[] = [
         type: "type",
         description:
           "Signature the app's RoleGate implementation must satisfy: (props: RoleGateProps) => ReactNode",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "react", "rbac"],
       },
       {
         name: "getServerSession",
         type: "function",
         description: "Get session on server-side (RSC/API)",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "server"],
       },
       {
         name: "requireAuth",
         type: "function",
         description: "Middleware: require authentication",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "server", "middleware"],
       },
       {
         name: "withAuthRoute",
         type: "function",
         description: "Wrap API route with auth check",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["auth", "server", "api"],
       },
       {
@@ -588,7 +588,7 @@ export const packages: PackageInfo[] = [
         type: "function",
         description:
           "Detect user locale from cookie > localStorage > browser > header",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["i18n", "detection"],
         returnType: "string",
       },
@@ -596,7 +596,7 @@ export const packages: PackageInfo[] = [
         name: "createTranslator",
         type: "function",
         description: "Create a translation function for a locale",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["i18n", "translation"],
         example:
           "const t = createTranslator(translations, 'fr')\nt('product.name')",
@@ -606,28 +606,28 @@ export const packages: PackageInfo[] = [
         type: "function",
         description:
           "Translate text using GPT-3.5-turbo (~$0.001/product)",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["i18n", "gpt", "translation"],
       },
       {
         name: "batchTranslate",
         type: "function",
         description: "Translate multiple texts in batch",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["i18n", "gpt", "translation"],
       },
       {
         name: "estimateTranslationCost",
         type: "function",
         description: "Estimate GPT translation cost before running",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["i18n", "gpt", "cost"],
       },
       {
         name: "RTL_LANGUAGES",
         type: "constant",
         description: "List of right-to-left language codes",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["i18n"],
       },
       {
@@ -635,7 +635,7 @@ export const packages: PackageInfo[] = [
         type: "constant",
         description:
           "Pre-configured language definitions with names and flags",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["i18n"],
       },
       {
@@ -643,7 +643,7 @@ export const packages: PackageInfo[] = [
         type: "function",
         description:
           "Builds the S3 service. The AWS SDK is injected, not imported: pass an S3Operations client so the package stays runtime-agnostic. The returned S3Service carries upload, getPresignedUploadUrl, getPresignedDownloadUrl, delete, getPublicUrl, exists and getMetadata.",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         params: {
           config: {
             type: "S3Config",
@@ -665,7 +665,7 @@ export const packages: PackageInfo[] = [
         type: "type",
         description:
           "The S3 surface returned by createS3Service. There is no free-standing uploadToS3 function — uploading goes through an instance.",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["aws", "s3", "storage"],
       },
       {
@@ -673,7 +673,7 @@ export const packages: PackageInfo[] = [
         type: "function",
         description:
           "Builds the SES service over an injected SESOperations client. The returned SESService carries sendEmail, sendTemplatedEmail and sendBulkEmail (rate-limited to the SES sandbox ceiling).",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         params: {
           config: {
             type: "SESConfig",
@@ -695,7 +695,7 @@ export const packages: PackageInfo[] = [
         type: "function",
         description:
           "Server-side shortcut: reads the SES configuration from the environment and returns a ready SESService. Use it instead of wiring createSESService by hand in a route handler.",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         returnType: "SESService",
         tags: ["aws", "ses", "email"],
       },
@@ -704,49 +704,49 @@ export const packages: PackageInfo[] = [
         type: "type",
         description:
           "The SES surface returned by createSESService. sendEmail and sendTemplatedEmail are methods on it, not module-level functions.",
-        importPath: "@be-in-digital/core",
+        importPath: "@be-yours/core",
         tags: ["aws", "ses", "email"],
       },
       {
         name: "resolveSentryOptions",
         type: "function",
         description: "Builds the Sentry.init options for one runtime ('browser' | 'server' | 'edge') from the environment, or returns null when NEXT_PUBLIC_SENTRY_DSN is unset or is not a DSN — in which case the app must skip Sentry.init entirely. One Sentry project per client: the DSN is the isolation. Import-free, so the browser bundle, the edge runtime and Convex can all read it. See apps/docs/deployment/sentry.md.",
-        importPath: "@be-in-digital/core/sentry",
+        importPath: "@be-yours/core/sentry",
         tags: ["monitoring", "sentry", "env"],
       },
       {
         name: "isSentryDsn",
         type: "function",
         description: "True when a string is a Sentry DSN (https://<key>@<host>/<projectId>). The env schema only checks that the DSN is a URL, so a project-page URL pasted by mistake is caught here instead of silently disabling reporting.",
-        importPath: "@be-in-digital/core/sentry",
+        importPath: "@be-yours/core/sentry",
         tags: ["monitoring", "sentry", "validation"],
       },
       {
         name: "packageEnvSchema",
         type: "validator",
         description: "Zod schema for the 11 BeYours platform-level env vars (AWS, OpenAI, Uber Eats, Uber Direct, Deliveroo). Strict: parsing throws when a required one is missing.",
-        importPath: "@be-in-digital/core/env",
+        importPath: "@be-yours/core/env",
         tags: ["env", "validation", "zod"],
       },
       {
         name: "siteEnvRequiredSchema",
         type: "validator",
         description: "Strict Zod schema for the 7 site vars a restaurant deployment cannot boot without (NEXT_PUBLIC_CONVEX_URL, CONVEX_SITE_URL, SITE_URL, BETTER_AUTH_SECRET min 32 chars, ENCRYPTION_KEY, AWS_S3_BUCKET_NAME, AWS_SES_FROM_EMAIL). Declared without the optional-empty helper, so an empty value fails like a missing one. Used by validateAllEnv() at startup, never by the runtime getters.",
-        importPath: "@be-in-digital/core/env",
+        importPath: "@be-yours/core/env",
         tags: ["env", "validation", "zod", "startup"],
       },
       {
         name: "siteEnvOptionalSchema",
         type: "validator",
         description: "Zod schema for the 34 optional site vars, refined with the SITE_FEATURE_GROUPS all-or-nothing rules. Used by validateAllEnv() at startup, never by the runtime getters.",
-        importPath: "@be-in-digital/core/env",
+        importPath: "@be-yours/core/env",
         tags: ["env", "validation", "zod", "startup"],
       },
       {
         name: "SITE_FEATURE_GROUPS",
         type: "constant",
         description: "Features that are all-or-nothing: setting any variable of a group makes the whole group required (Stripe, PayPal, SumUp, BeYours billing). Half a payment provider fails at the till, not at boot.",
-        importPath: "@be-in-digital/core/env",
+        importPath: "@be-yours/core/env",
         tags: ["env", "validation"],
         returnType: "{ feature: string; vars: readonly string[] }[]",
       },
@@ -754,14 +754,14 @@ export const packages: PackageInfo[] = [
         name: "siteEnvSchema",
         type: "validator",
         description: "LENIENT Zod reader over both site tiers - every field optional. What getSiteEnv() parses, kept permissive because it runs inside Convex actions where the deployment holds only a subset of the vars. Boot-time enforcement belongs to siteEnvRequiredSchema / siteEnvOptionalSchema.",
-        importPath: "@be-in-digital/core/env",
+        importPath: "@be-yours/core/env",
         tags: ["env", "validation", "zod"],
       },
       {
         name: "getPackageEnv",
         type: "function",
         description: "Get validated platform env vars (lazy-loaded, memoized). Throws ZodError if required vars are missing.",
-        importPath: "@be-in-digital/core/env",
+        importPath: "@be-yours/core/env",
         tags: ["env", "validation"],
         returnType: "PackageEnv",
         example: "const { OPENAI_API_KEY } = getPackageEnv()",
@@ -770,7 +770,7 @@ export const packages: PackageInfo[] = [
         name: "getSiteEnv",
         type: "function",
         description: "Get per-restaurant site env vars (lazy-loaded, memoized) through the lenient reader: every field is possibly undefined and a missing var does NOT throw. Whether the deployment may boot is decided once by validateAllEnv().",
-        importPath: "@be-in-digital/core/env",
+        importPath: "@be-yours/core/env",
         tags: ["env", "validation"],
         returnType: "SiteEnv",
         example: "const { NEXT_PUBLIC_CONVEX_URL, STRIPE_SECRET_KEY } = getSiteEnv() // both string | undefined",
@@ -779,7 +779,7 @@ export const packages: PackageInfo[] = [
         name: "isSandbox",
         type: "function",
         description: "Resolve whether an integration talks to its sandbox: isSandbox('uberEats' | 'deliveroo' | 'paypal'). Reads UBER_EATS_SANDBOX_MODE / DELIVEROO_IS_SANDBOX / PAYPAL_SANDBOX_MODE. Only the exact string 'false' selects production; unset, empty or malformed resolves to SANDBOX and warns once per flag. Replaces the inline `site.X === \"true\"` read, which made an unset variable mean PRODUCTION at 43 call sites. Being explicit is still required — validateAllEnv() refuses to boot an integration configured without a declared mode.",
-        importPath: "@be-in-digital/core/env",
+        importPath: "@be-yours/core/env",
         tags: ["env", "integrations", "uber-eats", "deliveroo", "paypal"],
         params: {
           platform: { type: "'uberEats' | 'deliveroo' | 'paypal'", description: "Which integration to resolve" },
@@ -791,7 +791,7 @@ export const packages: PackageInfo[] = [
         name: "checkSandboxFlags",
         type: "function",
         description: "Which sandbox flags a deployment still owes an answer on, given a raw env object. Silent while an integration is switched off entirely; the moment any of its credentials is set, its mode becomes required. The Deliveroo brand/site ids are deliberately excluded — they are e2e fixtures. Called by validateAllEnv().",
-        importPath: "@be-in-digital/core/env",
+        importPath: "@be-yours/core/env",
         tags: ["env", "validation", "startup"],
         params: {
           source: { type: "Record<string, unknown>", description: "Usually process.env" },
@@ -802,7 +802,7 @@ export const packages: PackageInfo[] = [
         name: "SANDBOX_FLAG_RULES",
         type: "constant",
         description: "The three integrations whose sandbox mode must be declared once configured, each with the credentials that switch it on: Uber Eats, Deliveroo, PayPal. The rule spans two tiers (credentials are package-level, flags site-level), which is why it is not a Zod refinement.",
-        importPath: "@be-in-digital/core/env",
+        importPath: "@be-yours/core/env",
         tags: ["env", "validation"],
         returnType: "readonly { feature: string; flag: string; enabledBy: readonly string[] }[]",
       },
@@ -810,7 +810,7 @@ export const packages: PackageInfo[] = [
         name: "validateAllEnv",
         type: "function",
         description: "Validate every tier without throwing: the 8 package vars, the 10 required site vars (AWS credentials among them since 2026-08-28 — one AWS account per client), the optional site vars including the SITE_FEATURE_GROUPS all-or-nothing rules, and the sandbox declarations from checkSandboxFlags(). Returns { ok, missing } with each problem tagged by EnvTier.",
-        importPath: "@be-in-digital/core/env",
+        importPath: "@be-yours/core/env",
         tags: ["env", "validation", "startup"],
         returnType: "{ ok: boolean; missing: EnvProblem[] } where EnvProblem = { name: string; message: string; tier: 'package' | 'site' | 'feature' }",
         example: "const { ok, missing } = validateAllEnv()\nif (!ok) console.error(formatEnvReport(missing))",
@@ -819,7 +819,7 @@ export const packages: PackageInfo[] = [
         name: "formatEnvReport",
         type: "function",
         description: "Format the problems from validateAllEnv() into a human-readable console report, grouped under the three EnvTier headings (package-level, site-level, half-configured feature). Report strings are in French.",
-        importPath: "@be-in-digital/core/env",
+        importPath: "@be-yours/core/env",
         tags: ["env", "validation", "startup"],
         params: {
           missing: { type: "EnvProblem[] = { name: string; message: string; tier: 'package' | 'site' | 'feature' }[]", description: "Problems from validateAllEnv()" },
@@ -830,18 +830,18 @@ export const packages: PackageInfo[] = [
   },
   {
     name: "restaurant",
-    scope: "@be-in-digital/restaurant",
+    scope: "@be-yours/restaurant",
     description:
       "Restaurant business logic: Zustand stores (cart, store, UI, language), services, and React hooks.",
     version: PACKAGE_VERSIONS["restaurant"],
     category: "frontend",
     dependencies: ["zustand"],
     peerDependencies: ["react@^19"],
-    installCommand: "pnpm add @be-in-digital/restaurant",
+    installCommand: "pnpm add @be-yours/restaurant",
     setupSteps: [
-      "Install: pnpm add @be-in-digital/restaurant",
-      "Import stores: import { useCartStore } from '@be-in-digital/restaurant/stores'",
-      "Import hooks: import { useCart } from '@be-in-digital/restaurant/hooks'",
+      "Install: pnpm add @be-yours/restaurant",
+      "Import stores: import { useCartStore } from '@be-yours/restaurant/stores'",
+      "Import hooks: import { useCart } from '@be-yours/restaurant/hooks'",
     ],
     exports: [
       {
@@ -849,7 +849,7 @@ export const packages: PackageInfo[] = [
         type: "store",
         description:
           "Shopping cart Zustand store: items, addItem, removeItem, updateQuantity, clear, total",
-        importPath: "@be-in-digital/restaurant/stores",
+        importPath: "@be-yours/restaurant/stores",
         tags: ["store", "cart", "zustand"],
         example: "const { items, addItem, total } = useCartStore()",
       },
@@ -858,7 +858,7 @@ export const packages: PackageInfo[] = [
         type: "store",
         description:
           "Id of the establishment being administered. Persisted; the document itself comes from Convex",
-        importPath: "@be-in-digital/restaurant/stores",
+        importPath: "@be-yours/restaurant/stores",
         tags: ["store", "zustand", "admin"],
         example: "const storeId = useAdminStoreSelection((s) => s.storeId)",
       },
@@ -867,7 +867,7 @@ export const packages: PackageInfo[] = [
         type: "store",
         description:
           "Id of the establishment the visitor is browsing. Kept apart from the admin selection",
-        importPath: "@be-in-digital/restaurant/stores",
+        importPath: "@be-yours/restaurant/stores",
         tags: ["store", "zustand", "storefront"],
         example: "const storeId = useStorefrontStoreSelection((s) => s.storeId)",
       },
@@ -875,7 +875,7 @@ export const packages: PackageInfo[] = [
         name: "useUIStore",
         type: "store",
         description: "UI state Zustand store: modals, filters, sidebar",
-        importPath: "@be-in-digital/restaurant/stores",
+        importPath: "@be-yours/restaurant/stores",
         tags: ["store", "ui", "zustand"],
       },
       {
@@ -883,14 +883,14 @@ export const packages: PackageInfo[] = [
         type: "store",
         description:
           "Language/locale Zustand store: current language, setLanguage",
-        importPath: "@be-in-digital/restaurant/stores",
+        importPath: "@be-yours/restaurant/stores",
         tags: ["store", "i18n", "zustand"],
       },
       {
         name: "useCart",
         type: "hook",
         description: "Cart operations: add, remove, update, summary, checkout",
-        importPath: "@be-in-digital/restaurant/hooks",
+        importPath: "@be-yours/restaurant/hooks",
         tags: ["hook", "cart"],
       },
       {
@@ -898,14 +898,14 @@ export const packages: PackageInfo[] = [
         type: "hook",
         description:
           "Find nearest store by geolocation. Pass { autoLocate: true } to prompt on mount; off by default",
-        importPath: "@be-in-digital/restaurant/hooks",
+        importPath: "@be-yours/restaurant/hooks",
         tags: ["hook", "store", "geo"],
       },
       {
         name: "useOrderStatus",
         type: "hook",
         description: "Track order status in real-time",
-        importPath: "@be-in-digital/restaurant/hooks",
+        importPath: "@be-yours/restaurant/hooks",
         tags: ["hook", "order"],
       },
       {
@@ -913,7 +913,7 @@ export const packages: PackageInfo[] = [
         type: "hook",
         description:
           "Filter and sort products by category, price, allergens",
-        importPath: "@be-in-digital/restaurant/hooks",
+        importPath: "@be-yours/restaurant/hooks",
         tags: ["hook", "product", "filter"],
       },
       {
@@ -921,7 +921,7 @@ export const packages: PackageInfo[] = [
         type: "type",
         description:
           "Cart item with product, quantity and selected options",
-        importPath: "@be-in-digital/restaurant",
+        importPath: "@be-yours/restaurant",
         tags: ["type", "cart"],
       },
       {
@@ -929,61 +929,61 @@ export const packages: PackageInfo[] = [
         type: "type",
         description:
           "Cart summary with subtotal, tax, delivery fee, total",
-        importPath: "@be-in-digital/restaurant",
+        importPath: "@be-yours/restaurant",
         tags: ["type", "cart"],
       },
     ],
   },
   {
     name: "admin",
-    scope: "@be-in-digital/admin",
+    scope: "@be-yours/admin",
     description:
       "Complete admin dashboard: 20+ page components, layout, stores, hooks, and formatters for restaurant management.",
     version: PACKAGE_VERSIONS["admin"],
     category: "frontend",
     dependencies: [],
-    installCommand: "pnpm add @be-in-digital/admin",
+    installCommand: "pnpm add @be-yours/admin",
     exports: [
       {
         name: "DashboardPage",
         type: "component",
         description: "Main dashboard with KPIs, charts, recent orders",
-        importPath: "@be-in-digital/admin/pages",
+        importPath: "@be-yours/admin/pages",
         tags: ["admin", "page", "dashboard"],
       },
       {
         name: "OrdersPage",
         type: "component",
         description: "Order list with filtering and status management",
-        importPath: "@be-in-digital/admin/pages",
+        importPath: "@be-yours/admin/pages",
         tags: ["admin", "page", "orders"],
       },
       {
         name: "ProductsPage",
         type: "component",
         description: "Product catalog management",
-        importPath: "@be-in-digital/admin/pages",
+        importPath: "@be-yours/admin/pages",
         tags: ["admin", "page", "products"],
       },
       {
         name: "KitchenPage",
         type: "component",
         description: "Kitchen Display System with real-time tickets",
-        importPath: "@be-in-digital/admin/pages",
+        importPath: "@be-yours/admin/pages",
         tags: ["admin", "page", "kitchen"],
       },
       {
         name: "GamesPage",
         type: "component",
         description: "Gamification management (QR codes, prizes, games)",
-        importPath: "@be-in-digital/admin/pages",
+        importPath: "@be-yours/admin/pages",
         tags: ["admin", "page", "gamification"],
       },
       {
         name: "LanguagesPage",
         type: "component",
         description: "Language management with GPT auto-translation",
-        importPath: "@be-in-digital/admin/pages",
+        importPath: "@be-yours/admin/pages",
         tags: ["admin", "page", "i18n"],
       },
       {
@@ -991,35 +991,35 @@ export const packages: PackageInfo[] = [
         type: "component",
         description:
           "Payment integrations (Stripe, SumUp, PayPal, cash; Square is announced but unimplemented)",
-        importPath: "@be-in-digital/admin/pages",
+        importPath: "@be-yours/admin/pages",
         tags: ["admin", "page", "payments"],
       },
       {
         name: "EmailDashboardPage",
         type: "component",
         description: "Email marketing dashboard with KPIs",
-        importPath: "@be-in-digital/admin/pages",
+        importPath: "@be-yours/admin/pages",
         tags: ["admin", "page", "email"],
       },
       {
         name: "useAdminAuthStore",
         type: "store",
         description: "Admin authentication Zustand store",
-        importPath: "@be-in-digital/admin/stores",
+        importPath: "@be-yours/admin/stores",
         tags: ["admin", "store", "auth", "zustand"],
       },
       {
         name: "useAdminStoreId",
         type: "hook",
         description: "Get current admin store ID",
-        importPath: "@be-in-digital/admin/hooks",
+        importPath: "@be-yours/admin/hooks",
         tags: ["admin", "hook"],
       },
       {
         name: "useDebounce",
         type: "hook",
         description: "Debounce a value with configurable delay",
-        importPath: "@be-in-digital/admin/hooks",
+        importPath: "@be-yours/admin/hooks",
         tags: ["admin", "hook", "utility"],
       },
       {
@@ -1027,7 +1027,7 @@ export const packages: PackageInfo[] = [
         type: "utility",
         description:
           "Format price in cents to display (e.g., 1299 -> '12,99 EUR')",
-        importPath: "@be-in-digital/admin/lib",
+        importPath: "@be-yours/admin/lib",
         tags: ["admin", "utility", "format"],
         example: "formatPrice(1299) // '12,99 EUR'",
       },
@@ -1035,28 +1035,28 @@ export const packages: PackageInfo[] = [
         name: "formatDate",
         type: "utility",
         description: "Format date with locale",
-        importPath: "@be-in-digital/admin/lib",
+        importPath: "@be-yours/admin/lib",
         tags: ["admin", "utility", "format"],
       },
       {
         name: "slugify",
         type: "utility",
         description: "Convert string to URL-safe slug",
-        importPath: "@be-in-digital/admin/lib",
+        importPath: "@be-yours/admin/lib",
         tags: ["admin", "utility"],
       },
       {
         name: "eurosToCents",
         type: "utility",
         description: "Convert euros to cents (12.99 -> 1299)",
-        importPath: "@be-in-digital/admin/lib",
+        importPath: "@be-yours/admin/lib",
         tags: ["admin", "utility", "format"],
       },
       {
         name: "AppSidebar",
         type: "component",
         description: "Admin sidebar with nav, logo (supports dynamic logoUrl/brandName from CMS), and user footer.",
-        importPath: "@be-in-digital/admin",
+        importPath: "@be-yours/admin",
         tags: ["admin", "layout", "sidebar"],
         props: {
           footer: { type: "React.ReactNode", required: false, description: "Footer content (e.g. StoreSelector)" },
@@ -1069,96 +1069,96 @@ export const packages: PackageInfo[] = [
         name: "StoreSelector",
         type: "component",
         description: "Store dropdown selector. Auto-selects when only one store exists. Hides dropdown for single store.",
-        importPath: "@be-in-digital/admin",
+        importPath: "@be-yours/admin",
         tags: ["admin", "component", "store"],
       },
       {
         name: "StoreGuard",
         type: "component",
         description: "Guard that ensures a store is selected. Auto-selects single store. Shows create prompt when no stores exist.",
-        importPath: "@be-in-digital/admin",
+        importPath: "@be-yours/admin",
         tags: ["admin", "component", "store", "guard"],
       },
       {
         name: "StoresPage",
         type: "component",
         description: "Store management page with CRUD, bulk actions, and draft-to-open guidance on creation.",
-        importPath: "@be-in-digital/admin/pages",
+        importPath: "@be-yours/admin/pages",
         tags: ["admin", "page", "stores"],
       },
       {
         name: "StoreDetailPage",
         type: "component",
         description: "Store detail/config page with back button, draft banner, tabs (General, Hours, Settings, Integrations).",
-        importPath: "@be-in-digital/admin/pages",
+        importPath: "@be-yours/admin/pages",
         tags: ["admin", "page", "stores", "detail"],
       },
     ],
   },
   {
     name: "convex-schema",
-    scope: "@be-in-digital/convex-schema",
+    scope: "@be-yours/convex-schema",
     description:
       "Convex database schema: 50+ table definitions, 40+ Zod validators, 100+ TypeScript types.",
     version: PACKAGE_VERSIONS["convex-schema"],
     category: "shared",
     dependencies: ["convex", "zod"],
-    installCommand: "pnpm add @be-in-digital/convex-schema",
+    installCommand: "pnpm add @be-yours/convex-schema",
     exports: [
       {
         name: "storesTable",
         type: "validator",
         description: "Store table with hours, location, config",
-        importPath: "@be-in-digital/convex-schema/tables",
+        importPath: "@be-yours/convex-schema/tables",
         tags: ["schema", "store"],
       },
       {
         name: "productsTable",
         type: "validator",
         description: "Product table with options, pricing, stock",
-        importPath: "@be-in-digital/convex-schema/tables",
+        importPath: "@be-yours/convex-schema/tables",
         tags: ["schema", "product"],
       },
       {
         name: "ordersTable",
         type: "validator",
         description: "Order table with items, status, payment",
-        importPath: "@be-in-digital/convex-schema/tables",
+        importPath: "@be-yours/convex-schema/tables",
         tags: ["schema", "order"],
       },
       {
         name: "kitchenTicketsTable",
         type: "validator",
         description: "Kitchen display tickets",
-        importPath: "@be-in-digital/convex-schema/tables",
+        importPath: "@be-yours/convex-schema/tables",
         tags: ["schema", "kitchen"],
       },
       {
         name: "gamesTable",
         type: "validator",
         description: "Game definitions (Wheel, Scratch) with win ratio",
-        importPath: "@be-in-digital/convex-schema/tables",
+        importPath: "@be-yours/convex-schema/tables",
         tags: ["schema", "gamification"],
       },
       {
         name: "StoreDoc",
         type: "type",
         description: "Store document type with all fields",
-        importPath: "@be-in-digital/convex-schema",
+        importPath: "@be-yours/convex-schema",
         tags: ["type", "store"],
       },
       {
         name: "ProductDoc",
         type: "type",
         description: "Product document type",
-        importPath: "@be-in-digital/convex-schema",
+        importPath: "@be-yours/convex-schema",
         tags: ["type", "product"],
       },
       {
         name: "OrderDoc",
         type: "type",
         description: "Order document type",
-        importPath: "@be-in-digital/convex-schema",
+        importPath: "@be-yours/convex-schema",
         tags: ["type", "order"],
       },
       {
@@ -1166,14 +1166,14 @@ export const packages: PackageInfo[] = [
         type: "enum",
         description:
           "Order lifecycle: pending -> confirmed -> preparing -> ready -> delivered -> completed",
-        importPath: "@be-in-digital/convex-schema",
+        importPath: "@be-yours/convex-schema",
         tags: ["type", "order", "enum"],
       },
       {
         name: "GameType",
         type: "enum",
         description: "Game types: WHEEL_OF_FORTUNE, SCRATCH_CARD",
-        importPath: "@be-in-digital/convex-schema",
+        importPath: "@be-yours/convex-schema",
         tags: ["type", "gamification", "enum"],
       },
       {
@@ -1181,65 +1181,65 @@ export const packages: PackageInfo[] = [
         type: "validator",
         description:
           "Convex validator for what the vision model returns for a whole menu photo; singleProductVisionSchema covers the one-product case. These are the engine's half of image-to-product — the analysis action itself is app-level Node code.",
-        importPath: "@be-in-digital/convex-schema/validators",
+        importPath: "@be-yours/convex-schema/validators",
         tags: ["validation", "ai", "product"],
       },
     ],
   },
   {
     name: "convex-functions",
-    scope: "@be-in-digital/convex-functions",
+    scope: "@be-yours/convex-functions",
     description:
       "Convex backend functions: 48 modules covering auth, CRUD, kitchen, payments, gamification, i18n, email, CMS, integrations, and AI.",
     version: PACKAGE_VERSIONS["convex-functions"],
     category: "backend",
     dependencies: ["convex"],
-    installCommand: "pnpm add @be-in-digital/convex-functions",
+    installCommand: "pnpm add @be-yours/convex-functions",
     exports: [
       {
         name: "stores",
         type: "function",
         description: "Store CRUD operations",
-        importPath: "@be-in-digital/convex-functions",
+        importPath: "@be-yours/convex-functions",
         tags: ["backend", "store"],
       },
       {
         name: "products",
         type: "function",
         description: "Product catalog management",
-        importPath: "@be-in-digital/convex-functions",
+        importPath: "@be-yours/convex-functions",
         tags: ["backend", "product"],
       },
       {
         name: "orders",
         type: "function",
         description: "Order creation, tracking, status updates",
-        importPath: "@be-in-digital/convex-functions",
+        importPath: "@be-yours/convex-functions",
         tags: ["backend", "order"],
       },
       {
         name: "kitchenTickets",
         type: "function",
         description: "Kitchen ticket creation, browser printing, status",
-        importPath: "@be-in-digital/convex-functions",
+        importPath: "@be-yours/convex-functions",
         tags: ["backend", "kitchen"],
       },
       {
         name: "runTranslationPlan",
         type: "function",
         description:
-          "GPT-powered auto-translation. Deliberately NOT on the package barrel: the module must not pull @be-in-digital/core into the Convex default runtime, so it ships from its own subpath. Pair it with getTranslationPlan and saveDocumentTranslations, and gate writes with touchesTranslatableText.",
-        importPath: "@be-in-digital/convex-functions/autoTranslate",
+          "GPT-powered auto-translation. Deliberately NOT on the package barrel: the module must not pull @be-yours/core into the Convex default runtime, so it ships from its own subpath. Pair it with getTranslationPlan and saveDocumentTranslations, and gate writes with touchesTranslatableText.",
+        importPath: "@be-yours/convex-functions/autoTranslate",
         tags: ["backend", "i18n", "gpt"],
         example:
-          'import * as autoTranslate from "@be-in-digital/convex-functions/autoTranslate"',
+          'import * as autoTranslate from "@be-yours/convex-functions/autoTranslate"',
       },
       {
         name: "touchesTranslatableText",
         type: "function",
         description:
           "True when a patch changes a field that has translations, so the caller knows whether to schedule a re-translation.",
-        importPath: "@be-in-digital/convex-functions/autoTranslate",
+        importPath: "@be-yours/convex-functions/autoTranslate",
         tags: ["backend", "i18n"],
       },
       {
@@ -1247,28 +1247,28 @@ export const packages: PackageInfo[] = [
         type: "function",
         description:
           "Convex query definition ({ args, handler }) returning the documents and target languages a translation run has to cover.",
-        importPath: "@be-in-digital/convex-functions/autoTranslate",
+        importPath: "@be-yours/convex-functions/autoTranslate",
         tags: ["backend", "i18n"],
       },
       {
         name: "games",
         type: "function",
         description: "Game management (create, update win ratio)",
-        importPath: "@be-in-digital/convex-functions",
+        importPath: "@be-yours/convex-functions",
         tags: ["backend", "gamification"],
       },
       {
         name: "emailCampaigns",
         type: "function",
         description: "Email campaign CRUD and sending",
-        importPath: "@be-in-digital/convex-functions",
+        importPath: "@be-yours/convex-functions",
         tags: ["backend", "email"],
       },
       {
         name: "cms",
         type: "function",
         description: "CMS content management functions",
-        importPath: "@be-in-digital/convex-functions",
+        importPath: "@be-yours/convex-functions",
         tags: ["backend", "cms"],
       },
       {
@@ -1276,7 +1276,7 @@ export const packages: PackageInfo[] = [
         type: "function",
         description:
           "Entitlement guard for image-to-product: says whether the owner's plan still has analysis quota. The analysis action itself is NOT in this package — it is app-level Convex code (`convex/imageToProduct.ts`) because it needs the Node runtime for sharp and the OpenAI vision call. The engine ships the guard, the quota accounting and the result validators.",
-        importPath: "@be-in-digital/convex-functions",
+        importPath: "@be-yours/convex-functions",
         tags: ["backend", "ai", "product", "entitlements"],
       },
       {
@@ -1284,47 +1284,47 @@ export const packages: PackageInfo[] = [
         type: "function",
         description:
           "Takes one image-to-product analysis off the owner's monthly quota before the app-level action runs; releaseImageToProductQuota gives it back when the analysis fails.",
-        importPath: "@be-in-digital/convex-functions",
+        importPath: "@be-yours/convex-functions",
         tags: ["backend", "ai", "product", "entitlements"],
       },
     ],
   },
   {
     name: "cms",
-    scope: "@be-in-digital/cms",
+    scope: "@be-yours/cms",
     description:
       "Custom CMS: page/block registry, field definitions, media management, SVG sanitization, and content validation.",
     version: PACKAGE_VERSIONS["cms"],
     category: "shared",
     dependencies: [],
-    installCommand: "pnpm add @be-in-digital/cms",
+    installCommand: "pnpm add @be-yours/cms",
     exports: [
       {
         name: "setCmsRegistry",
         type: "function",
         description: "Register CMS page and block definitions",
-        importPath: "@be-in-digital/cms",
+        importPath: "@be-yours/cms",
         tags: ["cms", "registry"],
       },
       {
         name: "getCmsRegistry",
         type: "function",
         description: "Get all registered CMS definitions",
-        importPath: "@be-in-digital/cms",
+        importPath: "@be-yours/cms",
         tags: ["cms", "registry"],
       },
       {
         name: "getPageDefinition",
         type: "function",
         description: "Get a specific page definition by slug",
-        importPath: "@be-in-digital/cms",
+        importPath: "@be-yours/cms",
         tags: ["cms", "page"],
       },
       {
         name: "validateBlockValues",
         type: "function",
         description: "Validate CMS block content against schema",
-        importPath: "@be-in-digital/cms",
+        importPath: "@be-yours/cms",
         tags: ["cms", "validation"],
       },
       {
@@ -1332,7 +1332,7 @@ export const packages: PackageInfo[] = [
         type: "function",
         description:
           "Full SVG sanitization through DOMPurify. It is deliberately kept OFF the package barrel and ships from its own subpath: DOMPurify needs a DOM, and the barrel is imported by Convex isolate modules that have none — re-exporting it once made the whole backend fail to push. Convex-side callers use containsActiveContent from the barrel instead.",
-        importPath: "@be-in-digital/cms/sanitize",
+        importPath: "@be-yours/cms/sanitize",
         tags: ["cms", "security"],
       },
       {
@@ -1340,44 +1340,44 @@ export const packages: PackageInfo[] = [
         type: "function",
         description:
           "DOM-free, dependency-free refusal check for SVG markup carrying script or event handlers. Safe to call from a Convex isolate, unlike sanitizeSvg.",
-        importPath: "@be-in-digital/cms",
+        importPath: "@be-yours/cms",
         tags: ["cms", "security"],
       },
       {
         name: "validateMediaUpload",
         type: "function",
         description: "Validate media file upload (size, type)",
-        importPath: "@be-in-digital/cms",
+        importPath: "@be-yours/cms",
         tags: ["cms", "media"],
       },
     ],
   },
   {
     name: "integrations",
-    scope: "@be-in-digital/integrations",
+    scope: "@be-yours/integrations",
     description:
       "Third-party integrations: Uber Eats and Deliveroo API clients, menu sync, order handling, webhook security.",
     version: PACKAGE_VERSIONS["integrations"],
     category: "backend",
     dependencies: [],
-    installCommand: "pnpm add @be-in-digital/integrations",
+    installCommand: "pnpm add @be-yours/integrations",
     exports: [
       {
         name: "uberEats.fetchUberEats",
         type: "service",
         description:
           "Authenticated fetch against the Uber Eats API — handles the OAuth token cache and the retry policy. The namespace is flat: uberEats re-exports client, oauth, mappers, security and menu-sync members side by side, so there is no uberEats.client sub-object.",
-        importPath: "@be-in-digital/integrations",
+        importPath: "@be-yours/integrations",
         tags: ["integration", "uber-eats"],
         example:
-          'import { uberEats } from "@be-in-digital/integrations"\nawait uberEats.fetchUberEats(credentials, "/v1/eats/stores")',
+          'import { uberEats } from "@be-yours/integrations"\nawait uberEats.fetchUberEats(credentials, "/v1/eats/stores")',
       },
       {
         name: "uberEats.pushMenu",
         type: "service",
         description:
           "Push the local menu to Uber Eats; uberEats.pullMenu reads theirs back for reconciliation.",
-        importPath: "@be-in-digital/integrations",
+        importPath: "@be-yours/integrations",
         tags: ["integration", "uber-eats", "menu"],
       },
       {
@@ -1385,7 +1385,7 @@ export const packages: PackageInfo[] = [
         type: "service",
         description:
           "Accept an incoming Uber Eats order. denyOrder, cancelOrder and markOrderAsReady sit beside it in the same namespace.",
-        importPath: "@be-in-digital/integrations",
+        importPath: "@be-yours/integrations",
         tags: ["integration", "uber-eats", "order"],
       },
       {
@@ -1393,7 +1393,7 @@ export const packages: PackageInfo[] = [
         type: "service",
         description:
           "Authenticated fetch against the Deliveroo API, with the same token cache as the Uber Eats client. Flat namespace — there is no deliveroo.client sub-object.",
-        importPath: "@be-in-digital/integrations",
+        importPath: "@be-yours/integrations",
         tags: ["integration", "deliveroo"],
       },
       {
@@ -1401,7 +1401,7 @@ export const packages: PackageInfo[] = [
         type: "service",
         description:
           "Read the Deliveroo menu back for reconciliation. Deliveroo menu *pushes* go through the separate menu-push path.",
-        importPath: "@be-in-digital/integrations",
+        importPath: "@be-yours/integrations",
         tags: ["integration", "deliveroo", "menu"],
       },
       {
@@ -1409,61 +1409,61 @@ export const packages: PackageInfo[] = [
         type: "service",
         description:
           "Accept an incoming Deliveroo order. confirmOrder, rejectOrder, updatePrepStage, getOrder and sendSyncStatus are the rest of the order surface.",
-        importPath: "@be-in-digital/integrations",
+        importPath: "@be-yours/integrations",
         tags: ["integration", "deliveroo", "order"],
       },
     ],
   },
   {
     name: "marketing",
-    scope: "@be-in-digital/marketing",
+    scope: "@be-yours/marketing",
     description:
       "Email marketing: HTML rendering (28 block types), campaign validation, segmentation, double opt-in, statistics, CSV import.",
     version: PACKAGE_VERSIONS["marketing"],
     category: "shared",
     dependencies: [],
-    installCommand: "pnpm add @be-in-digital/marketing",
+    installCommand: "pnpm add @be-yours/marketing",
     exports: [
       {
         name: "renderTemplateToEmailHtml",
         type: "function",
         description: "Render full email template to HTML string",
-        importPath: "@be-in-digital/marketing",
+        importPath: "@be-yours/marketing",
         tags: ["email", "render"],
       },
       {
         name: "validateCampaign",
         type: "function",
         description: "Validate campaign before sending",
-        importPath: "@be-in-digital/marketing",
+        importPath: "@be-yours/marketing",
         tags: ["email", "validation"],
       },
       {
         name: "buildSegmentFilter",
         type: "function",
         description: "Build subscriber filter from segment rules",
-        importPath: "@be-in-digital/marketing",
+        importPath: "@be-yours/marketing",
         tags: ["email", "segment"],
       },
       {
         name: "generateDoubleOptInToken",
         type: "function",
         description: "Generate email verification token",
-        importPath: "@be-in-digital/marketing",
+        importPath: "@be-yours/marketing",
         tags: ["email", "opt-in"],
       },
       {
         name: "computeStatRates",
         type: "function",
         description: "Calculate open rate, click rate, etc.",
-        importPath: "@be-in-digital/marketing",
+        importPath: "@be-yours/marketing",
         tags: ["email", "stats"],
       },
       {
         name: "parseSubscriberCsv",
         type: "function",
         description: "Parse CSV file to subscriber list",
-        importPath: "@be-in-digital/marketing",
+        importPath: "@be-yours/marketing",
         tags: ["email", "import"],
       },
     ],
@@ -1490,8 +1490,8 @@ export function searchPackages(query: string): PackageExport[] {
 
   // `exp.importPath` is kept as declared. It used to be overwritten with the
   // package scope here, which silently downgraded every subpath-only export —
-  // `sanitizeSvg` came back as `@be-in-digital/cms` instead of
-  // `@be-in-digital/cms/sanitize`, an import that does not resolve.
+  // `sanitizeSvg` came back as `@be-yours/cms` instead of
+  // `@be-yours/cms/sanitize`, an import that does not resolve.
   return results
     .sort((a, b) => b.score - a.score)
     .map(({ score, packageName, ...exp }) => {
@@ -1505,7 +1505,7 @@ export function searchPackages(query: string): PackageExport[] {
  * The import statement a consumer should write for one export claim.
  *
  * A dotted `name` is a member of a namespace re-export (`export * as uberEats`
- * in `@be-in-digital/integrations`), so the statement imports the namespace and
+ * in `@be-yours/integrations`), so the statement imports the namespace and
  * the member is reached through it — `import { uberEats.pullMenu }` is not
  * syntax.
  *

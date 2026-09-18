@@ -55,7 +55,7 @@ export interface PaymentMethodContext {
   /**
    * The smallest amount a card provider will take, in MINOR units — supplied
    * rather than derived so this package stays dependency-free. The value lives
-   * in `@be-in-digital/convex-functions/cardChargeFloor`, which is also what
+   * in `@be-yours/convex-functions/cardChargeFloor`, which is also what
    * the three money paths enforce, so the tile and the refusal cannot drift.
    *
    * `undefined` means the caller has not said, and no floor is applied.

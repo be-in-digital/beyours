@@ -5,7 +5,7 @@
  * WHY THIS IS A LOCAL MODULE AND NOT AN IMPORT: `apps/site` has zero engine
  * dependencies. It is the commercial site, not an instance of the product, and
  * it must stay installable without a `read:packages` token. So the design of
- * `@be-in-digital/convex-functions/rateLimit` is ported here rather than
+ * `@be-yours/convex-functions/rateLimit` is ported here rather than
  * imported. Two differences from the original, both deliberate:
  *
  * 1. `consumeRateLimit` takes a real `MutationCtx`. The engine's copy is typed

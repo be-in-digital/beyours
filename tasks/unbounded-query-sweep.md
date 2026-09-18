@@ -167,7 +167,7 @@ entries.
   transaction — and two of them assert the read count does not move at all as the
   table grows.
 - `packages/convex-functions/src/__tests__/support/countingDb.ts` — the double.
-  It reads the real declared indexes out of `@be-in-digital/convex-schema` and
+  It reads the real declared indexes out of `@be-yours/convex-schema` and
   enforces Convex's own rule (equalities cover a prefix; a range bound only on the
   next field), so "narrow it in JavaScript instead" cannot pass either. Its own
   behaviour is held by four cases.

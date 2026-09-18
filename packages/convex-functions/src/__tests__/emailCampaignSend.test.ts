@@ -29,7 +29,7 @@ const OTHER_CAMPAIGN = "campaigns:b"
  * `withIndex("by_anything")` and applied whatever equalities it was given, so
  * the query could name an index the schema does not declare and still pass —
  * and it silently ignored the third equality when `alreadySentTo` grew one.
- * The shared harness reads the real indexes out of `@be-in-digital/convex-schema`
+ * The shared harness reads the real indexes out of `@be-yours/convex-schema`
  * and enforces Convex's own prefix rule, so naming an index wrong fails here
  * instead of in production.
  */

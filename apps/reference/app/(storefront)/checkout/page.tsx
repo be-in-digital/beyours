@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   ShieldCheck,
 } from "lucide-react"
-import { Button } from "@be-in-digital/ui"
+import { Button } from "@be-yours/ui"
 import { useCartStore, formatPrice,
   cartSignature,
   resolveCheckoutAttempt,
@@ -21,17 +21,17 @@ import { useCartStore, formatPrice,
   useCartHydrated,
   cardUnavailableMessage,
   type CartItem,
-} from "@be-in-digital/restaurant"
+} from "@be-yours/restaurant"
 import {
   computeOrderTotals,
   resolveTaxRatePercent,
-} from "@be-in-digital/convex-functions/orderTotals"
-import { effectiveDeliveryFeeMode } from "@be-in-digital/convex-functions/deliveryQuote"
-import { cardMinimumFor } from "@be-in-digital/convex-functions/cardChargeFloor"
+} from "@be-yours/convex-functions/orderTotals"
+import { effectiveDeliveryFeeMode } from "@be-yours/convex-functions/deliveryQuote"
+import { cardMinimumFor } from "@be-yours/convex-functions/cardChargeFloor"
 import {
   resolvePromotionDiscount,
   PromotionRejectedError,
-} from "@be-in-digital/convex-functions/promotionDiscount"
+} from "@be-yours/convex-functions/promotionDiscount"
 import { authClient } from "@/lib/auth-client"
 import {
   decideOrderQuote,

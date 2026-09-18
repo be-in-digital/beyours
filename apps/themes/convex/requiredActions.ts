@@ -1,4 +1,4 @@
-import * as defs from "@be-in-digital/convex-functions/requiredActions";
+import * as defs from "@be-yours/convex-functions/requiredActions";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // Game configuration, not storefront data: the player's own screen reads the

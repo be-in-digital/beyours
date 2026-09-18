@@ -2,7 +2,7 @@
 
 import { CircleHelp } from "lucide-react"
 import { useTour } from "@reactour/tour"
-import { SidebarMenuButton } from "@be-in-digital/ui"
+import { SidebarMenuButton } from "@be-yours/ui"
 import { useAdminAuthStore } from "../../stores/admin-auth-store"
 import { clearTourSeen } from "./tour-storage"
 

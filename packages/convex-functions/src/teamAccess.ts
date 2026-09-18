@@ -20,7 +20,7 @@
  * profile, which is what the authorisation chain already reads.
  */
 
-import { Role } from "@be-in-digital/core/auth/rbac"
+import { Role } from "@be-yours/core/auth/rbac"
 
 /** Roles the team screen can hand out. Deliberately excludes admin roles. */
 export type TeamRole = "manager" | "kitchen" | "waiter" | "delivery"

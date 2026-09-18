@@ -13,7 +13,7 @@ export default defineConfig({
   // The automatic JSX runtime, stated here rather than left to tsconfig
   // discovery. esbuild resolves `jsx` from the tsconfig NEAREST THE FILE, and
   // the engine packages ship `files: ["src"]` — source, no tsconfig. So a
-  // `.tsx` inside `node_modules/@be-in-digital/*` got the classic transform,
+  // `.tsx` inside `node_modules/@be-yours/*` got the classic transform,
   // which emits `React.createElement` into a module that never imports React:
   // `ReferenceError: React is not defined`, from `ui/src/components/Empty.tsx`
   // and `admin/src/game/actions-screen.tsx`. This app's own tsconfig already
@@ -25,7 +25,7 @@ export default defineConfig({
     // The engine packages ship TypeScript SOURCE, not a build: `admin`,
     // `convex-functions`, `convex-schema` and `ui` all declare `files: ["src"]`
     // and point `main` at `./src/index.ts`. Inside the monorepo that is
-    // invisible — pnpm symlinks `node_modules/@be-in-digital/*` to
+    // invisible — pnpm symlinks `node_modules/@be-yours/*` to
     // `packages/*`, so the resolved path falls OUTSIDE `node_modules` and gets
     // transformed like first-party source. A client installs a real directory
     // inside `node_modules`, where Vitest transforms nothing by default, and
@@ -38,7 +38,7 @@ export default defineConfig({
     // release that published these packages as source (2026-09-06) turned the
     // boilerplate's CI red on a template that compiles perfectly here. Every
     // runner that transforms code needs its own version of this statement.
-    server: { deps: { inline: [/@be-in-digital\//] } },
+    server: { deps: { inline: [/@be-yours\//] } },
     // 30s was sized for the convex-test cold start on a machine doing nothing
     // else: each of the 27 suites compiles the whole `convex/` module graph on
     // its first call. Under contention that cost is not linear — a run measured

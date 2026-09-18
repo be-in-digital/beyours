@@ -1,7 +1,7 @@
 "use client"
 
 import { Users, Send, MousePointerClick, TrendingUp } from "lucide-react"
-import { StatCard } from "@be-in-digital/ui"
+import { StatCard } from "@be-yours/ui"
 
 /**
  * `pendingSubscribers` used to be a prop here and was never rendered: it fed a

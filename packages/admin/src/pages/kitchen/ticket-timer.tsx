@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { AlertOctagon, AlertTriangle } from "lucide-react"
-import { cn } from "@be-in-digital/ui"
+import { cn } from "@be-yours/ui"
 
 interface TicketTimerProps {
   createdAt: number

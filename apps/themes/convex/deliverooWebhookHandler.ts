@@ -25,7 +25,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     console.log(`[Deliveroo Webhook] Received - sig: ${signature ? "present" : "missing"}, guid: ${sequenceGuid || "none"}, bodyLen: ${rawBody.length}`);
 
     // Read signing secret from environment (BeYours platform credentials)
-    const { getPackageEnv } = await import("@be-in-digital/core/env");
+    const { getPackageEnv } = await import("@be-yours/core/env");
     const pkg = getPackageEnv();
     const webhookSecret = pkg.DELIVEROO_WEBHOOK_SECRET;
     const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
@@ -173,7 +173,7 @@ async function verifySignature(
   sequenceGuid: string,
   secret: string
 ): Promise<boolean> {
-  const { deliveroo } = await import("@be-in-digital/integrations");
+  const { deliveroo } = await import("@be-yours/integrations");
   const isValid = await deliveroo.verifyWebhookSignature(
     body,
     signature,

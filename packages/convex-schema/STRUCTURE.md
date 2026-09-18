@@ -1,4 +1,4 @@
-# @be-in-digital/convex-schema package structure
+# @be-yours/convex-schema package structure
 
 ## Directory tree
 
@@ -255,7 +255,7 @@ Overview of the package structure
 
 ```json
 {
-  "name": "@be-in-digital/convex-schema",
+  "name": "@be-yours/convex-schema",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",
@@ -287,7 +287,7 @@ Vitest configuration for unit tests
 ### Importing the schema
 
 ```typescript
-import { schema } from '@be-in-digital/convex-schema'
+import { schema } from '@be-yours/convex-schema'
 ```
 
 ### Importing the validators
@@ -297,7 +297,7 @@ import {
   createStoreSchema,
   createProductSchema,
   createOrderSchema,
-} from '@be-in-digital/convex-schema'
+} from '@be-yours/convex-schema'
 ```
 
 ### Importing the types
@@ -309,7 +309,7 @@ import type {
   OrderDoc,
   CreateProductInput,
   OrderStatus,
-} from '@be-in-digital/convex-schema'
+} from '@be-yours/convex-schema'
 ```
 
 ## Available scripts

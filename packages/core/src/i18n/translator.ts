@@ -17,7 +17,7 @@ const translationParamsSchema = z.record(z.string(), z.union([z.string(), z.numb
  * - `{key}` — what the shipped locale catalogues actually use
  *   (`{count} article`, `Livraison gratuite à partir de {amount}`), and what
  *   the GPT bulk translator is told to preserve verbatim
- *   (`@be-in-digital/convex-functions/autoTranslate`)
+ *   (`@be-yours/convex-functions/autoTranslate`)
  *
  * Reading only the double form meant every catalogue string carrying a value
  * rendered its placeholder to the customer: `{count} articles`, literally.

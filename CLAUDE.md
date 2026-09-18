@@ -76,12 +76,12 @@ beindigital/
 │   └── mcp-server/            # MCP Package Registry
 │
 ├── apps/
-│   ├── site/                  # @beyours/site — commercial site → beyours.fr
+│   ├── site/                  # @be-yours/site — commercial site → beyours.fr
 │   │   ├── app/               # Marketing, template catalogue, Stripe checkout,
 │   │   │                      # affiliate portal, internal ops console
 │   │   └── convex/            # Its OWN Convex backend (separate from the engine)
 │   │
-│   ├── reference/             # @beyours/reference — the engine's test bench
+│   ├── reference/             # @be-yours/reference — the engine's test bench
 │   │   ├── app/               # Storefront, admin, CMS, kitchen display, QR games
 │   │   ├── components/        # UI, Storefront, Admin, Game
 │   │   ├── lib/               # Stores, Utils, AWS, Printing, Translation
@@ -89,7 +89,7 @@ beindigital/
 │   │   ├── e2e/               # Playwright tests — the CI e2e target
 │   │   └── __tests__/         # Vitest tests
 │   │
-│   ├── themes/                # @beyours/themes — the client template (cloned per client)
+│   ├── themes/                # @be-yours/themes — the client template (cloned per client)
 │   │   ├── templates/         # Vertical designs (pizzeria, fast-food, food-truck…)
 │   │   ├── demos/             # 50 sales demos
 │   │   ├── site/              # CLIENT zone — per-site customization
@@ -108,9 +108,13 @@ product. `apps/reference` is where an engine feature is built and proven; it is 
 to nobody. `apps/themes` is the shippable counterpart, cloned into one repo and one
 Convex backend per client.
 
-**Two scopes, deliberately.** The three apps use `@beyours/*`; the ten engine packages
-under `packages/` use `@be-in-digital/*` (private GitHub Packages). Installing them
-needs a `read:packages` PAT in `NODE_AUTH_TOKEN`; without one, use
+**One scope, `@be-yours`.** The three apps and the ten engine packages under
+`packages/` all use it; the apps are private workspace members and are never
+published, the packages go to private GitHub Packages. No name is shared between
+the two halves. It was two scopes — packages on `@be-in-digital/*`, apps on
+`@be-yours/*` — until the move to the `be-yours` organisation, which GitHub
+Packages forced by binding the scope to the owning account. Installing the
+packages needs a `read:packages` PAT in `NODE_AUTH_TOKEN`; without one, use
 `pnpm engine:link <engine-clone>` from inside `apps/themes` for local symlinks
 (the script lives there, not at the root).
 
@@ -426,7 +430,7 @@ Both live in `packages/core/src/i18n/gpt-translation.ts`. There is no
 requires the HTTP client and the API key, they are not optional.
 
 ```typescript
-import { translateText, batchTranslate, estimateTranslationCost } from "@be-in-digital/core"
+import { translateText, batchTranslate, estimateTranslationCost } from "@be-yours/core"
 
 // One string. `context` steers the model; the rest have defaults.
 await translateText(text, "en", "fr", "product name", httpClient, apiKey)
@@ -438,7 +442,7 @@ await batchTranslate(items, "en", "es", httpClient, apiKey)
 `httpClient` is injected for the same reason the AWS services inject theirs: the
 package must stay loadable from the Convex runtime. Note also that the engine's
 own auto-translation pipeline is separate — it lives in
-`@be-in-digital/convex-functions/autoTranslate`, deliberately off that package's
+`@be-yours/convex-functions/autoTranslate`, deliberately off that package's
 barrel, and the apps drive it from there.
 
 **Cost**: ~$0.001 per product, $0.01 per page (`estimateTranslationCost`)
@@ -492,7 +496,7 @@ they hold the policy. `packages/core` therefore has no `@aws-sdk/client-s3`
 dependency at all; its one SDK dependency is `@aws-sdk/client-sesv2`, imported
 only by the SES adapter that `createSESv2Operations` lives in.
 
-Everything below comes from the package root, `@be-in-digital/core`; there is no
+Everything below comes from the package root, `@be-yours/core`; there is no
 `./aws/s3` or `./aws/ses` subpath. The two `./aws/*` subpaths that do exist are
 deliberately import-free so a Convex isolate can pull them in on their own:
 `./aws/folders` (the folder allow-list) and `./aws/media-url`.
@@ -502,7 +506,7 @@ There is no `uploadToS3`. Build the service and call `upload` on it; the
 client is injected, which is what makes it testable.
 
 ```typescript
-import { createS3Service, S3_FOLDERS } from "@be-in-digital/core"
+import { createS3Service, S3_FOLDERS } from "@be-yours/core"
 
 const s3 = createS3Service(config, client) // `client` is your S3Operations adapter
 const { key, url } = await s3.upload(buffer, {
@@ -540,7 +544,7 @@ proxy, and `getPublicUrl` returns that proxy or the CDN, never a direct S3 URL.
 (`packages/core/src/aws/ses/client.ts:38,45`), not top-level exports.
 
 ```typescript
-import { createSESService, createSESv2Operations, getSESService } from "@be-in-digital/core"
+import { createSESService, createSESv2Operations, getSESService } from "@be-yours/core"
 
 const ses = createSESService(config, createSESv2Operations(awsConfig))
 // or, server-side, read the config from the environment:
@@ -556,7 +560,7 @@ module-level functions.
 **How transactional mail actually leaves the product.** Convex has no SES
 credentials for the password-reset path, so it POSTs to the app's own
 `/api/email/send`, which is `createEmailRouteHandler({ secret, linkOrigin })`
-from `@be-in-digital/core` — that handler calls `getEmailService()`
+from `@be-yours/core` — that handler calls `getEmailService()`
 (`getSESService` is a deprecated alias). The two halves share one secret
 (`EMAIL_API_SECRET`, with `BETTER_AUTH_SECRET` as a transitional fallback) and
 must present the same one. Campaigns, automations, invitations, order
@@ -614,7 +618,7 @@ pnpm test:ui           # Vitest UI for apps/reference, the engine's test bench
 
 `test` and `test:coverage` fan out across the monorepo. `test:ui` cannot: a
 Vitest UI is one server per project, so the root script opens the bench. For
-any other workspace, name it — `pnpm --filter @be-in-digital/core test:coverage`.
+any other workspace, name it — `pnpm --filter @be-yours/core test:coverage`.
 
 ### E2E Tests (Playwright)
 ```bash
@@ -625,7 +629,7 @@ pnpm test:e2e:debug    # Playwright inspector, apps/reference
 
 The last two delegate to `apps/reference` for the same reason: an interactive
 runner needs one target. `apps/themes` defines both as well, so
-`pnpm --filter @beyours/themes test:e2e:debug` works on the template.
+`pnpm --filter @be-yours/themes test:e2e:debug` works on the template.
 
 ### CI/CD
 GitHub Actions runs the suite on pushes to `main`, on pull requests targeting
@@ -668,7 +672,7 @@ OPENAI_API_KEY=sk-...
 > `apps/docs/deployment/aws-ownership.md` records what is still owed: every site
 > provisioned before the change holds the fleet-wide key and the shared bucket,
 > and so "still carry credentials to other clients' data
-> ([#199](https://github.com/be-in-digital/beyours/issues/199))". Moving one is a
+> ([#199](https://github.com/be-yours/beyours/issues/199))". Moving one is a
 > migration — copy its S3 objects, create and verify its SES identity, re-point
 > stored URLs, rotate the shared key — not a config change.
 >

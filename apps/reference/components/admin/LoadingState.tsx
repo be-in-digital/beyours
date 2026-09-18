@@ -1,4 +1,4 @@
-import { Skeleton } from "@be-in-digital/ui"
+import { Skeleton } from "@be-yours/ui"
 
 /**
  * Loading state variants

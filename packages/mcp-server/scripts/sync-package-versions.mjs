@@ -2,12 +2,12 @@
  * Regenerates `src/package-versions.ts` from the workspace package.json files.
  *
  * The registry used to carry a hand-typed `version` per package. Every one of
- * them said 2.0.1 while `@be-in-digital/admin` had reached 8.0.0 — six majors
+ * them said 2.0.1 while `@be-yours/admin` had reached 8.0.0 — six majors
  * of drift that nothing could catch, because a stale string still compiles.
  * The versions are derived now, and `src/__tests__/registry.test.ts` fails if
  * this file falls behind the workspace.
  *
- * Usage: pnpm --filter @be-in-digital/mcp-server sync:versions
+ * Usage: pnpm --filter @be-yours/mcp-server sync:versions
  */
 import { readFileSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
@@ -49,7 +49,7 @@ writeFileSync(
   `/**
  * GENERATED FILE — do not edit by hand.
  *
- * Run \`pnpm --filter @be-in-digital/mcp-server sync:versions\` after a version
+ * Run \`pnpm --filter @be-yours/mcp-server sync:versions\` after a version
  * bump. \`src/__tests__/registry.test.ts\` fails when this drifts from the
  * workspace package.json files.
  */

@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import type { FieldInfoProps } from "./settings-types"
 
 // ---------------------------------------------------------------------------

@@ -51,7 +51,7 @@
       // `.github/workflows/ci.yml`, to the root `package.json`, to
       // `pnpm-lock.yaml`, to `pnpm-workspace.yaml`, to `CLAUDE.md`, to
       // `scripts/publish-mirror.mjs`, to `apps/themes/package.json` or to this
-      // very file left `@beyours/reference#test`'s hash byte-for-byte identical.
+      // very file left `@be-yours/reference#test`'s hash byte-for-byte identical.
       // So did bumping `packages/mcp-server/package.json` to 99.9.9, and so did
       // adding a changeset — which is #392 exactly: a version bump anywhere
       // replays a green `Test` over a drifted tree.
@@ -80,7 +80,7 @@
       // `engine-doc-imports.test.ts` reads every `.ts`/`.tsx` under
       // `packages/`. For an app those arrive through `dependsOn: ["^build"]`,
       // which puts each dependency's hash in this one — measured: editing
-      // `packages/ui/src/index.ts` DOES move `@beyours/reference#test`. The
+      // `packages/ui/src/index.ts` DOES move `@be-yours/reference#test`. The
       // exception is `mcp-server`, which nothing depends on, so it is named
       // below.
       "inputs": [
@@ -149,7 +149,7 @@
         // `pnpm test` rewrote one of its own inputs on every run: three floats
         // change, thirteen `#test` hashes change, and the cache could never hit
         // twice. Measured — one duration edited from 545.435 to 999.999 moved
-        // `@be-in-digital/core#test` from `a557b1b5dc87ac53` to
+        // `@be-yours/core#test` from `a557b1b5dc87ac53` to
         // `cfaa28aabb923c1e`. The `node_modules/.bin/*` symlinks came too, which
         // put resolved transitive versions in the key as a bonus.
         //
@@ -161,8 +161,8 @@
         // resolving for, so `../../apps/themes` becomes `../themes` from
         // `apps/reference` and stays `../../apps/themes` from `packages/core` —
         // and a negation written in one of those forms silently failed to match
-        // the other. `@be-in-digital/core#test` came out clean while
-        // `@beyours/reference#test` still carried the vitest cache. The rooted
+        // the other. `@be-yours/core#test` came out clean while
+        // `@be-yours/reference#test` still carried the vitest cache. The rooted
         // `**/` form has no depth to disagree about.
         "!**/node_modules/**",
         "!**/.next/**",
@@ -178,7 +178,7 @@
         // behind — 135 files. `tsconfig.tsbuildinfo` is TypeScript's
         // incremental state, rewritten by every `pnpm typecheck`. Measured the
         // same way as the vitest cache above: creating them moved
-        // `@be-in-digital/core#test` from `e7032e63ac4844fe` to
+        // `@be-yours/core#test` from `e7032e63ac4844fe` to
         // `1da57fb80a3c301f`, and appending one space to the tsbuildinfo alone
         // moved all thirteen `#test` hashes (`bbaeceabd8549872` →
         // `ff9e92c128b8dfad`).
@@ -391,7 +391,7 @@
         // `pnpm test` rewrote one of its own inputs on every run: three floats
         // change, thirteen `#test` hashes change, and the cache could never hit
         // twice. Measured — one duration edited from 545.435 to 999.999 moved
-        // `@be-in-digital/core#test` from `a557b1b5dc87ac53` to
+        // `@be-yours/core#test` from `a557b1b5dc87ac53` to
         // `cfaa28aabb923c1e`. The `node_modules/.bin/*` symlinks came too, which
         // put resolved transitive versions in the key as a bonus.
         //
@@ -403,8 +403,8 @@
         // resolving for, so `../../apps/themes` becomes `../themes` from
         // `apps/reference` and stays `../../apps/themes` from `packages/core` —
         // and a negation written in one of those forms silently failed to match
-        // the other. `@be-in-digital/core#test` came out clean while
-        // `@beyours/reference#test` still carried the vitest cache. The rooted
+        // the other. `@be-yours/core#test` came out clean while
+        // `@be-yours/reference#test` still carried the vitest cache. The rooted
         // `**/` form has no depth to disagree about.
         "!**/node_modules/**",
         "!**/.next/**",
@@ -420,7 +420,7 @@
         // behind — 135 files. `tsconfig.tsbuildinfo` is TypeScript's
         // incremental state, rewritten by every `pnpm typecheck`. Measured the
         // same way as the vitest cache above: creating them moved
-        // `@be-in-digital/core#test` from `e7032e63ac4844fe` to
+        // `@be-yours/core#test` from `e7032e63ac4844fe` to
         // `1da57fb80a3c301f`, and appending one space to the tsbuildinfo alone
         // moved all thirteen `#test` hashes (`bbaeceabd8549872` →
         // `ff9e92c128b8dfad`).

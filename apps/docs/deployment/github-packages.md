@@ -12,7 +12,7 @@
 
 ## Overview
 
-All `@be-in-digital` packages are published as **private packages** on [GitHub Packages](https://github.com/features/packages). This provides:
+All `@be-yours` packages are published as **private packages** on [GitHub Packages](https://github.com/features/packages). This provides:
 
 - Free private package hosting (for private repos)
 - Integrated with GitHub authentication
@@ -82,7 +82,7 @@ Go to [GitHub Settings > Tokens](https://github.com/settings/tokens) and create 
 Create `.npmrc` at your project root:
 
 ```ini
-@be-in-digital:registry=https://npm.pkg.github.com
+@be-yours:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
@@ -95,7 +95,7 @@ export GITHUB_TOKEN=ghp_your_token_here
 ### 4. Install
 
 ```bash
-pnpm add @be-in-digital/ui @be-in-digital/core
+pnpm add @be-yours/ui @be-yours/core
 ```
 
 ## CI/CD Pipeline
@@ -129,7 +129,7 @@ jobs:
           node-version: 20
           cache: "pnpm"
           registry-url: "https://npm.pkg.github.com"
-          scope: "@be-in-digital"
+          scope: "@be-yours"
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
@@ -164,15 +164,15 @@ npm ERR! 401 Unauthorized
 ### 403 Forbidden
 
 ```
-npm ERR! 403 Forbidden - PUT https://npm.pkg.github.com/@be-in-digital/ui
+npm ERR! 403 Forbidden - PUT https://npm.pkg.github.com/@be-yours/ui
 ```
 
-**Fix**: Your token doesn't have `write:packages` scope (for publishing) or you're not a member of the `be-in-digital` org.
+**Fix**: Your token doesn't have `write:packages` scope (for publishing) or you're not a member of the `beyours` org.
 
 ### 404 Not Found
 
 ```
-npm ERR! 404 Not Found - GET https://npm.pkg.github.com/@be-in-digital/ui
+npm ERR! 404 Not Found - GET https://npm.pkg.github.com/@be-yours/ui
 ```
 
 **Fix**: The package hasn't been published yet, or your token doesn't have `read:packages` scope.

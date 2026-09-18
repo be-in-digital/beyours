@@ -51,7 +51,7 @@ export const applyDeliveryStatus = internalMutation({
     needsAttention: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<{ applied: boolean; reason?: string }> => {
-    const { uberDirect } = await import("@be-in-digital/integrations");
+    const { uberDirect } = await import("@be-yours/integrations");
 
     if (!uberDirect.isUberDirectStatus(args.status)) {
       // An unknown status must stall the delivery, not move the order
@@ -98,7 +98,7 @@ export const applyDeliveryStatus = internalMutation({
     // illegal move is recorded on the delivery and dropped for the order —
     // an operator who already advanced the order by hand must not be undone.
     const { canTransitionOrderStatus } = await import(
-      "@be-in-digital/convex-schema"
+      "@be-yours/convex-schema"
     );
     if (!canTransitionOrderStatus(order.status, target)) {
       console.warn(

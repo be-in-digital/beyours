@@ -14,13 +14,13 @@ import {
   releaseImageQuota,
   reserveArticleQuota,
   reserveImageQuota,
-} from "@be-in-digital/convex-functions/blogAutoGuards"
-import { requireStorePermission } from "@be-in-digital/convex-functions/auth"
-import { completeJobCore } from "@be-in-digital/convex-functions/blogAutoPlanner"
+} from "@be-yours/convex-functions/blogAutoGuards"
+import { requireStorePermission } from "@be-yours/convex-functions/auth"
+import { completeJobCore } from "@be-yours/convex-functions/blogAutoPlanner"
 import {
   getGenerationContextCore,
   saveGeneratedArticleCore,
-} from "@be-in-digital/convex-functions/blogAutoGenerate"
+} from "@be-yours/convex-functions/blogAutoGenerate"
 import { scheduleBlogTranslation } from "./blogAutoTranslate"
 
 // ============================================================================

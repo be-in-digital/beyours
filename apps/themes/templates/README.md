@@ -141,7 +141,7 @@ templates/<slug>/
   What measures it is `tests/a11y/template-contrast.test.ts`, which loads each
   template over `app/globals.css` in the real cascade and checks all 51 in the
   four scopes a site renders under. Run it with
-  `pnpm --filter @beyours/themes test`. Do not restore an unmeasured claim
+  `pnpm --filter @be-yours/themes test`. Do not restore an unmeasured claim
   here: if that guard is ever removed, delete this sentence with it.
 
   **And read the first sentence of this bullet as what it is.** "Every palette
@@ -174,7 +174,7 @@ templates/<slug>/
 1. Copy an existing folder, rename the slug.
 2. Design the palette (both modes + sidebar + charts), the font pair
    (`next/font/google`, keep the variable names) and the radius scale.
-3. Run `pnpm --filter @beyours/themes test tests/a11y/template-contrast.test.ts`.
+3. Run `pnpm --filter @be-yours/themes test tests/a11y/template-contrast.test.ts`.
    It measures the new palette in the real cascade and prints every failing
    pair with its ratio; a template that does not clear it is not shippable.
    Move the ink or the control, never the background — hue and saturation are

@@ -12,12 +12,12 @@ import {
   assertSettlesOrder,
   orderAlreadyCollected,
   paymentStatusAfterSettlement,
-} from "@be-in-digital/convex-functions/paymentSettlement";
+} from "@be-yours/convex-functions/paymentSettlement";
 import {
   CardPaymentUnavailableError,
   OrderAlreadyPaidError,
-} from "@be-in-digital/convex-functions/refusal";
-import { assertCardChargeable } from "@be-in-digital/convex-functions/cardChargeFloor";
+} from "@be-yours/convex-functions/refusal";
+import { assertCardChargeable } from "@be-yours/convex-functions/cardChargeFloor";
 import { refundFailure } from "./lib/refundOutcome";
 
 // ---------------------------------------------------------------------------
@@ -26,7 +26,7 @@ import { refundFailure } from "./lib/refundOutcome";
 
 async function decrypt(encrypted: string): Promise<string> {
   const { createDecipheriv } = await import("crypto");
-  const { getSiteEnv } = await import("@be-in-digital/core/env");
+  const { getSiteEnv } = await import("@be-yours/core/env");
   const hex = getSiteEnv().ENCRYPTION_KEY;
   if (!hex || hex.length !== 64) {
     throw new Error("ENCRYPTION_KEY must be a 64-character hex string");

@@ -1,4 +1,4 @@
-# `@be-in-digital/convex-functions`
+# `@be-yours/convex-functions`
 
 Everything the backend does. 96 modules of queries, mutations, actions and pure
 resolvers, consumed by both apps through thin `convex/` wrappers.
@@ -42,7 +42,7 @@ which is what lets one codebase serve two apps and every client deployment.
 ```ts
 // apps/reference/convex/categories.ts
 import { query } from "./_generated/server"
-import * as defs from "@be-in-digital/convex-functions/categories"
+import * as defs from "@be-yours/convex-functions/categories"
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions"
 
 // A storefront query, rendered for anonymous visitors.
@@ -74,7 +74,7 @@ ESLint rule at `./eslint/convex-auth` refuses an unguarded Convex function —
 Pure helpers need no wrapper:
 
 ```ts
-import { generateOrderNumber, generateSlug, now } from "@be-in-digital/convex-functions"
+import { generateOrderNumber, generateSlug, now } from "@be-yours/convex-functions"
 
 generateOrderNumber()            // "ORD-2026-ABC123"
 generateSlug("Product Name")     // "product-name"

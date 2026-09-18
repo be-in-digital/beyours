@@ -10,18 +10,18 @@ import {
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import {
   useCartStore,
   useStorefrontStoreSelection,
   useTranslation,
-} from "@be-in-digital/restaurant"
+} from "@be-yours/restaurant"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { useCmsPage } from "@/lib/cms/useCmsPage"
 import { CartSheet } from "./cart-sheet"
 import { StoreSelectorDropdown } from "./store-selector-dropdown"
-import { isSafeReservationUrl } from "@be-in-digital/convex-schema"
+import { isSafeReservationUrl } from "@be-yours/convex-schema"
 import { LanguageSelectorDropdown } from "./language-selector-dropdown"
 import { UserMenu } from "./user-menu"
 

@@ -1322,7 +1322,7 @@ describe('formatSentryEventId', () => {
 
 describe('the sentry entry point', () => {
   it('re-exports the envelope builders, so there is one import path', () => {
-    // A Convex module and a browser bundle read `@be-in-digital/core/sentry`
+    // A Convex module and a browser bundle read `@be-yours/core/sentry`
     // and must get the same scrubbing, not two conventions.
     expect(reExportedEnvelope).toBe(buildSentryEnvelope)
     expect(reExportedPredicate).toBe(isSensitiveContextKey)

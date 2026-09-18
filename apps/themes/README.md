@@ -2,7 +2,7 @@
 
 The site every restaurant receives. It carries the complete application shell —
 e-commerce storefront, admin dashboard, CMS, QR games, kitchen display — and
-consumes the business logic from the `@be-in-digital/*` packages.
+consumes the business logic from the `@be-yours/*` packages.
 
 Each client is a **git clone** of it, with their own repository, their own Convex
 backend and their own Vercel project.
@@ -11,8 +11,8 @@ backend and their own Vercel project.
 
 ```mermaid
 flowchart TB
-    P["packages/*<br/>published as @be-in-digital/*"] -->|changesets| REG["GitHub Packages"]
-    T["apps/themes<br/><i>app shell + convex wrappers</i>"] -->|publish-mirror.yml| MIR["be-in-digital/beyours-boilerplate<br/><i>the mirror clients clone</i>"]
+    P["packages/*<br/>published as @be-yours/*"] -->|changesets| REG["GitHub Packages"]
+    T["apps/themes<br/><i>app shell + convex wrappers</i>"] -->|publish-mirror.yml| MIR["be-yours/beyours-boilerplate<br/><i>the mirror clients clone</i>"]
     P -.->|"workspace:^ here"| T
 
     MIR -->|"git clone → remote `template`"| C["Client repository"]
@@ -35,7 +35,7 @@ flowchart TB
 > chosen theme to life — a client applies exactly one, tuned to their brand.
 
 > ⚠️ **Clients do not clone this directory, they clone the mirror repository**
-> `be-in-digital/beyours-boilerplate`. Here the engine dependencies are
+> `be-yours/beyours-boilerplate`. Here the engine dependencies are
 > `workspace:^`; over there they are published versions, with their own
 > lockfile. The crossing is automated — see
 > [`scripts/publish-mirror.mjs`](../../scripts/publish-mirror.mjs).
@@ -48,7 +48,7 @@ flowchart TB
 | --- | --- |
 | **What it is** | The deliverable — 109 page routes, 9 route handlers, 51 design templates, 50 sales demos |
 | **Who uses it** | One restaurant owner per clone, plus the team that creates the sites |
-| **What comes from the engine** | 9 `@be-in-digital/*` packages — logic, Convex schema, UI, admin |
+| **What comes from the engine** | 9 `@be-yours/*` packages — logic, Convex schema, UI, admin |
 | **What is specific to the template** | The client zone, the templates, the creation and update scripts, the demos |
 | **Data isolation** | 1 Convex deployment per client — structural, not a filter someone remembers |
 | **Tests** | 146 Vitest files · 57 Playwright specs |
@@ -98,7 +98,7 @@ Two guarantees worth stating, because both were once false:
 
 - **Next.js 16** (App Router, Turbopack), **React 19**, **Tailwind CSS v4**
 - **Convex** — one deployment per client; schema and functions from
-  `@be-in-digital/convex-schema` and `convex-functions`
+  `@be-yours/convex-schema` and `convex-functions`
 - **Better Auth** — web cookies, admin/customer roles, guest checkout
 - **Payments** — Stripe, PayPal, SumUp, cash · **Platforms** — Uber Eats, Deliveroo
 - **AWS** — S3 (media), SES (email) · **OpenAI** — translations
@@ -116,7 +116,7 @@ mobile customer app).
 Install once, with `gh` authenticated:
 
 ```bash
-gh api repos/be-in-digital/beyours-boilerplate/contents/scripts/beyours \
+gh api repos/be-yours/beyours-boilerplate/contents/scripts/beyours \
   -H "Accept: application/vnd.github.raw" > /opt/homebrew/bin/beyours \
   && chmod +x /opt/homebrew/bin/beyours
 beyours token ghp_xxx           # read:packages PAT, stored chmod 600
@@ -128,7 +128,7 @@ beyours token ghp_xxx           # read:packages PAT, stored chmod 600
 Then everything happens in the terminal:
 
 ```bash
-beyours create client-luigi --name "Chez Luigi" --repo be-in-digital/client-luigi
+beyours create client-luigi --name "Chez Luigi" --repo beyours/client-luigi
 beyours create client-luigi --name "Chez Luigi" --mobile              # web + app
 beyours create client-luigi --name "Chez Luigi" --template pizzeria   # vertical design
 beyours help · version · upgrade
@@ -138,9 +138,9 @@ The CLI fetches its scripts from the mirror on every call, so it picks up
 template updates without reinstalling. Equivalent without the CLI:
 
 ```bash
-gh api repos/be-in-digital/beyours-boilerplate/contents/scripts/create-site.mjs \
+gh api repos/be-yours/beyours-boilerplate/contents/scripts/create-site.mjs \
   -H "Accept: application/vnd.github.raw" | node --input-type=module - \
-  client-luigi --name "Chez Luigi" --repo be-in-digital/client-luigi
+  client-luigi --name "Chez Luigi" --repo beyours/client-luigi
 ```
 
 The command chains: clone the template → `template` remote (for updates) →
@@ -151,7 +151,7 @@ initial commit → push. From an existing clone: `pnpm create:site <dir> [option
 ### By hand (equivalent)
 
 ```bash
-git clone https://github.com/be-in-digital/beyours-boilerplate.git client-luigi
+git clone https://github.com/be-yours/beyours-boilerplate.git client-luigi
 cd client-luigi && git remote rename origin template
 export NODE_AUTH_TOKEN=ghp_xxx
 pnpm install
@@ -282,7 +282,7 @@ storefront palette is declared on `.storefront-theme`. Recorded in
 Two complementary channels ([`docs/UPDATES.md`](docs/UPDATES.md)):
 
 ```bash
-pnpm update:engine     # business logic: bump @be-in-digital/* (npm, semver)
+pnpm update:engine     # business logic: bump @be-yours/* (npm, semver)
 pnpm update:template   # app shell: git merge from the `template` remote
 ```
 
@@ -307,7 +307,7 @@ that runs the command receives everything. The guard is still to be written.
 ## Developing against a local engine (no registry)
 
 ```bash
-git clone https://github.com/be-in-digital/beyours ../beyours
+git clone https://github.com/be-yours/beyours ../beyours
 pnpm engine:link       # pnpm symlinks pointing at the clone
 # … develop …
 pnpm engine:unlink     # back to the registry — never commit in link mode
@@ -316,7 +316,7 @@ pnpm engine:unlink     # back to the registry — never commit in link mode
 This is also how you validate the boilerplate with no `NODE_AUTH_TOKEN` at all.
 
 `scripts/engine-versions.mjs` answers the question a failure cannot: **which
-`@be-in-digital/*` versions this run actually installed.** The declared range is
+`@be-yours/*` versions this run actually installed.** The declared range is
 already in `package.json`; what it resolved to is not, and the app shell (synced
 from the engine at HEAD) and the packages (from the registry at whatever was last
 published) can be days apart.

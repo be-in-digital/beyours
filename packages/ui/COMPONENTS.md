@@ -1,4 +1,4 @@
-# @be-in-digital/ui — the design system
+# @be-yours/ui — the design system
 
 The one implementation of every shared component. Built on Radix UI, Tailwind
 CSS v4 and class-variance-authority, published as TypeScript source.
@@ -57,7 +57,7 @@ src/
 ## Imports — one specifier
 
 ```typescript
-import { Button, Input, Card, ProductCard, StatCard } from "@be-in-digital/ui"
+import { Button, Input, Card, ProductCard, StatCard } from "@be-yours/ui"
 ```
 
 `./components`, `./restaurant` and `./admin` still resolve, to the same modules,
@@ -65,7 +65,7 @@ so nothing breaks — but do not reach for them. Two spellings for one module is
 how the last fork grew: a reader could not tell from an import line which design
 system it named. The singularity test fails on a new one.
 
-`@be-in-digital/ui/branding` is the exception, and deliberate: it is a pure
+`@be-yours/ui/branding` is the exception, and deliberate: it is a pure
 function with no React in it, so a server component can pull it in without
 dragging the component graph behind it.
 
@@ -76,7 +76,7 @@ esbuild strips `"use client"` when it bundles — `dist/index.mjs` contained non
 while 22 source files declare it. Every interactive component reached through
 the root specifier therefore had no client boundary of its own, and worked only
 because every importer happened to be a client module already. Publishing source
-is what `@be-in-digital/admin` has always done, and it is the one engine package
+is what `@be-yours/admin` has always done, and it is the one engine package
 that never had this problem.
 
 Consequences: a change here is visible to a running app with no rebuild, and a
@@ -86,7 +86,7 @@ compile time (`@types/google.maps`) is a real dependency, not a dev one.
 ## Styling
 
 The package ships **no CSS**. Tailwind v4 detects only the importing app's own
-files, so both apps carry `@source "../node_modules/@be-in-digital/ui/src/**/*"`
+files, so both apps carry `@source "../node_modules/@be-yours/ui/src/**/*"`
 in `app/globals.css`. That makes `files: ["src"]` load-bearing: dropping it
 would silently cost a client site every rule that only this package uses.
 `scripts/check-mirror-css.mjs` compares the monorepo and client-clone builds on

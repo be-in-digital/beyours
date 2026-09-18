@@ -1,4 +1,4 @@
-# `@be-in-digital/cms`
+# `@be-yours/cms`
 
 The block registry behind the custom CMS: block and field definitions, the
 validation that keeps a page well-formed, media handling, and the SVG
@@ -21,9 +21,9 @@ import {
   type BlockDefinition,
   type PageDefinition,
   containsActiveContent,          // DOM-free detection — on the barrel
-} from "@be-in-digital/cms"
+} from "@be-yours/cms"
 
-import { sanitizeSvg } from "@be-in-digital/cms/sanitize"   // the parser
+import { sanitizeSvg } from "@be-yours/cms/sanitize"   // the parser
 ```
 
 ### The sanitiser is split across the two entry points, deliberately
@@ -51,7 +51,7 @@ and only the server-side callers that actually clean an SVG pull the parser in.
 Do not "tidy" `sanitizeSvg` back onto the barrel.
 
 **HTML sanitisation is a different problem and lives elsewhere** —
-`@be-in-digital/convex-functions/htmlSanitize`.
+`@be-yours/convex-functions/htmlSanitize`.
 
 ---
 
@@ -78,7 +78,7 @@ Logo, favicon and brand name are per store, and they reach the product through
 the CMS `branding` block on the `storefront-layout` page. That is the **only**
 branding the storefront header, the favicon, the JSON-LD and the admin sidebar
 read. Colours and typography travel separately, through `store.branding` and
-`@be-in-digital/ui`'s `buildBrandingCss`.
+`@be-yours/ui`'s `buildBrandingCss`.
 
 ---
 

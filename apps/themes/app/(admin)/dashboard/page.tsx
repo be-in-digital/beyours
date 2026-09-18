@@ -1,4 +1,4 @@
-import { DashboardPage } from "@be-in-digital/admin"
+import { DashboardPage } from "@be-yours/admin"
 
 export default function Page() {
   return <DashboardPage />

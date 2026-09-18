@@ -1,4 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "npx turbo-ignore @beyours/reference"
+  "ignoreCommand": "npx turbo-ignore @be-yours/reference"
 }

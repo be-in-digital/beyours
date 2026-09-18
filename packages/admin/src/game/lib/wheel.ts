@@ -1,5 +1,5 @@
 import type { GamePrize, WheelSectionConfig } from "./types"
-import type { DocId } from "@be-in-digital/convex-schema/dataModel"
+import type { DocId } from "@be-yours/convex-schema/dataModel"
 
 /**
  * Wheel layout + landing math, kept pure for unit tests.

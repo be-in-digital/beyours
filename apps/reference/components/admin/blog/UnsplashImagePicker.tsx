@@ -13,7 +13,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 export interface UnsplashPhoto {
   id: string

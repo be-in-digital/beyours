@@ -26,12 +26,12 @@ import {
   type Allergen,
   type AllergenKind,
   type AllergenLocale,
-} from "@be-in-digital/core/allergens"
+} from "@be-yours/core/allergens"
 import { cn } from "../../lib/utils"
 
 /**
  * The names, the matching and the labels all come from
- * `@be-in-digital/core/allergens`, which is framework-free so the kitchen
+ * `@be-yours/core/allergens`, which is framework-free so the kitchen
  * ticket, the admin product form and the Uber Eats menu sync can consult the
  * same vocabulary this badge does. Those four surfaces each used to carry
  * their own idea of what an allergen was, which is exactly how they diverged:
@@ -78,7 +78,7 @@ type AllergenIcon = React.ComponentType<{
 
 /**
  * The glyph per allergen. Icons are the one part of the vocabulary that cannot
- * live in `@be-in-digital/core` — they are React components — so this table is
+ * live in `@be-yours/core` — they are React components — so this table is
  * keyed by `Allergen` and therefore cannot silently fall behind
  * `KNOWN_ALLERGENS`: adding a name without choosing an icon is a type error.
  */

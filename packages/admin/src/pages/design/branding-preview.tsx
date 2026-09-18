@@ -1,7 +1,7 @@
 "use client"
 
-import type { StoreBranding } from "@be-in-digital/convex-schema"
-import { buildBrandingCss } from "@be-in-digital/ui/branding"
+import type { StoreBranding } from "@be-yours/convex-schema"
+import { buildBrandingCss } from "@be-yours/ui/branding"
 
 import { cn } from "../../lib/utils"
 

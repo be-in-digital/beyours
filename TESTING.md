@@ -53,7 +53,7 @@ From the repository root, all through Turbo:
 | `pnpm test` | Vitest across every workspace |
 | `pnpm test:coverage` | Vitest with V8 coverage; writes `coverage/` per workspace |
 | `pnpm test:e2e` | Playwright, every app that declares the task |
-| `pnpm test:ui` · `pnpm test:e2e:ui` · `pnpm test:e2e:debug` | Interactive runners, filtered to `@beyours/reference` |
+| `pnpm test:ui` · `pnpm test:e2e:ui` · `pnpm test:e2e:debug` | Interactive runners, filtered to `@be-yours/reference` |
 | `pnpm lint` · `pnpm type-check` | Quality, across the 13 workspaces |
 | `pnpm check:divergence` | The twin-app guard (§8) |
 | `pnpm check:accents` · `pnpm check:claude-md` · `pnpm check:mirror-css` | Three more guards folded into `Lint` |
@@ -65,7 +65,7 @@ declared `"cache": false`.
 Per-workspace, when you want one suite and its own output:
 
 ```bash
-pnpm --filter @be-in-digital/core test
+pnpm --filter @be-yours/core test
 cd packages/core && npx vitest run gpt-translation      # one file, by name substring
 cd apps/reference && npx vitest list --filesOnly        # what would be collected
 ```
@@ -319,7 +319,7 @@ figure and nothing enforced it.
 
 ```bash
 pnpm test:coverage                                    # every workspace
-pnpm --filter @be-in-digital/core test:coverage       # one
+pnpm --filter @be-yours/core test:coverage       # one
 open packages/core/coverage/index.html
 ```
 

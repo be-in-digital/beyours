@@ -11,7 +11,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 interface OrderBreakdownProps {
   byType: { name: string; value: number; label: string }[]

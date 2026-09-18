@@ -1,11 +1,11 @@
 import { internalMutation, mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import * as defs from "@be-in-digital/convex-functions/privacy";
+import * as defs from "@be-yours/convex-functions/privacy";
 
 /**
  * Answering a diner's RGPD request, and enforcing the retention window.
  *
- * The policy is in `@be-in-digital/convex-functions/privacy` so that both this
+ * The policy is in `@be-yours/convex-functions/privacy` so that both this
  * bench and `apps/themes` — the template cloned for every client — apply the
  * same rules. What lives here is what cannot: the `internal` references the
  * scheduler needs, which the package has none of. Same split as

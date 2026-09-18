@@ -37,7 +37,7 @@ const ITEMS = [
 
 // The basket and the order type come off the Zustand store, not from props —
 // only the delivery fee is passed in, which is the whole subject here.
-vi.mock("@be-in-digital/restaurant", () => ({
+vi.mock("@be-yours/restaurant", () => ({
   useCartStore: (selector: (s: Record<string, unknown>) => unknown) =>
     selector({
       items: ITEMS,

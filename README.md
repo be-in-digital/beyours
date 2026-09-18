@@ -43,13 +43,13 @@ Nothing else in this repository is load-bearing.
 
 ```mermaid
 flowchart TB
-    subgraph repo["This repository — be-in-digital/beyours"]
+    subgraph repo["This repository — be-yours/beyours"]
         direction TB
-        subgraph pkgs["packages/ — 10 engine packages, scope @be-in-digital"]
+        subgraph pkgs["packages/ — 10 engine packages, scope @be-yours"]
             P1["convex-schema · convex-functions<br/>admin · ui<br/><i>shipped as TypeScript source</i>"]
             P2["core · restaurant · cms<br/>integrations · marketing · mcp-server<br/><i>shipped as dist/ (tsup)</i>"]
         end
-        subgraph apps["apps/ — 3 Next.js applications, scope @beyours"]
+        subgraph apps["apps/ — 3 Next.js applications, scope @be-yours"]
             A1["site<br/><i>the commercial site</i>"]
             A2["reference<br/><i>the engine test bench</i>"]
             A3["themes<br/><i>the client template</i>"]
@@ -60,8 +60,8 @@ flowchart TB
     pkgs -->|"workspace:^"| A3
     A1 -.->|"depends on NO engine package"| pkgs
 
-    pkgs ==>|"changesets publish"| REG["GitHub Packages<br/>@be-in-digital/*"]
-    A3 ==>|"scripts/publish-mirror.mjs"| MIR["be-in-digital/beyours-boilerplate<br/><i>the distribution mirror</i>"]
+    pkgs ==>|"changesets publish"| REG["GitHub Packages<br/>@be-yours/*"]
+    A3 ==>|"scripts/publish-mirror.mjs"| MIR["be-yours/beyours-boilerplate<br/><i>the distribution mirror</i>"]
 
     REG -->|"pnpm update:engine — npm channel"| CLI
     MIR -->|"pnpm update:template — git channel"| CLI
@@ -90,9 +90,9 @@ audiences.
 
 | App | Workspace | Audience | Where it runs |
 | --- | --- | --- | --- |
-| [`apps/site`](apps/site) | `@beyours/site` | Prospects, affiliates, internal team | Vercel → **beyours.fr** |
-| [`apps/reference`](apps/reference) | `@beyours/reference` | Nobody — it is the engine's test bench | Local / preview |
-| [`apps/themes`](apps/themes) | `@beyours/themes` | Each client restaurant, after cloning | Vercel, 1 project per client |
+| [`apps/site`](apps/site) | `@be-yours/site` | Prospects, affiliates, internal team | Vercel → **beyours.fr** |
+| [`apps/reference`](apps/reference) | `@be-yours/reference` | Nobody — it is the engine's test bench | Local / preview |
+| [`apps/themes`](apps/themes) | `@be-yours/themes` | Each client restaurant, after cloning | Vercel, 1 project per client |
 
 **`apps/site` — the commercial site.** Marketing pages, a catalogue of 52
 templates, the Stripe checkout, the affiliate portal and the internal operations
@@ -146,7 +146,7 @@ This is why the repositories were merged. Each app carries its own
 `vercel.json`:
 
 ```json
-{ "ignoreCommand": "npx turbo-ignore @beyours/<app>" }
+{ "ignoreCommand": "npx turbo-ignore @be-yours/<app>" }
 ```
 
 Turbo follows the **dependency graph**, not the directory tree:
@@ -206,7 +206,7 @@ Four companion documents sit beside this one, and
 
 ## The engine packages
 
-Ten packages published to **GitHub Packages** under the `@be-in-digital/*`
+Ten packages published to **GitHub Packages** under the `@be-yours/*`
 scope, versioned together by changesets. Sizes exclude tests.
 
 | Package | Contents | Files | Lines | Shipped as | Version |
@@ -251,13 +251,22 @@ done
 > `packages/ui/package.json` has no `build` script and its `main` is
 > `./src/index.ts`. Corrected 2026-09-10 by running the loop above.
 
-### The scope stays `@be-in-digital`
+### One scope, `@be-yours`
 
-The repositories were renamed to `beyours-*`; the npm scope was not. Changing it
-would break every client site on its next install. So it remains
-`@be-in-digital/*` — a registry identifier, not a brand name.
+Everything published from this repository sits under `@be-yours/*`: the ten
+engine packages and, as private workspace members that are never published, the
+three apps. There is no second scope, and no package name is shared between the
+two halves — the packages are `admin`, `cms`, `convex-functions`,
+`convex-schema`, `core`, `integrations`, `marketing`, `mcp-server`,
+`restaurant`, `ui`; the apps are `reference`, `site`, `themes`.
 
-The three apps use the other scope, `@beyours/*`. Two scopes, deliberately.
+It was two scopes until the move to the `be-yours` organisation: the packages
+were `@be-in-digital/*` and the apps `@be-yours/*`. GitHub Packages binds an npm
+scope to the account that owns the repository, so the scope had to follow the
+organisation — it is a registry identifier, not a brand name. Every client site
+must be migrated with it; the procedure is
+[`tasks/beyours-org-migration.md`](tasks/beyours-org-migration.md), and
+`scripts/migrate-scope-to-be-yours.mjs` performs the rename.
 
 ---
 
@@ -277,7 +286,7 @@ sequenceDiagram
     Dev->>Repo: prove it in apps/reference
     Dev->>Repo: pnpm changeset
     Note over Repo: merge to main
-    Repo->>Reg: release.yml publishes @be-in-digital/*
+    Repo->>Reg: release.yml publishes @be-yours/*
     Repo->>Mir: publish-mirror.yml pushes apps/themes
     Note over Mir: typechecks against the REGISTRY<br/>before it publishes
     Dev->>Cli: beyours create client-luigi --template pizzeria
@@ -290,7 +299,7 @@ sequenceDiagram
 Creating a site, from a terminal:
 
 ```bash
-beyours create client-luigi --name "Chez Luigi" --template pizzeria --repo be-in-digital/client-luigi
+beyours create client-luigi --name "Chez Luigi" --template pizzeria --repo beyours/client-luigi
 ```
 
 The command chains clone → `template` remote → private repo creation →
@@ -301,7 +310,7 @@ initial commit → push. Details in
 It is also runnable without cloning anything first:
 
 ```bash
-gh api repos/be-in-digital/beyours-boilerplate/contents/scripts/create-site.mjs \
+gh api repos/be-yours/beyours-boilerplate/contents/scripts/create-site.mjs \
   -H "Accept: application/vnd.github.raw" \
   | node --input-type=module - client-luigi --name "Chez Luigi" --mobile
 ```
@@ -309,7 +318,7 @@ gh api repos/be-in-digital/beyours-boilerplate/contents/scripts/create-site.mjs 
 ### The distribution mirror
 
 Clients do not clone this repository but
-**`be-in-digital/beyours-boilerplate`**, because a client site cannot clone a
+**`be-yours/beyours-boilerplate`**, because a client site cannot clone a
 subdirectory of a monorepo: git clones whole repositories. The mirror is the
 shippable cut.
 
@@ -321,7 +330,7 @@ the four things that only make sense here:
 | Engine dependencies | `workspace:^` | `^2.0.2` — whatever is published |
 | Lockfile | the root one | its own, regenerated |
 | `vercel.json` | `turbo-ignore` | absent — no turbo workspace on the client side |
-| `name` | `@beyours/themes` | `beyours-boilerplate` |
+| `name` | `@be-yours/themes` | `beyours-boilerplate` |
 
 `.github/workflows/publish-mirror.yml` triggers on two events, because the
 mirror can drift in two ways: a template change (push to `main` touching
@@ -377,7 +386,7 @@ keeps working.
 
 | Channel | Command | What it carries |
 | --- | --- | --- |
-| **npm** | `pnpm update:engine` | Business logic — the `@be-in-digital/*` packages, by semver |
+| **npm** | `pnpm update:engine` | Business logic — the `@be-yours/*` packages, by semver |
 | **git** | `pnpm update:template` | The application shell — routes, Convex wrappers, scripts, configs |
 
 They are separate because they move at different speeds: a logic fix spreads
@@ -447,7 +456,6 @@ survive:
 
 | Identifier | Why it does not move |
 | --- | --- |
-| `@be-in-digital/*` | npm registry scope — changing it breaks every client site |
 | `.beindigital-site.json` | Init sentinel present in every deployed site |
 | `beindigital-addresses` · `beindigital-favorites` | `localStorage` keys — renaming them wipes end customers' addresses and favourites |
 | `beindigital-email-tracking` | A Configuration Set that exists in AWS SES |
@@ -455,6 +463,29 @@ survive:
 | `utm_source=beindigital` | Unsplash attribution must match the registered app name |
 | `com.beindigital.<slug>` | Bundle identifier — frozen once the app is published to the stores |
 | `beindigital.fr` | The domain does belong to the agency |
+
+**The spelling is the boundary.** Hyphenated `be-in-digital` was the GitHub
+organisation and the npm scope, and it moved to `be-yours`. Glued `beindigital`
+is every identifier in the table above: each one is registered with a system
+outside this repository — AWS SES, Uber Eats, Unsplash, the app stores — or
+lives in a diner's browser and in already-deployed sites, where a rename erases
+data rather than relabelling it. The two spellings never stood for the same
+thing, which is why the move could be mechanical:
+`scripts/migrate-scope-to-be-yours.mjs` matches the hyphenated form only, so the
+table above is safe by construction rather than by a denylist. Three hyphenated
+occurrences did stay behind, because they name an account elsewhere rather than
+this repository — the Turborepo cache team, the Vercel team, and the
+`be-in-digital.fr` domain. The script reports them; rename the account first.
+
+**The new name splits the same way, and that one is easier to get wrong.** The
+organisation is `be-yours`, hyphenated. Unhyphenated `beyours` is correct
+everywhere it already appears and is never the owner: the repositories `beyours`
+and `beyours-boilerplate`, the domain `beyours.fr`, the `beyours` CLI, the Vercel
+projects, the `beyours-admin-store` key, the `beyours-${SITE_SLUG}` bucket. So
+`be-yours/beyours` is the real path to this repository, carrying both spellings
+one word apart. `@beyours/*` names a scope no account owns — and the suites
+cannot tell you so, because a pnpm workspace resolves `workspace:^` locally and
+never asks the registry. It would fail at `changeset publish`, after merge.
 
 And **`apps/site` is out of scope**: "Be in Digital" is the trade name that
 affiliate contracts are **already signed** against, and clause 5.2 forbids
@@ -595,8 +626,8 @@ The second `tsc` pass over `convex/tsconfig.json` is the only safety net under
 | `pnpm test:e2e:debug` | Playwright inspector, `apps/reference` |
 
 For any other workspace, name it:
-`pnpm --filter @be-in-digital/core test:coverage`,
-`pnpm --filter @beyours/themes test:e2e:debug`.
+`pnpm --filter @be-yours/core test:coverage`,
+`pnpm --filter @be-yours/themes test:e2e:debug`.
 
 Suite sizes at `f6c33c3`:
 
@@ -715,7 +746,7 @@ in the store is undone at the next provisioning, silently, with a green summary.
 ### Client-site lifecycle — `apps/themes`
 
 These run inside a client repository, or inside `apps/themes` here. Prefix with
-`pnpm --filter @beyours/themes` from the root.
+`pnpm --filter @be-yours/themes` from the root.
 
 | Command | Effect |
 | --- | --- |
@@ -726,7 +757,7 @@ These run inside a client repository, or inside `apps/themes` here. Prefix with
 | `pnpm template:apply <slug>` | Apply a template. `default` restores the original theme |
 | `pnpm update:engine` | npm channel. `--latest` crosses majors (breaking), `--check` prints versions and changes nothing |
 | `pnpm update:template` | git channel. `--dry-run` lists the commits, `--first` handles a repo made with "Use this template" |
-| `pnpm engine:link [path]` | Consume `@be-in-digital/*` from a local clone instead of the registry — no `NODE_AUTH_TOKEN` needed |
+| `pnpm engine:link [path]` | Consume `@be-yours/*` from a local clone instead of the registry — no `NODE_AUTH_TOKEN` needed |
 | `pnpm engine:unlink` | Undo the above |
 | `pnpm env:setup` | Wizard: required variables, then integrations |
 | `pnpm env:check` | Verify the three env files agree |
@@ -891,8 +922,8 @@ further than it looks — check what depends on it before releasing.
 
 | Vercel project | Team | Source | Root Directory |
 | --- | --- | --- | --- |
-| `beindigital-restaurant` | `be-in-digital` | this repo, `main` branch → **beyours.fr** | `apps/site` |
-| 1 project per client | `be-in-digital` | the client's cloned repository | root |
+| `beindigital-restaurant` | `beyours` | this repo, `main` branch → **beyours.fr** | `apps/site` |
+| 1 project per client | `beyours` | the client's cloned repository | root |
 
 Convex is pushed separately, from the app directory: `npx convex deploy`. Each
 client has **their own Convex deployment** — data isolation is a whole backend,
@@ -956,7 +987,7 @@ deployments: the URLs are unchanged and nothing was re-wired.
 
 | Where | What it is |
 | --- | --- |
-| GitHub | the repository, `be-in-digital/beindigital-restaurant` |
+| GitHub | the repository, `beyours/beindigital-restaurant` |
 | Vercel | the project that builds `apps/site` |
 | ~~Convex~~ | **renamed** — now `beyours-commercial-site` |
 
@@ -988,7 +1019,7 @@ the shop and the product together. Procedure in the
 
 Every site provisioned before the change still holds the fleet-wide key and the
 shared bucket, and therefore still carries credentials to other clients' data
-([#199](https://github.com/be-in-digital/beyours/issues/199)). Moving one is a
+([#199](https://github.com/be-yours/beyours/issues/199)). Moving one is a
 migration — copy its S3 objects, create and verify its SES identity, re-point
 stored URLs, rotate the shared key — not a config change.
 `scripts/setup-aws.sh` with no `SITE_SLUG` provisions into the shared account
@@ -1006,9 +1037,9 @@ immediately, with no rebuild and no repository involved.
 **Full path**, if the site has to keep deploying from the old repository:
 
 ```bash
-gh repo unarchive be-in-digital/beyours                       # archived 2026-08-16
-vercel project update beindigital-restaurant --auto-detect root-directory --scope be-in-digital
-vercel git connect https://github.com/be-in-digital/beyours --scope be-in-digital
+gh repo unarchive be-yours/beyours                       # archived 2026-08-16
+vercel project update beindigital-restaurant --auto-detect root-directory --scope beyours
+vercel git connect https://github.com/be-yours/beyours --scope beyours
 ```
 
 ---
@@ -1026,7 +1057,7 @@ architectural issue in the repository.
 50 demos in `apps/themes/demos/`. Three lists that no test reconciles.
 
 **A commit made directly on the mirror is lost.**
-`be-in-digital/beyours-boilerplate` is rebuilt in full on every sync. All
+`be-yours/beyours-boilerplate` is rebuilt in full on every sync. All
 changes belong here, in `apps/themes`.
 
 **32 routes under `apps/reference/app/(admin)/` are redirects** to
@@ -1055,10 +1086,10 @@ regrouped the three that belong to BeYours — the site, the engine, the templat
 — into this one, with their full history (`git subtree`). `beyours-engine` was
 then dropped as a name: the repository is no longer just the engine. The agency
 site went its own way, to
-[`beindigital.fr`](https://github.com/be-in-digital/beindigital.fr): different
+[`beindigital.fr`](https://github.com/be-yours/beindigital.fr): different
 brand, different business, no code dependency.
 
-`be-in-digital/beyours-legacy-site` is the archived, read-only remains of the
+`be-yours/beyours-legacy-site` is the archived, read-only remains of the
 standalone site repository. Its history is fully reachable here through
 `apps/site`.
 

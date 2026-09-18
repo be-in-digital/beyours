@@ -1,6 +1,6 @@
 "use client"
 
-import { Card, CardContent, CardHeader, Skeleton } from "@be-in-digital/ui"
+import { Card, CardContent, CardHeader, Skeleton } from "@be-yours/ui"
 
 type LoadingVariant = "table" | "cards" | "form" | "detail"
 

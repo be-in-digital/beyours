@@ -8,7 +8,7 @@ import {
 import {
   PRIVATE_S3_FOLDERS,
   isPrivateS3Folder,
-} from "@be-in-digital/core/aws/folders"
+} from "@be-yours/core/aws/folders"
 
 const headersFor = (contentType: string | undefined) =>
   buildFileResponseHeaders({ contentType, contentLength: 42 })

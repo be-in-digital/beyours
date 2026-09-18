@@ -37,7 +37,7 @@ function run(over: Record<string, unknown> = {}) {
     status: "completed",
     conclusion: "success",
     name: "Lint + Test + Build",
-    html_url: "https://github.com/be-in-digital/beyours-boilerplate/actions/runs/1",
+    html_url: "https://github.com/be-yours/beyours-boilerplate/actions/runs/1",
     head_sha: "d51b209f",
     ...over,
   }
@@ -182,7 +182,7 @@ describe("the workflow that uses it", () => {
     /*
      * `--fail-waiting` existed at `check-source-drift.mjs:99` with no caller.
      * #519 asked for it in the required `Lint` job; measured on 15 September
-     * 2026 at `a92a0e51`, `@be-in-digital/admin` was `waiting`, so that
+     * 2026 at `a92a0e51`, `@be-yours/admin` was `waiting`, so that
      * placement would have turned `main` itself red that day and every branch
      * off it. `waiting` is not a defect — batching fixes into one release is
      * the intended workflow — it is a CLOCK, and a daily question is the right

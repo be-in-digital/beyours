@@ -2,7 +2,7 @@
  * The words a diner reads for an order status and a store status.
  *
  * WHY THIS MODULE EXISTS: the two badges mounted on the storefront —
- * `OrderStatusBadge` and `StoreStatusBadge` in `@be-in-digital/ui` — carried
+ * `OrderStatusBadge` and `StoreStatusBadge` in `@be-yours/ui` — carried
  * eight and three hardcoded English labels with no way past them. Both are
  * mounted on French screens: an order page reading « Preparing » and « Out for
  * Delivery » between French sentences, and a store selector reading
@@ -11,11 +11,11 @@
  * outside.
  *
  * Two surfaces need the same vocabulary and cannot import each other —
- * `@be-in-digital/ui` (the badges, which need a label when the caller gives
- * none) and `@be-in-digital/restaurant` (the storefront hooks, which resolve
+ * `@be-yours/ui` (the badges, which need a label when the caller gives
+ * none) and `@be-yours/restaurant` (the storefront hooks, which resolve
  * one through `t()`). So the vocabulary lives here, framework-free, and both
  * read it. Same arrangement, and the same reason, as
- * `@be-in-digital/core/allergens`.
+ * `@be-yours/core/allergens`.
  *
  * Each status carries two things:
  *
@@ -28,7 +28,7 @@
  *     a key with no entry resolves to itself, which is why the app-side
  *     catalogue test asserts every key below is present.
  *
- * Import as `@be-in-digital/core/status-labels`.
+ * Import as `@be-yours/core/status-labels`.
  *
  * @packageDocumentation
  */

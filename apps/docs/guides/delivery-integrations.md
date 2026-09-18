@@ -87,7 +87,7 @@ cp apps/reference/.env.example apps/reference/.env.local
 
 These flags used to be read inline as `=== "true"`, which made an unset, empty or
 mistyped value (`"True"`, `"1"`) mean **production**. They now go through
-`isSandbox(platform)` from `@be-in-digital/core/env`, which inverts that:
+`isSandbox(platform)` from `@be-yours/core/env`, which inverts that:
 
 - `"false"` → production. It is the only value that opens the live host.
 - `"true"` → sandbox.

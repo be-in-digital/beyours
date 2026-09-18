@@ -16,17 +16,17 @@
  * no path to sending email at all. See #212.
  *
  * `"use node"` because the SES operations pull in the AWS SDK. The decision
- * itself lives in `@be-in-digital/core/email/providers`, which imports no SDK,
+ * itself lives in `@be-yours/core/email/providers`, which imports no SDK,
  * so the choice is testable without one.
  */
 
-import { createSESv2Operations } from "@be-in-digital/core";
+import { createSESv2Operations } from "@be-yours/core";
 import {
   resolveEmailProvider,
   type EmailMessage,
   type EmailProviderEnv,
   type EmailSendOutcome,
-} from "@be-in-digital/core/email/providers";
+} from "@be-yours/core/email/providers";
 
 /**
  * The environment fields a resolution depends on, as one string.

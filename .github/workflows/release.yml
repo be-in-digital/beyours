@@ -105,7 +105,7 @@ jobs:
         with:
           node-version: 20
           registry-url: "https://npm.pkg.github.com"
-          scope: "@be-in-digital"
+          scope: "@be-yours"
 
       - name: Will this publish anything?
         id: plan
@@ -256,7 +256,7 @@ jobs:
           node-version: 20
           cache: "pnpm"
           registry-url: "https://npm.pkg.github.com"
-          scope: "@be-in-digital"
+          scope: "@be-yours"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

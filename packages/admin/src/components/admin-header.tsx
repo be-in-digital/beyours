@@ -17,7 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { getBreadcrumbData } from "../config/route-titles"
 import { toast } from "sonner"
 import { Globe, Moon, Sun } from "lucide-react"

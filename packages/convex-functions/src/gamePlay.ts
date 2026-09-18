@@ -5,7 +5,7 @@ import type {
   DocId,
   SchemaMutationCtx,
   SchemaQueryCtx,
-} from "@be-in-digital/convex-schema/dataModel"
+} from "@be-yours/convex-schema/dataModel"
 import {
   RateLimitedError,
   assertFieldLengths,

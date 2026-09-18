@@ -1,6 +1,6 @@
 name: Publish mirror
 
-# Pushes `apps/themes` to be-in-digital/beyours-boilerplate, the repository
+# Pushes `apps/themes` to be-yours/beyours-boilerplate, the repository
 # client sites are cloned from, rewriting everything that only makes sense
 # inside the monorepo (workspace: dependencies, lockfile, vercel.json, package
 # name). Transformation details: scripts/publish-mirror.mjs
@@ -239,7 +239,7 @@ jobs:
         with:
           node-version: 22
           registry-url: "https://npm.pkg.github.com"
-          scope: "@be-in-digital"
+          scope: "@be-yours"
           cache: "pnpm"
 
       - name: Install dependencies
@@ -406,7 +406,7 @@ jobs:
           # so `git tag --points-at HEAD` read an EMPTY tag namespace, this step
           # answered "that Release published nothing", the sync was skipped, and
           # the job went green. That Release had published eight packages,
-          # `@be-in-digital/convex-functions@7.0.0` among them — the exact
+          # `@be-yours/convex-functions@7.0.0` among them — the exact
           # version the mirror's export gate had been failing on for a day.
           #
           # The condition is unreachable rather than merely wrong: with no tags
@@ -445,7 +445,7 @@ jobs:
         with:
           node-version: 20
           registry-url: "https://npm.pkg.github.com"
-          scope: "@be-in-digital"
+          scope: "@be-yours"
           cache: "pnpm"
 
       # The mirror image of "Did that Release publish anything?" above, asked on
@@ -464,7 +464,7 @@ jobs:
       #   550  workflow_run  21:59:54  pinned restaurant@^4.2.1  → pushed
       #
       #   app/(storefront)/checkout/page.tsx(22,3): error TS2305: Module
-      #   '"@be-in-digital/restaurant"' has no exported member
+      #   '"@be-yours/restaurant"' has no exported member
       #   'cardUnavailableMessage'.
       #
       # Ninety-six seconds apart. The refusal was right and the run was early,

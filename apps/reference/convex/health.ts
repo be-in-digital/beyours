@@ -23,7 +23,7 @@
  * No write. A health check that writes is a health check that fills a table.
  */
 
-import { resolveSentryOptions, type SentryEnvSource } from "@be-in-digital/core/sentry";
+import { resolveSentryOptions, type SentryEnvSource } from "@be-yours/core/sentry";
 import { internal } from "./_generated/api";
 import { httpAction, internalQuery } from "./_generated/server";
 

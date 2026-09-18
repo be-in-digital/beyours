@@ -1,12 +1,12 @@
 {
-  "name": "@be-in-digital/convex-functions",
+  "name": "@be-yours/convex-functions",
   "version": "7.6.1",
   "publishConfig": {
     "access": "restricted"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/be-in-digital/beyours.git",
+    "url": "https://github.com/be-yours/beyours.git",
     "directory": "packages/convex-functions"
   },
   "files": [
@@ -123,13 +123,13 @@
     "clean": "rm -rf node_modules"
   },
   "dependencies": {
-    "@be-in-digital/cms": "workspace:*",
-    "@be-in-digital/convex-schema": "workspace:*",
-    "@be-in-digital/core": "workspace:*",
+    "@be-yours/cms": "workspace:*",
+    "@be-yours/convex-schema": "workspace:*",
+    "@be-yours/core": "workspace:*",
     "sanitize-html": "^2.17.5"
   },
   "devDependencies": {
-    "@be-in-digital/integrations": "workspace:*",
+    "@be-yours/integrations": "workspace:*",
     "@types/node": "^20.19.39",
     "convex": "1.44.0",
     "typescript": "^5.9.3",

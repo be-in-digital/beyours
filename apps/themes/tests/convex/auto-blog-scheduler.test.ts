@@ -26,7 +26,7 @@ import {
   failJobCore,
   planAutoBlogJobsCore,
   requeueStaleJobsCore,
-} from "@be-in-digital/convex-functions/blogAutoPlanner"
+} from "@be-yours/convex-functions/blogAutoPlanner"
 import {
   releaseArticleQuota,
   releaseImageToProductQuota,
@@ -34,7 +34,7 @@ import {
   reserveImageQuota,
   reserveImageToProductQuota,
   resolveApprovalMode,
-} from "@be-in-digital/convex-functions/blogAutoGuards"
+} from "@be-yours/convex-functions/blogAutoGuards"
 
 const modules = import.meta.glob("../../convex/**/*.ts")
 

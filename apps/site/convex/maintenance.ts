@@ -14,7 +14,7 @@ import type { Doc } from "./_generated/dataModel";
    provisioning and would go stale the day it mattered.
 
    This gate is a courtesy, not a lock: the hard freeze is revoking the client's
-   access to the private boilerplate repo and to the @be-in-digital/* registry
+   access to the private boilerplate repo and to the @be-yours/* registry
    (see apps/themes/docs/UPDATES.md). What this buys is a client who is told
    why the update stopped and how to renew, instead of a raw 403 from GitHub. */
 
@@ -74,7 +74,7 @@ export type Entitlement = {
    flag must refuse, a mistyped flag here must FORGIVE. The worst case on this
    side is a paying client whose `pnpm update:engine` stops working, against an
    unpaid renewal — and the renewal has a real lock behind it anyway: access to
-   the private repo and to the @be-in-digital/* registry (apps/themes/docs/UPDATES.md). */
+   the private repo and to the @be-yours/* registry (apps/themes/docs/UPDATES.md). */
 
 /** The env var that closes the licence gate, and the only thing that does. */
 export const LICENSE_ENFORCEMENT_ENV = "BEYOURS_LICENSE_ENFORCEMENT";
@@ -212,7 +212,7 @@ export function entitlementMessage(e: Entitlement): string {
     case "unpaid":
       return "Aucun paiement de maintenance enregistré pour ce site. Les mises à jour reprennent dès la régularisation.";
     case "unknown_key":
-      return "Clé de licence inconnue : aucun site enregistré ne la porte. Vérifiez la clé du fichier .beindigital-site.json, ou écrivez à contact@beyours.fr pour la faire enregistrer.";
+      return "Clé de licence inconnue : aucun site enregistré ne la porte. Vérifiez la clé du fichier .beindigital-site.json, ou écrivez à contact@be-yours.fr pour la faire enregistrer.";
   }
 }
 

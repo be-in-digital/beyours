@@ -14,7 +14,7 @@ import {
   DialogTitle,
   Input,
   Label,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { toast } from "sonner"
 import { Clock } from "lucide-react"
 import type { OrderStatus } from "../../lib/types"

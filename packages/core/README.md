@@ -1,4 +1,4 @@
-# `@be-in-digital/core`
+# `@be-yours/core`
 
 The shared services: authentication rules, i18n, AWS (S3 and SES), the email
 transport, environment validation and Sentry.
@@ -42,7 +42,7 @@ one SDK dependency is `@aws-sdk/client-sesv2`, imported only by the SES adapter.
 ### S3
 
 ```ts
-import { createS3Service, S3_FOLDERS } from "@be-in-digital/core"
+import { createS3Service, S3_FOLDERS } from "@be-yours/core"
 
 const s3 = createS3Service(config, client) // `client` is your S3Operations adapter
 const { key, url } = await s3.upload(buffer, {
@@ -77,7 +77,7 @@ and `getPublicUrl` returns that proxy or the CDN, never a direct S3 URL.
 ### SES
 
 ```ts
-import { createSESService, createSESv2Operations, getSESService } from "@be-in-digital/core"
+import { createSESService, createSESv2Operations, getSESService } from "@be-yours/core"
 
 const ses = createSESService(config, createSESv2Operations(awsConfig))
 // or, server-side, read the config from the environment:
@@ -128,7 +128,7 @@ client who moves loses open/click tracking, not their mail.
 ## i18n — GPT translation
 
 ```ts
-import { translateText, batchTranslate, estimateTranslationCost } from "@be-in-digital/core"
+import { translateText, batchTranslate, estimateTranslationCost } from "@be-yours/core"
 
 // One string. `context` steers the model; the rest have defaults.
 await translateText(text, "en", "fr", "product name", httpClient, apiKey)
@@ -143,7 +143,7 @@ is injected for the same reason the AWS services inject theirs.
 Cost: roughly $0.001 per product, $0.01 per page (`estimateTranslationCost`).
 
 The engine's own auto-translation pipeline is separate and lives in
-`@be-in-digital/convex-functions/autoTranslate`.
+`@be-yours/convex-functions/autoTranslate`.
 
 ---
 

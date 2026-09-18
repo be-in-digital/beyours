@@ -1,5 +1,5 @@
 import * as React from "react"
-import { ORDER_STATUS_VOCABULARY } from "@be-in-digital/core/status-labels"
+import { ORDER_STATUS_VOCABULARY } from "@be-yours/core/status-labels"
 import { Badge } from "../Badge"
 
 export type OrderStatus =
@@ -23,7 +23,7 @@ export interface OrderStatusBadgeProps {
    * diner following their order read « Preparing » and « Out for Delivery »
    * between French sentences, and the translation layer #148 shipped could
    * not reach them. Storefront callers pass `useOrderStatusLabels()` from
-   * `@be-in-digital/restaurant`, which resolves these through `t()` for the
+   * `@be-yours/restaurant`, which resolves these through `t()` for the
    * locale being rendered.
    *
    * Partial on purpose: a caller that has a word for six statuses supplies
@@ -36,7 +36,7 @@ export interface OrderStatusBadgeProps {
  * The colour each status wears, and the word it carries when the caller
  * supplies none.
  *
- * The word comes from `@be-in-digital/core/status-labels` — the one
+ * The word comes from `@be-yours/core/status-labels` — the one
  * vocabulary the storefront hook translates through — so the untranslated
  * fallback and the translated label can never name different things. It is
  * French, because that is the language this product is written in and the one

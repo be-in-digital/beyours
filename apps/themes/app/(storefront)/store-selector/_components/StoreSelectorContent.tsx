@@ -14,13 +14,13 @@ import {
   EmptyTitle,
   StoreStatusBadge,
   type StoreStatus,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import {
   useStorefrontStoreSelection,
   useCartStore,
   useStoreStatusLabels,
-} from "@be-in-digital/restaurant"
-import type { StoreDoc } from "@be-in-digital/restaurant"
+} from "@be-yours/restaurant"
+import type { StoreDoc } from "@be-yours/restaurant"
 
 export default function StoreSelectorContent() {
   const router = useRouter()

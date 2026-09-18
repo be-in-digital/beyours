@@ -1,7 +1,7 @@
 /**
  * GENERATED FILE — do not edit by hand.
  *
- * Run `pnpm --filter @be-in-digital/mcp-server sync:versions` after a version
+ * Run `pnpm --filter @be-yours/mcp-server sync:versions` after a version
  * bump. `src/__tests__/registry.test.ts` fails when this drifts from the
  * workspace package.json files.
  */

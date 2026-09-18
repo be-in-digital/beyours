@@ -11,7 +11,7 @@ import { cookies } from "next/headers"
 import { ConvexHttpClient } from "convex/browser"
 import { api } from "@/convex/_generated/api"
 import { getStoreBySlug } from "@/lib/convex-server"
-import { isPublishedStore } from "@be-in-digital/convex-schema"
+import { isPublishedStore } from "@be-yours/convex-schema"
 
 /** Module-level cached Convex client (deduped across a single render pass) */
 const getClient = cache(() => {

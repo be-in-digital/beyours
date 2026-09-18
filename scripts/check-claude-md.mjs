@@ -63,7 +63,7 @@ const rootScripts = scriptsOf(join(REPO, "package.json"))
 const source = read(CLAUDE_MD)
 const lines = source.split("\n")
 
-/** Map a workspace name (`@beyours/reference`) to its package.json. */
+/** Map a workspace name (`@be-yours/reference`) to its package.json. */
 function workspaceManifest(name) {
   for (const dir of ["packages", "apps"]) {
     const base = join(REPO, dir)

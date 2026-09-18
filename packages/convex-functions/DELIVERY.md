@@ -7,7 +7,7 @@
 
 ## Delivery summary
 
-Package `@be-in-digital/convex-functions` created successfully.
+Package `@be-yours/convex-functions` created successfully.
 
 ### Delivery date
 February 14, 2026
@@ -201,7 +201,7 @@ See `USAGE.md` for detailed examples.
 3. Test the functions against real data
 
 ### Medium term
-1. Create the `@be-in-digital/convex-schema` package
+1. Create the `@be-yours/convex-schema` package
 2. Add more tests (coverage > 80%)
 3. Add the gamification modules:
    - `gameQRCodes.ts`
@@ -312,5 +312,5 @@ Private - BeYours Team
 
 **Delivered on:** February 14, 2026
 **Version:** 0.1.0
-**Package:** `@be-in-digital/convex-functions`
+**Package:** `@be-yours/convex-functions`
 **Status:** ✅ Complete and working

@@ -1,4 +1,4 @@
-# @beyours/reference
+# @be-yours/reference
 
 ## 2.0.0
 

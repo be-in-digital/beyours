@@ -17,13 +17,13 @@ import {
   resolvePlanFromPriceId,
   resolvePriceIdFromPlan,
   buildPriceMap,
-} from "@be-in-digital/convex-functions/bidSubscription";
+} from "@be-yours/convex-functions/bidSubscription";
 import {
   isMaintenanceSubscription,
   extractPeriodEndMs,
   MAINTENANCE_BID_PRODUCT,
-} from "@be-in-digital/convex-functions/maintenance";
-import { Role } from "@be-in-digital/core/auth/rbac";
+} from "@be-yours/convex-functions/maintenance";
+import { Role } from "@be-yours/core/auth/rbac";
 
 // ============================================================================
 // Helpers
@@ -124,7 +124,7 @@ export const createCheckoutSession = action({
        * The two real routes are `(admin)/subscription` → `/subscription` and
        * `(admin)/dashboard/subscription` → `/dashboard/subscription`. The second
        * is the canonical one — `adminRoutes.subscription` in
-       * `@be-in-digital/admin` — and it is what the sidebar links to.
+       * `@be-yours/admin` — and it is what the sidebar links to.
        *
        * The maintenance checkout below already used `/dashboard/system`
        * correctly, which is what made this an oversight rather than a

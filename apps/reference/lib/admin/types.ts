@@ -8,7 +8,7 @@ import type { Id } from "@/convex/_generated/dataModel"
 
 // ─── Kitchen Tickets ────────────────────────────────────────────
 //
-// Moved to `@be-in-digital/admin` (`src/lib/types.ts`) with the KDS itself.
+// Moved to `@be-yours/admin` (`src/lib/types.ts`) with the KDS itself.
 // The screen used to live in this app and, byte for byte, in its twin, so a
 // schema change had to be made in three places. It is made in one now, and
 // nothing in this app reads these types any more.
@@ -36,7 +36,7 @@ export type OrderItem = {
 
 export type OrderStatus = "pending" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "completed" | "cancelled"
 // `refund_pending`: a paid order was cancelled and the money is owed back,
-// but nothing has been sent yet. Mirrors the union in `@be-in-digital/admin`.
+// but nothing has been sent yet. Mirrors the union in `@be-yours/admin`.
 export type OrderPaymentStatus = "pending" | "paid" | "failed" | "refunded" | "partially_refunded" | "refund_pending"
 export type OrderSource = "website" | "uber_eats" | "deliveroo" | "pos"
 export type OrderType = "delivery" | "pickup" | "dine_in"

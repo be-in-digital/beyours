@@ -25,7 +25,7 @@ Next.js 16 (App Router) + Convex + Stripe + AWS SES.
 | **What it does** | Sells the BeYours offering and runs its operations |
 | **What comes in** | Prospects on the marketing pages, affiliates on the portal |
 | **What goes out** | Stripe orders, signed contracts, commissions, tracked incidents |
-| **What sets it apart** | It depends on **no** `@be-in-digital/*` package — this is a website, not an instance of the product |
+| **What sets it apart** | It depends on **no** `@be-yours/*` package — this is a website, not an instance of the product |
 | **Size** | 37 page routes · 1 route handler · 120 components · 60 Convex modules · 22 tables · 6 crons · ~63,000 lines |
 
 ```bash
@@ -251,7 +251,7 @@ in live mode, never relax that rule.
 
 ## Commands
 
-From this directory, or via `pnpm --filter @beyours/site <cmd>` from the root:
+From this directory, or via `pnpm --filter @be-yours/site <cmd>` from the root:
 
 | Command | Effect |
 | --- | --- |
@@ -304,7 +304,7 @@ addressing.
 
 Vercel project `beindigital-restaurant`, team `be-in-digital`. A push that
 touches this app builds it alone: this directory's `vercel.json` carries
-`ignoreCommand: npx turbo-ignore @beyours/site`.
+`ignoreCommand: npx turbo-ignore @be-yours/site`.
 
 Convex is pushed separately: `npx convex deploy` from this directory.
 
@@ -327,7 +327,7 @@ process is described in [`PROCESS_DE_VENTE.md`](./PROCESS_DE_VENTE.md).
 
 ## History
 
-This app lived under `apps/web-restaurant` in the `be-in-digital/beindigital`
+This app lived under `apps/web-restaurant` in the `beyours/beindigital`
 monorepo. It moved out in August 2026 into a standalone `beyours` repository,
 then came back as `apps/site` when the three BeYours projects were regrouped.
 Its history followed at every step.

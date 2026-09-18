@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from "vitest"
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
-import { Role } from "@be-in-digital/core"
+import { Role } from "@be-yours/core"
 
 /** What the mocked `globalSettings.get` answers; set per test. */
 const state: { settings: unknown } = { settings: undefined }

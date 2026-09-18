@@ -43,7 +43,7 @@ import type {
   UserIdentity,
 } from "convex/server"
 import { denied, requireStoreAccess, requireStorePermission } from "./auth"
-import type { Permission } from "@be-in-digital/core"
+import type { Permission } from "@be-yours/core"
 
 /**
  * The slice of a Convex context this seam actually touches. Declared

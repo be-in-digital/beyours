@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest"
 import fs from "node:fs"
 import path from "node:path"
 
-import { envManifest, optionalSiteVars } from "@be-in-digital/core/env"
+import { envManifest, optionalSiteVars } from "@be-yours/core/env"
 
 /**
  * An operator setting a variable this product reads.

@@ -189,7 +189,7 @@ function signedBounce(args: {
     notificationType: "Bounce",
     mail: {
       messageId: args.messageId ?? "ses-1",
-      source: "no-reply@beyours.fr",
+      source: "no-reply@be-yours.fr",
       destination: ["yanis@resto.example"],
       headers: [
         { name: "X-Store-Id", value: args.storeId },
@@ -452,7 +452,7 @@ describe("POST /webhooks/ses — no correlation headers", () => {
       notificationType: args.type,
       mail: {
         messageId: args.messageId ?? "ses-headerless",
-        source: "no-reply@beyours.fr",
+        source: "no-reply@be-yours.fr",
         destination: [email],
       },
     }

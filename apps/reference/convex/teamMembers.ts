@@ -1,10 +1,10 @@
 import { query, mutation, internalMutation, internalQuery } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { ConvexError, v } from "convex/values";
-import * as defs from "@be-in-digital/convex-functions/teamMembers";
-import * as profileDefs from "@be-in-digital/convex-functions/userProfiles";
+import * as defs from "@be-yours/convex-functions/teamMembers";
+import * as profileDefs from "@be-yours/convex-functions/userProfiles";
 import { storeQuery } from "./lib/storeFunctions";
-import { getAuthUser } from "@be-in-digital/convex-functions/auth";
+import { getAuthUser } from "@be-yours/convex-functions/auth";
 import {
   assertCanManageMember,
   assertInvitationAcceptable,
@@ -15,12 +15,12 @@ import {
   sweepInvitation,
   TeamAccessError,
   type MembershipProjection,
-} from "@be-in-digital/convex-functions/teamAccess";
-import { Role } from "@be-in-digital/core/auth/rbac";
+} from "@be-yours/convex-functions/teamAccess";
+import { Role } from "@be-yours/core/auth/rbac";
 import {
   ACCESS_AUDIT_OPERATIONS,
   recordAccessAudit,
-} from "@be-in-digital/convex-functions/accessAudit";
+} from "@be-yours/convex-functions/accessAudit";
 
 /**
  * Guard for the team roster.

@@ -20,12 +20,12 @@ packages. Understanding which is which is the whole of the orientation.
 
 | App | Workspace | Who it is for | Deploys to |
 | --- | --- | --- | --- |
-| `apps/site` | `@beyours/site` | Prospects, affiliates, the internal team | Vercel → beyours.fr |
-| `apps/reference` | `@beyours/reference` | Nobody — it is the engine's test bench | Local / preview |
-| `apps/themes` | `@beyours/themes` | Each client restaurant, after cloning | Vercel, one project per client |
+| `apps/site` | `@be-yours/site` | Prospects, affiliates, the internal team | Vercel → beyours.fr |
+| `apps/reference` | `@be-yours/reference` | Nobody — it is the engine's test bench | Local / preview |
+| `apps/themes` | `@be-yours/themes` | Each client restaurant, after cloning | Vercel, one project per client |
 
 **`apps/site` is a website, not an instance of the product.** It depends on none of
-the engine packages — `grep -c "@be-in-digital" apps/site/package.json` returns `0` —
+the engine packages — `grep -c "@be-yours" apps/site/package.json` returns `0` —
 and it carries its own Convex backend under `apps/site/convex/`. It holds the
 marketing pages, the template catalogue, the Stripe checkout, the affiliate portal
 (`apps/site/app/parrainage/`) and an internal operations console
@@ -63,7 +63,7 @@ They are historical aliases kept so old bookmarks resolve, not duplicated screen
 
 ### Two npm scopes, deliberately
 
-The three apps are `@beyours/*`. The ten packages are `@be-in-digital/*`, published
+The three apps are `@be-yours/*`. The ten packages are `@be-yours/*`, published
 privately to GitHub Packages. The scope was **not** renamed with the repositories,
 because changing it breaks every client site on its next install — see the Naming
 section of [`README.md`](README.md#naming-what-gets-renamed-and-what-never-does)
@@ -133,7 +133,7 @@ cms ─┐   convex-schema ─┐   core ─┐   ui ─┐   integrations ─�
 ```
 
 `cms`, `convex-schema`, `core`, `integrations`, `marketing`, `mcp-server` and `ui`
-declare **no** `@be-in-digital/*` dependency. `mcp-server` is consumed by no
+declare **no** `@be-yours/*` dependency. `mcp-server` is consumed by no
 application; it is tooling that exposes the package registry to editors and agents.
 
 The ASCII diagram in [`apps/docs/README.md`](apps/docs/README.md) shows the same
@@ -148,7 +148,7 @@ shape.
 Each app carries its own `vercel.json`:
 
 ```json
-{ "ignoreCommand": "npx turbo-ignore @beyours/<app>" }
+{ "ignoreCommand": "npx turbo-ignore @be-yours/<app>" }
 ```
 
 Turbo follows the **dependency graph**, not the directory tree, so a change in
@@ -252,7 +252,7 @@ wrappers that bind them to that deployment's generated types and apply the app's
 guards. A wrapper looks like this (`apps/reference/convex/products.ts:1-17`):
 
 ```ts
-import * as defs from "@be-in-digital/convex-functions/products"
+import * as defs from "@be-yours/convex-functions/products"
 export const list = query(defs.list)
 ```
 
@@ -386,7 +386,7 @@ where each value lives and who owns it is [`DEPLOYMENT.md`](DEPLOYMENT.md#4-envi
 ## 8. How a client site comes to life
 
 ```
-packages/*                      published as @be-in-digital/* (changesets)
+packages/*                      published as @be-yours/* (changesets)
     │
     ├──► apps/reference         the test bench — where a feature is proven
     │
@@ -397,7 +397,7 @@ packages/*                      published as @be-in-digital/* (changesets)
 ```
 
 Clients do not clone this repository. They clone
-**`be-in-digital/beyours-boilerplate`**, the distribution mirror, because a client
+**`be-yours/beyours-boilerplate`**, the distribution mirror, because a client
 site cannot clone a subdirectory of a monorepo. `scripts/publish-mirror.mjs` rebuilds
 that mirror from `apps/themes`, rewriting the four things that only make sense here:
 `workspace:^` → published versions, the lockfile, `vercel.json` (no turbo workspace on
@@ -407,7 +407,7 @@ Two update channels, never just one:
 
 | Channel | Command | What it carries |
 | --- | --- | --- |
-| npm | `pnpm update:engine` | Business logic — the `@be-in-digital/*` packages, by semver |
+| npm | `pnpm update:engine` | Business logic — the `@be-yours/*` packages, by semver |
 | git | `pnpm update:template` | The application shell — routes, Convex wrappers, scripts, configs |
 
 They move at different speeds: a logic fix spreads through a version bump, a new
@@ -457,7 +457,7 @@ hand.
 
 **`packages/mcp-server` is a hand-maintained index of the engine's exports**, and
 nothing checks it against them. Until 5 Sep 2026 it advertised `uploadToS3` and a
-top-level `sendEmail` as importable from `@be-in-digital/core`: the first exists
+top-level `sendEmail` as importable from `@be-yours/core`: the first exists
 nowhere, and the second is a *method* on the SES service, so an agent reading the
 registry wrote imports that resolved to `undefined`. Both entries now name the real
 surfaces (`createS3Service`, `getSESService`), but the next rename will drift the

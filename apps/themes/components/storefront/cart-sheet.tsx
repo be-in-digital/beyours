@@ -27,8 +27,8 @@ import {
   SheetContent,
   SheetDescription,
   SheetTitle,
-} from "@be-in-digital/ui"
-import { useCartStore, formatPrice, useTranslation } from "@be-in-digital/restaurant"
+} from "@be-yours/ui"
+import { useCartStore, formatPrice, useTranslation } from "@be-yours/restaurant"
 
 interface CartSheetProps {
   open: boolean

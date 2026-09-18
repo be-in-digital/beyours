@@ -6,7 +6,7 @@ import { parse } from "yaml"
 /**
  * Something watches the mirror, and it is not the mirror.
  *
- * `be-in-digital/beyours-boilerplate` is the repository every client site is
+ * `be-yours/beyours-boilerplate` is the repository every client site is
  * cloned from and merges from with `pnpm update:template`. When it stops being
  * synced, nothing about this repository looks wrong: `main` is green, the last
  * `Publish mirror` run is in the Actions tab, and clients are simply on an
@@ -478,7 +478,7 @@ test("the staleness check does not join the publisher's concurrency group", () =
  * The staleness check can reach the mirror, or says out loud that it cannot.
  *
  * WHAT WAS BROKEN (#439, #426, #459). `--check` clones
- * `be-in-digital/beyours-boilerplate`, that repository is PRIVATE, and this
+ * `be-yours/beyours-boilerplate`, that repository is PRIVATE, and this
  * job deliberately holds no `MIRROR_PUSH_TOKEN` — so it cloned anonymously and
  * every run of its life died at
  * `fatal: could not read Username for 'https://github.com'`. The check written

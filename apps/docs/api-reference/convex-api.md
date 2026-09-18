@@ -263,7 +263,7 @@ There is deliberately no public `teamMembers.invite` mutation. One existed, took
 `invitationToken` as an argument and had no caller, which let anyone able to
 manage the roster create a member under a token of their own choosing and skip
 the email entirely. Removed in
-[#275](https://github.com/be-in-digital/beyours/issues/275), along with
+[#275](https://github.com/be-yours/beyours/issues/275), along with
 `resendInvitation`. Use the actions.
 
 ### `api.teamMembersEmail.resendInvitationEmail`
@@ -299,7 +299,7 @@ Remove a member, revoking their profile access first.
 
 > `teamMembers.create` and `teamMembers.getByEmail` are still exported and have
 > no caller. Do not build on them:
-> [#281](https://github.com/be-in-digital/beyours/issues/281) removes them.
+> [#281](https://github.com/be-yours/beyours/issues/281) removes them.
 
 ## Games & Gamification
 

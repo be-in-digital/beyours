@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import type { ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { getPackageEnv, isSandbox } from "@be-in-digital/core/env";
+import { getPackageEnv, isSandbox } from "@be-yours/core/env";
 
 /**
  * Admin actions wrapping each Uber Eats endpoint required by production validation.
@@ -104,7 +104,7 @@ async function runStep(
 // @kept-callerless: no screen calls this, and it is not dead. It is the
 // production-validation run Uber asks for, and `apps/docs/guides/delivery-integrations.md`
 // tells an operator to invoke it by name. It drives the endpoints directly
-// through `@be-in-digital/integrations`, which is why the nine sibling actions
+// through `@be-yours/integrations`, which is why the nine sibling actions
 // that wrapped those same endpoints one-by-one were removed as duplicates
 // (#413). Public rather than internal deliberately: `requireAuth` reads the
 // caller's identity, and an internal function reached from the dashboard or the
@@ -120,7 +120,7 @@ export const runValidation = action({
   handler: async (ctx, args) => {
     await requireAuth(ctx);
     const credentials = readCredentials();
-    const { uberEats } = await import("@be-in-digital/integrations");
+    const { uberEats } = await import("@be-yours/integrations");
 
     const results: EndpointResult[] = [];
 

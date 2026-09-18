@@ -4,7 +4,7 @@ import nextTs from "eslint-config-next/typescript";
 /*
   By RELATIVE PATH, not by package specifier, and the difference is the point.
 
-  `apps/themes` imports this rule as `@be-in-digital/convex-functions/eslint/
+  `apps/themes` imports this rule as `@be-yours/convex-functions/eslint/
   convex-auth` because it is cloned into a standalone repository per client,
   where a path out of the workspace resolves to nothing. `apps/site` is never
   cloned — it is the commercial site, it lives only here, and it deliberately

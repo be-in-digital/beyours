@@ -17,7 +17,7 @@ when the answer says the contract has lapsed.
 
 It proves "this repo belongs to that deployment", nothing more. Whoever holds it
 can read a maintenance status; pulling an update still needs the private
-boilerplate repo and the `@be-in-digital/*` registry. **The gate is a courtesy,
+boilerplate repo and the `@be-yours/*` registry. **The gate is a courtesy,
 not a lock** — see `apps/themes/docs/UPDATES.md`.
 
 ## Two things, not one
@@ -156,7 +156,7 @@ It does not buy: a lock. The sentinel lives in the client's own repository —
 deleting `licenseKey` from it makes the scripts skip the check entirely, and
 `BEYOURS_LICENSE_API` overrides the host they ask. Both are one edit away for
 anyone holding the repo. What actually freezes a lapsed site is revoking its
-access to the private boilerplate repo and to the `@be-in-digital/*` registry
+access to the private boilerplate repo and to the `@be-yours/*` registry
 (`apps/themes/docs/UPDATES.md`).
 
 ### What stays forgiving either way

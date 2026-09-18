@@ -1,5 +1,5 @@
 import type { FunctionReference } from "convex/server"
-import type { DocId } from "@be-in-digital/convex-schema/dataModel"
+import type { DocId } from "@be-yours/convex-schema/dataModel"
 
 /**
  * The boundary between this flow and the app that renders it.
@@ -15,7 +15,7 @@ import type { DocId } from "@be-in-digital/convex-schema/dataModel"
  * argument shape makes that a compile error in both apps.
  *
  * Argument shapes are transcribed from the validators in
- * `@be-in-digital/convex-functions/gamePlay`.
+ * `@be-yours/convex-functions/gamePlay`.
  */
 export interface GamePlayApi {
   getSession: FunctionReference<

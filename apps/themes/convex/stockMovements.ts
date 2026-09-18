@@ -1,4 +1,4 @@
-import * as defs from "@be-in-digital/convex-functions/stockLedger";
+import * as defs from "@be-yours/convex-functions/stockLedger";
 import { storeQuery } from "./lib/storeFunctions";
 
 /**

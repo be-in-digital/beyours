@@ -243,7 +243,7 @@ describe("marking an order ready", () => {
 
     const payload = await t.run(async (ctx) => {
       const { readyPayload } = await import(
-        "@be-in-digital/convex-functions/orderReady"
+        "@be-yours/convex-functions/orderReady"
       )
       return readyPayload(ctx, orderId)
     })

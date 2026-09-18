@@ -29,7 +29,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
 const added: Array<{ options: Array<{ name: string; choice: string }> }> = []
 const errors: string[] = []
 
-vi.mock("@be-in-digital/restaurant", () => ({
+vi.mock("@be-yours/restaurant", () => ({
   useCartStore: (selector: (s: Record<string, unknown>) => unknown) =>
     selector({
       addItem: (item: { options: Array<{ name: string; choice: string }> }) =>

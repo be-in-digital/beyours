@@ -358,7 +358,7 @@ EXPLAIN
   # — an earlier draft of this wizard read that endpoint and would have told the
   # owner their repository was wide open. Read the rules where they now live.
   local rules
-  if ! rules="$(gh api "repos/be-in-digital/beyours/rules/branches/main" 2>/dev/null)"; then
+  if ! rules="$(gh api "repos/be-yours/beyours/rules/branches/main" 2>/dev/null)"; then
     bad "Could not read the branch rules (gh not authenticated, or no access to the repo)."
     note "gh auth login, then re-run — or check Settings › Rules › Rulesets by hand."
     return
@@ -375,7 +375,7 @@ EXPLAIN
   # Parsed, not grepped: `grep '"context":"X"'` assumes GitHub never pretty-
   # prints, and a single space after a colon would report all five as missing.
   local contexts
-  contexts="$(cd "$REPO_ROOT" && gh api "repos/be-in-digital/beyours/rules/branches/main" \
+  contexts="$(cd "$REPO_ROOT" && gh api "repos/be-yours/beyours/rules/branches/main" \
     --jq '.[] | select(.type=="required_status_checks")
               | .parameters.required_status_checks[]?.context' 2>/dev/null || true)"
 

@@ -13,9 +13,9 @@ import {
   orderAlreadyCollected,
   paymentStatusAfterSettlement,
   readPayPalCapture,
-} from "@be-in-digital/convex-functions/paymentSettlement";
-import { OrderAlreadyPaidError } from "@be-in-digital/convex-functions/refusal";
-import { assertCardChargeable } from "@be-in-digital/convex-functions/cardChargeFloor";
+} from "@be-yours/convex-functions/paymentSettlement";
+import { OrderAlreadyPaidError } from "@be-yours/convex-functions/refusal";
+import { assertCardChargeable } from "@be-yours/convex-functions/cardChargeFloor";
 
 // ---------------------------------------------------------------------------
 // PayPal helpers
@@ -29,7 +29,7 @@ interface PayPalEnv {
 
 function getPayPalEnv(): PayPalEnv {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic import in Convex "use node" context
-  const { getSiteEnv, isSandbox } = require("@be-in-digital/core/env");
+  const { getSiteEnv, isSandbox } = require("@be-yours/core/env");
   const site = getSiteEnv();
   const clientId = site.PAYPAL_CLIENT_ID;
   const clientSecret = site.PAYPAL_CLIENT_SECRET;
@@ -44,7 +44,7 @@ function getPayPalEnv(): PayPalEnv {
   // host, where payments are never actually collected.
   //
   // PAYPAL_SANDBOX_MODE is required at boot as soon as PayPal is configured
-  // (see @be-in-digital/core/env). Left unset anyway — on a Convex deployment,
+  // (see @be-yours/core/env). Left unset anyway — on a Convex deployment,
   // which runs no boot check of its own — it resolves to SANDBOX, never to the
   // live host: a capture that does not settle is recoverable, a live charge
   // against test credentials is not.
@@ -490,7 +490,7 @@ export const reconcilePendingOrders = internalAction({
     ctx,
     args
   ): Promise<{ examined: number; settled: number; captured: number }> => {
-    const { getSiteEnv } = await import("@be-in-digital/core/env");
+    const { getSiteEnv } = await import("@be-yours/core/env");
     const site = getSiteEnv();
     // Not an error on a deployment that does not take PayPal, which is most of
     // them. A sweep that threw there would be red every hour for ever.

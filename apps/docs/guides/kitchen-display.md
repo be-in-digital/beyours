@@ -27,7 +27,7 @@ The Kitchen Display System (KDS) provides real-time order management for kitchen
 
 ```typescript
 // convex/schema.ts
-import { kitchenTicketsTable } from "@be-in-digital/convex-schema/tables";
+import { kitchenTicketsTable } from "@be-yours/convex-schema/tables";
 
 export default defineSchema({
   // ...
@@ -39,7 +39,7 @@ export default defineSchema({
 
 ```tsx
 // app/(admin)/kitchen/page.tsx
-import { KitchenPage } from "@be-in-digital/admin/pages";
+import { KitchenPage } from "@be-yours/admin/pages";
 
 export default function Kitchen() {
   return <KitchenPage />;

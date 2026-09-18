@@ -1,7 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
-import convexAuth from "@be-in-digital/convex-functions/eslint/convex-auth";
+import convexAuth from "@be-yours/convex-functions/eslint/convex-auth";
 
 const eslintConfig = defineConfig([
   ...nextVitals,

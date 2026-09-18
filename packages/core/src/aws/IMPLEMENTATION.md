@@ -209,7 +209,7 @@ For each template:
 ## Test results
 
 ```bash
-pnpm --filter @be-in-digital/core test -- src/aws/__tests__
+pnpm --filter @be-yours/core test -- src/aws/__tests__
 ```
 
 **Results:**
@@ -283,22 +283,22 @@ All in French as required:
 
 ```bash
 # AWS tests only
-pnpm --filter @be-in-digital/core test -- src/aws/__tests__
+pnpm --filter @be-yours/core test -- src/aws/__tests__
 
 # S3 tests
-pnpm --filter @be-in-digital/core test -- src/aws/__tests__/s3.test.ts
+pnpm --filter @be-yours/core test -- src/aws/__tests__/s3.test.ts
 
 # SES tests
-pnpm --filter @be-in-digital/core test -- src/aws/__tests__/ses.test.ts
+pnpm --filter @be-yours/core test -- src/aws/__tests__/ses.test.ts
 
 # Template tests
-pnpm --filter @be-in-digital/core test -- src/aws/__tests__/templates.test.ts
+pnpm --filter @be-yours/core test -- src/aws/__tests__/templates.test.ts
 
 # Type-check AWS
 cd packages/core && npx tsc --noEmit --skipLibCheck src/aws/**/*.ts
 
 # Build
-pnpm --filter @be-in-digital/core build
+pnpm --filter @be-yours/core build
 ```
 
 ## Compatibility
@@ -333,5 +333,5 @@ pnpm --filter @be-in-digital/core build
 ## Author
 
 Implemented for the BeYours Engine project
-Package: @be-in-digital/core
+Package: @be-yours/core
 Date: 2026-02-14

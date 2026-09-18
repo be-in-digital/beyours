@@ -71,7 +71,7 @@ export const COMPANY: CompanyInfo = {
     country: "France",
   },
   legalRepresentative: "Fatiha ELKARROUTI",
-  email: "hello@beyours.fr",
+  email: "hello@be-yours.fr",
   phone: null,
   registeredAt: "10 juillet 2024",
 };

@@ -4,9 +4,9 @@
  *
  * It is deliberately NOT re-exported from the package root. `lib/sounds.ts`
  * ends in a module-scope `new GameAudioEngine()`, and eleven `"use client"`
- * screens hang off this barrel; pulling them into `@be-in-digital/admin`
+ * screens hang off this barrel; pulling them into `@be-yours/admin`
  * proper would drag the audio and particle engines into every dashboard
- * bundle. Import from `@be-in-digital/admin/game`.
+ * bundle. Import from `@be-yours/admin/game`.
  *
  * The flow reaches its backend through props rather than the admin API store —
  * see `api-contract.ts` for why.

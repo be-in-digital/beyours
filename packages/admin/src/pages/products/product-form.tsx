@@ -21,7 +21,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { slugify, centsToEuros, eurosToCents } from "../../lib/formatters"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { AllergenField } from "./allergen-field"

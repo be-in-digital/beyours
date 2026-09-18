@@ -707,7 +707,7 @@ export const toggleStatus = {
  * Reorder the products of one store.
  *
  * `sortOrder` is what the storefront's default sort — "Recommandé" — reads
- * after featured products (`sortProducts` in `@be-in-digital/restaurant`). The
+ * after featured products (`sortProducts` in `@be-yours/restaurant`). The
  * column existed, the form schema declared it, and nothing rendered an input
  * or a reorder control: every product kept the 0 the creation form sent, so
  * the owner's menu was ordered by nothing at all.

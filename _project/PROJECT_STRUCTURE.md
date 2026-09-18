@@ -71,7 +71,7 @@ beindigital/
 - ✅ `.gitignore` - Git ignore rules
 - ✅ `README.md` - Project documentation
 
-### @be-in-digital/ui Package
+### @be-yours/ui Package
 - ✅ Package configuration
 - ✅ TypeScript configuration
 - ✅ Build configuration (tsup)
@@ -86,7 +86,7 @@ beindigital/
 - `tailwind-merge` - Tailwind class merging
 - `lucide-react` - Icon library
 
-### @be-in-digital/core Package
+### @be-yours/core Package
 - ✅ Package configuration
 - ✅ Better Auth integration
   - Configuration with Convex adapter
@@ -112,7 +112,7 @@ beindigital/
 - `i18next`, `react-i18next` - Internationalization
 - `zod` - Schema validation
 
-### @be-in-digital/themes Package
+### @be-yours/themes Package
 - ✅ Fast Food theme configuration
   - Colors (red, yellow, green)
   - Typography (Poppins, Inter)
@@ -124,17 +124,17 @@ beindigital/
 
 ### High Priority
 
-1. **@be-in-digital/convex-schema**
+1. **@be-yours/convex-schema**
    - Create base schema for Better Auth
    - Define restaurant tables (stores, products, orders, etc.)
    - Add indexes for performance
 
-2. **@be-in-digital/convex-functions**
+2. **@be-yours/convex-functions**
    - Auth functions (getUser, updateProfile, etc.)
    - Order management functions
    - Product management functions
 
-3. **@be-in-digital/restaurant**
+3. **@be-yours/restaurant**
    - Order calculator
    - Kitchen ticket generator
    - Store selector utilities
@@ -149,7 +149,7 @@ beindigital/
 
 ### Medium Priority
 
-5. **@be-in-digital/integrations**
+5. **@be-yours/integrations**
    - Stripe payment processor
    - SumUp payment processor
    - PayPal payment processor
@@ -165,12 +165,12 @@ beindigital/
    - Café/Bakery theme
    - Sushi Bar theme
 
-7. **@be-in-digital/cms**
+7. **@be-yours/cms**
    - Block-based editor
    - Page management
    - SEO utilities
 
-8. **@be-in-digital/marketing**
+8. **@be-yours/marketing**
    - Email campaign builder
    - Gamification system
    - Loyalty program
@@ -213,7 +213,7 @@ pnpm format
 ### Package Management
 ```bash
 # Add dependency to specific package
-pnpm add <package> --filter @be-in-digital/ui
+pnpm add <package> --filter @be-yours/ui
 
 # Add dev dependency to workspace root
 pnpm add -Dw <package>
@@ -238,26 +238,26 @@ pnpm release
 
 ## 📦 Package Dependencies
 
-### @be-in-digital/ui
+### @be-yours/ui
 - `react`, `react-dom` (peer dependencies)
 - `class-variance-authority` - Component variants
 - `clsx` - Conditional classes
 - `tailwind-merge` - Merge Tailwind classes
 - `lucide-react` - Icons
 
-### @be-in-digital/core
+### @be-yours/core
 - `better-auth` - Authentication
 - `i18next`, `react-i18next` - i18n
 - `zod` - Validation
 
 ### Future Dependencies
 
-**@be-in-digital/restaurant:**
+**@be-yours/restaurant:**
 - Date utilities (date-fns)
 - Currency formatting
 - Timezone handling
 
-**@be-in-digital/integrations:**
+**@be-yours/integrations:**
 - `stripe` - Stripe SDK
 - Uber Eats SDK
 - Deliveroo SDK
@@ -269,7 +269,7 @@ pnpm release
 - `better-auth` - Auth
 - `tailwindcss` - Styling
 - `react-hook-form` - Forms
-- All `@be-in-digital/*` packages
+- All `@be-yours/*` packages
 
 ## 🔐 Environment Variables Template
 
@@ -317,8 +317,8 @@ RESEND_API_KEY=
 ## 📊 Progress Tracker
 
 - [x] Monorepo setup (Turborepo + pnpm)
-- [x] Base package: @be-in-digital/ui
-- [x] Base package: @be-in-digital/core
+- [x] Base package: @be-yours/ui
+- [x] Base package: @be-yours/core
 - [x] Theme configuration: Fast Food
 - [ ] Convex schema package
 - [ ] Convex functions package

@@ -1,8 +1,8 @@
 "use client"
 
 import { Truck, ShoppingBag, Utensils } from "lucide-react"
-import type { OrderType } from "@be-in-digital/restaurant"
-import { isOrderTypeOffered, type StoreServices } from "@be-in-digital/convex-schema"
+import type { OrderType } from "@be-yours/restaurant"
+import { isOrderTypeOffered, type StoreServices } from "@be-yours/convex-schema"
 
 interface OrderTypeSelectorProps {
   value: OrderType

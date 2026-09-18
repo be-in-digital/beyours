@@ -24,7 +24,7 @@ import { assertMaintenanceCurrent } from "./lib/maintenance.mjs"
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..")
 const DEFAULT_REPO =
-  "https://github.com/be-in-digital/beyours-boilerplate.git"
+  "https://github.com/be-yours/beyours-boilerplate.git"
 
 const args = process.argv.slice(2)
 const DRY = args.includes("--dry-run")

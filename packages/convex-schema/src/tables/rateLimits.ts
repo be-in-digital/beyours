@@ -5,7 +5,7 @@ import { v } from "convex/values"
  * Rate limit counters table
  *
  * One row per (limit, subject) — see `rateLimitKey` in
- * `@be-in-digital/convex-functions/rateLimit` for the key's shape.
+ * `@be-yours/convex-functions/rateLimit` for the key's shape.
  *
  * WHY THIS EXISTS: the mutations a storefront visitor calls without a session —
  * `contactMessages.create`, `emailSubscribers.subscribe` — had no limit of any

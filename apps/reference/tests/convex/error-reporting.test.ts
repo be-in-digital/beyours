@@ -25,7 +25,7 @@
 
 import { convexTest } from "convex-test"
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
-import { _resetEnvCache } from "@be-in-digital/core/env"
+import { _resetEnvCache } from "@be-yours/core/env"
 import { internal } from "../../convex/_generated/api"
 import schema from "../../convex/schema"
 

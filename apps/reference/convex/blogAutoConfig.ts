@@ -8,13 +8,13 @@
 import { v } from "convex/values"
 import { query, mutation } from "./_generated/server"
 import { storeQuery } from "./lib/storeFunctions"
-import { requireStorePermission } from "@be-in-digital/convex-functions/auth"
-import * as blogAutoConfigDefs from "@be-in-digital/convex-functions/blogAutoConfig"
+import { requireStorePermission } from "@be-yours/convex-functions/auth"
+import * as blogAutoConfigDefs from "@be-yours/convex-functions/blogAutoConfig"
 import {
   checkAutoBlogAccess,
   checkImageGenerationAccess,
   validateConfigAgainstPlan,
-} from "@be-in-digital/convex-functions/blogAutoGuards"
+} from "@be-yours/convex-functions/blogAutoGuards"
 
 // ============================================================================
 // Queries

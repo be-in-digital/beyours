@@ -10,7 +10,7 @@
  *
  * The batch path is the same three-way split, with the action re-scheduling
  * itself for the next chunk. The chaining lives here rather than in
- * `@be-in-digital/convex-functions` because it needs `internal.*`, which only
+ * `@be-yours/convex-functions` because it needs `internal.*`, which only
  * the app's generated API provides.
  */
 
@@ -25,7 +25,7 @@ import { internal } from "./_generated/api";
 import { storeQuery } from "./lib/storeFunctions";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import * as defs from "@be-in-digital/convex-functions/autoTranslate";
+import * as defs from "@be-yours/convex-functions/autoTranslate";
 
 const DEBOUNCE_MS = defs.DEBOUNCE_MS;
 

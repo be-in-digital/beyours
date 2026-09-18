@@ -1,7 +1,7 @@
 /**
  * RBAC (Role-Based Access Control) integration
  *
- * Re-exports RBAC utilities from @be-in-digital/core
+ * Re-exports RBAC utilities from @be-yours/core
  * for easy use throughout the reference app.
  *
  * @example
@@ -28,14 +28,14 @@ export {
   parseRole,
   isValidRole,
   PermissionDeniedError,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 
 // Auth Types
 export type {
   AuthUser,
   AuthSession,
   AuthSessionData,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 
 // Server Utilities
 export {
@@ -53,4 +53,4 @@ export {
   withAuthRoute,
   UnauthorizedError,
   ForbiddenError,
-} from '@be-in-digital/core'
+} from '@be-yours/core'

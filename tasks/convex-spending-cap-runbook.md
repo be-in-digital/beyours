@@ -199,7 +199,7 @@ Access to production depends on one personal account. Fix the bus factor:
    second Developer buys you early warning and nothing else: during an outage
    they can watch it and not end it. The team's creator is Admin automatically;
    if they are the only one, the product cannot be recovered without them.
-2. Add `developers@beyours.fr` as the second admin, once that mailbox exists
+2. Add `developers@be-yours.fr` as the second admin, once that mailbox exists
    (it is a prerequisite in `production-accounts-checklist.md` and is not
    assumed done here).
 3. Record in the password manager — never in this repo — which account owns the

@@ -10,7 +10,7 @@
  *
  * It is a courtesy, not a lock. Anyone with the repo can run `git merge
  * template/main` by hand. What actually freezes a lapsed site is revoking its
- * access to the private boilerplate repo and to the @be-in-digital/* registry
+ * access to the private boilerplate repo and to the @be-yours/* registry
  * (docs/UPDATES.md). What this buys is a client who reads why the update
  * stopped and how to resume, instead of a raw 403 from GitHub.
  *
@@ -81,7 +81,7 @@ MISE À JOUR ${label.toUpperCase()} SUSPENDUE
 ${payload.message}
 
 ${payload.site ? `Site : ${payload.site}\n` : ""}Reprendre la maintenance : https://beyours.fr/espace-client
-Une question : contact@beyours.fr
+Une question : contact@be-yours.fr
 ────────────────────────────────────────────────────────`)
   process.exit(1)
 }

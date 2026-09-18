@@ -18,7 +18,7 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from "vitest"
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
-import { Role } from "@be-in-digital/core"
+import { Role } from "@be-yours/core"
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
@@ -37,7 +37,7 @@ vi.mock("../components/unread-messages-badge", () => ({
 }))
 
 import { AppSidebar } from "../components/app-sidebar"
-import { SidebarProvider } from "@be-in-digital/ui"
+import { SidebarProvider } from "@be-yours/ui"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
 
 beforeAll(() => {

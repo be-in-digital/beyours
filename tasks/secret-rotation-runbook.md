@@ -185,7 +185,7 @@ makes a rotation fail quietly:
 - **The `E2E_*` secrets do not exist.** This repository stores exactly four
   secrets — `INFISICAL_CLIENT_ID`, `INFISICAL_CLIENT_SECRET`, `MIRROR_PUSH_TOKEN`
   and `TURBO_TOKEN` (plus the automatic `GITHUB_TOKEN`). Since
-  [#276](https://github.com/be-in-digital/beyours/pull/276) the e2e job starts
+  [#276](https://github.com/be-yours/beyours/pull/276) the e2e job starts
   its own Convex backend on the runner and reads no application secret at all.
   Anyone following the old table went looking for thirteen values that were not
   there — and, worse, could reasonably conclude the sweep was done.
@@ -259,7 +259,7 @@ a third party's uptime.
 
 ```bash
 brew install git-filter-repo          # or: pipx install git-filter-repo
-cd /tmp && git clone https://github.com/be-in-digital/beyours.git purge && cd purge
+cd /tmp && git clone https://github.com/be-yours/beyours.git purge && cd purge
 ```
 
 ### B.2 — Generate the replacement file from the history (no secret typed by hand)
@@ -310,7 +310,7 @@ git filter-repo \
 ### B.4 — Republish + clean up
 
 ```bash
-git remote add origin https://github.com/be-in-digital/beyours.git   # filter-repo drops the remote as a safety measure
+git remote add origin https://github.com/be-yours/beyours.git   # filter-repo drops the remote as a safety measure
 
 # Check the branches survived the rewrite BEFORE pushing. filter-repo promotes
 # remote-tracking refs to local branches in a fresh clone, but if one is missing
@@ -344,7 +344,7 @@ execution:
 | …of those, ancestors of `main` (published) | 18 (claimed) | **41** |
 | …local-only, never pushed | — | **96** |
 | Remote branches carrying the leak | 4 | **72 — every one** (was 8 on 4 Sep) |
-| Remote tags carrying the leak | 10 of 35 | **75** (was 59 of 60); 63 are `@be-in-digital/*` release anchors |
+| Remote tags carrying the leak | 10 of 35 | **75** (was 59 of 60); 63 are `@be-yours/*` release anchors |
 | Open PRs invalidated | 14 | **2** (#420, #421 — drafts, 9 Sep; a draft's SHAs die like any other) |
 
 **How to re-measure — and why you must, before you quote any of it.**
@@ -354,7 +354,7 @@ working clone may not hold. Re-run them before acting:
 
 ```bash
 # 1. A FULL clone. A shallow one silently answers a different question.
-git clone https://github.com/be-in-digital/beyours.git measure && cd measure
+git clone https://github.com/be-yours/beyours.git measure && cd measure
 git fetch --tags --prune origin '+refs/heads/*:refs/remotes/origin/*'
 git rev-parse --is-shallow-repository        # must print: false
 
@@ -387,13 +387,13 @@ Two of these change the decision rather than just the arithmetic:
 - **The blocker has expired.** Part B was deferred because it would invalidate
   14 open pull requests. The queue is empty. That reason no longer applies.
 - **59 of the 60 remote tags carry the leak**, and they are the
-  `@be-in-digital/*` release anchors. A rewrite moves every one of them, so the
+  `@be-yours/*` release anchors. A rewrite moves every one of them, so the
   publish chain's version anchors all move with it. This is now the expensive
   part, not the PRs.
 
 > ⚠️ **A rewrite of origin does not reach everything, and origin has been
 > rewritten once already.** Local and remote tags of the same name point at
-> different commits (e.g. `@be-in-digital/core@2.0.1`: same author date, same
+> different commits (e.g. `@be-yours/core@2.0.1`: same author date, same
 > subject, different tree). Both lineages contain the secret. This clone retains
 > the **pre-rewrite** lineage under `archive/main-avant-monorepo` and **34 stale
 > local tags** — 96 leaked commits that were never pushed and that a fresh clone

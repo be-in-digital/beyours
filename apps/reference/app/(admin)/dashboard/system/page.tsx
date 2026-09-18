@@ -1,4 +1,4 @@
-import { SystemPage } from "@be-in-digital/admin"
+import { SystemPage } from "@be-yours/admin"
 
 export default function Page() {
   return <SystemPage />

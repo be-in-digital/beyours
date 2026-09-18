@@ -1,5 +1,5 @@
 import { internalMutation, internalQuery } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/emailEvents";
+import * as defs from "@be-yours/convex-functions/emailEvents";
 import { storeQuery, storeIdFromField } from "./lib/storeFunctions";
 
 // === Queries (auth-protected) ===

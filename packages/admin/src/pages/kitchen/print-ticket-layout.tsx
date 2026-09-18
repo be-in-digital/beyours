@@ -1,6 +1,6 @@
 "use client"
 
-import { resolveAllergens } from "@be-in-digital/core/allergens"
+import { resolveAllergens } from "@be-yours/core/allergens"
 
 interface PrintTicketItem {
   productName: string

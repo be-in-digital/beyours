@@ -3,17 +3,17 @@
  * pins?
  *
  * WHY A THIRD GATE. `lib/engine-exports.mjs` already asks whether every
- * `@be-in-digital/*` specifier the template imports resolves in the published
+ * `@be-yours/*` specifier the template imports resolves in the published
  * tarball, and whether the file each subpath points at was actually shipped.
  * Both questions are about the MODULE. Neither can see inside one.
  *
  * That is the hole, measured: `apps/themes/convex/emailCampaigns.ts` imports
- * `@be-in-digital/convex-functions/emailCampaigns` — a subpath the published
+ * `@be-yours/convex-functions/emailCampaigns` — a subpath the published
  * `convex-functions@5.0.0` exports, from a file it ships — and reads
  * `defs.markFailed` off it. `markFailed` was added to that module at HEAD
  * without a version bump, so the published 5.0.0 does not have it. The gate
  * reported `9 package(s) verified` against the very tarball the registry
- * serves, the sync went out, and `be-in-digital/beyours-boilerplate` has been
+ * serves, the sync went out, and `be-yours/beyours-boilerplate` has been
  * failing its own Typecheck ever since with
  *
  *   convex/emailCampaigns.ts(136,49): error TS2339: Property 'markFailed'
@@ -30,8 +30,8 @@
  * `tsconfig.json` excludes, plus all 26 `.js`/`.mjs`/`.cjs`, which no `include`
  * glob names and which `checkJs` (off) would be needed for. Two engine
  * specifiers live only in that gap today —
- * `@be-in-digital/convex-functions/eslint/convex-auth` in the mirror's own
- * `eslint.config.mjs`, and `@be-in-digital/core/status-labels` in
+ * `@be-yours/convex-functions/eslint/convex-auth` in the mirror's own
+ * `eslint.config.mjs`, and `@be-yours/core/status-labels` in
  * `tests/i18n/catalogue-keys.test.ts`. Drop either subpath from a published
  * `exports` map and a client's `pnpm lint` or `pnpm test` dies on
  * `ERR_PACKAGE_PATH_NOT_EXPORTED` while this gate stays green.
@@ -45,7 +45,7 @@
  * this module spells out itself:
  *
  *   1. `pnpm install --frozen-lockfile` — the client's own first command. It
- *      resolves `@be-in-digital/*` FROM THE REGISTRY at the versions this sync
+ *      resolves `@be-yours/*` FROM THE REGISTRY at the versions this sync
  *      pinned a moment ago, which is the whole point: nothing else in this
  *      repository ever installs them. It also proves the lockfile the sync
  *      just generated is one a client's CI can install at all.

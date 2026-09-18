@@ -3,7 +3,7 @@
  * Pre-install guard.
  *
  * The boilerplate consumes private packages from GitHub Packages
- * (@be-in-digital/*). Those packages require a `NODE_AUTH_TOKEN`
+ * (@be-yours/*). Those packages require a `NODE_AUTH_TOKEN`
  * environment variable to be set during `pnpm install`.
  *
  * Without this token, `pnpm install` fails with an opaque
@@ -30,7 +30,7 @@ try {
   )
   const overrides = (pkg.pnpm && pkg.pnpm.overrides) || {}
   const engineDeps = Object.keys(pkg.dependencies || {}).filter((d) =>
-    d.startsWith("@be-in-digital/"),
+    d.startsWith("@be-yours/"),
   )
 
   const allLinked = engineDeps.every((d) =>
@@ -68,7 +68,7 @@ console.error("")
 console.error(`${RED}${BOLD}NODE_AUTH_TOKEN is not set.${RESET}`)
 console.error("")
 console.error(
-  "This boilerplate uses private packages (@be-in-digital/*) hosted on",
+  "This boilerplate uses private packages (@be-yours/*) hosted on",
 )
 console.error("GitHub Packages. Installation requires a Personal Access Token.")
 console.error("")

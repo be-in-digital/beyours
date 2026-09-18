@@ -1,4 +1,4 @@
-# @be-in-digital/cms
+# @be-yours/cms
 
 > Custom CMS with page/block registry, field definitions, media management, and content validation.
 
@@ -13,7 +13,7 @@
 ## Installation
 
 ```bash
-pnpm add @be-in-digital/cms
+pnpm add @be-yours/cms
 ```
 
 ## Registry System
@@ -23,7 +23,7 @@ The CMS uses a registry pattern to define pages and blocks.
 ### Initialize Registry
 
 ```typescript
-import { setCmsRegistry, getCmsRegistry } from "@be-in-digital/cms";
+import { setCmsRegistry, getCmsRegistry } from "@be-yours/cms";
 
 // Register your page and block definitions
 setCmsRegistry({
@@ -63,7 +63,7 @@ setCmsRegistry({
 ### Get Page Definition
 
 ```typescript
-import { getPageDefinition } from "@be-in-digital/cms";
+import { getPageDefinition } from "@be-yours/cms";
 
 const homePage = getPageDefinition("home");
 // { slug: "home", name: "Home Page", blocks: [...] }
@@ -95,7 +95,7 @@ Blocks are the building units of CMS pages. Each block has typed fields.
 object — so it runs unchanged in a Convex isolate, where there is no `File`.
 
 ```typescript
-import { validateMediaUpload } from "@be-in-digital/cms";
+import { validateMediaUpload } from "@be-yours/cms";
 
 const validation = validateMediaUpload("photo.jpg", "image/jpeg", 2_000_000);
 if (!validation.valid) {
@@ -106,14 +106,14 @@ if (!validation.valid) {
 
 ### SVG Sanitization
 
-`sanitizeSvg` ships from the `@be-in-digital/cms/sanitize` subpath, **not** from
+`sanitizeSvg` ships from the `@be-yours/cms/sanitize` subpath, **not** from
 the package barrel. It parses markup through DOMPurify, which needs a DOM, and
 the barrel is imported by Convex isolate modules that have none — re-exporting
 it made the whole backend fail to push. The reason is written out at the
 sanitize section of `packages/cms/src/index.ts`.
 
 ```typescript
-import { sanitizeSvg } from "@be-in-digital/cms/sanitize";
+import { sanitizeSvg } from "@be-yours/cms/sanitize";
 
 const result = sanitizeSvg(rawSvgString);
 result.sanitized;       // the cleaned SVG
@@ -127,7 +127,7 @@ DOM-free refusal check instead — regex-based, dependency-free, and enough to
 reject an upload before it is ever stored:
 
 ```typescript
-import { containsActiveContent, inspectSvgForActiveContent } from "@be-in-digital/cms";
+import { containsActiveContent, inspectSvgForActiveContent } from "@be-yours/cms";
 
 if (containsActiveContent(rawSvgString)) {
   // refuse the upload
@@ -142,7 +142,7 @@ const report = inspectSvgForActiveContent(rawSvgString);
 ### Validate Block Content
 
 ```typescript
-import { validateBlockValues } from "@be-in-digital/cms";
+import { validateBlockValues } from "@be-yours/cms";
 
 const result = validateBlockValues("hero", {
   title: "Welcome",

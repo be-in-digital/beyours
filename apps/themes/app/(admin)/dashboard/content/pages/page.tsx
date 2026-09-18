@@ -18,8 +18,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@be-in-digital/ui"
-import { getCmsGroups } from "@be-in-digital/cms"
+} from "@be-yours/ui"
+import { getCmsGroups } from "@be-yours/cms"
 
 interface CmsPageSummary {
   slug: string

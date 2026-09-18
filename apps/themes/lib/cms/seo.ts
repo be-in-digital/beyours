@@ -8,7 +8,7 @@
 import "server-only"
 import type { Metadata } from "next"
 import { cookies } from "next/headers"
-import { LOCALE_COOKIE_NAME, normalizeStoredLocale } from "@be-in-digital/core"
+import { LOCALE_COOKIE_NAME, normalizeStoredLocale } from "@be-yours/core"
 import { getStorePageData } from "@/lib/convex-server"
 import { resolveDefaultStoreSlug } from "@/lib/resolve-default-store"
 import { buildSeoMetadata } from "@/lib/seo"

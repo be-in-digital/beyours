@@ -10,8 +10,8 @@ import type {
   ImageToProductMode,
   ProductSuggestion,
   AnalyzeImageResult,
-} from "@be-in-digital/convex-schema/types"
-import { Button } from "@be-in-digital/ui"
+} from "@be-yours/convex-schema/types"
+import { Button } from "@be-yours/ui"
 import { adminRoutes } from "../../../config/admin-routes"
 import { useAdminStoreId, useAdminApi } from "../../../hooks/admin-hooks"
 import { slugify } from "../../../lib/formatters"

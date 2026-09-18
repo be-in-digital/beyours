@@ -14,8 +14,8 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@be-in-digital/ui"
-import { formatPrice } from "@be-in-digital/restaurant"
+} from "@be-yours/ui"
+import { formatPrice } from "@be-yours/restaurant"
 import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 

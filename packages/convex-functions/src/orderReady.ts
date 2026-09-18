@@ -8,7 +8,7 @@
  * was "missing status notifications and ETAs".
  *
  * ONE TRANSITION. `ready`, and nothing else — see `order-ready.ts` in
- * `@be-in-digital/core` for why an email per status change is four emails an
+ * `@be-yours/core` for why an email per status change is four emails an
  * order and a spam complaint waiting to happen.
  *
  * Pure decisions here; the rendering is in `core` and the sending is an action in
@@ -18,7 +18,7 @@
 
 // Type-only, so this module stays import-free at runtime: the shape belongs to
 // the schema that stores it, and restating it here would let the two drift.
-import type { NoticeFailureInput } from "@be-in-digital/convex-schema"
+import type { NoticeFailureInput } from "@be-yours/convex-schema"
 
 /** Why this order gets no "it's ready" notice. `null` means it does. */
 export type OrderReadyRefusal =

@@ -1,5 +1,5 @@
 {
-  "_comment": "Template EAS (Expo Application Services). Renommé en eas.json par l'activation mobile. Secret EAS requis : NODE_AUTH_TOKEN (PAT read:packages pour @be-in-digital/*) — eas secret:create --scope project --name NODE_AUTH_TOKEN --value <token>",
+  "_comment": "Template EAS (Expo Application Services). Renommé en eas.json par l'activation mobile. Secret EAS requis : NODE_AUTH_TOKEN (PAT read:packages pour @be-yours/*) — eas secret:create --scope project --name NODE_AUTH_TOKEN --value <token>",
   "cli": {
     "version": ">= 14.0.0",
     "appVersionSource": "remote"

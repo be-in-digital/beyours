@@ -15,7 +15,7 @@ import {
   EmptyHeader,
   EmptyTitle,
   Button,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { Search } from "lucide-react"
 import { TicketCard } from "./ticket-card"
 

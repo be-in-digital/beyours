@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { uberEats } from "@be-in-digital/integrations"
+import { uberEats } from "@be-yours/integrations"
 import {
   classifyUberEvent,
   refusePlatformStatus,
@@ -7,7 +7,7 @@ import {
   resolveStoreIntegration,
   toWebhookOrderItems,
 } from "../platformWebhook"
-import { ORDER_STATUSES } from "@be-in-digital/convex-schema"
+import { ORDER_STATUSES } from "@be-yours/convex-schema"
 import { createFromWebhook } from "../orders"
 
 // ---------------------------------------------------------------------------

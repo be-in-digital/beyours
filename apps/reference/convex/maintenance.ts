@@ -20,13 +20,13 @@ import {
 } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { v } from "convex/values"
-import { getAuthUser } from "@be-in-digital/convex-functions/auth"
-import * as maintenanceDefs from "@be-in-digital/convex-functions/maintenance"
+import { getAuthUser } from "@be-yours/convex-functions/auth"
+import * as maintenanceDefs from "@be-yours/convex-functions/maintenance"
 import {
   hasPermission,
   Role,
   type Permission,
-} from "@be-in-digital/core/auth/rbac"
+} from "@be-yours/core/auth/rbac"
 
 const PERM_SYSTEM_READ = "system:read" as Permission
 

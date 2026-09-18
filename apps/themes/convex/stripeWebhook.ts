@@ -6,7 +6,7 @@ import {
   assertSettlesOrder,
   deliberateSettlementRefusal,
   paymentStatusAfterSettlement,
-} from "@be-in-digital/convex-functions/paymentSettlement";
+} from "@be-yours/convex-functions/paymentSettlement";
 
 /**
  * Stripe webhook handler (Convex HTTP action).

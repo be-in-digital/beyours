@@ -1,7 +1,7 @@
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
-import { claimMenuSyncWindow } from "@be-in-digital/convex-functions/rateLimit";
+import { claimMenuSyncWindow } from "@be-yours/convex-functions/rateLimit";
 
 /**
  * Book the platform menu push for the establishments a write touched.

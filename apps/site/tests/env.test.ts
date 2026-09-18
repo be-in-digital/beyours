@@ -108,7 +108,7 @@ describe("validateSiteEnv — format of Convex-side vars", () => {
         SITE_URL: "https://beyours.fr",
         STRIPE_SECRET_KEY: "sk_test_1",
         STRIPE_WEBHOOK_SECRET: "whsec_1",
-        CONTACT_EMAIL: "contact@beyours.fr",
+        CONTACT_EMAIL: "contact@be-yours.fr",
         BOOKING_URL: "https://bookself.app/beyours/lancement",
         // Well-formed AND consistent with the declared regime — this case is
         // about the format checks, and the regime cross-check would otherwise

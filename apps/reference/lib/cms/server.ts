@@ -7,9 +7,9 @@
 
 import "server-only"
 import { cookies } from "next/headers"
-import { LOCALE_COOKIE_NAME, normalizeStoredLocale } from "@be-in-digital/core"
+import { LOCALE_COOKIE_NAME, normalizeStoredLocale } from "@be-yours/core"
 import { fetchCmsPageData } from "@/lib/convex-server"
-import type { CmsFieldValue, CmsBlockValues } from "@be-in-digital/cms"
+import type { CmsFieldValue, CmsBlockValues } from "@be-yours/cms"
 import type { Id } from "@/convex/_generated/dataModel"
 
 // ---------------------------------------------------------------------------

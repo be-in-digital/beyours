@@ -19,7 +19,7 @@
  * needing more can join on `targetUserId`.
  */
 
-import { Role } from "@be-in-digital/core/auth/rbac"
+import { Role } from "@be-yours/core/auth/rbac"
 
 /* ------------------------------------------------------------------ */
 /* Actions                                                             */

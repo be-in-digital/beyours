@@ -422,7 +422,7 @@ describe("importing a CSV", () => {
 
     await t.run(async (ctx) => {
       const defs = await import(
-        "@be-in-digital/convex-functions/emailSubscribers"
+        "@be-yours/convex-functions/emailSubscribers"
       )
       return defs.importBatch.handler(ctx, {
         storeId,

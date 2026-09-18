@@ -9,7 +9,7 @@
  */
 
 import { ConvexError, v } from "convex/values"
-import { assertReservationUrl, isPublishedStore } from "@be-in-digital/convex-schema"
+import { assertReservationUrl, isPublishedStore } from "@be-yours/convex-schema"
 import { grantCreatedStoreAccess } from "./auth"
 import {
   assertStoreHasNoInvoices,
@@ -429,7 +429,7 @@ export const updateSoundConfig = {
  * The narrowest and widest auto-dismiss windows that may be stored.
  *
  * Paired with `MIN_AUTO_DISMISS_MINUTES` / `MAX_AUTO_DISMISS_MINUTES` in
- * `@be-in-digital/admin`'s `kitchen-display.ts`, which clamps the input to the
+ * `@be-yours/admin`'s `kitchen-display.ts`, which clamps the input to the
  * same range. The editor's clamp keeps the form honest; this is the one that
  * holds, because a mutation is callable by anything holding `stores:write` and
  * the screen it governs is the one a customer is watching.

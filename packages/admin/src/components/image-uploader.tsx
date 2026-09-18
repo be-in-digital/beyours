@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react"
 import { Upload, X, Loader2, AlertCircle } from "lucide-react"
-import { Button, Label } from "@be-in-digital/ui"
+import { Button, Label } from "@be-yours/ui"
 
 type UploadState = "idle" | "uploading" | "error"
 

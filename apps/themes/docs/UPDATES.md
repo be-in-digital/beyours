@@ -7,7 +7,7 @@
 │ beyours              │  logique métier + shell de référence
 │ (monorepo, changesets)   │  apps/reference + packages/*
 └─────────┬────────────────┘
-          │ ① publish npm (@be-in-digital/* → GitHub Packages)
+          │ ① publish npm (@be-yours/* → GitHub Packages)
           │ ② sync du shell (maintainer, voir § Maintenance)
           ▼
 ┌──────────────────────────┐
@@ -167,9 +167,9 @@ flag must not brick a paying client's updates.
 actually freezes a lapsed site is revoking its access to the two private
 sources:
 
-1. **git channel** — remove the client from `be-in-digital/beyours-boilerplate`
+1. **git channel** — remove the client from `be-yours/beyours-boilerplate`
 2. **npm channel** — revoke the `read:packages` PAT in their `NODE_AUTH_TOKEN`
-   (and their access to the `@be-in-digital/*` packages)
+   (and their access to the `@be-yours/*` packages)
 
 Do those, and the client hits a raw `403` with no explanation. The gate exists
 so they read a sentence about their contract first.
@@ -199,7 +199,7 @@ the site's sentinel; until then the update scripts make no call at all.
 
 - One Convex deployment per client; storefront on ISR/static by default.
 - `NODE_AUTH_TOKEN`: a fine-grained `read:packages` PAT scoped to
-  `@be-in-digital/*`, rotated every 90 days (CI: the `GH_PACKAGES_TOKEN`
+  `@be-yours/*`, rotated every 90 days (CI: the `GH_PACKAGES_TOKEN`
   secret).
 - Engine rollback: `pnpm update:engine` with the previous version pinned in
   `package.json` (git revert the update commit).

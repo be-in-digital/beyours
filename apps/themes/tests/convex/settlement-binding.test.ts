@@ -38,7 +38,7 @@ const ORDER_GUARD = "paymentStatusAfterSettlement"
 /**
  * A settlement path, and where its source lives.
  *
- * `engine` names the package for a path that lives in `@be-in-digital/*` rather
+ * `engine` names the package for a path that lives in `@be-yours/*` rather
  * than in this app's `convex/`. That is not a detail: the sixth path is in the
  * engine, `code()` read only `CONVEX_DIR`, and so the whole of this file — 32
  * assertions — was green while that path carried the exact defect the file
@@ -53,7 +53,7 @@ function sourcePath(entry: EntryPoint): string {
   const file = enginePackageFile(entry.engine, `src/${entry.module}.ts`)
   if (file === null) {
     throw new Error(
-      `settlement guard: @be-in-digital/${entry.engine}/src/${entry.module}.ts is not in this ` +
+      `settlement guard: @be-yours/${entry.engine}/src/${entry.module}.ts is not in this ` +
         `checkout, so ${entry.module}.${entry.fn} would be checked against nothing`
     )
   }
@@ -131,7 +131,7 @@ const SETTLEMENT_ENTRY_POINTS: Array<{ module: string; fn: string }> = [
 /**
  * The sixth, and the reason this file learned to read outside `convex/`.
  *
- * `settleFromChargeEvent` lives in `@be-in-digital/convex-functions`, is
+ * `settleFromChargeEvent` lives in `@be-yours/convex-functions`, is
  * reached from `stripeWebhook`'s `payment_intent.succeeded` branch, and settles
  * money exactly like the five above. It was named in the ordering docblock
  * below — as one of the six, with its offsets measured — and asserted by

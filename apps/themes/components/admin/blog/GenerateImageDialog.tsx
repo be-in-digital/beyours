@@ -16,7 +16,7 @@ import {
   DialogTitle,
   DialogFooter,
   Textarea,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 interface GenerateImageDialogProps {
   open: boolean

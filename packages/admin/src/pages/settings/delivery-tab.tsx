@@ -12,7 +12,7 @@ import {
   CardTitle,
   AddressAutocomplete,
   type AddressValue,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { centsToEuros } from "../../lib/formatters"
 import { GOOGLE_MAPS_API_KEY } from "./settings-constants"
 import type { SimulationResult } from "./settings-types"

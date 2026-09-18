@@ -27,7 +27,7 @@
  *
  * WHERE IT IS ENFORCED. In the three "start a card payment" actions, which is
  * the guarantee, and in `isPaymentMethodSelectable`
- * (`@be-in-digital/restaurant`), which is what stops the diner reaching them.
+ * (`@be-yours/restaurant`), which is what stops the diner reaching them.
  * Pure and dependency-free so both a Convex action and the browser can hold
  * the same rule.
  */

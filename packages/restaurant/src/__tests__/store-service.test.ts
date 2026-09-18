@@ -13,7 +13,7 @@ import {
   getStoreDistance,
   sortStoresByDistance,
 } from '../services/store'
-import { isWithinBusinessHours } from '@be-in-digital/convex-schema'
+import { isWithinBusinessHours } from '@be-yours/convex-schema'
 import type { BusinessHours, Address, StoreDoc } from '../types'
 
 /**
@@ -35,7 +35,7 @@ const LOCAL = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 describe('Store Service', () => {
   describe('isStoreOpen agrees with the shared rule', () => {
-    // `isOpen` is `isWithinBusinessHours` from `@be-in-digital/convex-schema`,
+    // `isOpen` is `isWithinBusinessHours` from `@be-yours/convex-schema`,
     // which is also what `orders.create` asks. The storefront's disabled button
     // and the mutation's refusal have to be the same answer: they were not, and
     // an order at 4 a.m. was the result.

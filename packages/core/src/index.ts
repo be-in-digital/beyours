@@ -1,5 +1,5 @@
 /**
- * @be-in-digital/core
+ * @be-yours/core
  *
  * Core package for BeYours Engine
  * Provides essential features: auth, i18n, AWS services, Sentry

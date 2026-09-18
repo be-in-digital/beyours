@@ -23,15 +23,15 @@ cd my-restaurant
 First, create `.npmrc` at the project root:
 
 ```ini
-@be-in-digital:registry=https://npm.pkg.github.com
+@be-yours:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
 Then install:
 
 ```bash
-pnpm add @be-in-digital/ui @be-in-digital/core @be-in-digital/restaurant
-pnpm add @be-in-digital/convex-schema @be-in-digital/convex-functions
+pnpm add @be-yours/ui @be-yours/core @be-yours/restaurant
+pnpm add @be-yours/convex-schema @be-yours/convex-functions
 pnpm add convex
 ```
 
@@ -50,7 +50,7 @@ import {
   productsTable,
   ordersTable,
   categoriesTable,
-} from "@be-in-digital/convex-schema/tables";
+} from "@be-yours/convex-schema/tables";
 
 export default defineSchema({
   stores: storesTable,
@@ -66,8 +66,8 @@ Create `app/(storefront)/menu/page.tsx`:
 
 `ProductCard` is a **UI** component, not a restaurant one: it lives in
 `packages/ui/src/components/restaurant/` and ships from the
-`@be-in-digital/ui/restaurant` subpath (the root barrel re-exports it too).
-`@be-in-digital/restaurant` has no React components at all — it is stores,
+`@be-yours/ui/restaurant` subpath (the root barrel re-exports it too).
+`@be-yours/restaurant` has no React components at all — it is stores,
 services, hooks and types.
 
 Its props are flat values, not a product document: `name`, `description`,
@@ -76,10 +76,10 @@ Its props are flat values, not a product document: `name`, `description`,
 ```tsx
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Container, Section, PageHeader } from "@be-in-digital/ui";
-import { ProductCard } from "@be-in-digital/ui/restaurant";
-import { useCartStore } from "@be-in-digital/restaurant/stores";
-import { formatPrice } from "@be-in-digital/admin/lib";
+import { Container, Section, PageHeader } from "@be-yours/ui";
+import { ProductCard } from "@be-yours/ui/restaurant";
+import { useCartStore } from "@be-yours/restaurant/stores";
+import { formatPrice } from "@be-yours/admin/lib";
 
 export default function MenuPage() {
   const products = useQuery(api.products.list);
@@ -142,10 +142,10 @@ and a redirect that acts on that sends a customer with a full basket back to
 ```tsx
 "use client";
 
-import { Container, Section, Button, Badge } from "@be-in-digital/ui";
-import { useCartStore } from "@be-in-digital/restaurant/stores";
-import { useCartHydrated } from "@be-in-digital/restaurant/hooks";
-import { formatPrice } from "@be-in-digital/admin/lib";
+import { Container, Section, Button, Badge } from "@be-yours/ui";
+import { useCartStore } from "@be-yours/restaurant/stores";
+import { useCartHydrated } from "@be-yours/restaurant/hooks";
+import { formatPrice } from "@be-yours/admin/lib";
 
 const TAX_RATE = 10;
 const DELIVERY_FEE = 0;

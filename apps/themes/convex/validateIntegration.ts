@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { getPackageEnv, isSandbox } from "@be-in-digital/core/env";
+import { getPackageEnv, isSandbox } from "@be-yours/core/env";
 
 // Input validation patterns
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -156,7 +156,7 @@ export const validate = action({
 
       try {
         const { uberEats } = await import(
-          "@be-in-digital/integrations"
+          "@be-yours/integrations"
         );
 
         if (sandboxMode) {
@@ -229,7 +229,7 @@ export const validate = action({
 
       try {
         const { deliveroo } = await import(
-          "@be-in-digital/integrations"
+          "@be-yours/integrations"
         );
 
         // Step 1: Validate credentials via OAuth

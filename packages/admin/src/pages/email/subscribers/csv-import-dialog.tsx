@@ -14,8 +14,8 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@be-in-digital/ui"
-import { parseSubscriberCsv } from "@be-in-digital/marketing"
+} from "@be-yours/ui"
+import { parseSubscriberCsv } from "@be-yours/marketing"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
 

@@ -21,7 +21,7 @@ components, 94 convex wrappers). A 100% npm "thin" shell is not possible
 today: Next.js requires physical route files and the shell is not packaged.
 So the boilerplate copies the reference app verbatim — that app is the product
 being sold — and the business logic stays consumed through the
-`@be-in-digital/*` npm packages (GitHub Packages, TS source).
+`@be-yours/*` npm packages (GitHub Packages, TS source).
 
 Accepted consequence: the boilerplate has to be resynced whenever the engine
 shell changes (procedure in § UPDATES.md, minimal patched delta: 2 app files

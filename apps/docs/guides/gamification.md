@@ -49,10 +49,10 @@ The gamification system increases customer engagement by offering games (Wheel o
 ### 1. Install Packages
 
 ```bash
-pnpm add @be-in-digital/admin @be-in-digital/convex-schema @be-in-digital/convex-functions
+pnpm add @be-yours/admin @be-yours/convex-schema @be-yours/convex-functions
 ```
 
-`@be-in-digital/admin` carries both halves of the feature: the dashboard screens
+`@be-yours/admin` carries both halves of the feature: the dashboard screens
 under `pages/games` and the customer-facing player flow under `/game`.
 
 ### 2. Add Schema Tables
@@ -66,7 +66,7 @@ import {
   prizesTable,
   gamePlaysTable,
   prizeRedemptionsTable,
-} from "@be-in-digital/convex-schema/tables";
+} from "@be-yours/convex-schema/tables";
 
 export default defineSchema({
   // ... other tables
@@ -82,11 +82,11 @@ export default defineSchema({
 ### 3. Create Game Route
 
 The player flow is a packaged component, but it is **not** in
-`@be-in-digital/restaurant` — there is no `GameFlow` anywhere in the engine. The
-eleven player screens live in `@be-in-digital/admin/game` and are exported as
+`@be-yours/restaurant` — there is no `GameFlow` anywhere in the engine. The
+eleven player screens live in `@be-yours/admin/game` and are exported as
 `GamePlayerFlow`.
 
-They are deliberately kept off the `@be-in-digital/admin` root barrel:
+They are deliberately kept off the `@be-yours/admin` root barrel:
 `game/lib/sounds.ts` ends in a module-scope `new GameAudioEngine()`, and pulling
 that barrel into the package root would drag the audio and particle engines into
 every dashboard bundle. Import from the `/game` subpath.
@@ -103,7 +103,7 @@ site.
 "use client";
 
 import { useParams } from "next/navigation";
-import { GamePlayerFlow } from "@be-in-digital/admin/game";
+import { GamePlayerFlow } from "@be-yours/admin/game";
 import { api } from "@/convex/_generated/api";
 
 export default function GamePageContent() {
@@ -202,7 +202,7 @@ await createRequiredAction({
 
 ### Supported Action Types
 
-`RequiredActionType` in `@be-in-digital/convex-schema` is a closed union of five
+`RequiredActionType` in `@be-yours/convex-schema` is a closed union of five
 values. There is no `newsletter` and no `custom` — a free-form action type does
 not exist.
 
@@ -295,7 +295,7 @@ await redeemByCode({
 
 It throws by name rather than returning a flag: `REDEMPTION_NOT_FOUND`,
 `ALREADY_REDEEMED`, `REDEMPTION_CANCELLED`, `REDEMPTION_EXPIRED`. The staff-facing
-screen is the `PrizeTicket` component from `@be-in-digital/admin/game`.
+screen is the `PrizeTicket` component from `@be-yours/admin/game`.
 
 ## Admin Controls
 

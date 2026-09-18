@@ -36,7 +36,7 @@ const ORDERS_URL = "/dashboard/orders"
 /** The restaurant `convex/seedFixture.ts` creates. */
 const STORE_SLUG = "chez-luigi-test"
 
-/** Where `@be-in-digital/restaurant` persists the establishment being administered. */
+/** Where `@be-yours/restaurant` persists the establishment being administered. */
 const ADMIN_STORE_SELECTION_KEY = "beyours-admin-store"
 
 /**

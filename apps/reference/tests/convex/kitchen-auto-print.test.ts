@@ -21,9 +21,9 @@
 
 import { convexTest } from "convex-test"
 import { afterEach, describe, expect, test } from "vitest"
-import { uberEats } from "@be-in-digital/integrations"
-import { toKitchenTicketItemsFromPlatform } from "@be-in-digital/convex-functions/orders"
-import { ACTIVE_TICKET_LIMIT } from "@be-in-digital/convex-functions/kitchenTickets"
+import { uberEats } from "@be-yours/integrations"
+import { toKitchenTicketItemsFromPlatform } from "@be-yours/convex-functions/orders"
+import { ACTIVE_TICKET_LIMIT } from "@be-yours/convex-functions/kitchenTickets"
 import { api, internal } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"

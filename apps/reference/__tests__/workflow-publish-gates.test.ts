@@ -10,7 +10,7 @@ import { parse } from "yaml"
  * `publish-mirror.yml` did. It triggers on every push to `main` that touches
  * `apps/themes/**`, and the job carried no `needs:` — its only `if:` guarded
  * the `workflow_run` path. So a push rsynced `apps/themes` to
- * `be-in-digital/beyours-boilerplate` IN PARALLEL with the checks that would
+ * `be-yours/beyours-boilerplate` IN PARALLEL with the checks that would
  * have said it was broken, and that repository is the one every client site is
  * cloned from and merges from with `pnpm update:template`. Branch protection
  * did not close it either: `enforce_admins` is off and zero reviews are

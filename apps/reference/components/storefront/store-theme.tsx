@@ -1,6 +1,6 @@
 "use client"
 
-import { buildBrandingCss } from "@be-in-digital/ui/branding"
+import { buildBrandingCss } from "@be-yours/ui/branding"
 
 import { useStoreId } from "@/lib/hooks/use-store-id"
 

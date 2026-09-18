@@ -1,7 +1,7 @@
 /**
  * Uber Direct — mapping courier status onto our order status
  *
- * The order status machine (`@be-in-digital/convex-schema`) is deliberately
+ * The order status machine (`@be-yours/convex-schema`) is deliberately
  * narrow, and that shapes this mapping more than the Uber vocabulary does:
  *
  *   out_for_delivery -> delivered        (the only move out of a live delivery)

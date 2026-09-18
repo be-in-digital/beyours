@@ -4,12 +4,12 @@ import type { ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { toKitchenTicketItemsFromPlatform } from "@be-in-digital/convex-functions/orders";
+import { toKitchenTicketItemsFromPlatform } from "@be-yours/convex-functions/orders";
 import {
   classifyUberEvent,
   resolveStoreIntegration,
   toWebhookOrderItems,
-} from "@be-in-digital/convex-functions/platformWebhook";
+} from "@be-yours/convex-functions/platformWebhook";
 
 type StoreIntegrationRecord = {
   _id: Id<"storeIntegrations">
@@ -71,7 +71,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     const signature = request.headers.get("x-uber-signature") ?? ""
 
     // Read credentials from environment variables (BeYours platform credentials)
-    const { getPackageEnv, isSandbox } = await import("@be-in-digital/core/env")
+    const { getPackageEnv, isSandbox } = await import("@be-yours/core/env")
     const pkg = getPackageEnv()
     const clientId = pkg.UBER_EATS_CLIENT_ID
     const clientSecret = pkg.UBER_EATS_CLIENT_SECRET
@@ -83,7 +83,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     }
 
     // Verify webhook signature using dedicated webhook secret (falls back to client secret)
-    const { uberEats } = await import("@be-in-digital/integrations")
+    const { uberEats } = await import("@be-yours/integrations")
     const signingSecret = webhookSecret || clientSecret
     const isValid = await uberEats.verifyUberEatsSignature(rawBody, signature, signingSecret)
 
@@ -408,14 +408,14 @@ async function settleWithUber(
   }
 ): Promise<void> {
   const { action, orderId, externalOrderId, attempt } = params
-  const { getPackageEnv, isSandbox } = await import("@be-in-digital/core/env")
+  const { getPackageEnv, isSandbox } = await import("@be-yours/core/env")
   const pkg = getPackageEnv()
   const credentials = {
     clientId: pkg.UBER_EATS_CLIENT_ID as string,
     clientSecret: pkg.UBER_EATS_CLIENT_SECRET as string,
     sandboxMode: isSandbox("uberEats"),
   }
-  const { uberEats } = await import("@be-in-digital/integrations")
+  const { uberEats } = await import("@be-yours/integrations")
 
   try {
     if (action === "accept") {

@@ -12,7 +12,7 @@
  * sends this identifier from the same bundle, so a play records the wording
  * that was on screen rather than the wording the server currently believes is
  * current. `GAME_CONSENT_NOTICE_VERSIONS` in
- * `@be-in-digital/convex-functions/gamePlay` is the set the server accepts:
+ * `@be-yours/convex-functions/gamePlay` is the set the server accepts:
  * reword the text, bump the version here, add it there. `consent-copy.test.ts`
  * pins the text to the version so the first two cannot be done separately.
  */

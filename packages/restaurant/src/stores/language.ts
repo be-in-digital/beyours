@@ -13,8 +13,8 @@ import {
   getLocaleFromCookie,
   createTranslator,
   mergeUiStrings,
-} from '@be-in-digital/core'
-import type { TranslatorFunction } from '@be-in-digital/core'
+} from '@be-yours/core'
+import type { TranslatorFunction } from '@be-yours/core'
 
 /**
  * Language document from Convex (subset of fields needed client-side)

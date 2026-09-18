@@ -5,7 +5,7 @@ import {
   RATE_LIMITS,
   consumeRateLimit,
   type RateLimitName,
-} from "@be-in-digital/convex-functions/rateLimit";
+} from "@be-yours/convex-functions/rateLimit";
 
 /**
  * The rate limiter, reachable from an ACTION.

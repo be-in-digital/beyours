@@ -19,7 +19,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { UtensilsCrossed } from "lucide-react"
 import { formatPrice } from "../../lib/formatters"
 import type { DashboardProduct } from "./use-dashboard-stats"

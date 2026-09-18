@@ -21,7 +21,7 @@
  * Count them there rather than here if the number matters to you.)
  */
 
-import { hasPermission, type Permission, type Role } from "@be-in-digital/core"
+import { hasPermission, type Permission, type Role } from "@be-yours/core"
 
 /**
  * The permission the server demands before it will write `store.branding`.

@@ -2,7 +2,7 @@
  * What extension the write half of the storage policy stores a file under.
  *
  * The route kept its own six-entry MIME-to-extension map while
- * `@be-in-digital/cms`'s `MIME_TO_EXT` — which calls itself the single source
+ * `@be-yours/cms`'s `MIME_TO_EXT` — which calls itself the single source
  * of truth and is what the presigned Convex flow uses — held twelve. Anything
  * the shared list knew and the copy did not fell through to `"bin"`, and
  * `ALLOWED_MIME_TYPES.cms` admits six such types: mp4, webm, and the three
@@ -13,8 +13,8 @@
  * one an upload actually goes through was the wrong one.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { ALLOWED_MIME_TYPES } from "@be-in-digital/core"
-import { getExtensionFromMimeType } from "@be-in-digital/cms"
+import { ALLOWED_MIME_TYPES } from "@be-yours/core"
+import { getExtensionFromMimeType } from "@be-yours/cms"
 
 const send = vi.fn()
 
@@ -29,7 +29,7 @@ vi.mock("@/lib/convex", () => ({
   fetchAuthQuery: async () => ({ role: "client_admin" }),
 }))
 
-vi.mock("@be-in-digital/cms/sanitize", () => ({
+vi.mock("@be-yours/cms/sanitize", () => ({
   sanitizeSvg: (svg: string) => ({ sanitized: svg, removed: [] }),
 }))
 

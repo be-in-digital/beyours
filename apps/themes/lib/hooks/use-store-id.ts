@@ -8,7 +8,7 @@ import {
   useCartStore,
   useNearestStore,
   type StoreDoc,
-} from "@be-in-digital/restaurant"
+} from "@be-yours/restaurant"
 
 /**
  * Hook: useStoreId

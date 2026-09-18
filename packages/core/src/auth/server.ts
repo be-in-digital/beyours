@@ -8,7 +8,7 @@
  * │  Usage:                                                     │
  * │  ┌───────────────────────────────────────────────────┐      │
  * │  │ import { requireAuth, requireRole }               │      │
- * │  │   from '@be-in-digital/core'                          │      │
+ * │  │   from '@be-yours/core'                          │      │
  * │  │                                                   │      │
  * │  │ export async function GET() {                     │      │
  * │  │   const session = await requireAuth()             │      │

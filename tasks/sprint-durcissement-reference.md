@@ -56,7 +56,7 @@ well — exactly the risk anticipated in the register (section 12), and caught b
 the type-check.
 
 **S0-9 — a flaky test spotted in passing.** During a full `pnpm test`,
-`@be-in-digital/core` reported `1 failed | 170 passed`, then **190/190 over the
+`@be-yours/core` reported `1 failed | 170 passed`, then **190/190 over the
 next three runs**. The suspects are the time-sensitive tests in that same
 package: `ses.test.ts` ("splits into batches of 50 emails", 9.4 s) and
 `i18n.test.ts` (retry/backoff, 3.1 s). A flaky test is a defect in its own right
@@ -541,7 +541,7 @@ through, **and the kitchen still reads its own screen**. That was the real risk
 in S2-4: locking the kitchen out of the tool it uses.
 
 **S2-11 — two ESLint rules**
-(`@be-in-digital/convex-functions/eslint/convex-auth`, moved on 21 August from
+(`@be-yours/convex-functions/eslint/convex-auth`, moved on 21 August from
 `apps/reference/eslint-rules/`), applied to `convex/*.ts`:
 
 | Rule | Forbids |
@@ -622,7 +622,7 @@ therefore cannot be moved as it stands — it has to become a **factory**
 (`createStoreFunctions({ query, mutation })`) that each app instantiates with its
 own generated builders.
 
-> Note: `@beyours/site` fails the type-check on `@calcom/embed-react`, declared in
+> Note: `@be-yours/site` fails the type-check on `@calcom/embed-react`, declared in
 > its `package.json` but absent from this worktree's `node_modules`. A
 > pre-existing defect, unrelated to these tickets.
 
@@ -691,7 +691,7 @@ red. Nothing else counts.
 | **S0-2** | Remove the silent green: the job fails if the suite is skipped or if `expected === 0` | `e2e.yml:64-72,100`, `e2e-status` job `:126-143` | A PR with 0 tests executed is **red** |
 | **S0-3** | Repair the specs written against a stale interface | `e2e/auth/sign-in.spec.ts:10,19,29`, `sign-up.spec.ts:80`, `storefront/public-pages.spec.ts:60,68,91,99,122,130`, `storefront-layout.spec.ts:18,28,52` | Those specs pass against the real (French) UI, without adapting the UI to the test |
 | **S0-4** | Eliminate the `if (hasX) { …assertions… }` pattern with no `else` — **80 occurrences across 15 specs**; replace with seeded fixtures or real, visible `test.skip` | `admin/store-detail.spec.ts` (17), `order-detail.spec.ts` (10), `inventory.spec.ts` (10), `kitchen.spec.ts` (7), `email-campaigns.spec.ts` (7), + 10 others | Zero assertions locked inside a condition with no `else`; skipped tests show as *skipped*, not *passed* |
-| **S0-5** | Tighten the console-error filter: drop `/convex/i`, `/401/`, `/403/`, `/500 …/`, `/Internal Server Error/i`, `/Failed to fetch/i`, `/Module not found/i`, `/@be-in-digital/i` | `e2e/helpers/console.helpers.ts:7-32` | The 13 "no console error" tests detect a simulated backend failure |
+| **S0-5** | Tighten the console-error filter: drop `/convex/i`, `/401/`, `/403/`, `/500 …/`, `/Internal Server Error/i`, `/Failed to fetch/i`, `/Module not found/i`, `/@be-yours/i` | `e2e/helpers/console.helpers.ts:7-32` | The 13 "no console error" tests detect a simulated backend failure |
 | **S0-6** | Deterministic e2e seed: establishment, catalogue, orders, tickets — enough to make the 80 conditions of S0-4 unnecessary | `apps/reference/scripts/seed-users.mts` (fix the missing `setAuth`, which makes profile creation fail silently) + a new data seed | A fresh database produces a stable data set; the script fails loudly if it could not write |
 | **S0-7** | Install `convex-test` in `packages/convex-functions` (already used at `^0.0.44` in `apps/site`) and set coverage thresholds | `packages/convex-functions/package.json`, the app's and the package's `vitest.config.ts` | `pnpm test` fails below the threshold; a first authorization test runs |
 | **S0-8** | **Bite proof**: deliberately break an assertion, an auth guard and a total computation; verify CI goes red each time; document the procedure | `tasks/` (appendix to this document) | Three reds obtained and documented. **This is the sprint gate.** |
@@ -771,7 +771,7 @@ the 102 `storeQuery`/`storeMutation` functions declare no `permission:`** (only
 | **S3-8** | Scope and cap `getPresignedUploadUrl` (no `requireStoreAccess`, no size constraint on the presigned URL) | An object of arbitrary size written by any account | `convex/storageUpload.ts:68-117` |
 | **S3-9** | A dedicated secret for `api/email/send` instead of reusing `BETTER_AUTH_SECRET`; validate that `resetLink` belongs to the domain | The session signing key doubles as an API token; an arbitrary `resetLink` means phishing from a verified domain | `app/api/email/send/route.ts:4`, `packages/core/src/aws/ses/route-handler.ts:21` |
 | **S3-10** | Validate the 6 API routes with Zod, as `CLAUDE.md` requires | Zero Zod today; only a manual regex in `contact-service` | `app/api/**/route.ts` |
-| **S3-11** | ✅ **closed** — settled as *private bucket* (#158). One `buildMediaUrl` in `@be-in-digital/core/aws/media-url`; the direct S3 endpoint form is gone from all 16 files and from `remotePatterns` | One of the two assumptions was false — so one of the two protections was illusory | [S3 bucket policy](../apps/docs/deployment/s3-bucket-policy.md) |
+| **S3-11** | ✅ **closed** — settled as *private bucket* (#158). One `buildMediaUrl` in `@be-yours/core/aws/media-url`; the direct S3 endpoint form is gone from all 16 files and from `remotePatterns` | One of the two assumptions was false — so one of the two protections was illusory | [S3 bucket policy](../apps/docs/deployment/s3-bucket-policy.md) |
 | **S3-12** | Webhook idempotency: store `sequence_guid` / `event_id` to reject replays | A captured signed payload is replayable indefinitely | `deliverooWebhookHandler.ts`, `uberEatsWebhook.ts` |
 | **S3-13** | Fix the Uber Eats webhook's multi-tenant attribution: when `fetchOrder` fails, the integration chosen is `allIntegrations[0]` | One restaurant's order lands in another's | `convex/uberEatsWebhook.ts:110-112` |
 
@@ -2376,7 +2376,7 @@ have silently returned `[]` to the first person who used it.
 
 ### What was ruled out
 
-No duplication of `zustand` nor of `@be-in-digital/restaurant`: a single resolved
+No duplication of `zustand` nor of `@be-yours/restaurant`: a single resolved
 copy, unlike last week's Convex case. Verified with `readlink` on all three
 locations.
 
@@ -2558,7 +2558,7 @@ an inline comment requires a space before the `#`.
 **`data-slot="card"` had never reached the application.** I had claimed to have
 verified it in the build; that was false — my check covered other components.
 `packages/ui` is consumed from `dist` and I had not rebuilt the package. A
-`pnpm --filter @be-in-digital/ui build` was enough, and **17 more tests went
+`pnpm --filter @be-yours/ui build` was enough, and **17 more tests went
 green**.
 
 ### The test that started all this work is green

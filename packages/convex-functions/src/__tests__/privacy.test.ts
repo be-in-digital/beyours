@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { schema } from "@be-in-digital/convex-schema"
+import { schema } from "@be-yours/convex-schema"
 import {
   ANONYMISED_CUSTOMER_NAME,
   DEFAULT_CUSTOMER_RETENTION_DAYS,

@@ -1,5 +1,5 @@
 // PATCH BOILERPLATE vs engine:
-//  1. transpilePackages extended — the @be-in-digital/* packages are installed
+//  1. transpilePackages extended — the @be-yours/* packages are installed
 //     from GitHub Packages as TypeScript source (not as workspace packages),
 //     so Next has to transpile them explicitly.
 //  2. images.remotePatterns driven by site.config.ts (client zone).
@@ -37,7 +37,7 @@ function cdnPattern() {
   }
 }
 
-// engine-link mode (pnpm engine:link): the @be-in-digital/* packages are
+// engine-link mode (pnpm engine:link): the @be-yours/* packages are
 // symlinks to a local clone outside the project. Turbopack rejects files
 // outside the root — so we widen the tracing root to the common ancestor
 // computed by scripts/engine-link.js. Without the marker file (normal
@@ -59,15 +59,15 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   transpilePackages: [
-    "@be-in-digital/admin",
-    "@be-in-digital/cms",
-    "@be-in-digital/convex-functions",
-    "@be-in-digital/convex-schema",
-    "@be-in-digital/core",
-    "@be-in-digital/integrations",
-    "@be-in-digital/marketing",
-    "@be-in-digital/restaurant",
-    "@be-in-digital/ui",
+    "@be-yours/admin",
+    "@be-yours/cms",
+    "@be-yours/convex-functions",
+    "@be-yours/convex-schema",
+    "@be-yours/core",
+    "@be-yours/integrations",
+    "@be-yours/marketing",
+    "@be-yours/restaurant",
+    "@be-yours/ui",
     "@convex-dev/better-auth",
   ],
   async headers() {

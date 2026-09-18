@@ -14,12 +14,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { toast } from "sonner"
 import { CmsRichTextEditor } from "./CmsRichTextEditor"
 import { CmsMediaPicker } from "./CmsMediaPicker"
-import type { FieldDefinition, CmsFieldValue } from "@be-in-digital/cms"
-import type { MediaKind } from "@be-in-digital/cms"
+import type { FieldDefinition, CmsFieldValue } from "@be-yours/cms"
+import type { MediaKind } from "@be-yours/cms"
 
 interface MediaPreview {
   url: string

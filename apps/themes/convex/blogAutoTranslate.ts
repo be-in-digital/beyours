@@ -23,7 +23,7 @@ import type { Id } from "./_generated/dataModel"
 import {
   DEBOUNCE_MS,
   MAX_TRANSLATION_TEXT_LENGTH,
-} from "@be-in-digital/convex-functions/autoTranslate"
+} from "@be-yours/convex-functions/autoTranslate"
 
 // ── Helper: schedule blog translation with debounce ─────────────────
 

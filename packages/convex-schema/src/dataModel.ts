@@ -1,7 +1,7 @@
 /**
  * Typed data model derived from the composed schema — type-only, zero runtime.
  *
- * This is the contract that lets @be-in-digital/convex-functions type its
+ * This is the contract that lets @be-yours/convex-functions type its
  * handlers (`ctx: SchemaQueryCtx`) instead of `ctx: any`: schema drift then
  * surfaces at the package's own type-check, not at each consuming app's.
  * Structurally identical to every app's generated DataModel (apps compose

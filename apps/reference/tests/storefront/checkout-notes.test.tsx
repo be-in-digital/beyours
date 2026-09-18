@@ -14,14 +14,14 @@
  * This pins the field and what it hands the page: the value the page submits
  * is the value that goes to `orders.create`, which is the value the kitchen
  * ticket prints. The server half — the cap, and the note surviving onto the
- * ticket — is pinned in `@be-in-digital/convex-functions`; the printed and
- * on-screen tickets in `@be-in-digital/admin`.
+ * ticket — is pinned in `@be-yours/convex-functions`; the printed and
+ * on-screen tickets in `@be-yours/admin`.
  */
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
-import { FIELD_LIMITS } from "@be-in-digital/convex-functions/rateLimit"
+import { FIELD_LIMITS } from "@be-yours/convex-functions/rateLimit"
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -81,7 +81,7 @@ async function mountCheckoutForm(): Promise<{
   submitted: SubmittedOrder[]
 }> {
   const { CheckoutForm } = await import("@/components/storefront/checkout-form")
-  const { useCartStore } = await import("@be-in-digital/restaurant")
+  const { useCartStore } = await import("@be-yours/restaurant")
   act(() => {
     useCartStore.getState().setOrderType("pickup")
   })

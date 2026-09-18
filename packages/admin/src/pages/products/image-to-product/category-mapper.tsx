@@ -8,10 +8,10 @@ import {
   SelectTrigger,
   SelectValue,
   Badge,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { AiFieldBadge } from "./ai-field-badge"
 import { Plus } from "lucide-react"
-import type { AiFieldSource } from "@be-in-digital/convex-schema/types"
+import type { AiFieldSource } from "@be-yours/convex-schema/types"
 
 /** Prefix for "create new" category IDs to distinguish from real Convex IDs */
 export const NEW_CATEGORY_PREFIX = "__new__"

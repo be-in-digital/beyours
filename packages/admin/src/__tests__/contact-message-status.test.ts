@@ -7,7 +7,7 @@ import { statusOnOpening } from "../pages/messages/message-status"
  * The two halves of the screen are guarded differently: `contactMessages.list`
  * asks for `customers:read`, `updateStatus` for `customers:write`. A manager
  * and a waiter hold the first and not the second (`ROLE_PERMISSIONS` in
- * `@be-in-digital/core`), so a screen that marks every opened message read
+ * `@be-yours/core`), so a screen that marks every opened message read
  * would throw for both of them on every click and archive for neither.
  *
  * The rule is here, out of the component, because that is where it can be

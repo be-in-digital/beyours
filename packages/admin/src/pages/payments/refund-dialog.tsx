@@ -14,7 +14,7 @@ import {
   Textarea,
   Label,
   Input,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { formatPrice } from "../../lib/formatters"
 import type { Payment } from "../../lib/types"

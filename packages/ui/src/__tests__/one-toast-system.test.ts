@@ -13,7 +13,7 @@
  * "useToast must be used within ToastProvider".
  *
  * WHY A TEST AND NOT JUST A DELETION. The barrel is `export * from "./Toast"`,
- * so anything added to that file is republished on `@be-in-digital/ui` without
+ * so anything added to that file is republished on `@be-yours/ui` without
  * a second decision being made. That is how the provider got onto a client's
  * API surface in the first place.
  *

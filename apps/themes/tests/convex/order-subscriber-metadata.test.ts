@@ -17,7 +17,7 @@
  */
 
 import { convexTest } from "convex-test"
-import { buildSegmentFilter } from "@be-in-digital/marketing"
+import { buildSegmentFilter } from "@be-yours/marketing"
 import { afterEach, describe, expect, test } from "vitest"
 import { internal } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"

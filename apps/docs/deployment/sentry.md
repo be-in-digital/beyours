@@ -38,7 +38,7 @@ per client, so every client site gets this by construction.
 | `app/error.tsx`, `app/global-error.tsx` | capture React render errors, and apologise in French |
 
 The options all three runtimes use come from one place:
-[`@be-in-digital/core/sentry`](../../../packages/core/src/sentry/index.ts). It
+[`@be-yours/core/sentry`](../../../packages/core/src/sentry/index.ts). It
 has no imports — not even `@sentry/nextjs` — so the browser bundle, the edge
 runtime and Convex actions can all read it, and it can be unit-tested without a
 network or a process environment.
@@ -62,7 +62,7 @@ deploy.
 
 1. **Create the Sentry project.** Platform **Next.js**, name it after the client
    (`pizzeria-napoli`). Create it **under the client's own Sentry account** — not
-   under `developers@beyours.fr`. Per
+   under `developers@be-yours.fr`. Per
    [`tasks/production-accounts-checklist.md`](../../../tasks/production-accounts-checklist.md),
    Sentry is site-level: it belongs to the restaurant and follows it.
 2. **Copy the DSN** into the site's `.env.local` as `NEXT_PUBLIC_SENTRY_DSN`,
@@ -198,7 +198,7 @@ program: the default runtime is a V8 isolate with `fetch` and no Node API.
 Putting the SDK behind a `"use node"` action would not help either — nothing
 outside such a module can import from it, and an `httpAction` cannot be
 `"use node"` at all, which is every webhook. So the envelope is built by hand
-in [`@be-in-digital/core/sentry`](../../../packages/core/src/sentry/envelope.ts)
+in [`@be-yours/core/sentry`](../../../packages/core/src/sentry/envelope.ts)
 and POSTed with one `fetch`. Same scrubbing as the Next.js runtimes, plus
 `redactSentryExtra` for the context a call site attaches by hand.
 
@@ -241,10 +241,10 @@ differs is the source of the options.
 | `app/(landing)/error.tsx`, `app/admin/error.tsx`, `app/parrainage/error.tsx` | one per route group whose layout carries chrome |
 | `convex/errorReporting.ts` | the backend reporter, wired into both Stripe webhook 500 paths |
 
-### Why it does not import `@be-in-digital/core/sentry`
+### Why it does not import `@be-yours/core/sentry`
 
 Because `apps/site` depends on none of the engine packages, and that rule is not
-stylistic: the ten `@be-in-digital/*` packages ship from a private GitHub
+stylistic: the ten `@be-yours/*` packages ship from a private GitHub
 registry, so one import here would put a `read:packages` token between this
 repository and every Vercel build of the commercial site. `lib/env.ts` already
 carries the same duplication for the same reason.

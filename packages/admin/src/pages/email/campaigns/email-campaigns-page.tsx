@@ -52,9 +52,9 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@be-in-digital/ui"
-import { renderTemplateToEmailHtml } from "@be-in-digital/marketing"
-import type { EmailBranding, EmailBlock } from "@be-in-digital/marketing"
+} from "@be-yours/ui"
+import { renderTemplateToEmailHtml } from "@be-yours/marketing"
+import type { EmailBranding, EmailBlock } from "@be-yours/marketing"
 import { LoadingState } from "../../../components/loading-state"
 import { DeleteConfirmDialog } from "../../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
@@ -63,7 +63,7 @@ import { adminRoutes } from "../../../config/admin-routes"
 import { formatShortDate } from "../../../lib/formatters"
 import { CampaignWizardDialog } from "./campaign-wizard-dialog"
 import { CampaignStatsDialog } from "./campaign-stats-dialog"
-import { RELAUNCHABLE_STATUSES } from "@be-in-digital/convex-functions/emailCampaigns"
+import { RELAUNCHABLE_STATUSES } from "@be-yours/convex-functions/emailCampaigns"
 import { convexErrorMessage } from "../../../lib/convex-error"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

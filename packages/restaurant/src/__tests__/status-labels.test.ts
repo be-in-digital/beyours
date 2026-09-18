@@ -1,8 +1,8 @@
 /**
  * The status vocabulary must cover the statuses the schema actually admits.
  *
- * `@be-in-digital/core` owns the words and cannot see the schema — it depends
- * on nothing but zod and the AWS SDK. `@be-in-digital/convex-schema` owns the
+ * `@be-yours/core` owns the words and cannot see the schema — it depends
+ * on nothing but zod and the AWS SDK. `@be-yours/convex-schema` owns the
  * statuses and holds no copy. This package depends on both, so this is the one
  * place the two lists can be held against each other.
  *
@@ -18,11 +18,11 @@ import {
   ORDER_STATUS_VOCABULARY,
   STORE_STATUS_VOCABULARY,
   resolveStatusLabels,
-} from '@be-in-digital/core/status-labels'
+} from '@be-yours/core/status-labels'
 import {
   ORDER_STATUSES,
   PUBLISHED_STORE_STATUSES,
-} from '@be-in-digital/convex-schema'
+} from '@be-yours/convex-schema'
 import { getOrderStatusLabel } from '../services/order'
 
 describe('order statuses', () => {

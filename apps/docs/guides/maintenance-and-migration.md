@@ -20,13 +20,13 @@ Everything lives in the client's own Convex instance under **Dashboard → Syst�
 | `platformReleases` | Release catalog, synced from the npm registry `time` map on every update check (idempotent by version). |
 | `migrationRequests` | Client requests: target provider/team, scope, status + full status history. |
 
-Contract status is **derived, never stored**: `active`, `expiring_soon` (≤ 30 days left), `expired`, or `none` — computed by `computeMaintenanceStatus()` in `@be-in-digital/convex-functions/maintenance`.
+Contract status is **derived, never stored**: `active`, `expiring_soon` (≤ 30 days left), `expired`, or `none` — computed by `computeMaintenanceStatus()` in `@be-yours/convex-functions/maintenance`.
 
 ## Update Gating
 
 A release is covered when `releasedAt <= coveredUntil`. The `system.checkForUpdates` action:
 
-1. Fetches the packument of `@be-in-digital/restaurant-theme` and syncs the release catalog (best effort — a registry outage falls back to the stored catalog).
+1. Fetches the packument of `@be-yours/restaurant-theme` and syncs the release catalog (best effort — a registry outage falls back to the stored catalog).
 
    > ⚠️ No package by that name is published by this repo (see `packages/*`).
    > The request 404s, so the catalog silently stays empty. The real engine

@@ -1,5 +1,5 @@
 import { mutation } from "./_generated/server"
-import * as defs from "@be-in-digital/convex-functions/contactMessages"
+import * as defs from "@be-yours/convex-functions/contactMessages"
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // === Queries (admin, auth-protected) ===

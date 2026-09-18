@@ -1,4 +1,4 @@
-# AWS Services - @be-in-digital/core
+# AWS Services - @be-yours/core
 
 Services for S3 (file storage) and SES (email sending) with an injectable architecture.
 
@@ -29,8 +29,8 @@ import {
   ListObjectVersionsCommand,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { createS3Service } from '@be-in-digital/core'
-import type { S3Operations } from '@be-in-digital/core'
+import { createS3Service } from '@be-yours/core'
+import type { S3Operations } from '@be-yours/core'
 
 // Configuration
 const config = {
@@ -283,8 +283,8 @@ pnpm add @aws-sdk/client-ses
 
 ```typescript
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
-import { createSESService } from '@be-in-digital/core'
-import type { SESOperations } from '@be-in-digital/core'
+import { createSESService } from '@be-yours/core'
+import type { SESOperations } from '@be-yours/core'
 
 // Configuration
 const config = {
@@ -457,16 +457,16 @@ The services come with full tests (100% coverage):
 
 ```bash
 # All AWS tests
-pnpm --filter @be-in-digital/core test -- src/aws
+pnpm --filter @be-yours/core test -- src/aws
 
 # S3 tests only
-pnpm --filter @be-in-digital/core test -- src/aws/__tests__/s3.test.ts
+pnpm --filter @be-yours/core test -- src/aws/__tests__/s3.test.ts
 
 # SES tests only
-pnpm --filter @be-in-digital/core test -- src/aws/__tests__/ses.test.ts
+pnpm --filter @be-yours/core test -- src/aws/__tests__/ses.test.ts
 
 # Template tests only
-pnpm --filter @be-in-digital/core test -- src/aws/__tests__/templates.test.ts
+pnpm --filter @be-yours/core test -- src/aws/__tests__/templates.test.ts
 ```
 
 ---

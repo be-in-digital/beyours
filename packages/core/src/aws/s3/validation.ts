@@ -8,7 +8,7 @@
  * │  Usage:                                                     │
  * │  ┌───────────────────────────────────────────────────┐      │
  * │  │ import { validateMimeType, validateFileSize }     │      │
- * │  │   from '@be-in-digital/core'                           │      │
+ * │  │   from '@be-yours/core'                           │      │
  * │  │                                                   │      │
  * │  │ validateMimeType('products', 'image/webp')        │      │
  * │  │ validateFileSize('products', 1024 * 500)          │      │

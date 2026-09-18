@@ -11,7 +11,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { DAY_NAMES, DISPLAY_ORDER } from "./store-detail-constants"
 import type { DayHours } from "./store-detail-types"
 

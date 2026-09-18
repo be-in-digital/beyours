@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Publishes `apps/themes` to the distribution mirror
- * `be-in-digital/beyours-boilerplate`, the repository client sites are cloned
+ * `be-yours/beyours-boilerplate`, the repository client sites are cloned
  * from.
  *
  * Why a mirror. A client cannot clone a subdirectory of a monorepo: git clones
@@ -16,7 +16,7 @@
  *      needs its own, otherwise `--frozen-lockfile` fails in CI. → generated.
  *   3. The root `vercel.json` carries a `turbo-ignore`: there is no turbo
  *      workspace on the client side. → dropped (`lib/mirror-tree.mjs`).
- *   4. The package name is `@beyours/themes`, scoped to the monorepo.
+ *   4. The package name is `@be-yours/themes`, scoped to the monorepo.
  *      → `beyours-boilerplate`.
  *   5. `packageManager` is honoured on the mirror and ignored here — inside a
  *      workspace only the root's counts. It must therefore name the pnpm this
@@ -134,7 +134,7 @@ function changesetPackages() {
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url))
 const SOURCE = join(ROOT, "apps/themes")
-const MIRROR_REPO = "be-in-digital/beyours-boilerplate"
+const MIRROR_REPO = "be-yours/beyours-boilerplate"
 const MIRROR_PKG_NAME = "beyours-boilerplate"
 
 /**
@@ -212,7 +212,7 @@ const done = (msg) => {
 // ---------------------------------------------------------------------------
 
 function resolveVersions(deps) {
-  const engineDeps = Object.keys(deps).filter((k) => k.startsWith("@be-in-digital/"))
+  const engineDeps = Object.keys(deps).filter((k) => k.startsWith("@be-yours/"))
   const resolved = {}
   for (const pkg of engineDeps) {
     // Both failures are fatal here — the mirror cannot pin a dependency to a
@@ -541,7 +541,7 @@ try {
   const subject = run("git", ["log", "-1", "--format=%s"], { cwd: ROOT })
 
   run("git", ["config", "user.name", "beyours-bot"], { cwd: clone })
-  run("git", ["config", "user.email", "bot@beyours.fr"], { cwd: clone })
+  run("git", ["config", "user.email", "bot@be-yours.fr"], { cwd: clone })
   run("git", ["add", "-A"], { cwd: clone })
   run("git", ["commit", "-m", `chore: sync from apps/themes (${sha})\n\n${subject}`], { cwd: clone })
   run("git", ["push", "origin", "HEAD:main"], { cwd: clone })

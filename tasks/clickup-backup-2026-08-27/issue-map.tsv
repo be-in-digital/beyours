@@ -1,57 +1,57 @@
-P0-01	125	https://github.com/be-in-digital/beyours/issues/125	P0-01 · Créer un établissement est rejeté par le validateur Convex
-P0-02	126	https://github.com/be-in-digital/beyours/issues/126	P0-02 · Tout service passant minuit est « fermé » toute la soirée
-P0-03	127	https://github.com/be-in-digital/beyours/issues/127	P0-03 · La TVA est ajoutée au prix affiché — chaque client est surfacturé
-P0-04	128	https://github.com/be-in-digital/beyours/issues/128	P0-04 · Annuler une commande payée simule le remboursement, et bloque le vrai
-P0-05	129	https://github.com/be-in-digital/beyours/issues/129	P0-05 · Le bouton de remboursement du moteur appelle une fonction supprimée
-P0-06	130	https://github.com/be-in-digital/beyours/issues/130	P0-06 · Créer un QR code de jeu échoue systématiquement
-P0-07	131	https://github.com/be-in-digital/beyours/issues/131	P0-07 · L'inscription ne mène nulle part
-P0-08	132	https://github.com/be-in-digital/beyours/issues/132	P0-08 · L'invitation d'équipe pointe vers une route qui n'existe pas
-P0-09	133	https://github.com/be-in-digital/beyours/issues/133	P0-09 · `orders.create` ne valide aucune disponibilité
-P0-10	134	https://github.com/be-in-digital/beyours/issues/134	P0-10 · Les commandes Deliveroo n'atteignent jamais la cuisine
-P0-11	135	https://github.com/be-in-digital/beyours/issues/135	P0-11 · Instructions et allergies Uber Eats écrasées avant la cuisine
-P0-12	136	https://github.com/be-in-digital/beyours/issues/136	P0-12 · Le ticket cuisine est créé et imprimé avant le paiement
-P0-13	137	https://github.com/be-in-digital/beyours/issues/137	P0-13 · La requête du KDS n'est pas bornée — l'écran cuisine finira noir
-P0-14	138	https://github.com/be-in-digital/beyours/issues/138	P0-14 · Les webhooks Uber d'annulation et de commande programmée sont filtrés sur des noms inexistants
-P0-15	139	https://github.com/be-in-digital/beyours/issues/139	P0-15 · Une commande Uber non récupérable est affectée à une boutique arbitraire
-P0-16	140	https://github.com/be-in-digital/beyours/issues/140	P0-16 · `auto_accept` marque la commande confirmée sans l'accepter chez Uber
-P0-17	141	https://github.com/be-in-digital/beyours/issues/141	P0-17 · L'import CSV d'abonnés échoue dans 100 % des cas
-P0-18	142	https://github.com/be-in-digital/beyours/issues/142	P0-18 · Le mail de double opt-in n'est envoyé par aucun chemin
-P0-19	143	https://github.com/be-in-digital/beyours/issues/143	P0-19 · Les campagnes planifiées ne partent jamais
-P0-20	144	https://github.com/be-in-digital/beyours/issues/144	P0-20 · « Relancer » renvoie la campagne depuis le premier abonné
-P0-21	145	https://github.com/be-in-digital/beyours/issues/145	P0-21 · Les rebonds permanents sont réessayés deux fois avant suppression
-P0-22	146	https://github.com/be-in-digital/beyours/issues/146	P0-22 · Le Configuration Set SES est codé en dur
-P0-23	147	https://github.com/be-in-digital/beyours/issues/147	P0-23 · La traduction GPT du catalogue est morte — trois causes indépendantes
-P0-24	148	https://github.com/be-in-digital/beyours/issues/148	P0-24 · Changer de langue ne modifie rien de lisible
-P0-25	149	https://github.com/be-in-digital/beyours/issues/149	P0-25 · Le blog public est du contenu de démonstration en dur
-P0-26	150	https://github.com/be-in-digital/beyours/issues/150	P0-26 · L'Auto Blog n'a aucun planificateur
-P0-27	151	https://github.com/be-in-digital/beyours/issues/151	P0-27 · Tout compte client peut stocker une XSS sur l'origine du site
-P0-28	152	https://github.com/be-in-digital/beyours/issues/152	P0-28 · `/contact` affiche un écran blanc à chaque visite
-P0-29	153	https://github.com/be-in-digital/beyours/issues/153	P0-29 · Le panier confond les variantes d'un même plat
-P0-30	154	https://github.com/be-in-digital/beyours/issues/154	P0-30 · `apps/site` — les données de facturation clients sont publiques
-P0-31	155	https://github.com/be-in-digital/beyours/issues/155	P0-31 · `apps/site` — sans clé Stripe, tout est vendu gratuitement
-P0-32	156	https://github.com/be-in-digital/beyours/issues/156	P0-32 · Le « fail-fast » d'environnement ne valide rien de ce qu'un client configure
-P0-33	157	https://github.com/be-in-digital/beyours/issues/157	P0-33 · Un `BETTER_AUTH_SECRET` vide ouvre un relais d'e-mail
-P0-34	158	https://github.com/be-in-digital/beyours/issues/158	P0-34 · Deux politiques S3 contradictoires dans le même produit
-P0-35	159	https://github.com/be-in-digital/beyours/issues/159	P0-35 · La gamification est absente du produit vendu
-TECH-01	160	https://github.com/be-in-digital/beyours/issues/160	TECH-01 · Promotions et remises — quatre fonctions vendues, jamais appliquées
-TECH-02	161	https://github.com/be-in-digital/beyours/issues/161	TECH-02 · Commandes — cycle de vie, idempotence et espèces
-TECH-03	162	https://github.com/be-in-digital/beyours/issues/162	TECH-03 · Paiements — liaison, déduplication et OAuth
-TECH-04	163	https://github.com/be-in-digital/beyours/issues/163	TECH-04 · Intégrations livraison — argent, statuts et volumétrie
-TECH-05	164	https://github.com/be-in-digital/beyours/issues/164	TECH-05 · Cuisine — postes, verrous et fiabilité d'impression
-TECH-06	165	https://github.com/be-in-digital/beyours/issues/165	TECH-06 · Catalogue — portée multi-boutique et champs morts
-TECH-07	166	https://github.com/be-in-digital/beyours/issues/166	TECH-07 · Emailing — conformité, débit et scénarios
-TECH-08	167	https://github.com/be-in-digital/beyours/issues/167	TECH-08 · CMS et médiathèque — quotas, portée et rendu
-TECH-09	168	https://github.com/be-in-digital/beyours/issues/168	TECH-09 · Storefront — SEO, accessibilité et parcours d'achat
-TECH-10	169	https://github.com/be-in-digital/beyours/issues/169	TECH-10 · Multi-boutique — cascade, fuseau et réglages morts
-TECH-11	170	https://github.com/be-in-digital/beyours/issues/170	TECH-11 · Authentification — sessions, erreurs et permissions
-TECH-12	171	https://github.com/be-in-digital/beyours/issues/171	TECH-12 · Chaîne de livraison — CI, tests et parité du template
-LANCEMENT-01	172	https://github.com/be-in-digital/beyours/issues/172	LANCEMENT-01 · Faire tourner le secret Deliveroo exposé — **urgent**
-LANCEMENT-02	173	https://github.com/be-in-digital/beyours/issues/173	LANCEMENT-02 · Créer le coupon fondateurs et les 4 prix de maintenance Stripe — **urgent**
-LANCEMENT-03	174	https://github.com/be-in-digital/beyours/issues/174	LANCEMENT-03 · Trancher le régime de TVA — **urgent**
-LANCEMENT-04	175	https://github.com/be-in-digital/beyours/issues/175	LANCEMENT-04 · Trancher le sort de quatre fonctionnalités vendues et absentes
-LANCEMENT-05	176	https://github.com/be-in-digital/beyours/issues/176	LANCEMENT-05 · Trancher la politique du bucket S3
-LANCEMENT-06	177	https://github.com/be-in-digital/beyours/issues/177	LANCEMENT-06 · Sortir AWS SES du bac à sable
-LANCEMENT-07	178	https://github.com/be-in-digital/beyours/issues/178	LANCEMENT-07 · Vérifier le plafond de dépenses Convex
-LANCEMENT-08	179	https://github.com/be-in-digital/beyours/issues/179	LANCEMENT-08 · Rendre la CI bloquante et activer l'e2e
-LANCEMENT-09	180	https://github.com/be-in-digital/beyours/issues/180	LANCEMENT-09 · Restreindre la clé Google Maps et provisionner le jeton d'amorçage
-LANCEMENT-10	181	https://github.com/be-in-digital/beyours/issues/181	LANCEMENT-10 · Enregistrer la clé de licence de chaque site client
+P0-01	125	https://github.com/be-yours/beyours/issues/125	P0-01 · Créer un établissement est rejeté par le validateur Convex
+P0-02	126	https://github.com/be-yours/beyours/issues/126	P0-02 · Tout service passant minuit est « fermé » toute la soirée
+P0-03	127	https://github.com/be-yours/beyours/issues/127	P0-03 · La TVA est ajoutée au prix affiché — chaque client est surfacturé
+P0-04	128	https://github.com/be-yours/beyours/issues/128	P0-04 · Annuler une commande payée simule le remboursement, et bloque le vrai
+P0-05	129	https://github.com/be-yours/beyours/issues/129	P0-05 · Le bouton de remboursement du moteur appelle une fonction supprimée
+P0-06	130	https://github.com/be-yours/beyours/issues/130	P0-06 · Créer un QR code de jeu échoue systématiquement
+P0-07	131	https://github.com/be-yours/beyours/issues/131	P0-07 · L'inscription ne mène nulle part
+P0-08	132	https://github.com/be-yours/beyours/issues/132	P0-08 · L'invitation d'équipe pointe vers une route qui n'existe pas
+P0-09	133	https://github.com/be-yours/beyours/issues/133	P0-09 · `orders.create` ne valide aucune disponibilité
+P0-10	134	https://github.com/be-yours/beyours/issues/134	P0-10 · Les commandes Deliveroo n'atteignent jamais la cuisine
+P0-11	135	https://github.com/be-yours/beyours/issues/135	P0-11 · Instructions et allergies Uber Eats écrasées avant la cuisine
+P0-12	136	https://github.com/be-yours/beyours/issues/136	P0-12 · Le ticket cuisine est créé et imprimé avant le paiement
+P0-13	137	https://github.com/be-yours/beyours/issues/137	P0-13 · La requête du KDS n'est pas bornée — l'écran cuisine finira noir
+P0-14	138	https://github.com/be-yours/beyours/issues/138	P0-14 · Les webhooks Uber d'annulation et de commande programmée sont filtrés sur des noms inexistants
+P0-15	139	https://github.com/be-yours/beyours/issues/139	P0-15 · Une commande Uber non récupérable est affectée à une boutique arbitraire
+P0-16	140	https://github.com/be-yours/beyours/issues/140	P0-16 · `auto_accept` marque la commande confirmée sans l'accepter chez Uber
+P0-17	141	https://github.com/be-yours/beyours/issues/141	P0-17 · L'import CSV d'abonnés échoue dans 100 % des cas
+P0-18	142	https://github.com/be-yours/beyours/issues/142	P0-18 · Le mail de double opt-in n'est envoyé par aucun chemin
+P0-19	143	https://github.com/be-yours/beyours/issues/143	P0-19 · Les campagnes planifiées ne partent jamais
+P0-20	144	https://github.com/be-yours/beyours/issues/144	P0-20 · « Relancer » renvoie la campagne depuis le premier abonné
+P0-21	145	https://github.com/be-yours/beyours/issues/145	P0-21 · Les rebonds permanents sont réessayés deux fois avant suppression
+P0-22	146	https://github.com/be-yours/beyours/issues/146	P0-22 · Le Configuration Set SES est codé en dur
+P0-23	147	https://github.com/be-yours/beyours/issues/147	P0-23 · La traduction GPT du catalogue est morte — trois causes indépendantes
+P0-24	148	https://github.com/be-yours/beyours/issues/148	P0-24 · Changer de langue ne modifie rien de lisible
+P0-25	149	https://github.com/be-yours/beyours/issues/149	P0-25 · Le blog public est du contenu de démonstration en dur
+P0-26	150	https://github.com/be-yours/beyours/issues/150	P0-26 · L'Auto Blog n'a aucun planificateur
+P0-27	151	https://github.com/be-yours/beyours/issues/151	P0-27 · Tout compte client peut stocker une XSS sur l'origine du site
+P0-28	152	https://github.com/be-yours/beyours/issues/152	P0-28 · `/contact` affiche un écran blanc à chaque visite
+P0-29	153	https://github.com/be-yours/beyours/issues/153	P0-29 · Le panier confond les variantes d'un même plat
+P0-30	154	https://github.com/be-yours/beyours/issues/154	P0-30 · `apps/site` — les données de facturation clients sont publiques
+P0-31	155	https://github.com/be-yours/beyours/issues/155	P0-31 · `apps/site` — sans clé Stripe, tout est vendu gratuitement
+P0-32	156	https://github.com/be-yours/beyours/issues/156	P0-32 · Le « fail-fast » d'environnement ne valide rien de ce qu'un client configure
+P0-33	157	https://github.com/be-yours/beyours/issues/157	P0-33 · Un `BETTER_AUTH_SECRET` vide ouvre un relais d'e-mail
+P0-34	158	https://github.com/be-yours/beyours/issues/158	P0-34 · Deux politiques S3 contradictoires dans le même produit
+P0-35	159	https://github.com/be-yours/beyours/issues/159	P0-35 · La gamification est absente du produit vendu
+TECH-01	160	https://github.com/be-yours/beyours/issues/160	TECH-01 · Promotions et remises — quatre fonctions vendues, jamais appliquées
+TECH-02	161	https://github.com/be-yours/beyours/issues/161	TECH-02 · Commandes — cycle de vie, idempotence et espèces
+TECH-03	162	https://github.com/be-yours/beyours/issues/162	TECH-03 · Paiements — liaison, déduplication et OAuth
+TECH-04	163	https://github.com/be-yours/beyours/issues/163	TECH-04 · Intégrations livraison — argent, statuts et volumétrie
+TECH-05	164	https://github.com/be-yours/beyours/issues/164	TECH-05 · Cuisine — postes, verrous et fiabilité d'impression
+TECH-06	165	https://github.com/be-yours/beyours/issues/165	TECH-06 · Catalogue — portée multi-boutique et champs morts
+TECH-07	166	https://github.com/be-yours/beyours/issues/166	TECH-07 · Emailing — conformité, débit et scénarios
+TECH-08	167	https://github.com/be-yours/beyours/issues/167	TECH-08 · CMS et médiathèque — quotas, portée et rendu
+TECH-09	168	https://github.com/be-yours/beyours/issues/168	TECH-09 · Storefront — SEO, accessibilité et parcours d'achat
+TECH-10	169	https://github.com/be-yours/beyours/issues/169	TECH-10 · Multi-boutique — cascade, fuseau et réglages morts
+TECH-11	170	https://github.com/be-yours/beyours/issues/170	TECH-11 · Authentification — sessions, erreurs et permissions
+TECH-12	171	https://github.com/be-yours/beyours/issues/171	TECH-12 · Chaîne de livraison — CI, tests et parité du template
+LANCEMENT-01	172	https://github.com/be-yours/beyours/issues/172	LANCEMENT-01 · Faire tourner le secret Deliveroo exposé — **urgent**
+LANCEMENT-02	173	https://github.com/be-yours/beyours/issues/173	LANCEMENT-02 · Créer le coupon fondateurs et les 4 prix de maintenance Stripe — **urgent**
+LANCEMENT-03	174	https://github.com/be-yours/beyours/issues/174	LANCEMENT-03 · Trancher le régime de TVA — **urgent**
+LANCEMENT-04	175	https://github.com/be-yours/beyours/issues/175	LANCEMENT-04 · Trancher le sort de quatre fonctionnalités vendues et absentes
+LANCEMENT-05	176	https://github.com/be-yours/beyours/issues/176	LANCEMENT-05 · Trancher la politique du bucket S3
+LANCEMENT-06	177	https://github.com/be-yours/beyours/issues/177	LANCEMENT-06 · Sortir AWS SES du bac à sable
+LANCEMENT-07	178	https://github.com/be-yours/beyours/issues/178	LANCEMENT-07 · Vérifier le plafond de dépenses Convex
+LANCEMENT-08	179	https://github.com/be-yours/beyours/issues/179	LANCEMENT-08 · Rendre la CI bloquante et activer l'e2e
+LANCEMENT-09	180	https://github.com/be-yours/beyours/issues/180	LANCEMENT-09 · Restreindre la clé Google Maps et provisionner le jeton d'amorçage
+LANCEMENT-10	181	https://github.com/be-yours/beyours/issues/181	LANCEMENT-10 · Enregistrer la clé de licence de chaque site client

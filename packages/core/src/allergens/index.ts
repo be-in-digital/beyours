@@ -14,18 +14,18 @@
  *   store free text · recognise it against a canonical set · and where a value
  *   is *not* recognised, say so explicitly rather than let it pass as verified.
  *
- * It lives in `@be-in-digital/core` and is deliberately framework-free — no
+ * It lives in `@be-yours/core` and is deliberately framework-free — no
  * React, no Convex, no AWS — because the same vocabulary has to serve four
  * surfaces that cannot import each other:
  *
- *   1. `AllergenBadge` in `@be-in-digital/ui` — the diner-facing disclosure.
+ *   1. `AllergenBadge` in `@be-yours/ui` — the diner-facing disclosure.
  *   2. `PrintTicketLayout` in both apps — the cook's ticket.
- *   3. The product form in `@be-in-digital/admin` — where an owner declares them.
- *   4. `uberEatsMenuSync` in `@be-in-digital/convex-functions` — the outbound
+ *   3. The product form in `@be-yours/admin` — where an owner declares them.
+ *   4. `uberEatsMenuSync` in `@be-yours/convex-functions` — the outbound
  *      platform payload, which runs in the Convex runtime.
  *
- * Import it as `@be-in-digital/core/allergens`, the raw-source subpath export,
- * exactly like `@be-in-digital/core/auth/rbac` — which is already imported from
+ * Import it as `@be-yours/core/allergens`, the raw-source subpath export,
+ * exactly like `@be-yours/core/auth/rbac` — which is already imported from
  * Convex functions, so the runtime is known to accept this shape.
  *
  * Those four surfaces each carried their own idea of what an allergen was, and

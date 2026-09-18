@@ -1,12 +1,12 @@
 {
-  "name": "@be-in-digital/ui",
+  "name": "@be-yours/ui",
   "version": "4.3.3",
   "publishConfig": {
     "access": "restricted"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/be-in-digital/beyours.git",
+    "url": "https://github.com/be-yours/beyours.git",
     "directory": "packages/ui"
   },
   "files": [
@@ -33,7 +33,7 @@
     "clean": "rm -rf node_modules"
   },
   "dependencies": {
-    "@be-in-digital/core": "workspace:^",
+    "@be-yours/core": "workspace:^",
     "@types/google.maps": "^3.58.1",
     "class-variance-authority": "^0.7.1",
     "embla-carousel-react": "^8.6.0",

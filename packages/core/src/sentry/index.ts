@@ -28,7 +28,7 @@ import { REDACTED, SENTRY_REDACTED_QUERY_KEYS } from './redaction-keys'
 
 /**
  * Building and sending an event by hand, for the Convex runtime. Re-exported
- * rather than given its own entry point, so `@be-in-digital/core/sentry` stays
+ * rather than given its own entry point, so `@be-yours/core/sentry` stays
  * the ONE import path: a Convex module and a browser bundle then read the same
  * module and cannot drift into two conventions for the same project.
  */
