@@ -20,7 +20,7 @@ import { assertMaintenanceCurrent } from "./lib/maintenance.mjs"
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..")
 const PKG_PATH = path.join(ROOT, "package.json")
-const ENGINE_REPO = "https://github.com/be-yours/beyours"
+const ENGINE_REPO = "https://github.com/be-in-digital/beyours"
 
 const args = process.argv.slice(2)
 const LATEST = args.includes("--latest")

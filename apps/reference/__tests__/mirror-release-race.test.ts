@@ -31,31 +31,28 @@
  * every genuinely refused sync green.
  */
 
-import { execFileSync } from "node:child_process"
-import fs from "node:fs"
-import os from "node:os"
-import path from "node:path"
+import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 
-import { afterAll, describe, expect, test } from "vitest"
-import { parse } from "yaml"
+import { afterAll, describe, expect, test } from 'vitest'
+import { parse } from 'yaml'
 
-const WORKFLOW = path.join(__dirname, "../../../.github/workflows/publish-mirror.yml")
+const WORKFLOW = path.join(__dirname, '../../../.github/workflows/publish-mirror.yml')
 
 /** The `report` job's grading script, as the runner would execute it. */
 function gradingScript(): string {
-  const workflow = parse(fs.readFileSync(WORKFLOW, "utf8")) as {
+  const workflow = parse(fs.readFileSync(WORKFLOW, 'utf8')) as {
     jobs?: Record<string, { steps?: { name?: string; run?: string }[] }>
   }
 
   const steps = workflow.jobs?.report?.steps ?? []
-  const grade = steps.find((step) => step.name === "Grade the run")
-  return grade?.run ?? ""
+  const grade = steps.find((step) => step.name === 'Grade the run')
+  return grade?.run ?? ''
 }
 
-const scriptPath = path.join(
-  fs.mkdtempSync(path.join(os.tmpdir(), "mirror-grade-")),
-  "grade.sh"
-)
+const scriptPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'mirror-grade-')), 'grade.sh')
 fs.writeFileSync(scriptPath, gradingScript())
 
 afterAll(() => {
@@ -69,26 +66,36 @@ type State = {
   OUTCOME: string
   CAN_PUSH: string
   DEFERRED: string
+  /**
+   * `RELEASE_HOLD.md` is in the tree, so no engine version exists to pin.
+   *
+   * Modelled here because the grading script runs under `set -u`: a variable
+   * the `env:` block stops passing is an unbound-variable crash, not a
+   * false-y default, and the whole job would grade red for a reason no
+   * summary line explains.
+   */
+  HELD: string
   CHECK_ONLY: string
   EVENT: string
 }
 
 const base: State = {
-  PUBLISH_RESULT: "success",
-  SYNC_RAN: "success",
-  OUTCOME: "",
-  CAN_PUSH: "true",
-  DEFERRED: "false",
-  CHECK_ONLY: "",
-  EVENT: "push",
+  PUBLISH_RESULT: 'success',
+  SYNC_RAN: 'success',
+  OUTCOME: '',
+  CAN_PUSH: 'true',
+  DEFERRED: 'false',
+  HELD: 'false',
+  CHECK_ONLY: '',
+  EVENT: 'push',
 }
 
 /** Run the grading script in one state. `true` means it graded the run green. */
 function grades(state: Partial<State>): boolean {
   try {
-    execFileSync("bash", [scriptPath], {
-      env: { ...process.env, ...base, ...state, GITHUB_STEP_SUMMARY: "/dev/null" },
-      stdio: "pipe",
+    execFileSync('bash', [scriptPath], {
+      env: { ...process.env, ...base, ...state, GITHUB_STEP_SUMMARY: '/dev/null' },
+      stdio: 'pipe',
     })
     return true
   } catch {
@@ -97,43 +104,59 @@ function grades(state: Partial<State>): boolean {
 }
 
 describe("the mirror's push run defers to the Release that is about to publish", () => {
-  test("the grading script was found and is not empty", () => {
+  test('the grading script was found and is not empty', () => {
     // Anti-vacuity: a renamed job or step would make every case below run an
     // empty file, which exits 0 and would read as "everything is green".
     const script = gradingScript()
-    expect(script, "no `Grade the run` step in the report job").not.toBe("")
-    expect(script).toContain("DEFERRED")
+    expect(script, 'no `Grade the run` step in the report job').not.toBe('')
+    expect(script).toContain('DEFERRED')
   })
 
-  test("stands down when a Release for this commit has not published yet", () => {
+  test('stands down when a Release for this commit has not published yet', () => {
     expect(
-      grades({ EVENT: "push", DEFERRED: "true", SYNC_RAN: "skipped", OUTCOME: "" }),
-      "a push run whose Release is still to publish must not go red: the " +
-        "workflow_run run that follows it owns this commit"
+      grades({ EVENT: 'push', DEFERRED: 'true', SYNC_RAN: 'skipped', OUTCOME: '' }),
+      'a push run whose Release is still to publish must not go red: the ' +
+        'workflow_run run that follows it owns this commit',
     ).toBe(true)
   })
 
-  test("still goes red when no Release is pending and the sync failed", () => {
+  test('stands down while publication is deliberately held', () => {
+    // The mirror pins each engine dependency to the version the registry
+    // serves, so under a hold every lookup answers nothing and no sync is
+    // possible. That is the decision working, not a fault — and unlike the
+    // two stand-downs around it this one holds on every trigger, a person's
+    // dispatch included.
+    expect(
+      grades({ EVENT: 'push', HELD: 'true', SYNC_RAN: 'skipped', OUTCOME: '' }),
+      'a held run must not go red: there is nothing published for it to pin',
+    ).toBe(true)
+  })
+
+  test('a held dispatch stands down too, rather than reporting a registry fault', () => {
+    expect(
+      grades({ EVENT: 'workflow_dispatch', HELD: 'true', SYNC_RAN: 'skipped', OUTCOME: '' }),
+    ).toBe(true)
+  })
+
+  test('still goes red when no Release is pending and the sync failed', () => {
     // The half that keeps the stand-down honest. Without this case, a branch
     // that always exited 0 would satisfy the test above.
     expect(
       grades({
-        EVENT: "push",
-        DEFERRED: "false",
-        PUBLISH_RESULT: "failure",
-        SYNC_RAN: "failure",
-        OUTCOME: "failed",
+        EVENT: 'push',
+        DEFERRED: 'false',
+        PUBLISH_RESULT: 'failure',
+        SYNC_RAN: 'failure',
+        OUTCOME: 'failed',
       }),
-      "a refused sync with no release coming is a real outage and must stay red"
+      'a refused sync with no release coming is a real outage and must stay red',
     ).toBe(false)
   })
 
-  test("still goes red when the push token is missing", () => {
+  test('still goes red when the push token is missing', () => {
     // A dry run on `main` delivers nothing. The stand-down reads the plan, not
     // the outcome, so this must be untouched by it.
-    expect(
-      grades({ EVENT: "push", DEFERRED: "false", CAN_PUSH: "false", OUTCOME: "" })
-    ).toBe(false)
+    expect(grades({ EVENT: 'push', DEFERRED: 'false', CAN_PUSH: 'false', OUTCOME: '' })).toBe(false)
   })
 
   test("a person's dispatch is never stood down", () => {
@@ -142,48 +165,48 @@ describe("the mirror's push run defers to the Release that is about to publish",
     // exact ambiguity the report job was built to remove.
     expect(
       grades({
-        EVENT: "workflow_dispatch",
-        DEFERRED: "true",
-        PUBLISH_RESULT: "failure",
-        SYNC_RAN: "failure",
-        OUTCOME: "failed",
+        EVENT: 'workflow_dispatch',
+        DEFERRED: 'true',
+        PUBLISH_RESULT: 'failure',
+        SYNC_RAN: 'failure',
+        OUTCOME: 'failed',
       }),
-      "a dispatch that synced nothing must say so"
+      'a dispatch that synced nothing must say so',
     ).toBe(false)
   })
 
-  test("the stand-down does not reach the workflow_run path", () => {
+  test('the stand-down does not reach the workflow_run path', () => {
     // `DEFERRED` is empty there — the plan step is confined to the push path —
     // but a branch that read the event wrongly would hide a failed sync on the
     // one path that actually carries a release.
     expect(
       grades({
-        EVENT: "workflow_run",
-        DEFERRED: "true",
-        PUBLISH_RESULT: "failure",
-        SYNC_RAN: "failure",
-        OUTCOME: "failed",
+        EVENT: 'workflow_run',
+        DEFERRED: 'true',
+        PUBLISH_RESULT: 'failure',
+        SYNC_RAN: 'failure',
+        OUTCOME: 'failed',
       }),
-      "a failed sync after a Release must stay red whatever DEFERRED says"
+      'a failed sync after a Release must stay red whatever DEFERRED says',
     ).toBe(false)
   })
 
-  test("a real push still reads as a delivery", () => {
-    expect(grades({ EVENT: "push", OUTCOME: "pushed" })).toBe(true)
-    expect(grades({ EVENT: "push", OUTCOME: "current" })).toBe(true)
+  test('a real push still reads as a delivery', () => {
+    expect(grades({ EVENT: 'push', OUTCOME: 'pushed' })).toBe(true)
+    expect(grades({ EVENT: 'push', OUTCOME: 'current' })).toBe(true)
   })
 
-  test("the Release-published-nothing stand-down still passes", () => {
-    expect(
-      grades({ EVENT: "workflow_run", SYNC_RAN: "skipped", DEFERRED: "", OUTCOME: "" })
-    ).toBe(true)
+  test('the Release-published-nothing stand-down still passes', () => {
+    expect(grades({ EVENT: 'workflow_run', SYNC_RAN: 'skipped', DEFERRED: '', OUTCOME: '' })).toBe(
+      true,
+    )
   })
 })
 
-describe("the sync itself is gated on the plan, not only the grading", () => {
-  const workflow = () => fs.readFileSync(WORKFLOW, "utf8")
+describe('the sync itself is gated on the plan, not only the grading', () => {
+  const workflow = () => fs.readFileSync(WORKFLOW, 'utf8')
 
-  test("the push path asks whether a Release will carry this commit", () => {
+  test('the push path asks whether a Release will carry this commit', () => {
     // Grading alone would leave the job red: the run's conclusion is failure if
     // any job failed, so the sync has to stand down too, not just be forgiven.
     const yaml = parse(workflow()) as {
@@ -191,36 +214,42 @@ describe("the sync itself is gated on the plan, not only the grading", () => {
     }
     const steps = yaml.jobs?.publish?.steps ?? []
 
-    const plan = steps.find((step) => step.id === "plan")
-    expect(plan, "no `plan` step in the publish job").toBeDefined()
-    expect(plan?.run).toContain("publish-plan.mjs")
+    const plan = steps.find((step) => step.id === 'plan')
+    expect(plan, 'no `plan` step in the publish job').toBeDefined()
+    expect(plan?.run).toContain('publish-plan.mjs')
     // `push` only. A `workflow_dispatch` is a person asking for a sync now, and
     // a green run that pushed nothing is the ambiguity `report` exists to end.
     expect(plan?.if, "the plan is the push path's question alone").toContain("'push'")
 
-    const sync = steps.find((step) => step.id === "sync")
-    expect(sync?.if, "the sync must read the plan").toContain("plan.outputs.publishing")
+    const sync = steps.find((step) => step.id === 'sync')
+    expect(sync?.if, 'the sync must read the plan').toContain('plan.outputs.publishing')
   })
 
-  test("the plan runs before the sync it gates", () => {
-    const steps = (parse(workflow()) as {
-      jobs?: { publish?: { steps?: { id?: string }[] } }
-    }).jobs?.publish?.steps ?? []
+  test('the plan runs before the sync it gates', () => {
+    const steps =
+      (
+        parse(workflow()) as {
+          jobs?: { publish?: { steps?: { id?: string }[] } }
+        }
+      ).jobs?.publish?.steps ?? []
 
-    const planAt = steps.findIndex((step) => step.id === "plan")
-    const syncAt = steps.findIndex((step) => step.id === "sync")
+    const planAt = steps.findIndex((step) => step.id === 'plan')
+    const syncAt = steps.findIndex((step) => step.id === 'sync')
 
     expect(planAt).toBeGreaterThan(-1)
     expect(syncAt).toBeGreaterThan(planAt)
   })
 
   test("the publish job publishes the plan's answer to the report job", () => {
-    const outputs = (parse(workflow()) as {
-      jobs?: { publish?: { outputs?: Record<string, string> } }
-    }).jobs?.publish?.outputs ?? {}
+    const outputs =
+      (
+        parse(workflow()) as {
+          jobs?: { publish?: { outputs?: Record<string, string> } }
+        }
+      ).jobs?.publish?.outputs ?? {}
 
-    expect(outputs.deferred, "report cannot grade what publish does not expose").toContain(
-      "plan.outputs.publishing"
+    expect(outputs.deferred, 'report cannot grade what publish does not expose').toContain(
+      'plan.outputs.publishing',
     )
   })
 })

@@ -17,7 +17,7 @@
  * already serves, and all it can do by then is refuse to deliver. This runs
  * before, against the code you are about to publish.
  *
- * The cost of that gap, measured: `be-yours/beyours-boilerplate` ran 71
+ * The cost of that gap, measured: `be-in-digital/beyours-boilerplate` ran 71
  * failures to 1 success over its last 100 CI runs, failing Typecheck with
  * `Cannot find module '@be-yours/admin/game'`, while every required check
  * in THIS repository was green (#321). The subpath had been added to

@@ -20,7 +20,7 @@ import { parse } from "yaml"
  * `.github/workflows/ci.yml`, to the root `package.json`, to `pnpm-lock.yaml`,
  * to `pnpm-workspace.yaml`, to `CLAUDE.md`, to `scripts/publish-mirror.mjs`, to
  * `apps/themes/package.json` or to `turbo.json` itself left
- * `@be-yours/reference#test`'s hash byte-for-byte identical. So did bumping
+ * `@beyours/reference#test`'s hash byte-for-byte identical. So did bumping
  * `packages/mcp-server/package.json` to `99.9.9`.
  *
  * That last one is #392 in a sentence: **a version bump anywhere replayed a
@@ -80,7 +80,7 @@ const hashedInputs: Map<string, { directory: string; files: Set<string> }> = (()
           directory: task.directory,
           // Turbo reports inputs relative to the PACKAGE, so the same file is
           // `../../apps/themes/package.json` for one task and `package.json`
-          // for `@be-yours/themes` itself. Normalised to repo-root-relative
+          // for `@beyours/themes` itself. Normalised to repo-root-relative
           // here, so the list below can name each file once, as a person would.
           files: new Set(
             Object.keys(task.inputs ?? {}).map((file) =>

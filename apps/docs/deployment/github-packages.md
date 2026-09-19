@@ -5,6 +5,7 @@
 ## Table of Contents
 
 - [Overview](#overview)
+- [Publication is currently held](#publication-is-currently-held)
 - [Publishing (Maintainers)](#publishing-maintainers)
 - [Installing (Consumers)](#installing-consumers)
 - [CI/CD Pipeline](#cicd-pipeline)
@@ -12,11 +13,38 @@
 
 ## Overview
 
-All `@be-yours` packages are published as **private packages** on [GitHub Packages](https://github.com/features/packages). This provides:
+All `@be-yours` packages are published to [GitHub Packages](https://github.com/features/packages),
+on the `be-yours` organisation. The scope has to be the org login exactly — that
+is GitHub Packages' rule, not a convention — which is why it carries hyphens
+while the three applications use `@beyours/*` and are never published at all.
 
-- Free private package hosting (for private repos)
-- Integrated with GitHub authentication
+- Integrated with GitHub authentication: `secrets.GITHUB_TOKEN` can publish here,
+  because the repository and the packages share an owner
 - Automated publishing via GitHub Actions
+
+Every `publishConfig` in the tree still says `access: restricted`. That is npm's
+vocabulary, and GitHub Packages does not take its answer from there: a package
+inherits the visibility of the repository it is linked to, and `be-yours/beyours`
+is **public**. Check the org's package settings before the first publish rather
+than after — a package that was public for an hour was public.
+
+## Publication is currently held
+
+`RELEASE_HOLD.md` at the repository root is a deliberate stop, added with the
+rename to `@be-yours` at `1.0.0`. While that file exists:
+
+| | |
+| --- | --- |
+| `release.yml` | runs lint, type-check, tests, build, E2E — and publishes nothing |
+| `publish-mirror.yml` | stands the sync down instead of pinning versions that do not exist |
+| `pnpm release` | refuses before it builds |
+| `mirror-health.yml` | skips its two distance checks, so no daily issue about a state you chose |
+
+`pnpm check:release-hold` answers whether it is on. To publish, delete the file,
+open a pull request, merge it — the next push to `main` releases. Read
+[`RELEASE_HOLD.md`](../../../RELEASE_HOLD.md) first: it lists what has to be
+true of the org before the first publish, and how to migrate a client site that
+still installs `@be-in-digital/*`.
 
 ## Publishing (Maintainers)
 
@@ -167,7 +195,7 @@ npm ERR! 401 Unauthorized
 npm ERR! 403 Forbidden - PUT https://npm.pkg.github.com/@be-yours/ui
 ```
 
-**Fix**: Your token doesn't have `write:packages` scope (for publishing) or you're not a member of the `be-yours` org.
+**Fix**: Your token doesn't have `write:packages` scope (for publishing) or you're not a member of the `be-yours` org, which is the one that owns the `@be-yours` scope.
 
 ### 404 Not Found
 

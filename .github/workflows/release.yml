@@ -96,6 +96,11 @@ jobs:
     outputs:
       publishing: ${{ steps.plan.outputs.publishing }}
       bump_owed: ${{ steps.plan.outputs.bump_owed }}
+      # `true` while `RELEASE_HOLD.md` is in the tree. `publishing` already
+      # answers false when it is, so this is not what stops the publish — it is
+      # what lets `release` below tell a deliberate hold from an ordinary push
+      # that had nothing to ship, and say so.
+      held: ${{ steps.plan.outputs.held }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -230,12 +235,18 @@ jobs:
     # Naming `cancelled` explicitly matters: a suite the concurrency group
     # cancelled has not passed, and the old `E2E Status` job was announcing
     # exactly that as a success until #276.
+    #
+    # `held` is the fourth clause, and it is a stop, not a failure. The whole
+    # chain above still runs — lint, type-check, tests, build — because a held
+    # release is one somebody is about to lift, and the answer they need on that
+    # day is whether `main` was green, not whether the gate worked.
     if: >-
       ${{ !cancelled()
         && needs.plan.result == 'success'
         && needs.verify.result == 'success'
         && needs.e2e.result != 'failure'
-        && needs.e2e.result != 'cancelled' }}
+        && needs.e2e.result != 'cancelled'
+        && needs.plan.outputs.held != 'true' }}
     permissions:
       # `contents` for the tags `changeset publish` writes. No `pull-requests`:
       # this workflow does not open one, and cannot - see the publish step.
@@ -303,6 +314,15 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # The `if:` above already stood this job down, so reaching here means the
+      # hold was lifted — or that somebody edited that expression. This is the
+      # cheap check that makes the invariant local to the step it protects
+      # rather than forty lines above it, and it is the same one `pnpm release`
+      # runs on a laptop. A publish cannot be undone; two guards is the right
+      # number.
+      - name: Refuse to publish while the release is held
+        run: node scripts/check-release-hold.mjs
 
       - name: Publish packages
         run: pnpm exec changeset publish

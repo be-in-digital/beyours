@@ -87,7 +87,7 @@ counts. Read it rather than this table if the two disagree — the specs are the
 source, this is a copy.
 
 There was a fifth folder, `/ci`, holding the names GitHub Actions read. It is
-gone: since [#276](https://github.com/be-yours/beyours/pull/276) the e2e job
+gone: since [#276](https://github.com/be-in-digital/beyours/pull/276) the e2e job
 starts its own Convex backend on the runner and reads **no secret at all**, so
 there was nothing left for that folder to hold. Provisioning nothing beats
 provisioning well.
@@ -178,7 +178,7 @@ Machine identities, one per *usage*:
 > The identity ID was the only one written down here, so it is the one that went
 > into `INFISICAL_CLIENT_ID`, and the store answered `401 Invalid credentials`
 > every morning from 2026-09-01 to 2026-09-10
-> ([#456](https://github.com/be-yours/beyours/issues/456)). Infisical
+> ([#456](https://github.com/be-in-digital/beyours/issues/456)). Infisical
 > returns the same 401 for a wrong client ID as for a revoked client secret, so
 > the error does not say which. The identity's own page does: it read
 > `Last Used: Never`, with its client secret at 0 uses. Nothing had expired —
@@ -448,7 +448,7 @@ Done (2026-09-01):
       when this box was ticked, and stayed at zero for nine days. Cite a step
       that is allowed to fail, or cite nothing.
 
-Done (2026-09-07, [#328](https://github.com/be-yours/beyours/issues/328)) —
+Done (2026-09-07, [#328](https://github.com/be-in-digital/beyours/issues/328)) —
 the chain was measured end to end and three of its links were carrying nothing,
 or too much:
 

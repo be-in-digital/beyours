@@ -2,7 +2,7 @@
  * The shippable cut of `apps/themes`, as a function.
  *
  * `scripts/publish-mirror.mjs` copies this tree onto
- * `be-yours/beyours-boilerplate`, and `scripts/check-mirror-css.mjs`
+ * `be-in-digital/beyours-boilerplate`, and `scripts/check-mirror-css.mjs`
  * builds it to prove a client gets the stylesheet we think it does. Those two
  * have to agree on what "the tree" is, byte for byte: a checker that
  * materialises the mirror slightly differently from the publisher is checking

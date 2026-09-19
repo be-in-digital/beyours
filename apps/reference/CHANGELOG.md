@@ -1,4 +1,4 @@
-# @be-yours/reference
+# @beyours/reference
 
 ## 2.0.0
 
@@ -19,21 +19,21 @@
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
+  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
   ```
 
 ### Patch Changes
 
 - Updated dependencies [7c3d4da]
-  - @be-in-digital/convex-functions@2.0.0
-  - @be-in-digital/convex-schema@2.0.0
-  - @be-in-digital/integrations@2.0.0
-  - @be-in-digital/restaurant@2.0.0
-  - @be-in-digital/marketing@2.0.0
-  - @be-in-digital/admin@2.0.0
-  - @be-in-digital/core@2.0.0
-  - @be-in-digital/cms@2.0.0
-  - @be-in-digital/ui@2.0.0
+  - @be-yours/convex-functions@2.0.0
+  - @be-yours/convex-schema@2.0.0
+  - @be-yours/integrations@2.0.0
+  - @be-yours/restaurant@2.0.0
+  - @be-yours/marketing@2.0.0
+  - @be-yours/admin@2.0.0
+  - @be-yours/core@2.0.0
+  - @be-yours/cms@2.0.0
+  - @be-yours/ui@2.0.0
 
 ## 1.0.0
 
@@ -54,18 +54,18 @@
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
+  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
   ```
 
 ### Patch Changes
 
 - Updated dependencies [ad4d8d2]
-  - @be-in-digital/convex-functions@1.0.0
-  - @be-in-digital/convex-schema@1.0.0
-  - @be-in-digital/integrations@1.0.0
-  - @be-in-digital/restaurant@1.0.0
-  - @be-in-digital/marketing@1.0.0
-  - @be-in-digital/admin@1.0.0
-  - @be-in-digital/core@1.0.0
-  - @be-in-digital/cms@1.0.0
-  - @be-in-digital/ui@1.0.0
+  - @be-yours/convex-functions@1.0.0
+  - @be-yours/convex-schema@1.0.0
+  - @be-yours/integrations@1.0.0
+  - @be-yours/restaurant@1.0.0
+  - @be-yours/marketing@1.0.0
+  - @be-yours/admin@1.0.0
+  - @be-yours/core@1.0.0
+  - @be-yours/cms@1.0.0
+  - @be-yours/ui@1.0.0

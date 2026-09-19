@@ -1398,14 +1398,14 @@ $ grep -n "CONVEX_E2E_ENABLED == 'true'" apps/themes/.github/workflows/ci.yml
 $ grep -c "if: vars.CONVEX_E2E_ENABLED" .github/workflows/e2e.yml     -> 0
 $ find apps/themes/e2e -name '*.spec.ts' | wc -l                      -> 54
 $ grep -n "test:e2e" .github/workflows/e2e.yml
-259:  run: pnpm test:e2e --filter=@be-yours/reference
+259:  run: pnpm test:e2e --filter=@beyours/reference
 $ grep -n "e2e" .github/workflows/ci.yml                              -> (no output)
 ```
 Commit `009af63` removed the gate from the root `e2e.yml` (that part is carded and fixed)
 and left it on the template's own `ci.yml` — while, in the same commit, adding to that gated
 job the backend requirement, the `assert-e2e-ran.mjs` call and the artifact upload. All of
 that hardening sits inside a job whose `if:` is false. Root `e2e.yml` runs
-`--filter=@be-yours/reference` only, root `ci.yml` has no e2e job, and
+`--filter=@beyours/reference` only, root `ci.yml` has no e2e job, and
 `apps/themes/.github/workflows/` is not read by GitHub in this repo at all.
 The sting: the parity guard added in the same window keeps those 54 specs byte-identical to
 the bench's, which reads as "the shippable side is proven". **The app a restaurant owner

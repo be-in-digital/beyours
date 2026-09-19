@@ -98,7 +98,7 @@ enough — this app has a production deployment
 (`optimistic-swordfish-937`), but nothing is sold from it.
 
 ⚠️ **With no `CONVEX_DEPLOYMENT` set, `npx convex dev` offers to create a *new
-project*** and proposes a name derived from the package: `@be-yours/reference` →
+project*** and proposes a name derived from the package: `@beyours/reference` →
 `beyours-reference`. That is how a stray project was created once.
 `.env.example` says to pick the existing `beindigital-engine` instead.
 
@@ -141,7 +141,7 @@ exactly that test fail.
 
 ## Commands
 
-From this directory, or via `pnpm --filter @be-yours/reference <cmd>`:
+From this directory, or via `pnpm --filter @beyours/reference <cmd>`:
 
 | Command | Effect |
 | --- | --- |

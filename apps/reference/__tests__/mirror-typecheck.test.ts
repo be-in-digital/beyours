@@ -26,7 +26,7 @@ import {
  *   (#400) with no version bump, so the published `convex-functions@5.0.0`
  *   does not have it. The subpath is exported; the file ships; the exports
  *   gate reported `9 package(s) verified` and the sync went out.
- *   `be-yours/beyours-boilerplate` has been failing its own Typecheck
+ *   `be-in-digital/beyours-boilerplate` has been failing its own Typecheck
  *   ever since with TS2339, on every run.
  *
  * Nothing about the packaging is wrong, so only a compiler can see it — which

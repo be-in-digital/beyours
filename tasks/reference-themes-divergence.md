@@ -451,7 +451,7 @@ happens when that goes unremarked for long enough.
 ## Verification
 
 ```bash
-pnpm exec turbo run type-check test --force --filter=@be-yours/themes --filter=@be-yours/reference
+pnpm exec turbo run type-check test --force --filter=@beyours/themes --filter=@beyours/reference
 ```
 
 `Tasks: 10 successful, 10 total`. Reference 486 passed / 13 skipped across 40

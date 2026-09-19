@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Does `be-yours/beyours-boilerplate` pass its own CI?
+ * Does `be-in-digital/beyours-boilerplate` pass its own CI?
  *
  * Usage:
  *   node scripts/check-mirror-ci.mjs            (also: pnpm check:mirror-ci)
@@ -28,7 +28,7 @@
 
 import { classifyMirrorCi, failedJobNames } from "./lib/mirror-ci.mjs"
 
-const REPO = process.env.MIRROR_REPO ?? "be-yours/beyours-boilerplate"
+const REPO = process.env.MIRROR_REPO ?? "be-in-digital/beyours-boilerplate"
 const TOKEN = process.env.MIRROR_READ_TOKEN ?? ""
 
 for (const arg of process.argv.slice(2)) {

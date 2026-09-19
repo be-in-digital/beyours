@@ -14,7 +14,7 @@ gets those orders back. None of that is a rehearsal. Tests run against
 a Stripe account holding payment intents that name orders, and an operator under
 time pressure.
 
-Issue [#366](https://github.com/be-yours/beyours/issues/366) asked for the
+Issue [#366](https://github.com/be-in-digital/beyours/issues/366) asked for the
 drill by name. Do it **quarterly**, and after any schema change that adds or
 removes a table.
 

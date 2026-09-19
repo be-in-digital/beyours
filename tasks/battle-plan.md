@@ -238,7 +238,7 @@ costs a service.
 > - **The diner is still offered nowhere to type an allergy.** The whole pipeline exists
 >   behind it — schema, `orders.create`, the printed `Note:` block — and the storefront
 >   checkout sends no `notes` at all. Tracked as NEW2-P8-1 in
->   [#325](https://github.com/be-yours/beyours/issues/325), not here.
+>   [#325](https://github.com/be-in-digital/beyours/issues/325), not here.
 
 ## Batch 07 — Delivery integrations
 *6 items · 4 P0 · the highest-volume channel · _5 done · 1 owner action outstanding_*

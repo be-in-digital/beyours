@@ -622,7 +622,7 @@ therefore cannot be moved as it stands — it has to become a **factory**
 (`createStoreFunctions({ query, mutation })`) that each app instantiates with its
 own generated builders.
 
-> Note: `@be-yours/site` fails the type-check on `@calcom/embed-react`, declared in
+> Note: `@beyours/site` fails the type-check on `@calcom/embed-react`, declared in
 > its `package.json` but absent from this worktree's `node_modules`. A
 > pre-existing defect, unrelated to these tickets.
 

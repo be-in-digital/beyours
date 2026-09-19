@@ -251,7 +251,7 @@ in live mode, never relax that rule.
 
 ## Commands
 
-From this directory, or via `pnpm --filter @be-yours/site <cmd>` from the root:
+From this directory, or via `pnpm --filter @beyours/site <cmd>` from the root:
 
 | Command | Effect |
 | --- | --- |
@@ -304,7 +304,7 @@ addressing.
 
 Vercel project `beindigital-restaurant`, team `be-in-digital`. A push that
 touches this app builds it alone: this directory's `vercel.json` carries
-`ignoreCommand: npx turbo-ignore @be-yours/site`.
+`ignoreCommand: npx turbo-ignore @beyours/site`.
 
 Convex is pushed separately: `npx convex deploy` from this directory.
 
@@ -327,7 +327,7 @@ process is described in [`PROCESS_DE_VENTE.md`](./PROCESS_DE_VENTE.md).
 
 ## History
 
-This app lived under `apps/web-restaurant` in the `be-yours/beindigital`
+This app lived under `apps/web-restaurant` in the `be-in-digital/beindigital`
 monorepo. It moved out in August 2026 into a standalone `beyours` repository,
 then came back as `apps/site` when the three BeYours projects were regrouped.
 Its history followed at every step.

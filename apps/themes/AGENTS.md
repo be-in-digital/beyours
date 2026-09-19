@@ -11,7 +11,7 @@ This repo is the **template** for BeYours restaurant sites. A client site is a
 clone of this repo. The shipped code comes from two sources:
 
 1. **The npm packages `@be-yours/*`** (private GitHub Packages, published
-   from [be-yours/beyours](https://github.com/be-yours/beyours)).
+   from [be-in-digital/beyours](https://github.com/be-in-digital/beyours)).
    `NODE_AUTH_TOKEN` (a `read:packages` PAT) is required for `pnpm install`.
    Without a token: `pnpm engine:link <engine-clone>` (local symlinks).
 2. **The application shell** (`app/`, `components/`, `lib/`, `hooks/`, `cms/`,

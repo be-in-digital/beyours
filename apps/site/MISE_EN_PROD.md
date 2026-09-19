@@ -16,7 +16,7 @@
 
 
 What is left to do before we can **really sell and take money** on `apps/site`
-(the commercial site, `@be-yours/site`, deployed to beyours.fr). It was called
+(the commercial site, `@beyours/site`, deployed to beyours.fr). It was called
 `web-restaurant` when this note was written and the directory has not carried
 that name for a long time; corrected in #534. Its counterpart on the delivered
 product side is `apps/reference/MISE_EN_PROD.md` — do not confuse the two.

@@ -24,7 +24,22 @@ import { assertFieldLengths, consumeRateLimit } from "./rateLimit"
  * addresses no mail provider accepts. This rejects what is obviously not an
  * address, which is what a signup form is for.
  */
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+/**
+ * The longest address any mail system carries (RFC 5321 §4.5.3.1), checked
+ * BEFORE the pattern. A bound on the input is what keeps a matcher linear in
+ * wall-clock terms whatever a later edit does to the shape below.
+ */
+const EMAIL_MAX_LENGTH = 254
+
+/**
+ * Both sides of the `\.` used to be `[^\s@]+`, which can itself match a dot.
+ * That makes the split ambiguous, so a domain of many dots that cannot match —
+ * an internal space, say, which `trim()` does not remove — is retried from
+ * every position: quadratic, and reached from a public signup form. Measured on
+ * `a@` + `x.`x40000 + ` z`: 1.0 s, against 0.5 ms for the shape below, which
+ * excludes the dot from the labels and so admits exactly one split.
+ */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/
 
 /**
  * Normalise a submitted address, or reject it.
@@ -36,6 +51,8 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
  */
 export function normalizeSubscriberEmail(raw: string): string | null {
   const email = raw.trim().toLowerCase()
+  if (email.length > EMAIL_MAX_LENGTH) return null
+
   return EMAIL_SHAPE.test(email) ? email : null
 }
 

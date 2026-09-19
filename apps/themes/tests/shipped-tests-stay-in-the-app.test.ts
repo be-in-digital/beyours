@@ -4,7 +4,7 @@
  * No shipped test may read a path above the application root unguarded.
  *
  * WHY THIS EXISTS. `scripts/lib/mirror-tree.mjs` copies every git-tracked file
- * under `apps/themes` onto `be-yours/beyours-boilerplate`, `tests/`
+ * under `apps/themes` onto `be-in-digital/beyours-boilerplate`, `tests/`
  * included, and `check:mirror-build` runs that delivered tree's own suite
  * before a sync is allowed. A test that reaches for `packages/` or for the
  * sibling app is reaching for something only this monorepo has: in the

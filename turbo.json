@@ -51,7 +51,7 @@
       // `.github/workflows/ci.yml`, to the root `package.json`, to
       // `pnpm-lock.yaml`, to `pnpm-workspace.yaml`, to `CLAUDE.md`, to
       // `scripts/publish-mirror.mjs`, to `apps/themes/package.json` or to this
-      // very file left `@be-yours/reference#test`'s hash byte-for-byte identical.
+      // very file left `@beyours/reference#test`'s hash byte-for-byte identical.
       // So did bumping `packages/mcp-server/package.json` to 99.9.9, and so did
       // adding a changeset — which is #392 exactly: a version bump anywhere
       // replays a green `Test` over a drifted tree.
@@ -80,7 +80,7 @@
       // `engine-doc-imports.test.ts` reads every `.ts`/`.tsx` under
       // `packages/`. For an app those arrive through `dependsOn: ["^build"]`,
       // which puts each dependency's hash in this one — measured: editing
-      // `packages/ui/src/index.ts` DOES move `@be-yours/reference#test`. The
+      // `packages/ui/src/index.ts` DOES move `@beyours/reference#test`. The
       // exception is `mcp-server`, which nothing depends on, so it is named
       // below.
       "inputs": [
@@ -162,7 +162,7 @@
         // `apps/reference` and stays `../../apps/themes` from `packages/core` —
         // and a negation written in one of those forms silently failed to match
         // the other. `@be-yours/core#test` came out clean while
-        // `@be-yours/reference#test` still carried the vitest cache. The rooted
+        // `@beyours/reference#test` still carried the vitest cache. The rooted
         // `**/` form has no depth to disagree about.
         "!**/node_modules/**",
         "!**/.next/**",
@@ -404,7 +404,7 @@
         // `apps/reference` and stays `../../apps/themes` from `packages/core` —
         // and a negation written in one of those forms silently failed to match
         // the other. `@be-yours/core#test` came out clean while
-        // `@be-yours/reference#test` still carried the vitest cache. The rooted
+        // `@beyours/reference#test` still carried the vitest cache. The rooted
         // `**/` form has no depth to disagree about.
         "!**/node_modules/**",
         "!**/.next/**",

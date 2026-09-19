@@ -49,7 +49,7 @@ pnpm add @be-yours/cms           # Content management
 - **Node.js** 20+
 - **pnpm** 9+
 - **Convex** account (for backend)
-- **GitHub** account with access to be-yours organization
+- **GitHub** account with access to the `be-yours` organization
 - **AWS** account (for S3 storage and SES email)
 
 ## Next Steps

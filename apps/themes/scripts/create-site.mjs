@@ -4,7 +4,7 @@
  * single call. Self-contained — it can run from a clone of the boilerplate OR
  * be piped in without cloning anything first:
  *
- *   gh api repos/be-yours/beyours-boilerplate/contents/scripts/create-site.mjs \
+ *   gh api repos/be-in-digital/beyours-boilerplate/contents/scripts/create-site.mjs \
  *     -H "Accept: application/vnd.github.raw" | node --input-type=module - \
  *     client-luigi --name "Chez Luigi" --mobile
  *
@@ -31,7 +31,7 @@ import path from "node:path"
 import { execSync, spawnSync } from "node:child_process"
 
 const DEFAULT_TEMPLATE =
-  "https://github.com/be-yours/beyours-boilerplate.git"
+  "https://github.com/be-in-digital/beyours-boilerplate.git"
 
 const args = process.argv.slice(2)
 const positional = args.filter((a, i) => {
@@ -101,7 +101,7 @@ if (repo) {
   }
 } else {
   console.log("\n② Pas de --repo : ajouter origin plus tard :")
-  console.log("     git remote add origin git@github.com:be-yours/<client>.git")
+  console.log("     git remote add origin git@github.com:be-in-digital/<client>.git")
 }
 
 console.log("\n③ Installation")

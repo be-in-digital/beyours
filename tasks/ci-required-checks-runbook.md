@@ -1,7 +1,7 @@
-# Runbook — make CI blocking and switch E2E on (`be-yours/beyours`)
+# Runbook — make CI blocking and switch E2E on (`be-in-digital/beyours`)
 
 > Closes the engineering half of **LAUNCH-08**. The other half is repository
-> settings only an admin of `be-yours/beyours` can change, plus a Convex
+> settings only an admin of `be-in-digital/beyours` can change, plus a Convex
 > deployment only its owner can create — this file tells them exactly what to
 > set, in what order, and how to tell whether it worked. It contains **no
 > secret**.
@@ -148,7 +148,7 @@ Verified end to end on 2026-08-31, against exactly this setup:
 | Step | Result |
 |---|---|
 | `convex deploy` to the local backend | all tables, indexes and the Better Auth component installed, exit 0 |
-| `pnpm build --filter=@be-yours/reference...` | 7/7 tasks, real output |
+| `pnpm build --filter=@beyours/reference...` | 7/7 tasks, real output |
 | `npx tsx scripts/seed-users.mts` | 6 accounts, 6 profiles, restaurant fixture, exit 0 |
 | `auth.setup.ts` | signs in, saves storage state |
 | `public` project | 74 tests executed, 64 passed |
@@ -293,9 +293,9 @@ evidence that protection was removed — this file used to say it was, and that
 sentence was true until the day it wasn't. Read the rules where they now live:
 
 ```bash
-gh api repos/be-yours/beyours/rules/branches/main --jq '.[].type'
-gh api repos/be-yours/beyours/branches/main --jq '.protected'   # true
-gh api repos/be-yours/beyours/rulesets/22177735 --jq '.rules[].type'
+gh api repos/be-in-digital/beyours/rules/branches/main --jq '.[].type'
+gh api repos/be-in-digital/beyours/branches/main --jq '.protected'   # true
+gh api repos/be-in-digital/beyours/rulesets/22177735 --jq '.rules[].type'
 ```
 
 **The merge queue is what replaced `strict: true`.** Requiring branches to be up
@@ -322,7 +322,7 @@ every check green:
 $ gh pr merge 300 --squash
 ! The merge strategy for main is set by the merge queue
 GraphQL: Auto merge is not allowed for this repository (enablePullRequestAutoMerge)
-$ gh api -X PATCH repos/be-yours/beyours -F allow_auto_merge=true
+$ gh api -X PATCH repos/be-in-digital/beyours -F allow_auto_merge=true
 ```
 
 This is the wall the first person to merge would have hit, on a queue that
@@ -373,10 +373,9 @@ rebases — and it was the intended trade until the queue made it redundant.
 
 ## 6bis. The remote cache — one secret, and it is the owner's
 
-`ci.yml` and `e2e.yml` pass `TURBO_TOKEN` and `TURBO_TEAM` to every job. The
-slug of the `be-in-digital` team is written in the workflow — it is in the URL
-of every Vercel check. The token is not, and nothing in this repository can
-create it:
+`ci.yml` and `e2e.yml` pass `TURBO_TOKEN` and `TURBO_TEAM` to every job. The team
+slug is written in the workflow (`be-in-digital` — it is in the URL of every
+Vercel check). The token is not, and nothing in this repository can create it:
 
 1. Vercel → Account Settings → Tokens → create one scoped to the
    `be-in-digital` team.
@@ -428,7 +427,7 @@ cannot be forged. It is a second secret for a private repository with no forks.
 | **`DELIVEROO_*` secrets set but silently stripped** | **Disarmed.** The `test` task now declares `env`, so the variables reach vitest AND belong to the cache key — setting a secret changes the hash and the suite genuinely re-runs instead of replaying the cached skip. Measured: secret unset `6eb64a67…`, set `a1007d97…`, rotated `ddf256b1…`; an undeclared variable moves nothing. `apps/reference/__tests__/turbo-test-env.test.ts` holds the declaration list to what the suites actually read. (The count above was wrong: twelve Deliveroo suite files exist and **three** gate on credentials — the other nine assert on signatures and mappings offline and always ran.) |
 | **A publish to the client mirror over a red CI** | **No longer.** `publish-mirror.yml` triggered on every push to `main` touching `apps/themes/**` with no `needs:` and no applicable `if:`, so it rsynced to `beyours-boilerplate` in parallel with these checks. It now calls `ci.yml` the way `release.yml` does. `apps/reference/__tests__/workflow-publish-gates.test.ts` asserts the rule for every workflow, not just this one. Gated on `E2E Status` too since #308, which gave `e2e.yml` a `workflow_call:` (`:78`) so `publish-mirror.yml` can call it as a nested job — the sentence here previously said that gap was still open, and it was closed the same day. |
 | **A cancelled mirror sync, or one never triggered at all** | **No longer.** A cancelled run executes *nothing* — not an `if: failure()` step, not an `if: always()` job — so `publish-mirror.yml` could never report its own worst conclusion, and `cancelled` is neither a pass nor a failure. That is the twelve-day staleness in its own `timeout-minutes` comment, and the 90 minutes #402's security floors spent reaching no client. `mirror-health.yml` watches from outside: it listens for the publisher to complete on any conclusion, re-dispatches the sync once, opens an issue on `cancelled`/`failure`/`timed_out`, and runs `publish-mirror.mjs --check` daily for the case that produces no run to observe. The retry is bounded — it does not fire for a run that was itself a dispatch — and `continue-on-error`, so a refused dispatch still gets reported. `apps/reference/__tests__/mirror-staleness-watch.test.ts` asserts the rule rather than the file, including that the daily check's exit code survives its own pipeline: the first draft piped `--check` into `tee` without `pipefail`, so GitHub's default `bash -e` reported *tee's* status and the job could never have opened an issue at all. |
-| **A `Test` replayed over a drifted tree** | **No longer.** `test` declared no `inputs`, so turbo hashed only each package's own files while the suites read the workflows, the root manifest, the lockfile, `CLAUDE.md`, `scripts/`, `.changeset/`, every engine `package.json` and the whole of `apps/themes`. Measured with `turbo run test --dry=json`: a version bump in `packages/mcp-server/package.json` left `@be-yours/reference#test`'s hash unchanged, which is #392 exactly. Both `test` and `test:coverage` now declare those paths, and `apps/reference/__tests__/turbo-test-inputs.test.ts` asserts on the files turbo *actually* hashed — an `inputs` glob that matches nothing is ignored in silence. |
+| **A `Test` replayed over a drifted tree** | **No longer.** `test` declared no `inputs`, so turbo hashed only each package's own files while the suites read the workflows, the root manifest, the lockfile, `CLAUDE.md`, `scripts/`, `.changeset/`, every engine `package.json` and the whole of `apps/themes`. Measured with `turbo run test --dry=json`: a version bump in `packages/mcp-server/package.json` left `@beyours/reference#test`'s hash unchanged, which is #392 exactly. Both `test` and `test:coverage` now declare those paths, and `apps/reference/__tests__/turbo-test-inputs.test.ts` asserts on the files turbo *actually* hashed — an `inputs` glob that matches nothing is ignored in silence. |
 | **A `convex/` module missing from the committed `api.d.ts`** | **Partly.** `emailTransport` and `lib/menuSync` were absent from both twins' generated file and from every client clone, invisible to `tsc` (the modules are imported by relative path) and to `check:divergence` (which skips `_generated`). `apps/reference/__tests__/convex-api-manifest.test.ts` now compares the module list to the tree. It cannot run `convex codegen` — that resolves component definitions against a live deployment — so the *contents* of the generated types are still unchecked; the module list is the half that can be checked offline, and it is the half that was wrong. |
 
 ---

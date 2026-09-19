@@ -14,7 +14,7 @@
  * `app/globals.css` compiled against the classes those fragments actually carry.
  *
  * Usage:
- *   pnpm --filter @be-yours/themes exec vitest run __tests__/layout-harness.render.test.tsx
+ *   pnpm --filter @beyours/themes exec vitest run __tests__/layout-harness.render.test.tsx
  *   node scripts/layout-harness.mjs
  *   node scripts/layout-harness-serve.mjs   # then open http://localhost:4507
  *

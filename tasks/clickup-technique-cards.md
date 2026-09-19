@@ -119,7 +119,7 @@ soit morte même si la purge traîne.
 ## Marche à suivre
 ```bash
 brew install git-filter-repo
-cd /tmp && git clone https://github.com/be-yours/beyours.git purge && cd purge
+cd /tmp && git clone https://github.com/be-in-digital/beyours.git purge && cd purge
 
 # Lire la valeur depuis le commit qui l'a INTRODUITE (7cf4d41), pas depuis origin/main
 # où le fichier est déjà corrigé — sinon le sed ne matche rien et la purge ne fait RIEN.
@@ -135,7 +135,7 @@ git filter-repo \
   --replace-text secrets-to-redact.txt \
   --path apps/restaurant-theme/e2e/.auth/admin.json --invert-paths
 
-git remote add origin https://github.com/be-yours/beyours.git
+git remote add origin https://github.com/be-in-digital/beyours.git
 git branch   # vérifier : main, changeset-release/main, chore/monorepo-beyours,
              #            claude/apps-reference-architecture-0e580f
 git push --force --all && git push --force --tags
@@ -627,7 +627,7 @@ désactivation qui coupe la boutique et le produit ensemble
   est encore relié (`npx convex env list` depuis `apps/reference`).
 
   La cause est corrigée : sans `CONVEX_DEPLOYMENT`, `npx convex dev` propose de
-  créer un projet et suggère un nom dérivé du package (`@be-yours/reference` →
+  créer un projet et suggère un nom dérivé du package (`@beyours/reference` →
   `beyours-reference`). `apps/reference/.env.example` dit maintenant de choisir
   `beindigital-engine`.
 - **Le projet de `capable-crocodile-720`** n'a jamais été consigné (c'est le dev de

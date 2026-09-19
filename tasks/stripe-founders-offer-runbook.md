@@ -31,7 +31,7 @@ tax. The maintenance guard refuses because `createSubscription` resolves the
 same Price ID again *after* payment ([`stripe.ts:462`](../apps/site/convex/stripe.ts))
 — unset, the customer is debited and never provisioned. Both are covered by 13
 tests in `apps/site/tests/convex/foundersOffer.test.ts`, run with
-`pnpm --filter @be-yours/site test`.
+`pnpm --filter @beyours/site test`.
 
 The order is created at [`stripe.ts:243`](../apps/site/convex/stripe.ts), and
 both guards run above it — a refusal leaves nothing behind to clean up.

@@ -279,7 +279,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: pnpm --filter @be-yours/${{ matrix.app }} exec playwright install --with-deps chromium
+        run: pnpm --filter @beyours/${{ matrix.app }} exec playwright install --with-deps chromium
 
       - name: Cache the Convex backend binary
         uses: actions/cache@v4
@@ -489,7 +489,7 @@ jobs:
         # them, so deploying first fails with "Could not resolve
         # @be-yours/cms ... ./dist/index.mjs was not found". Every local
         # run had a dist lying around from an earlier build and never saw it.
-        run: pnpm build --filter=@be-yours/${{ matrix.app }}...
+        run: pnpm build --filter=@beyours/${{ matrix.app }}...
 
       - name: Deploy Convex functions
         working-directory: apps/${{ matrix.app }}
@@ -695,7 +695,7 @@ jobs:
         # are merged in `e2e-report`, which is also where the report a human
         # opens is produced.
         run: >
-          pnpm test:e2e --filter=@be-yours/${{ matrix.app }} --
+          pnpm test:e2e --filter=@beyours/${{ matrix.app }} --
           --shard=${{ matrix.shard }}/4 --reporter=blob
         env:
           CI: true

@@ -1,4 +1,22 @@
-# @be-in-digital/cms
+# @be-yours/cms
+
+## 1.0.0
+
+### Major Changes
+
+- Renamed from `@be-in-digital/cms` to `@be-yours/cms`, and reset to 1.0.0.
+
+  The npm scope now matches the GitHub organisation that owns this repository,
+  which is what GitHub Packages requires: a package published to
+  `npm.pkg.github.com` must carry the owning org as its scope, and the org is
+  `be-yours`. The previous scope belonged to `be-in-digital`, the agency.
+
+  The version is a reset, not a bump. Under the new scope this package has no
+  published history, so `1.0.0` is its first release rather than a downgrade
+  from `3.1.0`. The old scope keeps everything it published: those
+  versions stay on the registry and already-deployed client sites continue to
+  resolve them until they are migrated. See `RELEASE_HOLD.md` for the
+  migration and the conditions this release is held on.
 
 ## 3.1.0
 
@@ -94,7 +112,7 @@
 
   **Breaking, twice over:**
   - `sanitizeSvg` and `SanitizeResult` no longer ship from the package root. They
-    ship from `@be-in-digital/cms/sanitize`. DOMPurify needs a DOM, and the root
+    ship from `@be-yours/cms/sanitize`. DOMPurify needs a DOM, and the root
     barrel is imported by Convex isolate modules that have none — re-exporting it
     there made the whole backend fail to push (`Failed to analyze cms.js: Cannot
 read properties of undefined (reading 'bind')`). The subpath keeps the parser
@@ -114,14 +132,14 @@ read properties of undefined (reading 'bind')`). The subpath keeps the parser
 ### Patch Changes
 
 - 7f0122b: Republished from main. Fixes two problems with the 2.0.1 tarballs that broke consumers:
-  - `@be-in-digital/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
+  - `@be-yours/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
   - The type fixes that were on main but never published (promotion-form/email-config in admin, Uber Eats signatures in integrations/convex-functions) go out with this patch — they had been committed without a changeset.
 
 ## 2.0.1
 
 ### Patch Changes
 
-- 1a5ca27: Rename package scope from @beindigital-engine to @be-in-digital for GitHub Packages compatibility
+- 1a5ca27: Rename package scope from @beindigital-engine to @be-yours for GitHub Packages compatibility
 
 ## 2.0.0
 
@@ -142,7 +160,7 @@ read properties of undefined (reading 'bind')`). The subpath keeps the parser
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
+  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
   ```
 
 ## 1.0.0
@@ -164,5 +182,5 @@ read properties of undefined (reading 'bind')`). The subpath keeps the parser
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
+  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
   ```

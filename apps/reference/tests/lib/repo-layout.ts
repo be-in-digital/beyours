@@ -3,7 +3,7 @@
  *
  * WHAT WAS BROKEN. These suites ship. `scripts/lib/mirror-tree.mjs` copies
  * every git-tracked file under `apps/themes` onto
- * `be-yours/beyours-boilerplate`, `tests/` included, and rule 9 of
+ * `be-in-digital/beyours-boilerplate`, `tests/` included, and rule 9 of
  * `CLAUDE.md` tells every client to run `pnpm test` before they commit. Four
  * of those shipped files reached ABOVE the application root — `path.join(APP,
  * "../..")`, `new URL("../../../docs/…")` — for things that exist only in this

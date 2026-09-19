@@ -10,6 +10,7 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 import { PriceDisplay } from "../components/restaurant/PriceDisplay"
+import { stripTags } from "./strip-tags"
 
 function render(props: React.ComponentProps<typeof PriceDisplay>) {
   return renderToStaticMarkup(<PriceDisplay {...props} />)
@@ -22,7 +23,7 @@ function render(props: React.ComponentProps<typeof PriceDisplay>) {
  * stay readable.
  */
 function text(html: string) {
-  return html.replace(/<[^>]*>/g, "").replace(/[\u00a0\u202f\u2009]/g, " ")
+  return stripTags(html).replace(/[\u00a0\u202f\u2009]/g, " ")
 }
 
 describe("PriceDisplay — the falsy-number guard", () => {

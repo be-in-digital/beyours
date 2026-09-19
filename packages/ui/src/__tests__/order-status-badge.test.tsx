@@ -28,6 +28,7 @@ import { describe, expect, it } from "vitest"
 import { ORDER_STATUS_VOCABULARY } from "@be-yours/core/status-labels"
 import { OrderStatusBadge } from "../components/restaurant/OrderStatusBadge"
 import type { OrderStatus } from "../components/restaurant/OrderStatusBadge"
+import { stripTags } from "./strip-tags"
 
 /** The component's own type forbids these; the database does not. */
 function renderUnchecked(
@@ -82,7 +83,7 @@ describe("OrderStatusBadge", () => {
 
     for (const status of Object.keys(ORDER_STATUS_VOCABULARY)) {
       const html = renderUnchecked(status)
-      const text = html.replace(/<[^>]*>/g, "").trim()
+      const text = stripTags(html).trim()
 
       expect(text).not.toBe("")
       seen.add(text)

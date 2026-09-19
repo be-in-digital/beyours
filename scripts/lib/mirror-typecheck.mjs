@@ -13,7 +13,7 @@
  * `defs.markFailed` off it. `markFailed` was added to that module at HEAD
  * without a version bump, so the published 5.0.0 does not have it. The gate
  * reported `9 package(s) verified` against the very tarball the registry
- * serves, the sync went out, and `be-yours/beyours-boilerplate` has been
+ * serves, the sync went out, and `be-in-digital/beyours-boilerplate` has been
  * failing its own Typecheck ever since with
  *
  *   convex/emailCampaigns.ts(136,49): error TS2339: Property 'markFailed'

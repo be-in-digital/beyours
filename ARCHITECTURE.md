@@ -20,9 +20,9 @@ packages. Understanding which is which is the whole of the orientation.
 
 | App | Workspace | Who it is for | Deploys to |
 | --- | --- | --- | --- |
-| `apps/site` | `@be-yours/site` | Prospects, affiliates, the internal team | Vercel → beyours.fr |
-| `apps/reference` | `@be-yours/reference` | Nobody — it is the engine's test bench | Local / preview |
-| `apps/themes` | `@be-yours/themes` | Each client restaurant, after cloning | Vercel, one project per client |
+| `apps/site` | `@beyours/site` | Prospects, affiliates, the internal team | Vercel → beyours.fr |
+| `apps/reference` | `@beyours/reference` | Nobody — it is the engine's test bench | Local / preview |
+| `apps/themes` | `@beyours/themes` | Each client restaurant, after cloning | Vercel, one project per client |
 
 **`apps/site` is a website, not an instance of the product.** It depends on none of
 the engine packages — `grep -c "@be-yours" apps/site/package.json` returns `0` —
@@ -63,11 +63,18 @@ They are historical aliases kept so old bookmarks resolve, not duplicated screen
 
 ### Two npm scopes, deliberately
 
-The three apps are `@be-yours/*`. The ten packages are `@be-yours/*`, published
-privately to GitHub Packages. The scope was **not** renamed with the repositories,
-because changing it breaks every client site on its next install — see the Naming
-section of [`README.md`](README.md#naming-what-gets-renamed-and-what-never-does)
-before any find-and-replace.
+The three apps are `@beyours/*`. The ten packages are `@be-yours/*` — one hyphen
+apart, and not by accident: GitHub Packages requires an npm scope to be exactly
+the login of the organisation that owns the packages, and this repository lives
+at `be-yours/beyours`. The apps are `private: true` and never reach a registry,
+so nothing makes them match.
+
+The packages were `@be-in-digital/*` until the rename, published into the
+agency's organisation. Every version released under that scope is still served
+and still resolves, so a client site that has not been migrated is unaffected —
+but the rename is real, and the Naming section of
+[`README.md`](README.md#naming-what-gets-renamed-and-what-never-does) lists what
+must still survive a find-and-replace.
 
 Installing the packages from outside the monorepo needs a `read:packages` PAT in
 `NODE_AUTH_TOKEN` (`.npmrc` maps the scope to `npm.pkg.github.com`). Inside the
@@ -92,16 +99,16 @@ done
 
 | Package | Contents | Source files · lines | Version | Shipped as |
 | --- | --- | ---: | --- | --- |
-| `admin` | Admin pages, components, stores, the game player flow | 210 · 39,471 | 8.0.0 | TS source |
-| `convex-functions` | Convex backend function definitions | 82 · 24,069 | 3.0.0 | TS source |
-| `core` | Auth, i18n, AWS (S3/SES), env, Sentry | 37 · 7,458 | 2.3.0 | `dist/` (tsup) |
-| `convex-schema` | Convex tables, validators, types | 39 · 5,906 | 3.0.0 | TS source |
-| `ui` | React components, design system | 57 · 5,013 | 2.0.3 | `dist/` |
-| `integrations` | Uber Eats, Deliveroo, Uber Direct clients | 27 · 4,069 | 2.1.0 | `dist/` |
-| `restaurant` | Business logic, hooks, Zustand stores | 21 · 2,343 | 2.1.0 | `dist/` |
-| `mcp-server` | MCP server exposing the package registry | 3 · 1,700 | 1.0.4 | `dist/` |
-| `marketing` | Email rendering, campaign validation, segments | 7 · 1,716 | 2.1.0 | `dist/` |
-| `cms` | Page/block registry, validation, sanitisation | 9 · 982 | 3.0.0 | `dist/` |
+| `admin` | Admin pages, components, stores, the game player flow | 210 · 39,471 | 1.0.0 | TS source |
+| `convex-functions` | Convex backend function definitions | 82 · 24,069 | 1.0.0 | TS source |
+| `core` | Auth, i18n, AWS (S3/SES), env, Sentry | 37 · 7,458 | 1.0.0 | `dist/` (tsup) |
+| `convex-schema` | Convex tables, validators, types | 39 · 5,906 | 1.0.0 | TS source |
+| `ui` | React components, design system | 57 · 5,013 | 1.0.0 | `dist/` |
+| `integrations` | Uber Eats, Deliveroo, Uber Direct clients | 27 · 4,069 | 1.0.0 | `dist/` |
+| `restaurant` | Business logic, hooks, Zustand stores | 21 · 2,343 | 1.0.0 | `dist/` |
+| `mcp-server` | MCP server exposing the package registry | 3 · 1,700 | 1.0.0 | `dist/` |
+| `marketing` | Email rendering, campaign validation, segments | 7 · 1,716 | 1.0.0 | `dist/` |
+| `cms` | Page/block registry, validation, sanitisation | 9 · 982 | 1.0.0 | `dist/` |
 
 **Three packages ship as raw TypeScript.** `admin`, `convex-functions` and
 `convex-schema` point `main` at `./src/index.ts` and **have no `build` script at
@@ -148,7 +155,7 @@ shape.
 Each app carries its own `vercel.json`:
 
 ```json
-{ "ignoreCommand": "npx turbo-ignore @be-yours/<app>" }
+{ "ignoreCommand": "npx turbo-ignore @beyours/<app>" }
 ```
 
 Turbo follows the **dependency graph**, not the directory tree, so a change in
@@ -397,7 +404,7 @@ packages/*                      published as @be-yours/* (changesets)
 ```
 
 Clients do not clone this repository. They clone
-**`be-yours/beyours-boilerplate`**, the distribution mirror, because a client
+**`be-in-digital/beyours-boilerplate`**, the distribution mirror, because a client
 site cannot clone a subdirectory of a monorepo. `scripts/publish-mirror.mjs` rebuilds
 that mirror from `apps/themes`, rewriting the four things that only make sense here:
 `workspace:^` → published versions, the lockfile, `vercel.json` (no turbo workspace on

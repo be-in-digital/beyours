@@ -1,6 +1,6 @@
 name: Mirror health
 
-# Is `be-yours/beyours-boilerplate` carrying what `apps/themes` says it
+# Is `be-in-digital/beyours-boilerplate` carrying what `apps/themes` says it
 # should — and if the last sync did not finish, does anybody know?
 #
 # WHY THIS IS A SECOND WORKFLOW. `publish-mirror.yml` cannot answer either
@@ -73,6 +73,35 @@ permissions:
 
 jobs:
   # ── The observer ───────────────────────────────────────────────────────────
+  # IS ANY OF THIS WORTH REPORTING TODAY?
+  #
+  # `stale` and `release-waiting` both measure distance from the registry: is
+  # the boilerplate carrying what `apps/themes` says, and has a merged bump gone
+  # unpublished. While `RELEASE_HOLD.md` is in the tree both answers are yes BY
+  # DESIGN — the hold is the thing stopping the publish, and the mirror stands
+  # down behind it — so a daily issue on each would report the decision back to
+  # the people who took it.
+  #
+  # That is the failure this whole workflow exists to avoid, pointed the other
+  # way: an alert nobody can act on is an alert everybody learns to mute, and a
+  # muted channel is how the twelve-day outage in `publish-mirror.yml` stayed
+  # invisible. So the two distance checks stand down; `inconclusive` and
+  # `mirror-ci` do not, because a cancelled run and a broken mirror CI are just
+  # as real during a hold as outside one.
+  hold:
+    name: Is publication held?
+    if: github.event_name != 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      held: ${{ steps.hold.outputs.held }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: hold
+        run: node scripts/check-release-hold.mjs --report
+
   inconclusive:
     name: Report an unfinished sync
     if: >-
@@ -247,7 +276,7 @@ jobs:
           set -uo pipefail
           {
             echo "A \`Publish mirror\` run on \`main\` ended **${CONCLUSION}**, so"
-            echo "\`be-yours/beyours-boilerplate\` may not carry \`${RUN_SHA:0:7}\`."
+            echo "\`be-in-digital/beyours-boilerplate\` may not carry \`${RUN_SHA:0:7}\`."
             echo
             if [ "${CONCLUSION}" = "failure" ]; then
               echo "The run reached a verdict and refused. This report comes from another"
@@ -319,7 +348,9 @@ jobs:
   # ── The backstop ───────────────────────────────────────────────────────────
   stale:
     name: Is the mirror current?
-    if: github.event_name != 'workflow_run'
+    needs: [hold]
+    # Held means this measures a deliberate state — see the `hold` job.
+    if: github.event_name != 'workflow_run' && needs.hold.outputs.held != 'true'
     runs-on: ubuntu-latest
     # `--check` does the whole gate before it compares: it clones the mirror,
     # pins the engine versions the registry serves, installs them and
@@ -390,7 +421,7 @@ jobs:
             echo "### The staleness check did not run"
             echo
             echo "\`MIRROR_READ_TOKEN\` is not set on this repository, so this job"
-            echo "cannot clone \`be-yours/beyours-boilerplate\` — it is private, and"
+            echo "cannot clone \`be-in-digital/beyours-boilerplate\` — it is private, and"
             echo "this job holds no \`MIRROR_PUSH_TOKEN\` on purpose."
             echo
             echo "**Nothing here says the mirror is behind.** It also does not say it is"
@@ -465,7 +496,7 @@ jobs:
             if grep -q "drift detected between apps/themes and the mirror" /tmp/mirror-check.log; then
               echo "\`scripts/publish-mirror.mjs --check\` found drift between"
               echo "\`apps/themes\` at \`${GITHUB_SHA:0:7}\` and"
-              echo "\`be-yours/beyours-boilerplate\`, which every client site is"
+              echo "\`be-in-digital/beyours-boilerplate\`, which every client site is"
               echo "cloned from and merges from with \`pnpm update:template\`."
               echo
               echo "A sync should have happened on its own. Four ways it did not: the run"
@@ -597,7 +628,7 @@ jobs:
         run: |
           set -uo pipefail
           {
-            echo "\`be-yours/beyours-boilerplate\` is the repository every client"
+            echo "\`be-in-digital/beyours-boilerplate\` is the repository every client"
             echo "site is cloned from and merges from with \`pnpm update:template\`, and"
             echo "its latest run on its default branch did not pass."
             echo
@@ -666,7 +697,9 @@ jobs:
   # registry read is what `packages: read` is for.
   release-waiting:
     name: Is a release still owed?
-    if: github.event_name != 'workflow_run'
+    needs: [hold]
+    # Held means this measures a deliberate state — see the `hold` job.
+    if: github.event_name != 'workflow_run' && needs.hold.outputs.held != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

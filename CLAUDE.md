@@ -76,12 +76,12 @@ beindigital/
 │   └── mcp-server/            # MCP Package Registry
 │
 ├── apps/
-│   ├── site/                  # @be-yours/site — commercial site → beyours.fr
+│   ├── site/                  # @beyours/site — commercial site → beyours.fr
 │   │   ├── app/               # Marketing, template catalogue, Stripe checkout,
 │   │   │                      # affiliate portal, internal ops console
 │   │   └── convex/            # Its OWN Convex backend (separate from the engine)
 │   │
-│   ├── reference/             # @be-yours/reference — the engine's test bench
+│   ├── reference/             # @beyours/reference — the engine's test bench
 │   │   ├── app/               # Storefront, admin, CMS, kitchen display, QR games
 │   │   ├── components/        # UI, Storefront, Admin, Game
 │   │   ├── lib/               # Stores, Utils, AWS, Printing, Translation
@@ -89,7 +89,7 @@ beindigital/
 │   │   ├── e2e/               # Playwright tests — the CI e2e target
 │   │   └── __tests__/         # Vitest tests
 │   │
-│   ├── themes/                # @be-yours/themes — the client template (cloned per client)
+│   ├── themes/                # @beyours/themes — the client template (cloned per client)
 │   │   ├── templates/         # Vertical designs (pizzeria, fast-food, food-truck…)
 │   │   ├── demos/             # 50 sales demos
 │   │   ├── site/              # CLIENT zone — per-site customization
@@ -108,15 +108,27 @@ product. `apps/reference` is where an engine feature is built and proven; it is 
 to nobody. `apps/themes` is the shippable counterpart, cloned into one repo and one
 Convex backend per client.
 
-**One scope, `@be-yours`.** The three apps and the ten engine packages under
-`packages/` all use it; the apps are private workspace members and are never
-published, the packages go to private GitHub Packages. No name is shared between
-the two halves. It was two scopes — packages on `@be-in-digital/*`, apps on
-`@be-yours/*` — until the move to the `be-yours` organisation, which GitHub
-Packages forced by binding the scope to the owning account. Installing the
-packages needs a `read:packages` PAT in `NODE_AUTH_TOKEN`; without one, use
+**Two scopes, one hyphen apart, deliberately.** The three apps use `@beyours/*`;
+the ten engine packages under `packages/` use `@be-yours/*` — with hyphens — on
+GitHub Packages. The hyphens are not a typo and not a style: GitHub Packages
+requires an npm scope to be exactly the login of the organisation that owns the
+packages, and this repository lives at `be-yours/beyours`. The apps are never
+published, so nothing forces them to match and they do not.
+
+It was `@be-in-digital/*` until the rename, and every version published under
+that scope is still on the registry — a client site that has not been migrated
+still resolves it. Installing the engine
+needs a `read:packages` PAT in `NODE_AUTH_TOKEN`; without one, use
 `pnpm engine:link <engine-clone>` from inside `apps/themes` for local symlinks
 (the script lives there, not at the root).
+
+**Publication is currently HELD**, on purpose. `RELEASE_HOLD.md` at the root is
+the hold: while that file exists, `release.yml` verifies everything and
+publishes nothing, the mirror stands down instead of pinning versions that do
+not exist yet, and `pnpm release` refuses on a laptop. `pnpm check:release-hold`
+answers it. `pnpm version-packages`, then deleting the file and merging, is the
+release; `RELEASE_HOLD.md` carries the order and says which two packages go out
+at `1.0.1` rather than `1.0.0`, and why.
 
 > **BeYours is the product sold to restaurant owners. BeInDigital is the agency.**
 > Two brands, two businesses — read the Naming section of `README.md` before any
@@ -629,7 +641,7 @@ pnpm test:e2e:debug    # Playwright inspector, apps/reference
 
 The last two delegate to `apps/reference` for the same reason: an interactive
 runner needs one target. `apps/themes` defines both as well, so
-`pnpm --filter @be-yours/themes test:e2e:debug` works on the template.
+`pnpm --filter @beyours/themes test:e2e:debug` works on the template.
 
 ### CI/CD
 GitHub Actions runs the suite on pushes to `main`, on pull requests targeting
@@ -672,7 +684,7 @@ OPENAI_API_KEY=sk-...
 > `apps/docs/deployment/aws-ownership.md` records what is still owed: every site
 > provisioned before the change holds the fleet-wide key and the shared bucket,
 > and so "still carry credentials to other clients' data
-> ([#199](https://github.com/be-yours/beyours/issues/199))". Moving one is a
+> ([#199](https://github.com/be-in-digital/beyours/issues/199))". Moving one is a
 > migration — copy its S3 objects, create and verify its SES identity, re-point
 > stored URLs, rotate the shared key — not a config change.
 >

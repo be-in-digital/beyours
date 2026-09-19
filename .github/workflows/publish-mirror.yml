@@ -1,6 +1,6 @@
 name: Publish mirror
 
-# Pushes `apps/themes` to be-yours/beyours-boilerplate, the repository
+# Pushes `apps/themes` to be-in-digital/beyours-boilerplate, the repository
 # client sites are cloned from, rewriting everything that only makes sense
 # inside the monorepo (workspace: dependencies, lockfile, vercel.json, package
 # name). Transformation details: scripts/publish-mirror.mjs
@@ -337,6 +337,13 @@ jobs:
       # `push` run stood down and the `workflow_run` one owns the sync. Read by
       # `report` to tell that stand-down from a sync that was owed and missing.
       deferred: ${{ steps.plan.outputs.publishing }}
+      # `true` while `RELEASE_HOLD.md` is in the tree. The mirror pins each
+      # engine dependency to the version the REGISTRY serves, so it physically
+      # cannot sync a scope that has never been published: every lookup would
+      # answer nothing and the publisher would refuse. Standing down on the hold
+      # turns that into a stated decision instead of a red run about a registry
+      # that is behaving correctly.
+      held: ${{ steps.hold.outputs.held }}
     steps:
       - name: Check the push secret
         id: gate
@@ -496,6 +503,13 @@ jobs:
       # them a green run that pushed nothing is the ambiguity the `report` job
       # below was built to remove. They get the refusal and its typecheck error,
       # which names the package whose version is behind.
+      # Every trigger, unlike the plan below: a `workflow_dispatch` asking for a
+      # sync now must get the same answer as a push, and under a hold that
+      # answer is "there is nothing published to pin yet".
+      - name: Is the release held?
+        id: hold
+        run: node scripts/check-release-hold.mjs --report
+
       - name: Will a Release carry this commit?
         id: plan
         if: github.event_name == 'push'
@@ -509,8 +523,9 @@ jobs:
         # On `push`, only when no Release is about to publish for this commit;
         # otherwise the run above owns it and this one would pin stale versions.
         if: >-
-          ${{ (github.event_name != 'workflow_run' && steps.plan.outputs.publishing != 'true')
-            || steps.released.outputs.published == 'true' }}
+          ${{ steps.hold.outputs.held != 'true'
+            && ((github.event_name != 'workflow_run' && steps.plan.outputs.publishing != 'true')
+              || steps.released.outputs.published == 'true') }}
         env:
           # Registry read: the packages are published by this repository, so
           # GITHUB_TOKEN is enough with `packages: read`.
@@ -557,6 +572,7 @@ jobs:
           OUTCOME: ${{ needs.publish.outputs.outcome }}
           CAN_PUSH: ${{ needs.publish.outputs.can_push }}
           DEFERRED: ${{ needs.publish.outputs.deferred }}
+          HELD: ${{ needs.publish.outputs.held }}
           CHECK_ONLY: ${{ inputs.check_only }}
           EVENT: ${{ github.event_name }}
         run: |
@@ -586,6 +602,24 @@ jobs:
               exit 0
               ;;
           esac
+
+          # The third designed stand-down: publication is held on purpose.
+          #
+          # It is checked before the other two because it outranks them. While
+          # `RELEASE_HOLD.md` is in the tree there is no published version of the
+          # engine to pin, so every path through this job would refuse — and a
+          # red mark would report a fault in a chain that is doing exactly what
+          # it was told. Unlike the two below it, this one holds on every
+          # trigger, a person's dispatch included: the answer to "sync now" is
+          # the same one, and they should be told why rather than shown a
+          # registry error.
+          if [ "$HELD" = "true" ]; then
+            say "**Stood down.** Publication is held by \`RELEASE_HOLD.md\`, so no engine version exists on the registry for this mirror to pin."
+            say ""
+            say "Client sites are unaffected: they keep installing the versions already published. Lift the hold, let \`Release\` publish, and the \`workflow_run\` path syncs behind it."
+            echo "::notice title=Release held::Nothing to pin yet — see RELEASE_HOLD.md."
+            exit 0
+          fi
 
           # The second designed stand-down, and the mirror image of the one
           # below: a `push` run for a commit whose Release has not published

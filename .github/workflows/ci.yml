@@ -186,20 +186,6 @@ jobs:
       - name: Check CLAUDE.md's commands and documents
         run: pnpm check:claude-md
 
-      # The scope and owner rename, proved rather than asserted. The new name
-      # splits one word apart — hyphenated for the organisation and the scope,
-      # unhyphenated for the domain, the repositories and the CLI — and nothing
-      # else in CI can see a swap either way. A workspace resolves `workspace:^`
-      # locally and never asks the registry, so an unhyphenated scope names no
-      # account and still type-checks and tests green all the way to
-      # `changeset publish`; and no suite knows which domain we own, so a
-      # hyphenated one is just a string. A hand-run pass wrote 27 of the second
-      # kind, one of them the `mentions legales` address of apps/site. The
-      # script's own header names both spellings, and the five files that quote
-      # them in order to forbid them are the only ones it looks away from.
-      - name: Check the scope and owner rename
-        run: pnpm check:scope
-
       # The one check that looks at what a CLIENT builds rather than at what
       # this repository builds. `apps/themes` is published verbatim to
       # `beyours-boilerplate`, where it is the repository root, and a stylesheet

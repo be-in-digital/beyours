@@ -18,6 +18,6 @@ or engine updates.**
 `convex/`: those areas belong to the engine and are overwritten or merged on
 every update. If a customization looks impossible from `site/`, the admin
 dashboard (CMS, settings) or `site.config.ts`, then it is an engine change —
-open a ticket on `be-yours/beyours`.
+open a ticket on `be-in-digital/beyours`.
 
 Details: `docs/CUSTOMIZATION.md`.

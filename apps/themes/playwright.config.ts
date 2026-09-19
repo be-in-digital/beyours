@@ -61,7 +61,7 @@ export default defineConfig({
   // One worker, everywhere — the same setting `apps/reference` already carries.
   //
   // This file kept `CI ? 1 : 2` long after the bench had abandoned it, and
-  // nothing caught the difference: the engine's CI runs `--filter=@be-yours/reference`,
+  // nothing caught the difference: the engine's CI runs `--filter=@beyours/reference`,
   // so the template's suite is only ever run by hand, or by a client.
   //
   // Two workers are two processes against ONE Next server and ONE Convex

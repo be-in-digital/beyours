@@ -21,6 +21,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 import { StoreStatusBadge } from "../components/restaurant/StoreStatusBadge"
 import type { StoreStatus } from "../components/restaurant/StoreStatusBadge"
+import { stripTags } from "./strip-tags"
 
 /** The component's own type forbids these; the database does not. */
 function renderUnchecked(
@@ -61,7 +62,7 @@ describe("StoreStatusBadge", () => {
     const seen = new Set<string>()
 
     for (const status of ["open", "closed", "temporarily_unavailable"]) {
-      const text = renderUnchecked(status).replace(/<[^>]*>/g, "").trim()
+      const text = stripTags(renderUnchecked(status)).trim()
 
       expect(text).not.toBe("")
       seen.add(text)

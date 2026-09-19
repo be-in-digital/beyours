@@ -45,6 +45,45 @@ interface CmsFieldRendererProps {
   disabled?: boolean
 }
 
+/**
+ * Which provider an embed URL belongs to, decided on its HOST.
+ *
+ * This asked `url.includes("youtube.com")`, and a substring test does not know
+ * where a URL's authority ends: `https://evil.example/?ref=youtube.com` answered
+ * yes, and so did `https://youtube.com.evil.example/`. The needle may sit in the
+ * path, the query or the fragment, and arbitrary hosts may come before or after
+ * it. This answer picks the embed a storefront will render, so it has to be
+ * asked of the parsed host and of nothing else.
+ *
+ * `endsWith("." + domain)` rather than `includes`, so `www.youtube.com` and
+ * `player.vimeo.com` still resolve while `youtube.com.evil.example` does not.
+ *
+ * A URL typed without a scheme is retried as https, because that is what an
+ * author pastes and what the substring form used to accept — dropping it would
+ * be a silent behaviour change dressed up as a security fix.
+ */
+function detectEmbedProvider(url: string): "youtube" | "vimeo" | undefined {
+  const trimmed = url.trim()
+  if (!trimmed) return undefined
+
+  let host: string
+  try {
+    const absolute = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
+    host = new URL(absolute).hostname.toLowerCase()
+  } catch {
+    return undefined
+  }
+
+  const servedBy = (domain: string) => host === domain || host.endsWith(`.${domain}`)
+
+  if (servedBy("youtube.com") || servedBy("youtube-nocookie.com") || servedBy("youtu.be")) {
+    return "youtube"
+  }
+  if (servedBy("vimeo.com")) return "vimeo"
+
+  return undefined
+}
+
 export function CmsFieldRenderer({
   fieldKey,
   fieldDef,
@@ -100,15 +139,10 @@ export function CmsFieldRenderer({
 
   const handleEmbedUrlChange = useCallback(
     (url: string) => {
-      let provider: "youtube" | "vimeo" | undefined
-      if (url.includes("youtube.com") || url.includes("youtu.be"))
-        provider = "youtube"
-      else if (url.includes("vimeo.com")) provider = "vimeo"
-
       onChange(fieldKey, {
         type: "video",
         embedUrl: url,
-        embedProvider: provider,
+        embedProvider: detectEmbedProvider(url),
       })
     },
     [fieldKey, onChange],

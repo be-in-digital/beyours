@@ -1,6 +1,6 @@
 {
   "name": "@be-yours/ui",
-  "version": "4.3.3",
+  "version": "1.0.0",
   "publishConfig": {
     "access": "restricted"
   },

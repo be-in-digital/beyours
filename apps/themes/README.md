@@ -12,7 +12,7 @@ backend and their own Vercel project.
 ```mermaid
 flowchart TB
     P["packages/*<br/>published as @be-yours/*"] -->|changesets| REG["GitHub Packages"]
-    T["apps/themes<br/><i>app shell + convex wrappers</i>"] -->|publish-mirror.yml| MIR["be-yours/beyours-boilerplate<br/><i>the mirror clients clone</i>"]
+    T["apps/themes<br/><i>app shell + convex wrappers</i>"] -->|publish-mirror.yml| MIR["be-in-digital/beyours-boilerplate<br/><i>the mirror clients clone</i>"]
     P -.->|"workspace:^ here"| T
 
     MIR -->|"git clone → remote `template`"| C["Client repository"]
@@ -35,7 +35,7 @@ flowchart TB
 > chosen theme to life — a client applies exactly one, tuned to their brand.
 
 > ⚠️ **Clients do not clone this directory, they clone the mirror repository**
-> `be-yours/beyours-boilerplate`. Here the engine dependencies are
+> `be-in-digital/beyours-boilerplate`. Here the engine dependencies are
 > `workspace:^`; over there they are published versions, with their own
 > lockfile. The crossing is automated — see
 > [`scripts/publish-mirror.mjs`](../../scripts/publish-mirror.mjs).
@@ -116,7 +116,7 @@ mobile customer app).
 Install once, with `gh` authenticated:
 
 ```bash
-gh api repos/be-yours/beyours-boilerplate/contents/scripts/beyours \
+gh api repos/be-in-digital/beyours-boilerplate/contents/scripts/beyours \
   -H "Accept: application/vnd.github.raw" > /opt/homebrew/bin/beyours \
   && chmod +x /opt/homebrew/bin/beyours
 beyours token ghp_xxx           # read:packages PAT, stored chmod 600
@@ -128,7 +128,7 @@ beyours token ghp_xxx           # read:packages PAT, stored chmod 600
 Then everything happens in the terminal:
 
 ```bash
-beyours create client-luigi --name "Chez Luigi" --repo be-yours/client-luigi
+beyours create client-luigi --name "Chez Luigi" --repo be-in-digital/client-luigi
 beyours create client-luigi --name "Chez Luigi" --mobile              # web + app
 beyours create client-luigi --name "Chez Luigi" --template pizzeria   # vertical design
 beyours help · version · upgrade
@@ -138,9 +138,9 @@ The CLI fetches its scripts from the mirror on every call, so it picks up
 template updates without reinstalling. Equivalent without the CLI:
 
 ```bash
-gh api repos/be-yours/beyours-boilerplate/contents/scripts/create-site.mjs \
+gh api repos/be-in-digital/beyours-boilerplate/contents/scripts/create-site.mjs \
   -H "Accept: application/vnd.github.raw" | node --input-type=module - \
-  client-luigi --name "Chez Luigi" --repo be-yours/client-luigi
+  client-luigi --name "Chez Luigi" --repo be-in-digital/client-luigi
 ```
 
 The command chains: clone the template → `template` remote (for updates) →
@@ -151,7 +151,7 @@ initial commit → push. From an existing clone: `pnpm create:site <dir> [option
 ### By hand (equivalent)
 
 ```bash
-git clone https://github.com/be-yours/beyours-boilerplate.git client-luigi
+git clone https://github.com/be-in-digital/beyours-boilerplate.git client-luigi
 cd client-luigi && git remote rename origin template
 export NODE_AUTH_TOKEN=ghp_xxx
 pnpm install
@@ -307,7 +307,7 @@ that runs the command receives everything. The guard is still to be written.
 ## Developing against a local engine (no registry)
 
 ```bash
-git clone https://github.com/be-yours/beyours ../beyours
+git clone https://github.com/be-in-digital/beyours ../beyours
 pnpm engine:link       # pnpm symlinks pointing at the clone
 # … develop …
 pnpm engine:unlink     # back to the registry — never commit in link mode

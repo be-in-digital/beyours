@@ -28,7 +28,7 @@ measured Convex inventory.
 | `apps/themes/convex` | One Convex deployment **per client** | `npx convex deploy` from the client's clone |
 | `apps/themes/demos` | Its own Vercel deployment, `noindex` (`apps/themes/demos/vercel.json`) | with the template |
 | `packages/*` | GitHub Packages, `@be-yours/*` | merging the changesets version PR |
-| `apps/themes` (as a tree) | `be-yours/beyours-boilerplate`, the distribution mirror | `publish-mirror.yml` |
+| `apps/themes` (as a tree) | `be-in-digital/beyours-boilerplate`, the distribution mirror | `publish-mirror.yml` |
 
 `apps/reference` deploys to nothing in production. It is the bench.
 
@@ -39,7 +39,7 @@ measured Convex inventory.
 Each app carries `vercel.json` with an ignore command:
 
 ```json
-{ "ignoreCommand": "npx turbo-ignore @be-yours/<app>" }
+{ "ignoreCommand": "npx turbo-ignore @beyours/<app>" }
 ```
 
 Turbo follows the dependency graph, so a change in `packages/ui` builds `reference`
@@ -243,7 +243,7 @@ published, they are deployed.
 ## 6. The distribution mirror
 
 Clients do not clone this repository. They clone
-**`be-yours/beyours-boilerplate`**, because a client site cannot clone a
+**`be-in-digital/beyours-boilerplate`**, because a client site cannot clone a
 subdirectory of a monorepo — git clones whole repositories. The mirror is the
 shippable cut of `apps/themes`.
 
@@ -254,7 +254,7 @@ shippable cut of `apps/themes`.
 | Engine dependencies | `workspace:^` | the published versions |
 | Lockfile | the root one | its own, regenerated |
 | `vercel.json` | `turbo-ignore` | absent — no turbo workspace client-side |
-| `name` | `@be-yours/themes` | `beyours-boilerplate` |
+| `name` | `@beyours/themes` | `beyours-boilerplate` |
 | `packageManager` | inert — only the root's counts | the monorepo root's, verbatim |
 | `pnpm.overrides` | inert — only the root's counts | the root's 22, merged in |
 
@@ -427,7 +427,7 @@ gate, because it needs the registry. See [`TESTING.md`](TESTING.md#4-ci).
 
 ```
 beyours create client-luigi --name "Chez Luigi" --template pizzeria \
-  --repo be-yours/client-luigi
+  --repo be-in-digital/client-luigi
 ```
 
 The `beyours` wrapper (`apps/themes/scripts/beyours`) fetches its scripts from the
@@ -499,12 +499,12 @@ immediately, with no rebuild and no repository involved.
 **Full path**, if the site has to keep deploying from the old repository:
 
 ```bash
-gh repo unarchive be-yours/beyours                       # archived 2026-08-16
+gh repo unarchive be-in-digital/beyours                       # archived 2026-08-16
 vercel project update beindigital-restaurant --auto-detect root-directory --scope be-in-digital
-vercel git connect https://github.com/be-yours/beyours --scope beyours
+vercel git connect https://github.com/be-in-digital/beyours --scope be-in-digital
 ```
 
-`be-yours/beyours` was archived once its history had been verified as fully
+`be-in-digital/beyours` was archived once its history had been verified as fully
 reachable from this repository (`apps/site`, brought in with `git subtree`). It is
 read-only and kept only as this rollback path.
 

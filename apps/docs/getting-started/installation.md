@@ -194,7 +194,7 @@ npm whoami --registry=https://npm.pkg.github.com  # Should show your GitHub user
 
 ### `404 Not Found` for a package
 
-Ensure you have access to the `be-yours` GitHub organization and the package exists.
+Ensure you have access to the `be-yours` GitHub organization and the package exists. A token that was only granted `read:packages` on `be-in-digital` will 401 against the `@be-yours` scope — the two are different organisations.
 
 ### Peer dependency warnings
 

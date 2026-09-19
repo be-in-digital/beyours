@@ -53,7 +53,7 @@ From the repository root, all through Turbo:
 | `pnpm test` | Vitest across every workspace |
 | `pnpm test:coverage` | Vitest with V8 coverage; writes `coverage/` per workspace |
 | `pnpm test:e2e` | Playwright, every app that declares the task |
-| `pnpm test:ui` · `pnpm test:e2e:ui` · `pnpm test:e2e:debug` | Interactive runners, filtered to `@be-yours/reference` |
+| `pnpm test:ui` · `pnpm test:e2e:ui` · `pnpm test:e2e:debug` | Interactive runners, filtered to `@beyours/reference` |
 | `pnpm lint` · `pnpm type-check` | Quality, across the 13 workspaces |
 | `pnpm check:divergence` | The twin-app guard (§8) |
 | `pnpm check:accents` · `pnpm check:claude-md` · `pnpm check:mirror-css` | Three more guards folded into `Lint` |

@@ -37,7 +37,7 @@ function run(over: Record<string, unknown> = {}) {
     status: "completed",
     conclusion: "success",
     name: "Lint + Test + Build",
-    html_url: "https://github.com/be-yours/beyours-boilerplate/actions/runs/1",
+    html_url: "https://github.com/be-in-digital/beyours-boilerplate/actions/runs/1",
     head_sha: "d51b209f",
     ...over,
   }

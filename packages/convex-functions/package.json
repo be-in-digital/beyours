@@ -1,6 +1,6 @@
 {
   "name": "@be-yours/convex-functions",
-  "version": "7.7.0",
+  "version": "1.0.0",
   "publishConfig": {
     "access": "restricted"
   },

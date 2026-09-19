@@ -167,7 +167,7 @@ flag must not brick a paying client's updates.
 actually freezes a lapsed site is revoking its access to the two private
 sources:
 
-1. **git channel** — remove the client from `be-yours/beyours-boilerplate`
+1. **git channel** — remove the client from `be-in-digital/beyours-boilerplate`
 2. **npm channel** — revoke the `read:packages` PAT in their `NODE_AUTH_TOKEN`
    (and their access to the `@be-yours/*` packages)
 

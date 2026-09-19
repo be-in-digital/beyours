@@ -8,8 +8,8 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
-    "@be-yours/site",
-    "@be-yours/reference",
-    "@be-yours/themes"
+    "@beyours/site",
+    "@beyours/reference",
+    "@beyours/themes"
   ]
 }
