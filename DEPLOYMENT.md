@@ -427,7 +427,7 @@ gate, because it needs the registry. See [`TESTING.md`](TESTING.md#4-ci).
 
 ```
 beyours create client-luigi --name "Chez Luigi" --template pizzeria \
-  --repo beyours/client-luigi
+  --repo be-yours/client-luigi
 ```
 
 The `beyours` wrapper (`apps/themes/scripts/beyours`) fetches its scripts from the
@@ -500,7 +500,7 @@ immediately, with no rebuild and no repository involved.
 
 ```bash
 gh repo unarchive be-yours/beyours                       # archived 2026-08-16
-vercel project update beindigital-restaurant --auto-detect root-directory --scope beyours
+vercel project update beindigital-restaurant --auto-detect root-directory --scope be-in-digital
 vercel git connect https://github.com/be-yours/beyours --scope beyours
 ```
 

@@ -13,6 +13,7 @@
     "check:mirror-css": "node scripts/check-mirror-css.mjs",
     "check:pending-release": "node scripts/check-pending-release.mjs",
     "check:pr-attribution": "node scripts/check-pr-attribution.mjs",
+    "check:scope": "node scripts/migrate-scope-to-be-yours.mjs --check --quiet",
     "check:source-drift": "node scripts/check-source-drift.mjs",
     "check:mirror-build": "node scripts/check-mirror-build.mjs",
     "check:mirror-ci": "node scripts/check-mirror-ci.mjs",

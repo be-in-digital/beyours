@@ -81,7 +81,7 @@ MISE À JOUR ${label.toUpperCase()} SUSPENDUE
 ${payload.message}
 
 ${payload.site ? `Site : ${payload.site}\n` : ""}Reprendre la maintenance : https://beyours.fr/espace-client
-Une question : contact@be-yours.fr
+Une question : contact@beyours.fr
 ────────────────────────────────────────────────────────`)
   process.exit(1)
 }

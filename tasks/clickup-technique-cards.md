@@ -635,16 +635,16 @@ désactivation qui coupe la boutique et le produit ensemble
 
 ---
 
-# 16. 🔑 Comptes — Créer les comptes tiers sous developers@be-yours.fr
+# 16. 🔑 Comptes — Créer les comptes tiers sous developers@beyours.fr
 
 **Priorité : urgent**
 
 ## Prérequis
-La boîte `developers@be-yours.fr` doit exister et être relevée : chaque inscription envoie
+La boîte `developers@beyours.fr` doit exister et être relevée : chaque inscription envoie
 une vérification, et plusieurs fournisseurs y envoient les codes de récupération.
 
 ## Règle de propriété
-**Niveau package** (BeYours détient, partagé entre tous les clients) → sous `developers@be-yours.fr` :
+**Niveau package** (BeYours détient, partagé entre tous les clients) → sous `developers@beyours.fr` :
 AWS, OpenAI, Uber Eats, Deliveroo.
 
 **Niveau site** (le restaurant détient, un par client) → **ne pas** créer sous cette adresse,

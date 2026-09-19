@@ -2141,7 +2141,7 @@ deciding before the first client files a request rather than after one is refuse
 
 ## LAUNCH-07 · Check the Convex spending cap
 A cap set too low disables **every** project on the team, production included. Account
-recovery runs through an owner who is not `developers@be-yours.fr`.
+recovery runs through an owner who is not `developers@beyours.fr`.
 
 ## LAUNCH-08 · Make CI blocking and switch E2E on
 Set `CONVEX_E2E_ENABLED=true` and the `E2E_*` secrets, then make CI and E2E required

@@ -62,7 +62,7 @@ deploy.
 
 1. **Create the Sentry project.** Platform **Next.js**, name it after the client
    (`pizzeria-napoli`). Create it **under the client's own Sentry account** — not
-   under `developers@be-yours.fr`. Per
+   under `developers@beyours.fr`. Per
    [`tasks/production-accounts-checklist.md`](../../../tasks/production-accounts-checklist.md),
    Sentry is site-level: it belongs to the restaurant and follows it.
 2. **Copy the DSN** into the site's `.env.local` as `NEXT_PUBLIC_SENTRY_DSN`,

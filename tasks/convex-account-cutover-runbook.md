@@ -22,7 +22,7 @@
 ## What exists already
 
 Created and **verified** on 2026-08-28, team `be-yours` (account
-`developers@be-yours.fr`):
+`developers@beyours.fr`):
 
 | Project | What it is | Production deployment |
 |---|---|---|

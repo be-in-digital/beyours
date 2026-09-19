@@ -26,7 +26,7 @@ export const STUDIO_URL = "https://beyours.fr";
  * writing an address inline: hardcoded copies are how the site ended up
  * showing two domains at once.
  */
-export const SITE_EMAIL = "hello@be-yours.fr";
+export const SITE_EMAIL = "hello@beyours.fr";
 
 /**
  * The brand's social accounts. Centralised because the footer, the contact
@@ -35,7 +35,7 @@ export const SITE_EMAIL = "hello@be-yours.fr";
  */
 export const SOCIAL_LINKS = {
   instagram: "https://instagram.com/beyours.fr",
-  tiktok: "https://tiktok.com/@be-yours.fr",
+  tiktok: "https://tiktok.com/@beyours.fr",
   x: "https://x.com/beyours_fr",
   linkedin: "https://linkedin.com/company/beyours-fr",
 } as const;

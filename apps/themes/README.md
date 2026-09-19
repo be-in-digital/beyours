@@ -128,7 +128,7 @@ beyours token ghp_xxx           # read:packages PAT, stored chmod 600
 Then everything happens in the terminal:
 
 ```bash
-beyours create client-luigi --name "Chez Luigi" --repo beyours/client-luigi
+beyours create client-luigi --name "Chez Luigi" --repo be-yours/client-luigi
 beyours create client-luigi --name "Chez Luigi" --mobile              # web + app
 beyours create client-luigi --name "Chez Luigi" --template pizzeria   # vertical design
 beyours help · version · upgrade
@@ -140,7 +140,7 @@ template updates without reinstalling. Equivalent without the CLI:
 ```bash
 gh api repos/be-yours/beyours-boilerplate/contents/scripts/create-site.mjs \
   -H "Accept: application/vnd.github.raw" | node --input-type=module - \
-  client-luigi --name "Chez Luigi" --repo beyours/client-luigi
+  client-luigi --name "Chez Luigi" --repo be-yours/client-luigi
 ```
 
 The command chains: clone the template → `template` remote (for updates) →

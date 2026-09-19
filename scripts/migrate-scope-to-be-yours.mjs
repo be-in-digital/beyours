@@ -59,14 +59,56 @@ import path from "node:path"
 const FROM = "be-in-digital"
 const TO = "be-yours"
 
-/** Lines whose `be-in-digital` names an account outside this repository. */
+/**
+ * Lines whose `be-in-digital` names an account outside this repository.
+ *
+ * The word `team` lands on either side of the name in practice — "the
+ * be-in-digital team" and "scoped to the `be-in-digital` team" are the same
+ * Vercel team — and `--scope` names it with no such word at all. All three
+ * spellings appear in DEPLOYMENT.md and the deployment guides, and a rule that
+ * caught only the first rewrote a live team slug into a silent cache miss.
+ */
 const HELD_BACK = [
   { id: "turbo-team", test: (line) => line.includes("TURBO_TEAM") },
-  { id: "vercel-team", test: (line) => /team\s+[`"']?be-in-digital/.test(line) },
+  {
+    id: "vercel-team",
+    test: (line) =>
+      /team\s+[`"']?be-in-digital/.test(line) ||
+      /be-in-digital[`"']?\s+team/.test(line) ||
+      /--scope\s+[`"']?be-in-digital/.test(line),
+  },
 ]
 
 /** `be-in-digital.fr` is a domain; the owner rename does not reach it. */
 const DOMAIN_SUFFIX = /^\.fr/
+
+/**
+ * Spellings of the NEW name that are always wrong, whichever hand wrote them.
+ *
+ * This script cannot produce either: it only ever replaces the exact string
+ * `be-in-digital`. Both came out of the hand-run pass that corrected this
+ * migration's first attempt — which wrote `@beyours/*`, a scope no account
+ * owns — with a blanket `beyours` -> `be-yours`. That pass over-reached onto
+ * the frozen domain in 27 places across five mailboxes, one of them the
+ * `mentions legales` address of `apps/site`, and under-reached on eight owner
+ * and team slugs it left bare.
+ *
+ * Nothing else in this repository catches either. A workspace resolves
+ * `workspace:^` locally and never asks the registry, so `@beyours/*` type-checks
+ * and tests green all the way to `changeset publish`; and no suite knows which
+ * domain we own, so `hello@be-yours.fr` is just a string. They are checked here
+ * because this is where the rename is already being proved complete.
+ */
+const NEVER = [
+  {
+    pattern: /be-yours\.fr/,
+    why: "the domain is `beyours.fr` — the hyphen belongs to the owner, not to the domain",
+  },
+  {
+    pattern: /@beyours\//,
+    why: "the scope is `@be-yours/` — `@beyours` names no account and `changeset publish` refuses it",
+  },
+]
 
 const SKIP_BASENAMES = new Set(["CHANGELOG.md"])
 
@@ -77,6 +119,10 @@ const SKIP_BASENAMES = new Set(["CHANGELOG.md"])
  * `--check` can be told to look away — so keep it short. A file here is no
  * longer guarded: an accidental `@be-in-digital/` import inside it would pass.
  * That is acceptable for prose and for this script; it would not be for source.
+ *
+ * It exempts the NEVER sweep below for the same reason and at the same cost:
+ * these are the files that quote `@beyours/*` and `be-yours.fr` in order to say
+ * never to write them.
  */
 const DOCUMENTS_THE_RENAME = new Set([
   "CLAUDE.md",
@@ -101,6 +147,40 @@ const tracked = execFileSync("git", ["ls-files", "-z"], {
 })
   .split("\0")
   .filter(Boolean)
+
+const forbidden = []
+for (const rel of tracked) {
+  if (DOCUMENTS_THE_RENAME.has(rel)) continue
+  let buf
+  try {
+    buf = fs.readFileSync(path.join(repoRoot, rel))
+  } catch {
+    continue // a deleted-but-tracked path, or a directory
+  }
+  if (buf.includes(0)) continue // binary
+  const lines = buf.toString("utf8").split("\n")
+  for (let i = 0; i < lines.length; i += 1) {
+    for (const rule of NEVER) {
+      if (rule.pattern.test(lines[i])) {
+        forbidden.push({ rel, line: i + 1, text: lines[i].trim(), why: rule.why })
+      }
+    }
+  }
+}
+
+if (forbidden.length > 0) {
+  console.error(`${forbidden.length} occurrence(s) of a spelling that is never correct:\n`)
+  for (const f of forbidden) {
+    console.error(`  ${f.rel}:${f.line}  ${f.text.slice(0, 110)}`)
+    console.error(`      ${f.why}`)
+  }
+  console.error(
+    "\nNothing was rewritten. Fix these by hand: this script did not write them, and it" +
+      "\nwill not unwrite them — a deliberate change of domain or scope must not be" +
+      "\nreverted in silence.",
+  )
+  process.exit(1)
+}
 
 /**
  * Rewrite one line, leaving held-back occurrences in place.

@@ -541,7 +541,7 @@ try {
   const subject = run("git", ["log", "-1", "--format=%s"], { cwd: ROOT })
 
   run("git", ["config", "user.name", "beyours-bot"], { cwd: clone })
-  run("git", ["config", "user.email", "bot@be-yours.fr"], { cwd: clone })
+  run("git", ["config", "user.email", "bot@beyours.fr"], { cwd: clone })
   run("git", ["add", "-A"], { cwd: clone })
   run("git", ["commit", "-m", `chore: sync from apps/themes (${sha})\n\n${subject}`], { cwd: clone })
   run("git", ["push", "origin", "HEAD:main"], { cwd: clone })

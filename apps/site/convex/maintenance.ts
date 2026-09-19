@@ -212,7 +212,7 @@ export function entitlementMessage(e: Entitlement): string {
     case "unpaid":
       return "Aucun paiement de maintenance enregistré pour ce site. Les mises à jour reprennent dès la régularisation.";
     case "unknown_key":
-      return "Clé de licence inconnue : aucun site enregistré ne la porte. Vérifiez la clé du fichier .beindigital-site.json, ou écrivez à contact@be-yours.fr pour la faire enregistrer.";
+      return "Clé de licence inconnue : aucun site enregistré ne la porte. Vérifiez la clé du fichier .beindigital-site.json, ou écrivez à contact@beyours.fr pour la faire enregistrer.";
   }
 }
 

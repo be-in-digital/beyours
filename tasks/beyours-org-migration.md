@@ -62,6 +62,26 @@ locally and never touches the registry. The failure would have surfaced at
 The only check that would have caught it is the one that was skipped: reading
 the organisation's actual slug before writing 3 041 occurrences of a guess.
 
+**And correcting it went wrong in the other direction, which is the part worth
+keeping.** The fix was a hand-run `beyours` -> `be-yours` over the files the
+first pass had touched. It over-reached onto the frozen domain in 27 places
+across five mailboxes — `hello@`, `contact@`, `developers@`, `ops@`,
+`no-reply@`, plus the mirror bot's committer address and a TikTok handle — one
+of them the `mentions legales` address of `apps/site`, which is contractual
+text. It also under-reached, leaving eight owner and team slugs bare: an org
+that reads `beyours` sends an operator to a page that is not ours, and a Vercel
+team slug rewritten from an account that has not moved is a silent cache miss,
+not an error.
+
+Both survived `pnpm type-check`, `pnpm test` and every `check:*` guard, because
+none of them knows which domain we own. So `migrate-scope-to-be-yours.mjs` now
+sweeps for the two spellings of the NEW name that are never correct — an
+unhyphenated scope, a hyphenated domain — refuses to write anything while
+either is present, and runs in CI as `pnpm check:scope` in the required `Lint`
+job. Its `HELD_BACK` rules were widened at the same time: `team` lands on
+either side of the name in prose, and `--scope` names the Vercel team with no
+such word at all.
+
 ---
 
 ## 1. Why the order matters
@@ -244,12 +264,15 @@ exactly like a quiet week.
 ## Verifying the code half
 
 ```bash
-node scripts/migrate-scope-to-be-yours.mjs --check   # exits 1 if anything is left
+pnpm check:scope                  # the same thing, as CI runs it
 pnpm type-check && pnpm test && pnpm lint
 ```
 
-`--check` writes nothing and is cheap enough to run in CI. It will exit 0 on
-this branch and keep exiting 0 unless someone reintroduces the old spelling.
+`pnpm check:scope` is `migrate-scope-to-be-yours.mjs --check --quiet`: it writes
+nothing, exits 1 if any `be-in-digital` is left or if either never-correct
+spelling of the new name is present, and runs in the required `Lint` job. It
+exits 0 on this branch and keeps exiting 0 unless someone reintroduces a wrong
+spelling in either direction.
 
 One caveat on `pnpm check:claude-md`: it fails on a shallow clone, because it
 verifies that the commit CLAUDE.md pins is an ancestor of `HEAD`. CI checks out

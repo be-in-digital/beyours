@@ -167,7 +167,7 @@ npm ERR! 401 Unauthorized
 npm ERR! 403 Forbidden - PUT https://npm.pkg.github.com/@be-yours/ui
 ```
 
-**Fix**: Your token doesn't have `write:packages` scope (for publishing) or you're not a member of the `beyours` org.
+**Fix**: Your token doesn't have `write:packages` scope (for publishing) or you're not a member of the `be-yours` org.
 
 ### 404 Not Found
 

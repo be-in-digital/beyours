@@ -327,7 +327,7 @@ process is described in [`PROCESS_DE_VENTE.md`](./PROCESS_DE_VENTE.md).
 
 ## History
 
-This app lived under `apps/web-restaurant` in the `beyours/beindigital`
+This app lived under `apps/web-restaurant` in the `be-yours/beindigital`
 monorepo. It moved out in August 2026 into a standalone `beyours` repository,
 then came back as `apps/site` when the three BeYours projects were regrouped.
 Its history followed at every step.

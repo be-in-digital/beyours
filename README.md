@@ -922,8 +922,8 @@ further than it looks — check what depends on it before releasing.
 
 | Vercel project | Team | Source | Root Directory |
 | --- | --- | --- | --- |
-| `beindigital-restaurant` | `beyours` | this repo, `main` branch → **beyours.fr** | `apps/site` |
-| 1 project per client | `beyours` | the client's cloned repository | root |
+| `beindigital-restaurant` | `be-in-digital` | this repo, `main` branch → **beyours.fr** | `apps/site` |
+| 1 project per client | `be-in-digital` | the client's cloned repository | root |
 
 Convex is pushed separately, from the app directory: `npx convex deploy`. Each
 client has **their own Convex deployment** — data isolation is a whole backend,
@@ -987,7 +987,7 @@ deployments: the URLs are unchanged and nothing was re-wired.
 
 | Where | What it is |
 | --- | --- |
-| GitHub | the repository, `beyours/beindigital-restaurant` |
+| GitHub | the repository, `be-yours/beindigital-restaurant` |
 | Vercel | the project that builds `apps/site` |
 | ~~Convex~~ | **renamed** — now `beyours-commercial-site` |
 
@@ -1038,8 +1038,8 @@ immediately, with no rebuild and no repository involved.
 
 ```bash
 gh repo unarchive be-yours/beyours                       # archived 2026-08-16
-vercel project update beindigital-restaurant --auto-detect root-directory --scope beyours
-vercel git connect https://github.com/be-yours/beyours --scope beyours
+vercel project update beindigital-restaurant --auto-detect root-directory --scope be-in-digital
+vercel git connect https://github.com/be-yours/beyours --scope be-in-digital
 ```
 
 ---

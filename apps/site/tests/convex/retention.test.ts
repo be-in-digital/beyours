@@ -59,7 +59,7 @@ const ORDER = {
 /** An admin session, which `previewErasure` and `eraseDataSubject` require. */
 async function seedAdmin(t: ReturnType<typeof convexTest>) {
   const userId = await t.run((ctx) =>
-    ctx.db.insert("users", { email: "ops@be-yours.fr" }),
+    ctx.db.insert("users", { email: "ops@beyours.fr" }),
   );
   await t.run((ctx) =>
     ctx.db.insert("affiliateUsers", {

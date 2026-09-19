@@ -373,12 +373,13 @@ rebases — and it was the intended trade until the queue made it redundant.
 
 ## 6bis. The remote cache — one secret, and it is the owner's
 
-`ci.yml` and `e2e.yml` pass `TURBO_TOKEN` and `TURBO_TEAM` to every job. The team
-slug is written in the workflow (`beyours` — it is in the URL of every
-Vercel check). The token is not, and nothing in this repository can create it:
+`ci.yml` and `e2e.yml` pass `TURBO_TOKEN` and `TURBO_TEAM` to every job. The
+slug of the `be-in-digital` team is written in the workflow — it is in the URL
+of every Vercel check. The token is not, and nothing in this repository can
+create it:
 
 1. Vercel → Account Settings → Tokens → create one scoped to the
-   `beyours` team.
+   `be-in-digital` team.
 2. GitHub → repository Settings → Secrets and variables → Actions → new
    repository secret named `TURBO_TOKEN`.
 

@@ -45,7 +45,7 @@ async function seedProgramme(t: ReturnType<typeof convexTest>) {
       createdAt: NOW,
     });
     const adminAccount = await ctx.db.insert("users", {
-      email: "ops@be-yours.fr",
+      email: "ops@beyours.fr",
     });
     await ctx.db.insert("affiliateUsers", {
       userId: adminAccount,

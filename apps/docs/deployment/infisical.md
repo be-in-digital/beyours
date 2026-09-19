@@ -257,7 +257,7 @@ you.
 
 **1. Create the token, on Vercel.** Profile icon → *Account Settings* →
 **API Tokens** → **Create**. Name it `Infisical`, scope it to the
-`beyours` team, and copy it — it is shown once.
+`be-in-digital` team, and copy it — it is shown once.
 
 > Do not set an expiry unless you plan to rotate it. An expired token stops the
 > sync silently: Vercel keeps serving the last values it received, so nothing
