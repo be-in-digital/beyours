@@ -171,7 +171,13 @@ print(m.group(1))
 PY
 }
 
+ESS_CREATION="$(read_cents essentielle creation)"
 ESS_MONTHLY="$(read_cents essentielle maintenanceMonthly)"
+# foundersOffer.totalSlots, read rather than restated — same reasoning as the
+# amounts above. ensure_coupon now both creates the coupon and audits an
+# existing one against this number; a literal here would let the two disagree.
+TOTAL_SLOTS="$(python3 -c 'import re,sys; t=open(sys.argv[1],encoding="utf-8").read(); m=re.search(r"totalSlots\s*:\s*(\d+)",t); sys.exit("foundersOffer.ts: no totalSlots") if not m else print(m.group(1))' "$REPO_ROOT/apps/site/convex/foundersOffer.ts")"
+
 ESS_YEARLY="$(read_cents essentielle maintenanceYearly)"
 PRE_MONTHLY="$(read_cents premium maintenanceMonthly)"
 PRE_YEARLY="$(read_cents premium maintenanceYearly)"
@@ -394,6 +400,120 @@ print("MISSING" if a is None else ",".join(a.get("products") or []))' "$RESP")"
   fi
 }
 
+# How to repair a coupon, and the arithmetic that makes the repair safe.
+#
+# A Stripe coupon is immutable but for `name` and `metadata`: percent_off,
+# amount_off, duration, max_redemptions, redeem_by and applies_to cannot be
+# patched. So "update the coupon" is ALWAYS delete-then-recreate.
+#
+# And recreating RESETS times_redeemed to 0 — Stripe keeps no ledger across a
+# deleted id. Rebuilding at the full cap after four founders have redeemed
+# hands out FOURTEEN free builds, not ten: 14 000 EUR excl. tax given away by an
+# operation that reads like a typo fix. The replacement carries the remainder,
+# and this prints it rather than leaving it to be worked out at the keyboard.
+# Mirrors replacementMaxRedemptions in apps/site/convex/stripeCouponAudit.ts.
+print_recreate_instructions() { # $1 = times_redeemed
+  local redeemed="${1:-0}" remaining
+  case "$redeemed" in ''|*[!0-9]*) redeemed=0 ;; esac
+  remaining=$(( TOTAL_SLOTS - redeemed ))
+  [ "$remaining" -lt 0 ] && remaining=0
+  echo "    A Stripe coupon is immutable (only name and metadata can be patched)," >&2
+  echo "    so this is delete-then-recreate:" >&2
+  echo "      curl -sS -X DELETE https://api.stripe.com/v1/coupons/$COUPON_ID -u \"\$STRIPE_SECRET_KEY:\"" >&2
+  echo "      bash scripts/wizards/stripe-founders-create.sh --apply" >&2
+  if [ "$redeemed" -gt 0 ]; then
+    echo "    BUT $redeemed seat(s) are already spent, and deleting the coupon resets" >&2
+    echo "    times_redeemed to 0. The replacement must carry max_redemptions=$remaining," >&2
+    echo "    NOT $TOTAL_SLOTS — otherwise $redeemed extra build(s) go out free." >&2
+    echo "    This script recreates at $TOTAL_SLOTS, so set the remainder by hand." >&2
+  fi
+}
+
+# What an EXISTING coupon is worth, beyond "it exists".
+#
+# The gap this closes: a re-run over a drifted coupon printed "= coupon already
+# exists" and moved on. Nothing here, and nothing in stripe-founders-launch.sh,
+# ever read `percent_off` — the one field that decides whether the creation is
+# actually free. A coupon at 50 % passed every check in the repository while
+# invoicing the founder for half a build the sales page gives away.
+#
+# The same rules, with the same reasoning, are unit-tested without credentials
+# in apps/site/convex/stripeCouponAudit.ts and run from the deployment by
+# `pnpx convex run stripeAudit:run --prod`. This is the copy that needs only a
+# Stripe key, for the console work that happens before any variable is set.
+report_coupon_drift() { # $1 = times_redeemed
+  local redeemed="$1" pct amt cur max dur redeem_by valid drift=0
+  pct="$(field percent_off)"
+  amt="$(field amount_off)"
+  cur="$(field currency)"
+  max="$(field max_redemptions)"
+  dur="$(field duration)"
+  redeem_by="$(field redeem_by)"
+  valid="$(field valid)"
+
+  # The discount. percent_off=100 is the recommended form; amount_off is
+  # allowed by runbook §3 and must equal planPrices.essentielle.creation.
+  if [ -n "$pct" ]; then
+    if [ "$pct" != "100" ]; then
+      echo "  ✗ percent_off is $pct, not 100 — the creation line is NOT free." >&2
+      echo "    The founder would be invoiced for a build the offer gives away," >&2
+      echo "    while the Convex order records the full discount: the Stripe" >&2
+      echo "    session and the order would not state the same price." >&2
+      drift=1
+    fi
+  elif [ -n "$amt" ]; then
+    if [ "$amt" != "$ESS_CREATION" ]; then
+      echo "  ✗ amount_off is $amt cents; planPrices.essentielle.creation is $ESS_CREATION." >&2
+      drift=1
+    elif [ "$cur" != "eur" ]; then
+      echo "  ✗ amount_off is in '${cur:-no currency}', not eur — Stripe will not apply it." >&2
+      drift=1
+    else
+      echo "    note: amount_off is correct but frozen — it is a copy of planPrices"
+      echo "    that nothing follows. Prefer percent_off=100 at the next recreate."
+    fi
+  else
+    echo "  ✗ the coupon carries neither percent_off nor amount_off: it discounts nothing." >&2
+    drift=1
+  fi
+
+  if [ -z "$max" ]; then
+    echo "  ✗ no max_redemptions — the offer is UNCAPPED at Stripe." >&2
+    echo "    countFoundersSold cannot hold it alone: it reads a snapshot, Stripe" >&2
+    echo "    keeps the ledger. Each build past the ${TOTAL_SLOTS}th costs $ESS_CREATION cents." >&2
+    drift=1
+  elif [ "$max" != "$TOTAL_SLOTS" ]; then
+    echo "  ✗ max_redemptions is $max; foundersOffer.totalSlots is $TOTAL_SLOTS." >&2
+    drift=1
+  fi
+
+  if [ "$dur" != "once" ]; then
+    echo "  ✗ duration is '$dur', not 'once'. The coupon is attached to the customer" >&2
+    echo "    the checkout creates, and that customer carries the maintenance" >&2
+    echo "    subscription — a non-punctual duration can follow onto renewals," >&2
+    echo "    which are not offered." >&2
+    drift=1
+  fi
+
+  if [ -n "$redeem_by" ]; then
+    echo "  ✗ redeem_by is set. The offer ends when the slots run out, never on a date." >&2
+    drift=1
+  fi
+
+  if [ "$valid" != "true" ]; then
+    echo "  ✗ Stripe reports the coupon as no longer valid (exhausted or expired)." >&2
+    echo "    resolveFoundersPricing still sees it 'configured' and opens the sale:" >&2
+    echo "    the creation would be billed at full price under the founders label." >&2
+    drift=1
+  fi
+
+  if [ "$drift" -ne 0 ]; then
+    print_recreate_instructions "$redeemed"
+    exit 1
+  fi
+  echo "    fields verified: discount, max_redemptions, duration, redeem_by, valid"
+}
+
 ensure_coupon() { # $1 = creation product id
   local product="$1" id redeemed max
   # A 404 here is the expected "not created yet" answer, so this one GET is
@@ -404,24 +524,30 @@ ensure_coupon() { # $1 = creation product id
   if [ -n "$id" ]; then
     redeemed="$(field times_redeemed)"
     max="$(field max_redemptions)"
-    echo "  = coupon already exists: $id  ($redeemed/$max redeemed)"
+    echo "  = coupon already exists: $id  ($redeemed/${max:-uncapped} redeemed)"
     # §6b: a non-zero count before the first sale means seats are already gone.
+    # `${max:-$TOTAL_SLOTS}` because an uncapped coupon returns an EMPTY
+    # max_redemptions, and the arithmetic below read that as 0 and printed
+    # "only -4 seats remain" — a nonsense number on the one coupon that most
+    # needs a clear report. report_coupon_drift names the uncapped case itself.
     if [ -n "$redeemed" ] && [ "$redeemed" != "0" ]; then
-      echo "  ! times_redeemed is $redeemed, not 0 — only $((max - redeemed)) seats remain." >&2
+      echo "  ! times_redeemed is $redeemed, not 0 — only $(( ${max:-$TOTAL_SLOTS} - redeemed )) seats remain." >&2
     fi
-    # An existing coupon gets the same check as a new one. Without this, a
-    # re-run over a coupon created unrestricted says "already exists" and
-    # moves on, which is how the defect would have reached the live account.
+    # An existing coupon gets the same checks as a new one. Without these, a
+    # re-run over a coupon created unrestricted — or at the wrong percent_off —
+    # says "already exists" and moves on, which is how the defect would have
+    # reached the live account.
+    report_coupon_drift "$redeemed"
     report_coupon_restriction "$product"
   elif [ "$APPLY" -eq 0 ]; then
-    echo "  + would create coupon '$COUPON_ID'  percent_off=100  max_redemptions=10"
+    echo "  + would create coupon '$COUPON_ID'  percent_off=100  max_redemptions=$TOTAL_SLOTS"
     echo "    applies_to = $product   duration=once   redeem_by unset"
     id="$COUPON_ID"
   else
     # percent_off over amount_off: §3 — it stays correct if
     # planPrices.essentielle.creation moves; a fixed amount_off would
     # silently leave a remainder on the creation line.
-    # max_redemptions 10 mirrors foundersOffer.totalSlots.
+    # max_redemptions mirrors foundersOffer.totalSlots, read at the top.
     # redeem_by is deliberately unset: "It ends when the slots run out,
     # never on a date."
     # `applies_to[products][0]`, with the INDEX. The bare `[]` form is a
@@ -433,7 +559,7 @@ ensure_coupon() { # $1 = creation product id
       --data-urlencode "id=$COUPON_ID" \
       --data-urlencode "percent_off=100" \
       --data-urlencode "duration=once" \
-      --data-urlencode "max_redemptions=10" \
+      --data-urlencode "max_redemptions=$TOTAL_SLOTS" \
       --data-urlencode "applies_to[products][0]=$product"
     die_on_error "creating coupon '$COUPON_ID'"
     id="$(field id)"

@@ -286,9 +286,25 @@ It reads each of the four ids back from Stripe and compares them to
 is live or test. `findings: []` means the four objects match what the code
 charges. Anything else names the variable, the Price id and the field.
 
-It does **not** audit the coupon: `max_redemptions`, `applies_to` and
-`times_redeemed` are still the manual read-back above, and §6c is what actually
-proves `applies_to`.
+Since the coupon audit landed it reads the **founders coupon** back in the
+same pass, against `foundersOffer` and `planPrices`: `percent_off` (or
+`amount_off` against `planPrices.essentielle.creation`), `currency`,
+`max_redemptions` against `foundersOffer.totalSlots`, `times_redeemed`,
+`duration`, `redeem_by`, `valid`, `livemode` and — where the API returns it —
+`applies_to`. `coupon.blocking: 0` means every field it could read is right.
+
+`percent_off` is the one worth naming, because until then **nothing in the
+repository read it**: not this action, which skipped the coupon by design, and
+not the wizard, whose coupon section checks `max_redemptions`, `times_redeemed`
+and `applies_to` and mentions `percent_off` only in a comment. A coupon created
+at 50 % passed every check here while invoicing the founder 1 750 € excl. tax
+for a build this page gives away.
+
+Two things it still cannot do. It cannot read `applies_to` back — Stripe does
+not return the field, so that finding comes out as `unverifiable` rather than as
+a pass, and `ok` is false until §6c has been done by eye. And it cannot repair
+anything: a Stripe coupon is immutable but for `name` and `metadata`, so every
+fix is delete-then-recreate, which is §6e.
 
 **6c — the guards no longer fire.** This is the only step that proves the thing
 the card is about. Open a real Essentielle checkout on beyours.fr and stop at
@@ -306,6 +322,30 @@ the Stripe page *without paying*:
 Abandon the session. An unpaid checkout holds a founders seat for 30 minutes
 ([`foundersOffer.ts:43`](../apps/site/convex/foundersOffer.ts)) and then
 returns it — so this costs one seat for half an hour, and nothing permanently.
+
+**6e — changing a coupon, which is never an edit.** A Stripe coupon is
+immutable but for `name` and `metadata`: `percent_off`, `amount_off`,
+`duration`, `max_redemptions`, `redeem_by` and `applies_to` cannot be patched.
+Every repair is therefore delete-then-recreate:
+
+```bash
+curl -sS -X DELETE https://api.stripe.com/v1/coupons/<coupon> -u "$STRIPE_SECRET_KEY:"
+bash scripts/wizards/stripe-founders-create.sh --apply
+```
+
+**And deleting resets `times_redeemed` to 0.** Stripe keeps no ledger across a
+deleted id, so a coupon rebuilt at `max_redemptions: 10` after four founders
+have redeemed caps the offer at **fourteen** free builds, not ten — 14 000 €
+excl. tax given away by an operation that reads like a typo fix. A replacement
+carries the remainder, `foundersOffer.totalSlots − times_redeemed`. Read
+`times_redeemed` **before** deleting; once it is gone, so is the number. Both
+`stripeAudit:run` and the wizard print the arithmetic rather than leaving it to
+be done at the keyboard, and the wizard recreates at the full cap, so a
+non-zero remainder has to be set by hand.
+
+The referral coupons are different and need none of this: `stripe.ts` creates
+one **per session** with the amount it computed, so they carry no shared state
+to drift and are never reused.
 
 **6d — the renewal actually bills.** Not provable without a completed sale.
 `createSubscription` runs from the `checkout.session.completed` webhook, and the
@@ -331,6 +371,13 @@ than no check at all.
 | A maintenance Price on the wrong interval, or archived | **Yes, on demand** | `stripeAudit:run` |
 | A maintenance Price attached to the creation product | **Yes, on demand** | `stripeAudit:run` |
 | The ids pointing at **test-mode** objects under a live key | **Yes, on demand** | `stripeAudit:run` — `livemode`, and «&nbsp;no such Price&nbsp;» |
+| The coupon at the **wrong `percent_off`** (a creation that is not free) | **Yes, on demand** | `stripeAudit:run` — new; read by nothing before it |
+| The coupon at an `amount_off` that no longer matches `planPrices` | **Yes, on demand** | `stripeAudit:run` |
+| The coupon **uncapped**, or capped away from `foundersOffer.totalSlots` | **Yes, on demand** | `stripeAudit:run`, and the wizard where the CLI is installed |
+| The coupon on the wrong `duration`, carrying a `redeem_by`, or spent | **Yes, on demand** | `stripeAudit:run` — new |
+| The coupon restricted to the **wrong** product | **Yes, on demand** | `stripeAudit:run`, where Stripe returns `applies_to` |
+| The coupon **not restricted at all** | **No — unreadable** | Stripe never returns `applies_to`; §6c only |
+| A rebuilt coupon **handing back seats already spent** | **Yes, on demand** | `stripeAudit:run` and the wizard both print the remainder — §6e |
 
 **†** — and on the deployment that sells, it does **not**. These variables live
 on the Convex deployment, not in the Next process env, so `validateSiteEnv`
@@ -346,14 +393,20 @@ as coverage:
   A Price edited in the Dashboard the day after `stripeAudit:run` came back clean
   is undetected until someone runs it again. Run it after any change to Stripe
   billing objects, and before a go-live.
-- **`stripeAudit:run` does not audit the coupon** — but the wizard does, so this
-  is not work you have to do by hand. `scripts/wizards/stripe-founders-launch.sh:392-427`
-  reads `max_redemptions`, `applies_to` and `times_redeemed` back and fails with
-  "Coupon has no applies_to". What stays unproven until §6c is only that the
-  coupon *applies* to a real session: a coupon whose `applies_to` points at the
-  wrong Product still costs a free build, and only a live checkout shows it.
-  (This bullet used to say flatly "the coupon is not audited", contradicting §6's
-  own head, which says the wizard does 6a and 6b in one pass. Corrected 2026-09-09.)
+- **`stripeAudit:run` now audits the coupon** — `convex/stripeCouponAudit.ts`,
+  reached from the same command as the Prices, with every rule unit-tested
+  without credentials. Before it, the coupon's only automated check was
+  `scripts/wizards/stripe-founders-launch.sh:392-427`, and that section sits
+  behind `command -v stripe`: on a machine without the Stripe CLI it degraded to
+  "unknown" and the run still passed. `percent_off` was read by neither, which
+  is the hole that mattered — see §6. What stays unproven until §6c is that the
+  coupon *applies* to a real session: Stripe does not return `applies_to`, so a
+  coupon pointing at the wrong Product still costs a free build and only a live
+  checkout shows it.
+  (This bullet has now been wrong in both directions. It first said flatly "the
+  coupon is not audited", contradicting §6's own head; corrected 2026-09-09 to
+  credit the wizard, without noting that the wizard's check is conditional on a
+  CLI. Corrected again 2026-09-19.)
 - **The renewal billing behaviour is still unproven** until one real order has
   been through it — §6d, unchanged. The audit verifies the Prices as *objects*,
   not the subscription that will be raised against them.
@@ -374,6 +427,7 @@ as coverage:
 - [ ] Maintenance Prices attached to Products **other than** the creation Products
 - [ ] Seven variables set on `famous-wildcat-229`, confirmed by §6a
 - [ ] Each id read back from Stripe and checked field by field (§6b)
+- [ ] `stripeAudit:run` returns `ok: true` — four Prices AND the coupon, `percent_off` included
 - [ ] `times_redeemed` is `0`
 - [ ] A live checkout opens and shows the creation line at 0,00 € (§6c)
 - [ ] Renewal billing **not** signed off — pending the first real order (§6d)
