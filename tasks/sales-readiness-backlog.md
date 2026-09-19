@@ -1920,8 +1920,9 @@ Mandatory order, unchanged: regenerate in the Deliveroo portal → propagate
 `tasks/secret-rotation-runbook.md` (history rewrite).
 
 Cost of the rewrite, re-measured 2026-09-09 on a full (un-shallowed) clone: **472 commits on
-`main`, 72 remote branches, 75 tags** — 63 of the tags being the `@be-yours/*` release
-anchors. That is up from the 393 / 8 / 59-of-60 recorded on 4 Sep, and it grows every week the
+`main`, 72 remote branches, 75 tags** — 63 of the tags being the `@be-in-digital/*` release
+anchors (the old scope, and still the only one carrying tags: the #572 rename publishes
+nothing while `RELEASE_HOLD.md` stands). That is up from the 393 / 8 / 59-of-60 recorded on 4 Sep, and it grows every week the
 decision waits. The blocker that deferred it last time has mostly expired: **2 open PRs**
 (#420, #421 — both drafts opened 2026-09-09), down from 14. A draft PR's SHAs are invalidated
 by a rewrite exactly like a ready one, which is why this number is tracked at all, so land or

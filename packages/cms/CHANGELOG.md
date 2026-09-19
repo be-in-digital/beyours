@@ -112,7 +112,7 @@
 
   **Breaking, twice over:**
   - `sanitizeSvg` and `SanitizeResult` no longer ship from the package root. They
-    ship from `@be-yours/cms/sanitize`. DOMPurify needs a DOM, and the root
+    ship from `@be-in-digital/cms/sanitize`. DOMPurify needs a DOM, and the root
     barrel is imported by Convex isolate modules that have none — re-exporting it
     there made the whole backend fail to push (`Failed to analyze cms.js: Cannot
 read properties of undefined (reading 'bind')`). The subpath keeps the parser
@@ -132,7 +132,7 @@ read properties of undefined (reading 'bind')`). The subpath keeps the parser
 ### Patch Changes
 
 - 7f0122b: Republished from main. Fixes two problems with the 2.0.1 tarballs that broke consumers:
-  - `@be-yours/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
+  - `@be-in-digital/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
   - The type fixes that were on main but never published (promotion-form/email-config in admin, Uber Eats signatures in integrations/convex-functions) go out with this patch — they had been committed without a changeset.
 
 ## 2.0.1
@@ -160,7 +160,7 @@ read properties of undefined (reading 'bind')`). The subpath keeps the parser
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```
 
 ## 1.0.0
@@ -182,5 +182,5 @@ read properties of undefined (reading 'bind')`). The subpath keeps the parser
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```
