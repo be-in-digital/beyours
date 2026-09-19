@@ -95,10 +95,7 @@ describe("CartItem — content", () => {
   })
 
   it("renders the chosen options", () => {
-    const shown = render({ options: ["Grande", "Extra fromage"] }).replace(
-      /<[^>]*>/g,
-      ""
-    )
+    const shown = stripTags(render({ options: ["Grande", "Extra fromage"] }))
     expect(shown).toContain("Grande, Extra fromage")
   })
 
