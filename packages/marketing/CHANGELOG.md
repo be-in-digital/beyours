@@ -33,7 +33,7 @@
   broken rather than merely unused, and exports left behind by a removal that only
   finished on one side of a package boundary.
 
-  **`@be-yours/ui` shipped a second toast system whose hook could only
+  **`@be-in-digital/ui` shipped a second toast system whose hook could only
   throw.** The product's toasts are `sonner`, mounted in each app's
   `app/providers.tsx` and imported by 129 files. Beside it, `Toast.tsx` held a
   module-private `ToastContext` defaulting to `undefined`, and exported a
@@ -52,7 +52,7 @@
   is republished without a second decision, which is how the provider reached a
   client API in the first place.
 
-  **`@be-yours/marketing` kept the pure half of a mutation #397 removed.**
+  **`@be-in-digital/marketing` kept the pure half of a mutation #397 removed.**
   That PR deleted `incrementRevenue` from `convex-functions` and left a tombstone
   saying why — nothing writes a `converted` email event and no order carries the
   campaign that led to it, so the attribution behind a "revenu attribué" figure
@@ -65,7 +65,7 @@
   against, not the finishing of a removal, so they are recorded here and left
   alone.
 
-  **`@be-yours/restaurant` published five cart selectors nothing selected
+  **`@be-in-digital/restaurant` published five cart selectors nothing selected
   with.** `useCartItems`, `useCartSummary`, `useCartItemCount`, `useCartOrderType`
   and `useCartStoreId` were compiled into `dist` and exported from both the root
   and `./hooks`, with zero references in either app, any package or any test. The
@@ -77,9 +77,9 @@
   and now teaches `getSummary` off the store, which is what the cart page actually
   does.
 
-  **`@be-yours/admin` exported four components no screen mounts.** Two auth
+  **`@be-in-digital/admin` exported four components no screen mounts.** Two auth
   forms — `ForgotPasswordForm` and `ResetPasswordForm` — which both apps rewrote
-  inline from `@be-yours/ui` primitives rather than import, plus a
+  inline from `@be-in-digital/ui` primitives rather than import, plus a
   `StatusBadge` and a `DateDisplay`. The `StatusBadge` _interface_ in
   `lib/vocabulary.ts` is a different, live thing and is untouched.
 
@@ -99,7 +99,7 @@
   claim nobody checked, and this one would have shipped as the changelog of a
   major bump.
 
-  **`@be-yours/core` carried 466 lines of i18n examples.** Fifteen exported
+  **`@be-in-digital/core` carried 466 lines of i18n examples.** Fifteen exported
   `example1_…` through `example15_…` functions, on no barrel, in no `exports` map
   and in no `tsup` entry — so never compiled into `dist`, but shipped in the
   tarball by `"files": ["dist", "src"]`. No supported import path reaches them,
@@ -107,12 +107,12 @@
   about the package shipping no JSX; they now make that claim on their own
   authority.
 
-  `@be-yours/mcp-server` is a patch because its registry advertised `Toast` to
+  `@be-in-digital/mcp-server` is a patch because its registry advertised `Toast` to
   client builds as a "Toast notification system". It is a box, and now says so.
 
   **One thing this does NOT do, said plainly.** The class (c) sweep in the same
   change removes 71 public _registrations_ from `apps/*/convex` while leaving the
-  handler definitions they wrapped exported from `@be-yours/convex-functions`
+  handler definitions they wrapped exported from `@be-in-digital/convex-functions`
   — so roughly sixty definitions there now have no registration anywhere. That is
   deliberate, and it is the opposite of what was done to `incrementRevenueStat`
   above, so the difference is worth stating. `incrementRevenue` was removed by
@@ -130,7 +130,7 @@
 - 8ce83cb: Publish the packages whose source has been ahead of the registry since July,
   and fix the one thing that kept a client site from compiling even then.
 
-  `@be-yours/integrations`, `@be-yours/marketing` and `@be-yours/ui`
+  `@be-in-digital/integrations`, `@be-in-digital/marketing` and `@be-in-digital/ui`
   all still sit at **2.0.2 on GitHub Packages**, and all three have had source
   changes merged since — without a version bump. `changeset publish` then answers
   `already published` and skips them, so the registry keeps serving the July
@@ -184,7 +184,7 @@
 ### Patch Changes
 
 - 7f0122b: Republished from main. Fixes two problems with the 2.0.1 tarballs that broke consumers:
-  - `@be-yours/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
+  - `@be-in-digital/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
   - The type fixes that were on main but never published (promotion-form/email-config in admin, Uber Eats signatures in integrations/convex-functions) go out with this patch — they had been committed without a changeset.
 
 ## 2.0.1
@@ -212,7 +212,7 @@
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```
 
 ## 1.0.0
@@ -234,5 +234,5 @@
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```

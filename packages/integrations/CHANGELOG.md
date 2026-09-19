@@ -24,7 +24,7 @@
 
 - Updated dependencies [b9e20ea]
 - Updated dependencies [6d6df2d]
-  - @be-yours/core@4.0.0
+  - @be-in-digital/core@4.0.0
 
 ## 2.2.1
 
@@ -34,7 +34,7 @@
 - Updated dependencies [e4955e7]
 - Updated dependencies [58f890f]
 - Updated dependencies [ecb21a1]
-  - @be-yours/core@3.0.0
+  - @be-in-digital/core@3.0.0
 
 ## 2.2.0
 
@@ -68,7 +68,7 @@
   one would make dine-in service depend on the gamification QR codes being
   configured — a restaurant can serve _sur place_ without ever running the wheel
   of fortune. The two share a representation instead:
-  `@be-yours/core/dining` normalises and bounds a table label for both.
+  `@be-in-digital/core/dining` normalises and bounds a table label for both.
 
   Required at the storefront, optional on the server. Uber Eats and Deliveroo
   forward `dine_in` orders that carry no table of their own, and refusing those
@@ -99,7 +99,7 @@
 
   For an EU food business under INCO 1169/2011 that is a regulatory surface.
 
-  `@be-yours/core/allergens` is now the single source of truth: the
+  `@be-in-digital/core/allergens` is now the single source of truth: the
   fourteen Annex II allergens plus `shellfish` and the two dietary markers, the
   alias table that matches French and English spellings through accents,
   ligatures and punctuation, the localised labels, and the Uber Eats mapping.
@@ -140,7 +140,7 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
 - Updated dependencies [c9619e2]
 - Updated dependencies [bd7a656]
 - Updated dependencies [bd17a78]
-  - @be-yours/core@2.4.0
+  - @be-in-digital/core@2.4.0
 
 ## 2.1.0
 
@@ -149,7 +149,7 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
 - 8ce83cb: Publish the packages whose source has been ahead of the registry since July,
   and fix the one thing that kept a client site from compiling even then.
 
-  `@be-yours/integrations`, `@be-yours/marketing` and `@be-yours/ui`
+  `@be-in-digital/integrations`, `@be-in-digital/marketing` and `@be-in-digital/ui`
   all still sit at **2.0.2 on GitHub Packages**, and all three have had source
   changes merged since — without a version bump. `changeset publish` then answers
   `already published` and skips them, so the registry keeps serving the July
@@ -203,7 +203,7 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
 ### Patch Changes
 
 - 7f0122b: Republished from main. Fixes two problems with the 2.0.1 tarballs that broke consumers:
-  - `@be-yours/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
+  - `@be-in-digital/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
   - The type fixes that were on main but never published (promotion-form/email-config in admin, Uber Eats signatures in integrations/convex-functions) go out with this patch — they had been committed without a changeset.
 
 ## 2.0.1
@@ -243,7 +243,7 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```
 
 ## 1.0.0
@@ -265,5 +265,5 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```

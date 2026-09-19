@@ -72,8 +72,8 @@
 ### Patch Changes
 
 - Updated dependencies [957f8f4]
-  - @be-yours/convex-schema@6.9.0
-  - @be-yours/convex-functions@7.7.0
+  - @be-in-digital/convex-schema@6.9.0
+  - @be-in-digital/convex-functions@7.7.0
 
 ## 22.0.1
 
@@ -182,9 +182,9 @@
 - Updated dependencies [975f8c7]
 - Updated dependencies [4f44255]
 - Updated dependencies [2a0e474]
-  - @be-yours/convex-functions@7.6.1
-  - @be-yours/restaurant@4.2.1
-  - @be-yours/convex-schema@6.8.1
+  - @be-in-digital/convex-functions@7.6.1
+  - @be-in-digital/restaurant@4.2.1
+  - @be-in-digital/convex-schema@6.8.1
 
 ## 22.0.0
 
@@ -321,9 +321,9 @@
 - Updated dependencies [bf17240]
 - Updated dependencies [0c172fa]
 - Updated dependencies [a8d2d08]
-  - @be-yours/convex-functions@7.6.0
-  - @be-yours/convex-schema@6.8.0
-  - @be-yours/core@4.3.1
+  - @be-in-digital/convex-functions@7.6.0
+  - @be-in-digital/convex-schema@6.8.0
+  - @be-in-digital/core@4.3.1
 
 ## 21.0.0
 
@@ -359,9 +359,9 @@
 - Updated dependencies [ff0588c]
 - Updated dependencies
 - Updated dependencies [9b0b850]
-  - @be-yours/convex-functions@7.5.1
-  - @be-yours/convex-schema@6.7.0
-  - @be-yours/ui@4.3.3
+  - @be-in-digital/convex-functions@7.5.1
+  - @be-in-digital/convex-schema@6.7.0
+  - @be-in-digital/ui@4.3.3
 
 ## 20.0.0
 
@@ -493,9 +493,9 @@
 - Updated dependencies [17e67d3]
 - Updated dependencies
 - Updated dependencies [d37e32c]
-  - @be-yours/convex-functions@7.5.0
-  - @be-yours/convex-schema@6.6.0
-  - @be-yours/restaurant@4.2.0
+  - @be-in-digital/convex-functions@7.5.0
+  - @be-in-digital/convex-schema@6.6.0
+  - @be-in-digital/restaurant@4.2.0
 
 ## 19.0.0
 
@@ -536,9 +536,9 @@
 ### Patch Changes
 
 - Updated dependencies [d0a7fa6]
-  - @be-yours/convex-schema@6.5.0
-  - @be-yours/convex-functions@7.4.0
-  - @be-yours/core@4.3.0
+  - @be-in-digital/convex-schema@6.5.0
+  - @be-in-digital/convex-functions@7.4.0
+  - @be-in-digital/core@4.3.0
 
 ## 18.0.0
 
@@ -611,8 +611,8 @@
 - Updated dependencies [4a648b5]
 - Updated dependencies [6bab077]
 - Updated dependencies [0419711]
-  - @be-yours/convex-functions@7.3.0
-  - @be-yours/convex-schema@6.4.0
+  - @be-in-digital/convex-functions@7.3.0
+  - @be-in-digital/convex-schema@6.4.0
 
 ## 17.0.0
 
@@ -643,16 +643,16 @@
 - Updated dependencies [50b0edb]
 - Updated dependencies [390c8d5]
 - Updated dependencies [4d759b5]
-  - @be-yours/convex-functions@7.2.0
-  - @be-yours/convex-schema@6.3.0
+  - @be-in-digital/convex-functions@7.2.0
+  - @be-in-digital/convex-schema@6.3.0
 
 ## 16.0.0
 
 ### Patch Changes
 
 - Updated dependencies [c5500af]
-  - @be-yours/convex-functions@7.1.0
-  - @be-yours/core@4.2.0
+  - @be-in-digital/convex-functions@7.1.0
+  - @be-in-digital/core@4.2.0
 
 ## 15.0.1
 
@@ -687,7 +687,7 @@
   declares still resolves to nothing rather than to a guess.
 
 - Updated dependencies
-  - @be-yours/ui@4.3.1
+  - @be-in-digital/ui@4.3.1
 
 ## 15.0.0
 
@@ -695,9 +695,9 @@
 
 - Updated dependencies [92dc32f]
 - Updated dependencies [92dc32f]
-  - @be-yours/restaurant@4.1.1
-  - @be-yours/convex-schema@6.2.0
-  - @be-yours/convex-functions@7.0.1
+  - @be-in-digital/restaurant@4.1.1
+  - @be-in-digital/convex-schema@6.2.0
+  - @be-in-digital/convex-functions@7.0.1
 
 ## 14.0.0
 
@@ -740,9 +740,9 @@
 - Updated dependencies [549026f]
 - Updated dependencies [549026f]
 - Updated dependencies [549026f]
-  - @be-yours/convex-functions@7.0.0
-  - @be-yours/core@4.1.0
-  - @be-yours/ui@4.3.0
+  - @be-in-digital/convex-functions@7.0.0
+  - @be-in-digital/core@4.1.0
+  - @be-in-digital/ui@4.3.0
 
 ## 13.0.0
 
@@ -789,16 +789,16 @@
 
   **And twenty-one icon-only controls were smaller than WCAG 2.5.8 allows**, from
   22×22 down to the 16×16 password reveal on the sign-in dialog. `scanTargetSize`
-  in `@be-yours/ui/target-size` measures every one of them from the markup,
+  in `@be-in-digital/ui/target-size` measures every one of them from the markup,
   each control is now at least 24×24, and the sweep is a test rather than a list
   that goes stale on the next filter chip.
 
 ### Patch Changes
 
 - Updated dependencies [e5394e5]
-  - @be-yours/convex-functions@6.2.0
-  - @be-yours/convex-schema@6.1.0
-  - @be-yours/ui@4.2.0
+  - @be-in-digital/convex-functions@6.2.0
+  - @be-in-digital/convex-schema@6.1.0
+  - @be-in-digital/ui@4.2.0
 
 ## 12.0.0
 
@@ -904,7 +904,7 @@
   decided is hostile. It goes through `purgeS3Objects` now.
 
   **CMS video uploads landed as `.bin`.** The upload route kept a private
-  six-entry MIME-to-extension map while `@be-yours/cms`'s `MIME_TO_EXT` —
+  six-entry MIME-to-extension map while `@be-in-digital/cms`'s `MIME_TO_EXT` —
   which calls itself the single source of truth, and is what the presigned Convex
   flow uses — held twelve. `ALLOWED_MIME_TYPES.cms` admits mp4, webm and three
   Office formats; all six fell through to `"bin"`.
@@ -923,12 +923,12 @@
   zero call sites, and it declared `MIN_PASSWORD_LENGTH = 8` against the live
   `minPasswordLength: 12`, with five lifecycle hooks whose bodies were a
   `console.info` and a list of TODOs over names like "lock the account after N
-  attempts". `@be-yours/convex-schema` loses the six printer types that
+  attempts". `@be-in-digital/convex-schema` loses the six printer types that
   outlived the `printerSettings` table — `PrinterType = 'network' | 'usb' |
 'bluetooth'`, the ESC/POS transports `CLAUDE.md` records as decided against.
   Both are BREAKING on a published API and neither had a consumer.
 
-  **`@be-yours/admin`** gains `PAYMENT_STATUS_LABELS`, so the payments screen
+  **`@be-in-digital/admin`** gains `PAYMENT_STATUS_LABELS`, so the payments screen
   stops declaring six operator-facing strings of its own, and the dashboard's
   recent-orders table stops declaring eleven — `lib/vocabulary.ts` claimed "label
   drift is now impossible" while two screens held their own copies.
@@ -1072,11 +1072,11 @@
 - Updated dependencies [6d6df2d]
 - Updated dependencies [b9e20ea]
 - Updated dependencies [6d6df2d]
-  - @be-yours/convex-schema@6.0.0
-  - @be-yours/convex-functions@6.1.0
-  - @be-yours/ui@4.1.0
-  - @be-yours/restaurant@4.1.0
-  - @be-yours/core@4.0.0
+  - @be-in-digital/convex-schema@6.0.0
+  - @be-in-digital/convex-functions@6.1.0
+  - @be-in-digital/ui@4.1.0
+  - @be-in-digital/restaurant@4.1.0
+  - @be-in-digital/core@4.0.0
 
 ## 11.0.0
 
@@ -1093,7 +1093,7 @@
   broken rather than merely unused, and exports left behind by a removal that only
   finished on one side of a package boundary.
 
-  **`@be-yours/ui` shipped a second toast system whose hook could only
+  **`@be-in-digital/ui` shipped a second toast system whose hook could only
   throw.** The product's toasts are `sonner`, mounted in each app's
   `app/providers.tsx` and imported by 129 files. Beside it, `Toast.tsx` held a
   module-private `ToastContext` defaulting to `undefined`, and exported a
@@ -1112,7 +1112,7 @@
   is republished without a second decision, which is how the provider reached a
   client API in the first place.
 
-  **`@be-yours/marketing` kept the pure half of a mutation #397 removed.**
+  **`@be-in-digital/marketing` kept the pure half of a mutation #397 removed.**
   That PR deleted `incrementRevenue` from `convex-functions` and left a tombstone
   saying why — nothing writes a `converted` email event and no order carries the
   campaign that led to it, so the attribution behind a "revenu attribué" figure
@@ -1125,7 +1125,7 @@
   against, not the finishing of a removal, so they are recorded here and left
   alone.
 
-  **`@be-yours/restaurant` published five cart selectors nothing selected
+  **`@be-in-digital/restaurant` published five cart selectors nothing selected
   with.** `useCartItems`, `useCartSummary`, `useCartItemCount`, `useCartOrderType`
   and `useCartStoreId` were compiled into `dist` and exported from both the root
   and `./hooks`, with zero references in either app, any package or any test. The
@@ -1137,9 +1137,9 @@
   and now teaches `getSummary` off the store, which is what the cart page actually
   does.
 
-  **`@be-yours/admin` exported four components no screen mounts.** Two auth
+  **`@be-in-digital/admin` exported four components no screen mounts.** Two auth
   forms — `ForgotPasswordForm` and `ResetPasswordForm` — which both apps rewrote
-  inline from `@be-yours/ui` primitives rather than import, plus a
+  inline from `@be-in-digital/ui` primitives rather than import, plus a
   `StatusBadge` and a `DateDisplay`. The `StatusBadge` _interface_ in
   `lib/vocabulary.ts` is a different, live thing and is untouched.
 
@@ -1159,7 +1159,7 @@
   claim nobody checked, and this one would have shipped as the changelog of a
   major bump.
 
-  **`@be-yours/core` carried 466 lines of i18n examples.** Fifteen exported
+  **`@be-in-digital/core` carried 466 lines of i18n examples.** Fifteen exported
   `example1_…` through `example15_…` functions, on no barrel, in no `exports` map
   and in no `tsup` entry — so never compiled into `dist`, but shipped in the
   tarball by `"files": ["dist", "src"]`. No supported import path reaches them,
@@ -1167,12 +1167,12 @@
   about the package shipping no JSX; they now make that claim on their own
   authority.
 
-  `@be-yours/mcp-server` is a patch because its registry advertised `Toast` to
+  `@be-in-digital/mcp-server` is a patch because its registry advertised `Toast` to
   client builds as a "Toast notification system". It is a box, and now says so.
 
   **One thing this does NOT do, said plainly.** The class (c) sweep in the same
   change removes 71 public _registrations_ from `apps/*/convex` while leaving the
-  handler definitions they wrapped exported from `@be-yours/convex-functions`
+  handler definitions they wrapped exported from `@be-in-digital/convex-functions`
   — so roughly sixty definitions there now have no registration anywhere. That is
   deliberate, and it is the opposite of what was done to `incrementRevenueStat`
   above, so the difference is worth stating. `incrementRevenue` was removed by
@@ -1383,7 +1383,7 @@
   by reading an establishment's whole history, so a delete does not get more
   expensive the longer a restaurant has been trading.
 
-  **BREAKING:** `@be-yours/convex-functions` no longer exports
+  **BREAKING:** `@be-in-digital/convex-functions` no longer exports
   `uberEatsOrders`, and the `./uberEatsOrders` subpath is removed. Both apps'
   wrappers and generated `api.d.ts` are updated here.
 
@@ -1508,7 +1508,7 @@ text-green-700` measured 4.497:1 — three thousandths under the floor, and
   diner-facing booking feature, and the todo had gone stale — it still cited
   `scheduledAt`, deleted three PRs earlier, and two line numbers that had moved.
 
-  **Why `@be-yours/core` is a major.** `./aws/ses/order-confirmation` is a
+  **Why `@be-in-digital/core` is a major.** `./aws/ses/order-confirmation` is a
   first-class entry in that package's `exports` map — `convex-functions` and both
   apps import it across the package boundary — and this removes `scheduledFor`
   from the exported `OrderConfirmationInput` interface and drops `timingLine`'s
@@ -1531,7 +1531,7 @@ text-green-700` measured 4.497:1 — three thousandths under the floor, and
   `cms*` singletons** — so a "backup" of a restaurant's website did not contain
   that website's pages, and a restore reached zero orders (#169, #366).
 
-  **One list now**, `@be-yours/convex-functions/backupTables`, read by both
+  **One list now**, `@be-in-digital/convex-functions/backupTables`, read by both
   sides: 53 tables exported and restored, 3 exported and never re-inserted, 21
   excluded with the reason written down next to the name.
 
@@ -1755,12 +1755,12 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
 - Updated dependencies [58f890f]
 - Updated dependencies [ecb21a1]
 - Updated dependencies [ecb21a1]
-  - @be-yours/convex-functions@6.0.0
-  - @be-yours/convex-schema@5.0.0
-  - @be-yours/core@3.0.0
-  - @be-yours/restaurant@4.0.0
-  - @be-yours/ui@4.0.0
-  - @be-yours/marketing@3.0.0
+  - @be-in-digital/convex-functions@6.0.0
+  - @be-in-digital/convex-schema@5.0.0
+  - @be-in-digital/core@3.0.0
+  - @be-in-digital/restaurant@4.0.0
+  - @be-in-digital/ui@4.0.0
+  - @be-in-digital/marketing@3.0.0
 
 ## 10.0.0
 
@@ -1905,9 +1905,9 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
   `OrderStatusBadge` and `StoreStatusBadge` held eleven English labels between
   them and took no label from outside, so a diner following their order read
   « Preparing » and « Out for Delivery » between French sentences. The vocabulary
-  now lives once in `@be-yours/core/status-labels` — the source-language word
+  now lives once in `@be-in-digital/core/status-labels` — the source-language word
   and the catalogue key, per status — the badges take a `labels` override, and
-  `useOrderStatusLabels` / `useStoreStatusLabels` in `@be-yours/restaurant`
+  `useOrderStatusLabels` / `useStoreStatusLabels` in `@be-in-digital/restaurant`
   resolve it through `t()` for the locale being rendered. Two further copies of
   the same eight words are gone with it: a private map in the order page and
   `getOrderStatusLabel`'s English map. `order.delivered` was missing from the
@@ -1936,11 +1936,11 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
 - Updated dependencies [895d200]
 - Updated dependencies [16521f2]
 - Updated dependencies [cdc6c81]
-  - @be-yours/convex-functions@5.0.0
-  - @be-yours/convex-schema@4.1.0
-  - @be-yours/restaurant@3.1.0
-  - @be-yours/core@2.5.0
-  - @be-yours/ui@3.1.0
+  - @be-in-digital/convex-functions@5.0.0
+  - @be-in-digital/convex-schema@4.1.0
+  - @be-in-digital/restaurant@3.1.0
+  - @be-in-digital/core@2.5.0
+  - @be-in-digital/ui@3.1.0
 
 ## 9.0.1
 
@@ -2100,7 +2100,7 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
     page is either mounted or gone.** Every `*Page` in `src/index.ts` must have a
     route rendering it in both apps, at the same paths; every subpath in
     `package.json` must resolve; and every page `mcp-server` advertises at
-    `@be-yours/admin/pages` must be exported from it. `check:divergence`
+    `@be-in-digital/admin/pages` must be exported from it. `check:divergence`
     cannot help here — it compares `e2e/` and `convex/` only, so a route added to
     one app and forgotten in the other passes it in silence.
 
@@ -2136,7 +2136,7 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
   two button heights depending on the page. There is now one implementation, in
   `packages/ui`, on the newer shadcn generation, reached through one specifier.
 
-  Breaking changes for `@be-yours/ui`:
+  Breaking changes for `@be-in-digital/ui`:
   - `Input`, `Textarea` and `Checkbox` are bare primitives. The composed-field
     API (`label`, `error`, `description` props and a wrapping `div`) is gone —
     pair them with a `Label`, which is what every call site but two already did.
@@ -2154,10 +2154,10 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
     there is no `dist`, and consumers must transpile it. This is what restores
     the `"use client"` boundaries the bundler was stripping.
 
-  `@be-yours/admin` no longer carries its own copy of nine primitives, and
-  re-exports the sidebar from `@be-yours/ui`.
+  `@be-in-digital/admin` no longer carries its own copy of nine primitives, and
+  re-exports the sidebar from `@be-in-digital/ui`.
 
-  `@be-yours/convex-schema` gains a typed `StoreBranding` and
+  `@be-in-digital/convex-schema` gains a typed `StoreBranding` and
   `StoreDoc.branding`, which were implicitly `any`.
 
 ### Minor Changes
@@ -2216,7 +2216,7 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
   one would make dine-in service depend on the gamification QR codes being
   configured — a restaurant can serve _sur place_ without ever running the wheel
   of fortune. The two share a representation instead:
-  `@be-yours/core/dining` normalises and bounds a table label for both.
+  `@be-in-digital/core/dining` normalises and bounds a table label for both.
 
   Required at the storefront, optional on the server. Uber Eats and Deliveroo
   forward `dine_in` orders that carry no table of their own, and refusing those
@@ -2247,7 +2247,7 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
 
   For an EU food business under INCO 1169/2011 that is a regulatory surface.
 
-  `@be-yours/core/allergens` is now the single source of truth: the
+  `@be-in-digital/core/allergens` is now the single source of truth: the
   fourteen Annex II allergens plus `shellfish` and the two dietary markers, the
   alias table that matches French and English spellings through accents,
   ligatures and punctuation, the localised labels, and the Uber Eats mapping.
@@ -2344,7 +2344,7 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
   placeholders.
 
   The flow now lives in `packages/admin/src/game/`, behind a new
-  `@be-yours/admin/game` subpath, and both apps render it through identical
+  `@be-in-digital/admin/game` subpath, and both apps render it through identical
   thin adapters. Twelve components and the `lib/game` engine layer — wheel maths,
   particle canvas, Web Audio synthesis, haptics, device fingerprint — moved
   verbatim; what stayed in each app is what is genuinely per-app: the generated
@@ -2371,12 +2371,12 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
   does.
 
   **Release ordering matters here, and the mirror does not enforce it.**
-  `apps/themes` now imports `@be-yours/admin/game`, a subpath that exists
+  `apps/themes` now imports `@be-in-digital/admin/game`, a subpath that exists
   only from this release onwards. `scripts/publish-mirror.mjs` resolves engine
   versions from the registry (`npm view`), not the workspace, and runs
   `pnpm install --lockfile-only` with no build or type-check. Its push trigger
   includes `apps/themes/**`, which this change touches — so if the mirror syncs
-  before `@be-yours/admin` is published, it commits a boilerplate pinned to
+  before `@be-in-digital/admin` is published, it commits a boilerplate pinned to
   the previous version, in which that subpath does not resolve. A client cloning
   or running `pnpm update:template` in that window gets a template that will not
   install. The `workflow_run: [Release]` trigger re-syncs afterwards and repairs
@@ -2671,11 +2671,11 @@ element/`), so it has been rewritten to assert the corrected message.
 - Updated dependencies [bd17a78]
 - Updated dependencies [4e625bd]
 - Updated dependencies [1c21483]
-  - @be-yours/ui@3.0.0
-  - @be-yours/convex-functions@4.0.0
-  - @be-yours/convex-schema@4.0.0
-  - @be-yours/restaurant@3.0.0
-  - @be-yours/core@2.4.0
+  - @be-in-digital/ui@3.0.0
+  - @be-in-digital/convex-functions@4.0.0
+  - @be-in-digital/convex-schema@4.0.0
+  - @be-in-digital/restaurant@3.0.0
+  - @be-in-digital/core@2.4.0
 
 ## 8.0.0
 
@@ -2869,10 +2869,10 @@ element/`), so it has been rewritten to assert the corrected message.
 - Updated dependencies [74de4e9]
 - Updated dependencies [526717a]
 - Updated dependencies [889dddb]
-  - @be-yours/convex-functions@3.0.0
-  - @be-yours/convex-schema@3.0.0
-  - @be-yours/core@2.3.0
-  - @be-yours/restaurant@2.1.0
+  - @be-in-digital/convex-functions@3.0.0
+  - @be-in-digital/convex-schema@3.0.0
+  - @be-in-digital/core@2.3.0
+  - @be-in-digital/restaurant@2.1.0
 
 ## 7.0.0
 
@@ -2881,7 +2881,7 @@ element/`), so it has been rewritten to assert the corrected message.
 - 8ce83cb: Publish the packages whose source has been ahead of the registry since July,
   and fix the one thing that kept a client site from compiling even then.
 
-  `@be-yours/integrations`, `@be-yours/marketing` and `@be-yours/ui`
+  `@be-in-digital/integrations`, `@be-in-digital/marketing` and `@be-in-digital/ui`
   all still sit at **2.0.2 on GitHub Packages**, and all three have had source
   changes merged since — without a version bump. `changeset publish` then answers
   `already published` and skips them, so the registry keeps serving the July
@@ -2931,8 +2931,8 @@ element/`), so it has been rewritten to assert the corrected message.
 --noEmit` goes from four errors to clean.
 
 - Updated dependencies [8ce83cb]
-  - @be-yours/marketing@2.1.0
-  - @be-yours/ui@2.0.3
+  - @be-in-digital/marketing@2.1.0
+  - @be-in-digital/ui@2.0.3
 
 ## 6.0.0
 
@@ -2940,8 +2940,8 @@ element/`), so it has been rewritten to assert the corrected message.
 
 - Updated dependencies [3178b2d]
 - Updated dependencies [e13cd4e]
-  - @be-yours/core@2.2.0
-  - @be-yours/convex-functions@2.2.2
+  - @be-in-digital/core@2.2.0
+  - @be-in-digital/convex-functions@2.2.2
 
 ## 5.0.0
 
@@ -2949,8 +2949,8 @@ element/`), so it has been rewritten to assert the corrected message.
 
 - Updated dependencies [3a25d85]
 - Updated dependencies [7e727ff]
-  - @be-yours/core@2.1.0
-  - @be-yours/convex-functions@2.2.1
+  - @be-in-digital/core@2.1.0
+  - @be-in-digital/convex-functions@2.2.1
 
 ## 4.0.0
 
@@ -2976,8 +2976,8 @@ element/`), so it has been rewritten to assert the corrected message.
 
 - Updated dependencies [285b579]
 - Updated dependencies [9817b8d]
-  - @be-yours/convex-schema@2.2.0
-  - @be-yours/convex-functions@2.2.0
+  - @be-in-digital/convex-schema@2.2.0
+  - @be-in-digital/convex-functions@2.2.0
 
 ## 3.0.0
 
@@ -2991,7 +2991,7 @@ element/`), so it has been rewritten to assert the corrected message.
 
   The mutation wrote whatever status it was handed. Nothing stopped an order going from `pending` straight to `completed`, or a cancelled order being revived — the transition table existed but only the storefront services consulted it, as advice.
 
-  Three layers each carried their own opinion and they had drifted. The admin UI offered "Envoyer en livraison" on a ready order while the services table forbade `ready -> out_for_delivery`. The table is now single and lives in `@be-yours/convex-schema` (`ORDER_STATUS_TRANSITIONS`, `canTransitionOrderStatus`, `getNextOrderStatuses`); the services and the mutation both read it, and `ready -> out_for_delivery` is allowed, matching the button that already existed.
+  Three layers each carried their own opinion and they had drifted. The admin UI offered "Envoyer en livraison" on a ready order while the services table forbade `ready -> out_for_delivery`. The table is now single and lives in `@be-in-digital/convex-schema` (`ORDER_STATUS_TRANSITIONS`, `canTransitionOrderStatus`, `getNextOrderStatuses`); the services and the mutation both read it, and `ready -> out_for_delivery` is allowed, matching the button that already existed.
 
   **Behaviour change:** `updateStatus` now throws `Invalid order status transition: <from> -> <to>` instead of writing. Replaying the current status is an idempotent no-op rather than an error, so webhook retries and double-clicked buttons stay harmless. `updateFromWebhook` is deliberately left unguarded — Uber Eats and Deliveroo are authoritative for the orders they own.
 
@@ -3000,25 +3000,25 @@ element/`), so it has been rewritten to assert the corrected message.
 - Updated dependencies [5eec48d]
 - Updated dependencies [83f6af9]
 - Updated dependencies [c1af162]
-  - @be-yours/convex-schema@2.1.0
-  - @be-yours/convex-functions@2.1.0
-  - @be-yours/restaurant@2.0.3
+  - @be-in-digital/convex-schema@2.1.0
+  - @be-in-digital/convex-functions@2.1.0
+  - @be-in-digital/restaurant@2.0.3
 
 ## 2.0.2
 
 ### Patch Changes
 
 - 7f0122b: Republished from main. Fixes two problems with the 2.0.1 tarballs that broke consumers:
-  - `@be-yours/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
+  - `@be-in-digital/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
   - The type fixes that were on main but never published (promotion-form/email-config in admin, Uber Eats signatures in integrations/convex-functions) go out with this patch — they had been committed without a changeset.
 
 - Updated dependencies [7f0122b]
-  - @be-yours/convex-functions@2.0.2
-  - @be-yours/convex-schema@2.0.2
-  - @be-yours/core@2.0.2
-  - @be-yours/marketing@2.0.2
-  - @be-yours/restaurant@2.0.2
-  - @be-yours/ui@2.0.2
+  - @be-in-digital/convex-functions@2.0.2
+  - @be-in-digital/convex-schema@2.0.2
+  - @be-in-digital/core@2.0.2
+  - @be-in-digital/marketing@2.0.2
+  - @be-in-digital/restaurant@2.0.2
+  - @be-in-digital/ui@2.0.2
 
 ## 2.0.1
 
@@ -3027,12 +3027,12 @@ element/`), so it has been rewritten to assert the corrected message.
 - 1a5ca27: Rename package scope from @beindigital-engine to @be-yours for GitHub Packages compatibility
 - Updated dependencies [321adad]
 - Updated dependencies [1a5ca27]
-  - @be-yours/convex-schema@2.0.1
-  - @be-yours/convex-functions@2.0.1
-  - @be-yours/ui@2.0.1
-  - @be-yours/core@2.0.1
-  - @be-yours/restaurant@2.0.1
-  - @be-yours/marketing@2.0.1
+  - @be-in-digital/convex-schema@2.0.1
+  - @be-in-digital/convex-functions@2.0.1
+  - @be-in-digital/ui@2.0.1
+  - @be-in-digital/core@2.0.1
+  - @be-in-digital/restaurant@2.0.1
+  - @be-in-digital/marketing@2.0.1
 
 ## 2.0.0
 
@@ -3053,18 +3053,18 @@ element/`), so it has been rewritten to assert the corrected message.
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```
 
 ### Patch Changes
 
 - Updated dependencies [7c3d4da]
-  - @be-yours/convex-functions@2.0.0
-  - @be-yours/convex-schema@2.0.0
-  - @be-yours/restaurant@2.0.0
-  - @be-yours/marketing@2.0.0
-  - @be-yours/core@2.0.0
-  - @be-yours/ui@2.0.0
+  - @be-in-digital/convex-functions@2.0.0
+  - @be-in-digital/convex-schema@2.0.0
+  - @be-in-digital/restaurant@2.0.0
+  - @be-in-digital/marketing@2.0.0
+  - @be-in-digital/core@2.0.0
+  - @be-in-digital/ui@2.0.0
 
 ## 1.0.0
 
@@ -3085,15 +3085,15 @@ element/`), so it has been rewritten to assert the corrected message.
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
+  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
   ```
 
 ### Patch Changes
 
 - Updated dependencies [ad4d8d2]
-  - @be-yours/convex-functions@1.0.0
-  - @be-yours/convex-schema@1.0.0
-  - @be-yours/restaurant@1.0.0
-  - @be-yours/marketing@1.0.0
-  - @be-yours/core@1.0.0
-  - @be-yours/ui@1.0.0
+  - @be-in-digital/convex-functions@1.0.0
+  - @be-in-digital/convex-schema@1.0.0
+  - @be-in-digital/restaurant@1.0.0
+  - @be-in-digital/marketing@1.0.0
+  - @be-in-digital/core@1.0.0
+  - @be-in-digital/ui@1.0.0

@@ -344,7 +344,7 @@ execution:
 | …of those, ancestors of `main` (published) | 18 (claimed) | **41** |
 | …local-only, never pushed | — | **96** |
 | Remote branches carrying the leak | 4 | **72 — every one** (was 8 on 4 Sep) |
-| Remote tags carrying the leak | 10 of 35 | **75** (was 59 of 60); 63 are `@be-yours/*` release anchors |
+| Remote tags carrying the leak | 10 of 35 | **75** (was 59 of 60); 63 are `@be-in-digital/*` release anchors |
 | Open PRs invalidated | 14 | **2** (#420, #421 — drafts, 9 Sep; a draft's SHAs die like any other) |
 
 **How to re-measure — and why you must, before you quote any of it.**
@@ -387,13 +387,19 @@ Two of these change the decision rather than just the arithmetic:
 - **The blocker has expired.** Part B was deferred because it would invalidate
   14 open pull requests. The queue is empty. That reason no longer applies.
 - **59 of the 60 remote tags carry the leak**, and they are the
-  `@be-yours/*` release anchors. A rewrite moves every one of them, so the
+  `@be-in-digital/*` release anchors. A rewrite moves every one of them, so the
   publish chain's version anchors all move with it. This is now the expensive
   part, not the PRs.
 
+  They are on the OLD scope, and will stay there until the first `@be-yours`
+  release. The rename (#572) reset the ten packages to `1.0.0` but publishes
+  nothing while `RELEASE_HOLD.md` is in the tree, so `git tag -l '@be-yours/*'`
+  answers **0** today against **125** for `@be-in-digital/*`. Whoever runs Part B
+  matches on the old scope — matching on the new one moves nothing.
+
 > ⚠️ **A rewrite of origin does not reach everything, and origin has been
 > rewritten once already.** Local and remote tags of the same name point at
-> different commits (e.g. `@be-yours/core@2.0.1`: same author date, same
+> different commits (e.g. `@be-in-digital/core@2.0.1`: same author date, same
 > subject, different tree). Both lineages contain the secret. This clone retains
 > the **pre-rewrite** lineage under `archive/main-avant-monorepo` and **34 stale
 > local tags** — 96 leaked commits that were never pushed and that a fresh clone
