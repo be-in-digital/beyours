@@ -1,5 +1,62 @@
 # @be-in-digital/admin
 
+## 23.0.0
+
+### Minor Changes
+
+- c1511fd: Paint the dashboard with the establishment's own colours (#512).
+
+  `buildBrandingCss` has always derived the tokens only the admin reads —
+  `--sidebar-primary` and its label, `--sidebar-accent`, `--sidebar-ring`, and
+  `--chart-1`, whose comment states its purpose outright: "so the dashboard's
+  first series follows the brand instead of staying orange under a red one".
+  Nothing ever mounted that stylesheet on an admin page. `StoreTheme` is rendered
+  from `(storefront)/layout.tsx` and `(auth)/layout.tsx`; the admin layout had no
+  counterpart, so an owner who set a colour in Design got a branded shop and a
+  dashboard still painted the engine's orange.
+
+  `AdminTheme` is the counterpart, and the difference from its sibling is the one
+  thing worth knowing about it: it passes **no** `scopes`. The storefront palette
+  is declared on `.storefront-theme`, a `<div>`, so `StoreTheme` must name that
+  element or the shell's own declaration wins on the element it sits on — that is
+  #410. The dashboard's tokens are declared on `:root` and `.dark`, which is what
+  `buildBrandingCss` targets by default; a scope here would aim the stylesheet at
+  an element the admin never renders, producing the mirror image of the same bug.
+
+  It follows the establishment being ADMINISTERED, through `useAdminStore` — the
+  same one the sidebar already takes its logo and brand name from — so switching
+  store in the selector repaints. On a multi-store account the colour is what says
+  which restaurant is being edited.
+
+  Guarded on three seams: both apps' admin layouts must mount it, the component
+  must not scope itself to the storefront shell, and the deriver must keep writing
+  the five tokens that make the mounting worth anything. Each was run red-first.
+
+- 957f8f4: Tell the owner when a transactional notice did not reach the diner (#530).
+
+  `readyEmailAt` and `confirmationEmailAt` are given back when a send fails, so a
+  later legitimate transition can still write — but nobody was told, and an outage
+  looked exactly like a delivered mail from the admin. The order now records WHY
+  the last dispatch gave up, and the order detail screen says so.
+
+  `reason` is a closed set of two, both decided at the call site rather than
+  inferred from the exception: `no_sender_address` is a configuration gap the
+  owner can close, `transport` is the provider failing. Nothing classifies an
+  error to choose between them. The send path deliberately does not sort failures
+  into transient and permanent, and a field that exists to be displayed must not
+  reintroduce that.
+
+  Only the sites where something actually failed record one. A claim released
+  because the order was cancelled or deleted between the claim and the send passes
+  nothing: reporting a failed notice on an order that no longer exists would be
+  worse than silence.
+
+### Patch Changes
+
+- Updated dependencies [957f8f4]
+  - @be-in-digital/convex-schema@6.9.0
+  - @be-in-digital/convex-functions@7.7.0
+
 ## 22.0.1
 
 ### Patch Changes
@@ -317,7 +374,6 @@
   would not match what the owner wrote.
 
   Three server-side changes came with it:
-
   - **`inactiveAfterDays` is accepted by `create` and `update`.** It was on the
     table and read by the win-back sweep, and on neither mutation — so no caller,
     UI or API, could ever set it, and every win-back automation in existence was
@@ -374,7 +430,6 @@
   `apps/site` listed five figures. Two existed as today-only cards. Three did not
   exist in any form — `grep -riE 'plats populaires|topProduct|peakHour|returnRate'`
   over `apps/themes` and `packages` returned nothing at all:
-
   - **Plats populaires** — there was no product-level aggregation anywhere.
   - **Heures de pointe** — there was no time-of-day bucketing.
   - **Taux de retour** — there was no notion of a returning customer until #364
@@ -398,7 +453,6 @@
   e-mail address, which belong to neither side.
 
   Two things the issue also asked for:
-
   - **The period is now a choice** — 7, 14 or 30 days. Every window on this screen
     was a literal while the site sold « analyse des tendances et des performances
     par période ». The breakdown pies follow the picker too; they used to sit on
@@ -508,7 +562,6 @@
   leaving them out of every total.
 
   Also in this change, because the book has to agree with the orders behind it:
-
   - `customerEmailKey` is stamped on the order at the confirmation transition
     rather than only at creation, so an order inserted by any other path still
     has the key the detail view looks it up by.
@@ -1134,7 +1187,6 @@
   kept the whole admin suite green.)
 
   **And five more removes were still leaving rows pointing at nothing.**
-
   - **A subscriber's rows go with them.** `emailSubscribers.remove` was a bare
     delete over TWO non-optional foreign keys — `emailEvents.subscriberId` and
     `emailAutomationRuns.subscriberId` — behind a live button. `privacy.ts` has
@@ -1998,7 +2050,6 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
 
   **Tests: 15 files for 210 sources became 20 for 215.** Five are new, and each
   holds one of the above:
-
   - `nav-permission-surface.test.ts` walks the import graph from every route file
     in _both_ apps to the Convex wrapper behind every mount-time query, and fails
     if any role is shown a link the server would refuse, or if an entry names a
@@ -2068,7 +2119,6 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
   `packages/ui`, on the newer shadcn generation, reached through one specifier.
 
   Breaking changes for `@be-in-digital/ui`:
-
   - `Input`, `Textarea` and `Checkbox` are bare primitives. The composed-field
     API (`label`, `error`, `description` props and a wrapping `div`) is gone —
     pair them with a `Label`, which is what every call site but two already did.
@@ -2167,7 +2217,6 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
 
   The chain was broken at every link, and each surface had drifted because each
   carried its own idea of what an allergen was:
-
   - the printed kitchen ticket rendered `{allergens.join(", ")}` — whatever text
     was in the array is what a cook read before plating;
   - the admin product form had **no allergen control at all**, only a zod field
@@ -2414,7 +2463,6 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
   **The decision is per referencing table, and it splits on authorship**, which is
   the reasoning `categories.remove` already established: a cascade destroys an
   afternoon's work on a click meant to tidy up.
-
   - **Refused** while they point at the dish — `menus`, `promotions`, `prizes`.
     Each is a selling decision the owner made, and each has a screen to unmake it
     on. The refusal names them: _Ce produit est utilisé dans 1 formule : "Formule
@@ -2530,7 +2578,6 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
   permanent on every deployment ever cloned.
 
   Three surfaces now exist, and one form:
-
   - **The paid order says it.** New `orderInvoiceSurface` computes the invoice
     number or the refusal fresh on every read — never persisted, so completing
     the identity clears it by itself — and `orders.getById` in both apps
@@ -2834,7 +2881,6 @@ element/`), so it has been rewritten to assert the corrected message.
   ```
 
   What each package has been withholding:
-
   - **`integrations`** — the whole **Uber Direct** module (`#66`: book, track and
     cancel a courier, ~950 lines under `src/uber-direct/`) is exported from
     `src/index.ts` and absent from the published bundle. A feature the fleet has
@@ -2899,7 +2945,6 @@ element/`), so it has been rewritten to assert the corrected message.
   empty. Every mutation in the stores module now appends an entry naming the
   actor, the establishment, the operation, the timestamp and the before/after of
   the fields the edit moved.
-
   - `systemAuditLog` gains `store_created` / `store_updated` / `store_deleted`,
     an optional `targetStoreId`, and an index to read one establishment's history.
   - The printer API key is redacted on both sides of a `printConfig` diff, and
@@ -2946,7 +2991,6 @@ element/`), so it has been rewritten to assert the corrected message.
 ### Patch Changes
 
 - 7f0122b: Republished from main. Fixes two problems with the 2.0.1 tarballs that broke consumers:
-
   - `@be-in-digital/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
   - The type fixes that were on main but never published (promotion-form/email-config in admin, Uber Eats signatures in integrations/convex-functions) go out with this patch — they had been committed without a changeset.
 
@@ -2979,7 +3023,6 @@ element/`), so it has been rewritten to assert the corrected message.
 - 7c3d4da: Configure private npm publishing for all @beindigital-engine packages
 
   ### What changed
-
   - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
   - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
   - Added `"files"` field to control published contents.
@@ -3012,7 +3055,6 @@ element/`), so it has been rewritten to assert the corrected message.
 - ad4d8d2: Configure private npm publishing for all @beindigital-engine packages
 
   ### What changed
-
   - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
   - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
   - Added `"files"` field to control published contents.

@@ -1,5 +1,28 @@
 # Changelog - @be-in-digital/convex-schema
 
+## 6.9.0
+
+### Minor Changes
+
+- 957f8f4: Tell the owner when a transactional notice did not reach the diner (#530).
+
+  `readyEmailAt` and `confirmationEmailAt` are given back when a send fails, so a
+  later legitimate transition can still write — but nobody was told, and an outage
+  looked exactly like a delivered mail from the admin. The order now records WHY
+  the last dispatch gave up, and the order detail screen says so.
+
+  `reason` is a closed set of two, both decided at the call site rather than
+  inferred from the exception: `no_sender_address` is a configuration gap the
+  owner can close, `transport` is the provider failing. Nothing classifies an
+  error to choose between them. The send path deliberately does not sort failures
+  into transient and permanent, and a field that exists to be displayed must not
+  reintroduce that.
+
+  Only the sites where something actually failed record one. A claim released
+  because the order was cancelled or deleted between the claim and the send passes
+  nothing: reporting a failed notice on an order that no longer exists would be
+  worse than silence.
+
 ## 6.8.1
 
 ### Patch Changes
@@ -72,7 +95,6 @@
 
   A descriptive comment on a field nothing populates reads as a shipped capability
   to anybody auditing the schema, which is how the audit found them.
-
   - `orders.externalDisplayId` — the number a kitchen matches against the tablet on
     the wall. Worth having; `createFromWebhook` extracts it from neither platform's
     payload, so it is `undefined` on every order.
@@ -133,7 +155,6 @@
   before anyone built it.
 
   What was missing, and is here now:
-
   - **`menus.listActive`** — the filtered public query `menus.list`'s own comment
     asked for. It resolves `pick_category` sections server-side, leaves out a
     formule whose mandatory dish has been switched off (rather than offering it and
@@ -156,7 +177,6 @@
 
   **The two money decisions, stated because they were the reason this was its own
   change:**
-
   1. **VAT across a mixed-rate bundle** is split **pro rata on à-la-carte value**,
      the standard treatment of an _offre composite à prix global_. A 15 € dish at
      10 % and a 5 € glass of wine at 20 % sold at 20 € owes 1,36 € + 0,83 €. Split
@@ -289,7 +309,6 @@
   leaving them out of every total.
 
   Also in this change, because the book has to agree with the orders behind it:
-
   - `customerEmailKey` is stamped on the order at the confirmation transition
     rather than only at creation, so an order inserted by any other path still
     has the key the detail view looks it up by.
@@ -322,7 +341,6 @@
 ### Minor Changes
 
 - b8c6f3e: Stop three deletes leaving a reference behind.
-
   - `categories.remove` left `stores.stationMapping[].categoryId` — a required
     `v.id("categories")` inside an array — naming a row that no longer exists.
     Inert only because `orders.ts` compares strings rather than dereferencing,
@@ -538,7 +556,6 @@
   the engine's: what the handler needs to act on a notification that arrives
   without those headers, which is every notification any client provisioned before
   today will send.
-
   - `emailSubscribers` gains `.index("by_email", ["email"])` — the address alone,
     no store.
   - `emailSubscribers.listByEmail` reads it, capped at 32 rows.
@@ -718,7 +735,6 @@
   kept the whole admin suite green.)
 
   **And five more removes were still leaving rows pointing at nothing.**
-
   - **A subscriber's rows go with them.** `emailSubscribers.remove` was a bare
     delete over TWO non-optional foreign keys — `emailEvents.subscriberId` and
     `emailAutomationRuns.subscriberId` — behind a live button. `privacy.ts` has
@@ -1424,7 +1440,6 @@ Server Error`. `SettlementRejectedError` joins the family, so the sentence that
   **The decision is per referencing table, and it splits on authorship**, which is
   the reasoning `categories.remove` already established: a cascade destroys an
   afternoon's work on a click meant to tidy up.
-
   - **Refused** while they point at the dish — `menus`, `promotions`, `prizes`.
     Each is a selling decision the owner made, and each has a screen to unmake it
     on. The refusal names them: _Ce produit est utilisé dans 1 formule : "Formule
@@ -1571,7 +1586,6 @@ Server Error`. `SettlementRejectedError` joins the family, so the sentence that
 
   The chain was broken at every link, and each surface had drifted because each
   carried its own idea of what an allergen was:
-
   - the printed kitchen ticket rendered `{allergens.join(", ")}` — whatever text
     was in the array is what a cook read before plating;
   - the admin product form had **no allergen control at all**, only a zod field
@@ -1694,7 +1708,6 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
   `packages/ui`, on the newer shadcn generation, reached through one specifier.
 
   Breaking changes for `@be-in-digital/ui`:
-
   - `Input`, `Textarea` and `Checkbox` are bare primitives. The composed-field
     API (`label`, `error`, `description` props and a wrapping `div`) is gone —
     pair them with a `Label`, which is what every call site but two already did.
@@ -1933,7 +1946,6 @@ element/`), so it has been rewritten to assert the corrected message.
   empty. Every mutation in the stores module now appends an entry naming the
   actor, the establishment, the operation, the timestamp and the before/after of
   the fields the edit moved.
-
   - `systemAuditLog` gains `store_created` / `store_updated` / `store_deleted`,
     an optional `targetStoreId`, and an index to read one establishment's history.
   - The printer API key is redacted on both sides of a `printConfig` diff, and
@@ -1971,7 +1983,6 @@ element/`), so it has been rewritten to assert the corrected message.
 ### Patch Changes
 
 - 321adad: Production-readiness audit fixes for delivery integrations:
-
   - **integrations**: the Uber Eats order mapper now keeps money in integer **cents**
     instead of dividing by 100. Previously Uber order totals were stored 100× too
     small while Deliveroo and website orders used cents. `UnifiedOrder` money fields
@@ -1992,7 +2003,6 @@ element/`), so it has been rewritten to assert the corrected message.
 - 7c3d4da: Configure private npm publishing for all @beindigital-engine packages
 
   ### What changed
-
   - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
   - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
   - Added `"files"` field to control published contents.
@@ -2015,7 +2025,6 @@ element/`), so it has been rewritten to assert the corrected message.
 - ad4d8d2: Configure private npm publishing for all @beindigital-engine packages
 
   ### What changed
-
   - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
   - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
   - Added `"files"` field to control published contents.

@@ -7,10 +7,10 @@
  */
 
 export const PACKAGE_VERSIONS = {
-  "admin": "22.0.1",
+  "admin": "23.0.0",
   "cms": "3.1.0",
-  "convex-functions": "7.6.1",
-  "convex-schema": "6.8.1",
+  "convex-functions": "7.7.0",
+  "convex-schema": "6.9.0",
   "core": "4.3.1",
   "integrations": "2.2.2",
   "marketing": "3.0.0",
@@ -21,4 +21,4 @@ export const PACKAGE_VERSIONS = {
 export type RegisteredPackage = keyof typeof PACKAGE_VERSIONS;
 
 /** Version this MCP server reports over the wire, from its own package.json. */
-export const MCP_SERVER_VERSION = "1.1.13";
+export const MCP_SERVER_VERSION = "1.1.14";
