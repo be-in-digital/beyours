@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process"
  * The engine packages a client installs must load under plain Node.
  *
  * WHAT BROKE (#516's mirror run). `packages/restaurant` ships a bundled `dist`,
- * and it left `@be-in-digital/convex-schema` external — a package that publishes
+ * and it left `@be-yours/convex-schema` external — a package that publishes
  * raw `.ts` on purpose, because the Convex bundler compiles it and a schema has
  * to stay readable as source. So `dist` carried a runtime import of TypeScript.
  *
@@ -14,9 +14,9 @@ import { execFileSync } from "node:child_process"
  * from the registry, where it is under `node_modules`, and Node refuses:
  *
  *   Error: Stripping types is currently unsupported for files under
- *   node_modules, for ".../@be-in-digital/convex-schema/src/index.ts"
+ *   node_modules, for ".../@be-yours/convex-schema/src/index.ts"
  *
- * That is every Playwright spec importing a value from `@be-in-digital/restaurant`
+ * That is every Playwright spec importing a value from `@be-yours/restaurant`
  * — `e2e/storefront/cart-line-identity.spec.ts` imports `CART_STORAGE_VERSION` —
  * on every client repo. It stayed invisible until the boilerplate's own CI got
  * far enough to run its e2e suite, which it had not done while its unit tests
@@ -45,7 +45,7 @@ describe("the published restaurant bundle, under plain Node", () => {
     // `require.resolve` from this file, so the assertion follows whatever the
     // consumer resolves — the workspace link here, `node_modules` on a client.
     const script = `
-      const m = require(require.resolve("@be-in-digital/restaurant"));
+      const m = require(require.resolve("@be-yours/restaurant"));
       const missing = ${JSON.stringify(RUNTIME_VALUES)}.filter((k) => m[k] === undefined);
       if (missing.length) { console.error("missing:" + missing.join(",")); process.exit(2); }
       process.stdout.write(String(m.CART_STORAGE_VERSION));

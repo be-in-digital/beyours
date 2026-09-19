@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { GAME_CONSENT_NOTICE_VERSIONS } from "@be-in-digital/convex-functions/gamePlay"
+import { GAME_CONSENT_NOTICE_VERSIONS } from "@be-yours/convex-functions/gamePlay"
 import {
   GAME_CONSENT_NOTICE_VERSION,
   formatRetention,

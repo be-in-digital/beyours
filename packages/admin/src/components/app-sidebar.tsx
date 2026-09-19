@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { type Role } from "@be-in-digital/core"
+import { type Role } from "@be-yours/core"
 import { UtensilsCrossed, Store } from "lucide-react"
 import {
   Sidebar,
@@ -23,7 +23,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { useAdminAuthStore } from "../stores/admin-auth-store"
 import { UnreadMessagesBadge } from "./unread-messages-badge"
 import {

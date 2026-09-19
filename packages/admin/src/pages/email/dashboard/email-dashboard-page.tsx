@@ -14,13 +14,13 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { LoadingState } from "../../../components/loading-state"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
 import { adminRoutes } from "../../../config/admin-routes"
 import { formatShortDate } from "../../../lib/formatters"
-import { computeStatRates } from "@be-in-digital/marketing"
+import { computeStatRates } from "@be-yours/marketing"
 import { EmailKpiCards } from "./email-kpi-cards"
 import { isTriggerAvailable } from "../config/automation-controls"
 

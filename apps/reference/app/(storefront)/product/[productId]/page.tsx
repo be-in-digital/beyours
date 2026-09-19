@@ -5,7 +5,7 @@ import {
   LOCALE_COOKIE_NAME,
   localizeDocument,
   normalizeStoredLocale,
-} from "@be-in-digital/core"
+} from "@be-yours/core"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { buildSeoMetadata } from "@/lib/seo"

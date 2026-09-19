@@ -1,9 +1,9 @@
 "use client"
 
-import type { ProductDoc } from "@be-in-digital/restaurant"
+import type { ProductDoc } from "@be-yours/restaurant"
 import { ProductDetailClient } from "@/components/storefront/product-detail-client"
 import { useStoreId } from "@/lib/hooks/use-store-id"
-import { Skeleton } from "@be-in-digital/ui"
+import { Skeleton } from "@be-yours/ui"
 
 interface Props {
   product: ProductDoc

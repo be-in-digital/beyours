@@ -48,7 +48,7 @@ describe("the lint config loads the authorisation rule", () => {
   });
 
   it("reaches it by relative path, not by depending on an engine package", () => {
-    /* `apps/site` depends on NONE of the `@be-in-digital/*` packages and the
+    /* `apps/site` depends on NONE of the `@be-yours/*` packages and the
        point of that is that `pnpm install` here needs no private-registry
        token. A devDependency for a lint rule would put the registry between
        this app and its own lint. `apps/themes` must do the opposite — it is
@@ -61,7 +61,7 @@ describe("the lint config loads the authorisation rule", () => {
       ...Object.keys(manifest.dependencies ?? {}),
       ...Object.keys(manifest.devDependencies ?? {}),
     ];
-    expect(declared.filter((name) => name.startsWith("@be-in-digital/"))).toEqual([]);
+    expect(declared.filter((name) => name.startsWith("@be-yours/"))).toEqual([]);
   });
 });
 

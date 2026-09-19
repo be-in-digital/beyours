@@ -19,7 +19,7 @@
  */
 
 import { describe, it, expect, beforeAll, vi } from "vitest";
-import { deliveroo } from "@be-in-digital/integrations";
+import { deliveroo } from "@be-yours/integrations";
 
 const { fetchDeliveroo, getAccessToken, clearTokenCache, validatePathParam } = deliveroo;
 type DeliverooCredentials = Parameters<typeof getAccessToken>[0];

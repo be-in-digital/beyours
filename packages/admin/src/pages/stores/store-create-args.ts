@@ -1,4 +1,4 @@
-import type { AddressValue } from "@be-in-digital/ui"
+import type { AddressValue } from "@be-yours/ui"
 import { slugify } from "../../lib/formatters"
 
 /**

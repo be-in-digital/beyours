@@ -27,7 +27,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 // ─── Types ───────────────────────────────────────────────────────────────────────
 
 interface AutoBlogAccess {

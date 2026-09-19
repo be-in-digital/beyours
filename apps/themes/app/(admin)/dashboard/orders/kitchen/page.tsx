@@ -1,6 +1,6 @@
 "use client"
 
-import { KitchenPage } from "@be-in-digital/admin"
+import { KitchenPage } from "@be-yours/admin"
 import { SeedKitchenButton } from "./SeedKitchenButton"
 
 /**

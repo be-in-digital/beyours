@@ -16,12 +16,12 @@ import {
  * it pins.
  *
  * `mirror-engine-exports.test.ts` covers the gate one step out: does every
- * `@be-in-digital/*` subpath the template imports resolve in the published
+ * `@be-yours/*` subpath the template imports resolve in the published
  * tarball, and does the file it points at ship? Both are questions about the
  * module. Neither can see inside one, and that is where #408 lives:
  *
  *   `apps/themes/convex/emailCampaigns.ts` imports
- *   `@be-in-digital/convex-functions/emailCampaigns` and reads
+ *   `@be-yours/convex-functions/emailCampaigns` and reads
  *   `defs.markFailed` off it. `markFailed` entered that module in e569498
  *   (#400) with no version bump, so the published `convex-functions@5.0.0`
  *   does not have it. The subpath is exported; the file ships; the exports
@@ -420,12 +420,12 @@ describe("a real compiler, against a dependency missing a named export", () => {
 
   const stage = (engineSource: string) => {
     const tree = fs.mkdtempSync(path.join(os.tmpdir(), "beyours-pinned-tree-"))
-    const engine = path.join(tree, "node_modules/@be-in-digital/convex-functions")
+    const engine = path.join(tree, "node_modules/@be-yours/convex-functions")
     fs.mkdirSync(path.join(engine, "src"), { recursive: true })
     fs.writeFileSync(
       path.join(engine, "package.json"),
       JSON.stringify({
-        name: "@be-in-digital/convex-functions",
+        name: "@be-yours/convex-functions",
         version: "5.0.0",
         types: "./src/emailCampaigns.ts",
         exports: { "./emailCampaigns": "./src/emailCampaigns.ts" },
@@ -449,7 +449,7 @@ describe("a real compiler, against a dependency missing a named export", () => {
     fs.writeFileSync(
       path.join(tree, "convex/emailCampaigns.ts"),
       [
-        'import * as defs from "@be-in-digital/convex-functions/emailCampaigns"',
+        'import * as defs from "@be-yours/convex-functions/emailCampaigns"',
         "export const markFailed = defs.markFailed",
         "",
       ].join("\n"),

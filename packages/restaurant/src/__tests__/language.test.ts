@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { useLanguageStore, buildTranslator } from '../stores/language'
-import { resolveEstablishmentLanguages } from '@be-in-digital/core'
+import { resolveEstablishmentLanguages } from '@be-yours/core'
 
 /**
  * The language store (#148).

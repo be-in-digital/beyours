@@ -25,7 +25,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 import { Clock } from "lucide-react"
 import type { DashboardHour } from "./use-dashboard-stats"

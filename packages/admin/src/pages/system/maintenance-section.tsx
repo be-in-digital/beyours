@@ -34,7 +34,7 @@ import {
   Label,
   Textarea,
   Checkbox,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { LoadingState } from "../../components"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { BID_SUPPORT_EMAIL } from "../../lib/constants"

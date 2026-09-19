@@ -36,7 +36,7 @@ BeYours's i18n system is dynamic — restaurant owners can add **any language** 
 
 ```tsx
 // From the admin dashboard
-import { LanguagesPage } from "@be-in-digital/admin/pages";
+import { LanguagesPage } from "@be-yours/admin/pages";
 
 // The LanguagesPage component provides:
 // - Add new language
@@ -51,8 +51,8 @@ Two things share the name "auto-translation", and they are not the same code:
 
 | | Where | Calls OpenAI |
 |---|---|---|
-| What the admin button runs | `@be-in-digital/convex-functions/autoTranslate` (`getTranslationPlan`, `runTranslationPlan`, `runBatchChunkPlan`, `saveDocumentTranslations`…), wrapped by each app as the `translateCatalogue` and `batchChunk` actions. There is no `translateUIStrings`: it existed in both apps with zero callers, under a docblock claiming the admin languages page called it, and has been deleted — UI strings are translated one at a time through « Traductions UI » (`translations.upsert`) | Yes, `fetch` straight to `api.openai.com`, under a per-store daily quota |
-| The reusable helpers | `translateText` / `batchTranslate` in `@be-in-digital/core` | Only through an **injected** HTTP client |
+| What the admin button runs | `@be-yours/convex-functions/autoTranslate` (`getTranslationPlan`, `runTranslationPlan`, `runBatchChunkPlan`, `saveDocumentTranslations`…), wrapped by each app as the `translateCatalogue` and `batchChunk` actions. There is no `translateUIStrings`: it existed in both apps with zero callers, under a docblock claiming the admin languages page called it, and has been deleted — UI strings are translated one at a time through « Traductions UI » (`translations.upsert`) | Yes, `fetch` straight to `api.openai.com`, under a per-store daily quota |
+| The reusable helpers | `translateText` / `batchTranslate` in `@be-yours/core` | Only through an **injected** HTTP client |
 
 The core helpers never import an SDK and never read `process.env`: an `HttpClient`
 and an API key are handed in, which is what keeps the package loadable from the
@@ -63,8 +63,8 @@ Convex runtime.
 The export is `translateText` — there is no `translateWithGPT`.
 
 ```typescript
-import { translateText } from "@be-in-digital/core";
-import type { HttpClient } from "@be-in-digital/core";
+import { translateText } from "@be-yours/core";
+import type { HttpClient } from "@be-yours/core";
 
 const result = await translateText(
   "Margherita Pizza",    // text
@@ -88,7 +88,7 @@ optional — but the function throws `"HTTP client is required for translation"`
 ### Batch Translation
 
 ```typescript
-import { batchTranslate } from "@be-in-digital/core";
+import { batchTranslate } from "@be-yours/core";
 
 // Items are { text, key? } — not your documents. Map first.
 const items = products.map((p) => ({ text: p.name, key: p._id }));
@@ -129,7 +129,7 @@ Overrides are rows in the `translations` table, written by the
 as hand-written:
 
 ```typescript
-// convex/translations.ts wraps @be-in-digital/convex-functions/translations
+// convex/translations.ts wraps @be-yours/convex-functions/translations
 await upsert({
   storeId,
   entityType: "product",
@@ -149,20 +149,20 @@ had a caller anywhere, and #413 removed them along with the rest of the
 callerless public surface: the catalogue's bulk translation writes translations
 straight onto the document from `autoTranslate`, never through a public
 mutation, and the « Traductions UI » tab writes one string at a time through
-`upsert`. The definitions remain in `@be-in-digital/convex-functions`, so
+`upsert`. The definitions remain in `@be-yours/convex-functions`, so
 wiring a screen to one means restoring its wrapper.
 
 ## Using Translations in Code
 
 ### useTranslation Hook
 
-`@be-in-digital/core` exports the **type** `UseTranslation`, not the hook: the
+`@be-yours/core` exports the **type** `UseTranslation`, not the hook: the
 package ships no JSX and no React runtime, so it can describe a hook and not
-run one. The running hook is in `@be-in-digital/restaurant`, built on the
+run one. The running hook is in `@be-yours/restaurant`, built on the
 language store:
 
 ```typescript
-import { useTranslation } from "@be-in-digital/restaurant";
+import { useTranslation } from "@be-yours/restaurant";
 
 function ProductCard({ product }) {
   const { t, locale, defaultLocale, isReady } = useTranslation();
@@ -185,7 +185,7 @@ document itself, in the `translations` column the auto-translator writes. Use th
 sibling hooks for those:
 
 ```tsx
-import { useLocalizedDocument, useLocalizedDocuments } from "@be-in-digital/restaurant";
+import { useLocalizedDocument, useLocalizedDocuments } from "@be-yours/restaurant";
 
 const product = useLocalizedDocument(rawProduct);      // name/description for the current locale
 const products = useLocalizedDocuments(rawProducts);   // same, over a list
@@ -196,8 +196,8 @@ const products = useLocalizedDocuments(rawProducts);   // same, over a list
 Switching the locale is a store action, not part of `useTranslation`'s return:
 
 ```tsx
-import { useLanguageStore } from "@be-in-digital/restaurant/stores";
-import { Select } from "@be-in-digital/ui";
+import { useLanguageStore } from "@be-yours/restaurant/stores";
+import { Select } from "@be-yours/ui";
 
 function LanguageSwitcher() {
   const locale = useLanguageStore((s) => s.locale);
@@ -233,7 +233,7 @@ import {
   setLocale,
   clearLocale,
   DEFAULT_I18N_CONFIG,
-} from "@be-in-digital/core";
+} from "@be-yours/core";
 
 // Server: you hold the request's cookie header
 const fromCookie = getLocaleFromCookie(request.headers.get("cookie") ?? "");

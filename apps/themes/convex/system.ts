@@ -1,8 +1,8 @@
 import { query, mutation, action, internalAction, internalMutation, type QueryCtx, type MutationCtx } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { v } from "convex/values"
-import { getAuthUser } from "@be-in-digital/convex-functions/auth"
-import * as maintenanceDefs from "@be-in-digital/convex-functions/maintenance"
+import { getAuthUser } from "@be-yours/convex-functions/auth"
+import * as maintenanceDefs from "@be-yours/convex-functions/maintenance"
 import {
   ARCHIVE_RELINK_TABLES,
   BACKUP_PAGE_SIZE,
@@ -11,8 +11,8 @@ import {
   EXCLUDED_TABLES,
   EXPORTED_TABLES,
   EXPORT_ONLY_TABLES,
-} from "@be-in-digital/convex-functions/backupTables"
-import { Role, hasPermission, type Permission } from "@be-in-digital/core/auth/rbac"
+} from "@be-yours/convex-functions/backupTables"
+import { Role, hasPermission, type Permission } from "@be-yours/core/auth/rbac"
 import { migrations } from "./migrations/index"
 
 // Type returned by systemInternal.getAuthUserInternal
@@ -372,7 +372,7 @@ export const checkForUpdates = action({
     // 1. Sync the release catalog from the release feed (best effort — an
     //    outage must not hide already-known releases).
     //
-    //    This used to fetch `registry.npmjs.org/@be-in-digital/restaurant-theme`
+    //    This used to fetch `registry.npmjs.org/@be-yours/restaurant-theme`
     //    unconditionally. No package by that name is published anywhere, and the
     //    engine's ten packages go to npm.pkg.github.com as `restricted`, not to
     //    npmjs — so the request was a guaranteed 404 and every owner who opened
@@ -486,7 +486,7 @@ export const buildBackup = internalAction({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const settings: any = await ctx.runQuery(internal.systemInternal.getSettingsInternal, {})
 
-      /* One list, in `@be-in-digital/convex-functions/backupTables`, shared with
+      /* One list, in `@be-yours/convex-functions/backupTables`, shared with
          the import allow-list in `systemInternal.ts`. It used to be written out
          twice and the two had to agree by hand; between them they named 22 of
          this schema's 77 tables, omitting the orders, the payments, the

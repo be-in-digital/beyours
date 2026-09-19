@@ -1,4 +1,4 @@
-import { EmailTemplatesPage } from "@be-in-digital/admin"
+import { EmailTemplatesPage } from "@be-yours/admin"
 
 export default function Page() {
   return <EmailTemplatesPage />

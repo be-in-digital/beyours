@@ -1,9 +1,9 @@
 import { internalMutation, query, mutation } from "./_generated/server";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
-import * as defs from "@be-in-digital/convex-functions/platformWebhookFailures";
-import { getAuthUser } from "@be-in-digital/convex-functions/auth";
-import { hasPermission, type Permission } from "@be-in-digital/core/auth/rbac";
+import * as defs from "@be-yours/convex-functions/platformWebhookFailures";
+import { getAuthUser } from "@be-yours/convex-functions/auth";
+import { hasPermission, type Permission } from "@be-yours/core/auth/rbac";
 
 const PERM_ORDERS_READ = "orders:read" as Permission;
 

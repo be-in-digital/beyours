@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { motion } from "framer-motion"
 import { Volume2Icon, VolumeXIcon } from "lucide-react"
-import { buildBrandingCss } from "@be-in-digital/ui/branding"
+import { buildBrandingCss } from "@be-yours/ui/branding"
 
 import { ParticleEngine, gameSounds } from "./lib"
 

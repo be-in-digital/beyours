@@ -13,7 +13,7 @@
  *   pnpm env:sync     # propagates .env.local → .env.convex + mobile/.env
  *
  * The variable lists are NOT restated here. They come from `envManifest` in
- * @be-in-digital/core/env, which derives them from the Zod schemas the app
+ * @be-yours/core/env, which derives them from the Zod schemas the app
  * boots against.
  *
  * They used to be three local arrays under the instruction "keep them in sync
@@ -30,7 +30,7 @@ import path from "node:path"
 import crypto from "node:crypto"
 import readline from "node:readline"
 import { fileURLToPath } from "node:url"
-import { envManifest } from "@be-in-digital/core/env"
+import { envManifest } from "@be-yours/core/env"
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..")
 const ENV_LOCAL = path.join(ROOT, ".env.local")
@@ -202,26 +202,26 @@ async function check({ quiet } = {}) {
     }
   }
 
-  // Official engine validation (Zod schemas from @be-in-digital/core) — the
+  // Official engine validation (Zod schemas from @be-yours/core) — the
   // authoritative layer when node_modules is installed; silent otherwise.
   try {
     for (const [k, v] of Object.entries(web)) {
       if (process.env[k] === undefined) process.env[k] = v
     }
     const { validateAllEnv, formatEnvReport } = await import(
-      "@be-in-digital/core/env"
+      "@be-yours/core/env"
     )
     const { ok, missing } = validateAllEnv()
     if (ok) {
-      console.log("\nValidation @be-in-digital/core : ✓")
+      console.log("\nValidation @be-yours/core : ✓")
     } else {
       problems += 1
-      console.log("\nValidation @be-in-digital/core :")
+      console.log("\nValidation @be-yours/core :")
       console.log(formatEnvReport(missing))
     }
   } catch {
     console.log(
-      "\n(validation @be-in-digital/core indisponible — lancer pnpm install)",
+      "\n(validation @be-yours/core indisponible — lancer pnpm install)",
     )
   }
 

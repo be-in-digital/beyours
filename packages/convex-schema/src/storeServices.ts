@@ -3,7 +3,7 @@
  *
  * It lives next to the schema, like `storeStatus`, because the layers that need
  * the same answer cannot depend on one another: the order mutation
- * (`@be-in-digital/convex-functions`) and the storefront's order-type selector.
+ * (`@be-yours/convex-functions`) and the storefront's order-type selector.
  *
  * WHY IT EXISTS. `globalSettings.services` is written by the settings page —
  * four switches, one per service — and the storefront read `store.overrides

@@ -29,9 +29,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@be-in-digital/ui"
-import { formatPrice, useCartStore, useTranslation } from "@be-in-digital/restaurant"
-import type { CartMenuChoice } from "@be-in-digital/restaurant"
+} from "@be-yours/ui"
+import { formatPrice, useCartStore, useTranslation } from "@be-yours/restaurant"
+import type { CartMenuChoice } from "@be-yours/restaurant"
 
 /** One dish a section offers, as `menus.listActive` resolves it. */
 export interface FormuleChoice {
@@ -254,7 +254,7 @@ function FormuleComposer({
                 <legend className="flex w-full items-baseline justify-between gap-2 text-sm font-semibold">
                   <span>{section.label}</span>
                   {/* The legend sits on the dialog's own ground, which is
-                      painted by `@be-in-digital/ui` in another file — so the
+                      painted by `@be-yours/ui` in another file — so the
                       sweep cannot measure an ink chosen against it. The
                       inherited foreground is the one the dialog was designed
                       with. */}

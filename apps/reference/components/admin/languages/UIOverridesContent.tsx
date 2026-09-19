@@ -15,7 +15,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   Badge,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { EmptyState } from "@/components/admin/EmptyState"
 import { REFERENCE_KEYS } from "@/lib/i18n/index"

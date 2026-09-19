@@ -489,7 +489,7 @@ Three consequences, in the order they hurt a restaurant:
 > would have written stays configurable from the two screens named above. Read
 > this as a change of *registration*, not of capability: the gaps this section
 > describes are exactly as wide as they were, and the definitions still live in
-> `@be-in-digital/convex-functions`, so wiring a screen means restoring a
+> `@be-yours/convex-functions`, so wiring a screen means restoring a
 > six-line wrapper beside it. What changed is that a client's deployment no
 > longer publishes an endpoint for a feature it does not have.
 >
@@ -591,7 +591,7 @@ Measured 2026-09-09 on a full clone:
 |---|---|---|
 | commits on `main` | 393 | **472** |
 | remote branches | 8 | **72** |
-| remote tags | 59 of 60 | **75** (63 are `@be-in-digital/*` release anchors) |
+| remote tags | 59 of 60 | **75** (63 are `@be-yours/*` release anchors) |
 | open PRs blocking | 0 | **2** (#420, #421 — drafts, 9 Sep) |
 
 The queue is nearly clear rather than clear — a draft PR's SHAs are invalidated by a
@@ -687,7 +687,7 @@ and the `/admin/flotte` banner report both lists.
 
 Not a lock. The sentinel lives in the client's repository and is one edit from
 disabled; `maintenance.mjs:52` skips the check if `licenseKey` is absent. The
-real lock is access to the private boilerplate repo and the `@be-in-digital/*`
+real lock is access to the private boilerplate repo and the `@be-yours/*`
 registry. Reverting is `convex env unset`, immediate, no deploy.
 
 ### Repo-side residue worth carding separately

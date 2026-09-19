@@ -12,7 +12,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { FieldInfo } from "./field-info"
 import { HELP } from "./help-content"
 

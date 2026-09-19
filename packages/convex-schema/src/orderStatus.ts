@@ -5,8 +5,8 @@
  *
  * It lives here, next to the schema, because three layers need the same answer
  * and none of them can depend on the others: the storefront services
- * (`@be-in-digital/restaurant`), the admin UI (`@be-in-digital/admin`) and the
- * `updateStatus` mutation (`@be-in-digital/convex-functions`). They each used
+ * (`@be-yours/restaurant`), the admin UI (`@be-yours/admin`) and the
+ * `updateStatus` mutation (`@be-yours/convex-functions`). They each used
  * to carry their own opinion, and the opinions had drifted — the UI offered
  * "Envoyer en livraison" on a ready order while the service table forbade it.
  */

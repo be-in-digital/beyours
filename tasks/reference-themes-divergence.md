@@ -290,7 +290,7 @@ They were leftovers, and reachability was not the argument that settled it:
 > forks with no importer.
 
 - **`components/admin/SidebarUserMenu.tsx`** was a *stale copy*. The layout
-  renders `SidebarUserMenu` from `@be-in-digital/admin`, and the package version
+  renders `SidebarUserMenu` from `@be-yours/admin`, and the package version
   has since gained a fix the local copy never did: it clears the selected
   establishment on sign-out, because it outlived the session and the next person
   to use that browser was greeted by name with the previous user's restaurant.
@@ -330,7 +330,7 @@ because an `ALLOWED` row is a permanent exemption from the only check that looks
   exported no such name. This note repeated the claim in two places. A comment
   is not checked by anything, so it outlived its subject.
 - **`ComingSoon` and `DateDisplay` were forks with no importer.** Every live
-  `ComingSoon` call site — two per app — takes it from `@be-in-digital/admin`.
+  `ComingSoon` call site — two per app — takes it from `@be-yours/admin`.
   Nothing rendered the local `DateDisplay` at all. Both had drifted from the
   package components they were copied from, which is precisely the hazard #405
   removed `SidebarUserMenu` for: a template-only component is a starting point a
@@ -359,7 +359,7 @@ The keep-list of twenty below still stands as a verdict, with two amendments:
 
 - **`PageHeader` is no longer consumer-free.**
   `packages/admin/src/pages/privacy/privacy-page.tsx` imports it from
-  `@be-in-digital/ui`. The list is 19 of 20 accurate; do not cite it as twenty.
+  `@be-yours/ui`. The list is 19 of 20 accurate; do not cite it as twenty.
 - **`Toast` stays; its provider and hook did not.** `ToastProvider`, `useToast`
   and `ToastContext` were removed by #413, and the keep-list reasoning is exactly
   why the box beside them was not. That reasoning — removing a name from a
@@ -373,7 +373,7 @@ The keep-list of twenty below still stands as a verdict, with two amendments:
 
 `apps/reference/components/ui/` and `apps/themes/components/ui/` no longer
 exist. Neither does `packages/admin/src/ui/`. There is one design system, in
-`packages/ui`, and every consumer imports it from `@be-in-digital/ui`.
+`packages/ui`, and every consumer imports it from `@be-yours/ui`.
 
 This note is the right place to record it because the deleted directories were
 **byte-identical between the two apps** — `diff -rq` printed nothing about 37
@@ -439,7 +439,7 @@ uses — but it closes by wiring them into the storefront, which is a storefront
 redesign with its own review, not by deleting them in a refactor.
 
 The other eighteen are the surface of a **published** package. A client site
-runs a pinned `@be-in-digital/ui` and can import any exported name; removing one
+runs a pinned `@be-yours/ui` and can import any exported name; removing one
 is a breaking major that buys nothing but a shorter barrel.
 
 What must not happen is the list growing. A component with no consumer is a
@@ -574,7 +574,7 @@ route that did not exist in the template, and `dashboard/games` was never
 stubbed at all: it rendered the real overview, linking to four placeholders.
 
 The flow now lives in `packages/admin/src/game/`, exported from
-`@be-in-digital/admin/game`, and both apps render it through identical thin
+`@be-yours/admin/game`, and both apps render it through identical thin
 adapters that supply the three things that are genuinely per-app: the generated
 Convex API, `useCmsPage`, and the route params. `apps/themes` gained
 `/game/prize/[code]`, which closes the emailed 404.

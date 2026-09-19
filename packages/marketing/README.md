@@ -1,4 +1,4 @@
-# `@be-in-digital/marketing`
+# `@be-yours/marketing`
 
 Email marketing: the block-to-HTML renderer, segment filtering, subscriber CSV
 import, double opt-in, campaign validation and delivery statistics.
@@ -17,7 +17,7 @@ import {
   buildSegmentFilter,
   parseSubscriberCsv,
   validateCampaign,
-} from "@be-in-digital/marketing"
+} from "@be-yours/marketing"
 ```
 
 | Module | Answers |
@@ -59,7 +59,7 @@ Three helpers guard the output: `escapeHtml`, `sanitizeUrl`, and
 
 ## Where the sending happens
 
-Not here. This package builds the message; `@be-in-digital/core` sends it.
+Not here. This package builds the message; `@be-yours/core` sends it.
 Campaigns and automations run in **Convex Node actions** and send from there —
 unlike the password-reset path, which POSTs to the app's `/api/email/send`.
 

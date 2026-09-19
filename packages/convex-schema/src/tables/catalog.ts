@@ -8,7 +8,7 @@ import { v } from "convex/values"
  * a hash of the source text it translated from, so an unchanged field is not
  * re-sent to GPT, and an `Auto` flag that a manual edit clears so the machine
  * never overwrites a human. The abbreviated key prefixes (`name`, `desc`) are
- * the ones `META_KEY_PREFIX` in `@be-in-digital/convex-functions/autoTranslate`
+ * the ones `META_KEY_PREFIX` in `@be-yours/convex-functions/autoTranslate`
  * writes — they have to agree, or a translation is recomputed on every save.
  */
 export const documentTranslationsValidator = v.record(

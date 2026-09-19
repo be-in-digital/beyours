@@ -1,7 +1,7 @@
 /**
  * AWS Services integration (S3 + SES)
  *
- * Re-exports AWS utilities from @be-in-digital/core
+ * Re-exports AWS utilities from @be-yours/core
  * for file storage and email functionality.
  *
  * @example
@@ -28,7 +28,7 @@ export type {
   S3Config,
   SESConfig,
   S3Folder,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 
 export {
   ALLOWED_MIME_TYPES,
@@ -37,7 +37,7 @@ export {
   PRIVATE_S3_FOLDERS,
   isKnownS3Folder,
   isPrivateS3Folder,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 
 // ============================================================================
 // Media URL policy (private bucket — see aws/media-url)
@@ -46,7 +46,7 @@ export {
   MEDIA_PROXY_PATH,
   buildMediaUrl,
   mediaKeyFromUrl,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 
 // ============================================================================
 // S3 Service
@@ -78,14 +78,14 @@ export type {
   ListObjectVersionsResult,
   DeleteObjectVersionParams,
   DeleteResult,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 
 export {
   createS3Service,
   validateMimeType,
   validateFileSize,
   getExtensionFromMimeType,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 
 // ============================================================================
 // SES Service
@@ -98,11 +98,11 @@ export type {
   SendBulkEmailParams,
   SendBulkEmailResult,
   SESOperations,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 
 export {
   createSESService,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 
 // ============================================================================
 // Email Templates
@@ -114,7 +114,7 @@ export type {
   WelcomeData,
   PrizeWonData,
   TemplateName,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 
 export {
   orderConfirmationTemplate,
@@ -123,4 +123,4 @@ export {
   prizeWonTemplate,
   sesEmailTemplates,
   getTemplate,
-} from '@be-in-digital/core'
+} from '@be-yours/core'

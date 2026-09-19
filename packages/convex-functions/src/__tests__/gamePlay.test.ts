@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import type { SchemaMutationCtx } from "@be-in-digital/convex-schema/dataModel"
+import type { SchemaMutationCtx } from "@be-yours/convex-schema/dataModel"
 import {
   generateRedemptionCode,
   rollOutcome,

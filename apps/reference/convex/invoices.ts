@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import {
   issueInvoiceForOrder,
-} from "@be-in-digital/convex-functions/invoices";
+} from "@be-yours/convex-functions/invoices";
 import { storeMutation } from "./lib/storeFunctions";
 
 /**

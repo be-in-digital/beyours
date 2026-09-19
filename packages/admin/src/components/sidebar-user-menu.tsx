@@ -16,7 +16,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { toast } from "sonner"
 import { LogOut, ChevronsUpDown, Settings } from "lucide-react"
 import { adminRoutes } from "../config/admin-routes"

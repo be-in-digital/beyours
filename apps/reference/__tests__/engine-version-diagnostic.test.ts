@@ -10,7 +10,7 @@ import { execFileSync } from "node:child_process"
  * The diagnostic (`apps/themes/scripts/engine-versions.mjs`) answers the one
  * question a red run in the boilerplate cannot answer for itself: the
  * application shell is synced from the engine at HEAD while the
- * `@be-in-digital/*` packages arrive from the registry at whatever was last
+ * `@be-yours/*` packages arrive from the registry at whatever was last
  * published, and those two can be days apart. On 07/09/2026 that cost a full
  * diagnostic cycle — three runs read as a fix failing when the fix had simply
  * never been released (#389).
@@ -24,7 +24,7 @@ import { execFileSync } from "node:child_process"
  *
  * That is exactly backwards. A wrong engine version breaks the build long
  * before it breaks Playwright — `scripts/check-mirror-build.mjs` records the
- * canonical case, `Cannot find module '@be-in-digital/admin/game'`, a
+ * canonical case, `Cannot find module '@be-yours/admin/game'`, a
  * **Typecheck** failure in 71 of the boilerplate's last 100 runs. In all of
  * them `web` failed, `e2e` was skipped, and the log ended at a bare TS2307.
  * The answer was reachable only in the runs that did not need it.
@@ -60,8 +60,8 @@ const jobs = Object.entries(workflow.jobs ?? {})
  *
  * `working-directory` is what separates this from the `mobile` job, which runs
  * `pnpm install` against `mobile/package.json` — a manifest with no
- * `@be-in-digital/*` dependency in it, so the diagnostic would print "No
- * @be-in-digital/* dependency is declared." and answer nothing. A
+ * `@be-yours/*` dependency in it, so the diagnostic would print "No
+ * @be-yours/* dependency is declared." and answer nothing. A
  * `working-directory: .` is the repository root and still counts.
  *
  * Spelled loosely on purpose. An adversarial pass defeated `/\bpnpm install\b/`

@@ -2,7 +2,7 @@ import { mutation, internalMutation, internalQuery } from "./_generated/server";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
-import * as defs from "@be-in-digital/convex-functions/emailSubscribers";
+import * as defs from "@be-yours/convex-functions/emailSubscribers";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 const emailSubscribersStoreId = storeIdFromDocument("Subscriber not found");

@@ -5,14 +5,14 @@
  * The two status badges mounted on the storefront speak the diner's language.
  *
  * WHAT WENT WRONG (#376, item 4): `OrderStatusBadge` and `StoreStatusBadge` in
- * `@be-in-digital/ui` carried eleven hardcoded English labels between them and
+ * `@be-yours/ui` carried eleven hardcoded English labels between them and
  * took no label from outside. Both are mounted on French screens — the store
  * selector and the diner's own order page — so a customer picking a location
  * read « Temporarily Unavailable » under a French heading, and the translation
  * layer #148 shipped could not reach either word.
  *
- * The vocabulary and the fallback are pinned in `@be-in-digital/core`; the
- * badge's own behaviour in `@be-in-digital/ui`. This pins the WIRING, which is
+ * The vocabulary and the fallback are pinned in `@be-yours/core`; the
+ * badge's own behaviour in `@be-yours/ui`. This pins the WIRING, which is
  * the half that was missing: that the mounted screen actually resolves the
  * labels through `t()` and hands them to the badge. Delete the `labels` prop
  * at either call site and this file goes red.
@@ -77,7 +77,7 @@ afterEach(async () => {
 
 /** Put the language store back to the state a fresh storefront starts in. */
 async function resetLanguage() {
-  const { useLanguageStore } = await import("@be-in-digital/restaurant")
+  const { useLanguageStore } = await import("@be-yours/restaurant")
   act(() => {
     useLanguageStore.setState({
       locale: "fr",
@@ -144,7 +144,7 @@ describe("the store selector's status badge", () => {
 
   test("follows the language the diner chose", async () => {
     await resetLanguage()
-    const { useLanguageStore } = await import("@be-in-digital/restaurant")
+    const { useLanguageStore } = await import("@be-yours/restaurant")
 
     act(() => {
       useLanguageStore.setState({
@@ -181,7 +181,7 @@ describe("the store selector's status badge", () => {
 
   test("a restaurateur's own wording beats the catalogue", async () => {
     await resetLanguage()
-    const { useLanguageStore } = await import("@be-in-digital/restaurant")
+    const { useLanguageStore } = await import("@be-yours/restaurant")
 
     act(() => {
       useLanguageStore.setState({
@@ -241,7 +241,7 @@ describe("the header store panel's status", () => {
 
   test("follows the language the diner chose, like the page does", async () => {
     await resetLanguage()
-    const { useLanguageStore } = await import("@be-in-digital/restaurant")
+    const { useLanguageStore } = await import("@be-yours/restaurant")
 
     act(() => {
       useLanguageStore.setState({

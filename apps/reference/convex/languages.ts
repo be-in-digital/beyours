@@ -1,6 +1,6 @@
 import { internalMutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import * as defs from "@be-in-digital/convex-functions/languages";
+import * as defs from "@be-yours/convex-functions/languages";
 import { storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // @public-by-design: the language switcher runs before any sign-in. A list of

@@ -24,8 +24,8 @@ import {
   type LucideIcon,
   Users,
 } from "lucide-react"
-import { hasPermission, type Permission, type Role } from "@be-in-digital/core"
-import { profileAllowsPermission } from "@be-in-digital/convex-functions/teamAccess"
+import { hasPermission, type Permission, type Role } from "@be-yours/core"
+import { profileAllowsPermission } from "@be-yours/convex-functions/teamAccess"
 import { adminRoutes } from "./admin-routes"
 
 // ─── Types ──────────────────────────────────────────────────────────────────────

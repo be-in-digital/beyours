@@ -23,7 +23,7 @@
  * through it so there is one implementation rather than two that drift.
  *
  * NO IMPORTS ON PURPOSE. It is published as a source subpath
- * (`@be-in-digital/core/aws/ses/order-confirmation`) exactly as
+ * (`@be-yours/core/aws/ses/order-confirmation`) exactly as
  * `./auth/rbac` is, so the Convex runtime can bundle it without dragging in
  * `@aws-sdk/client-sesv2` through the package barrel — the constraint
  * `convex-functions/src/autoTranslate.ts` documents.
@@ -165,7 +165,7 @@ const MONTHS_FR = [
  */
 // No caller in this file any more: its one use was the `scheduledFor` branch of
 // `timingLine`, removed with the field (#413). Kept because this module is
-// published as `@be-in-digital/core/aws/ses/order-confirmation`, so the name is
+// published as `@be-yours/core/aws/ses/order-confirmation`, so the name is
 // on a client's API — the same reasoning `tasks/reference-themes-divergence.md`
 // applies to the twenty consumer-free components in `packages/ui`.
 export function formatDateTime(timestamp: number, timeZone?: string): string {

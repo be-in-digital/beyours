@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
-import * as defs from "@be-in-digital/convex-functions/gamePlay";
+import * as defs from "@be-yours/convex-functions/gamePlay";
 
 /**
  * Public player-facing gamification endpoints.

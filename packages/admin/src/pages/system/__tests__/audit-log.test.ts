@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { systemAuditLogTable } from "@be-in-digital/convex-schema"
+import { systemAuditLogTable } from "@be-yours/convex-schema"
 import {
   AUDIT_ACTION_LABELS,
   formatActionLabel,

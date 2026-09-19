@@ -20,7 +20,7 @@
  * 2526 of them, with `max-h-[60vh]` and `min-h-[50vh]` among the 576 missing.
  * The bug was invisible here and live on every site we had sold.
  *
- * `node_modules/@be-in-digital/*` is the one spelling that resolves in both
+ * `node_modules/@be-yours/*` is the one spelling that resolves in both
  * layouts: pnpm links it to `packages/*` inside this workspace, and it is the
  * installed package on a client site — where both packages ship `src` in their
  * `files`. `scripts/check-mirror-css.mjs` builds the stylesheet in both layouts
@@ -32,8 +32,8 @@
  * no CSS while the identical file under `app/` produced it fine, and the two
  * builds agreed on the wrong answer.
  */
-@source "../node_modules/@be-in-digital/ui/src/**/*";
-@source "../node_modules/@be-in-digital/admin/src/**/*";
+@source "../node_modules/@be-yours/ui/src/**/*";
+@source "../node_modules/@be-yours/admin/src/**/*";
 @import "../node_modules/tw-animate-css/dist/tw-animate.css";
 
 /*

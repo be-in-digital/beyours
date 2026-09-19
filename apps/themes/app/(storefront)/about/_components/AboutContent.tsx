@@ -14,7 +14,7 @@ import {
     MapPin,
 } from "lucide-react"
 import { motion } from "framer-motion"
-import { Button, Badge } from "@be-in-digital/ui"
+import { Button, Badge } from "@be-yours/ui"
 import { useCmsPage } from "@/lib/cms/useCmsPage"
 import { parseColoredText } from "@/lib/parse-colored-text"
 import { CmsRichText } from "@/components/storefront"

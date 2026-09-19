@@ -212,7 +212,7 @@ const done = (msg) => {
 // ---------------------------------------------------------------------------
 
 function resolveVersions(deps) {
-  const engineDeps = Object.keys(deps).filter((k) => k.startsWith("@be-in-digital/"))
+  const engineDeps = Object.keys(deps).filter((k) => k.startsWith("@be-yours/"))
   const resolved = {}
   for (const pkg of engineDeps) {
     // Both failures are fatal here — the mirror cannot pin a dependency to a

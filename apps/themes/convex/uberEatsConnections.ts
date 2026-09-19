@@ -4,9 +4,9 @@ import {
   query,
   mutation,
 } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/uberEatsConnections";
-import { getAuthUser } from "@be-in-digital/convex-functions/auth";
-import { hasPermission, type Role } from "@be-in-digital/core/auth/rbac";
+import * as defs from "@be-yours/convex-functions/uberEatsConnections";
+import { getAuthUser } from "@be-yours/convex-functions/auth";
+import { hasPermission, type Role } from "@be-yours/core/auth/rbac";
 
 /**
  * The connection is one row for the whole deployment, so there is no store to

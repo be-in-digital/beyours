@@ -11,7 +11,7 @@ import {
   getBlockDefinition,
   getAllPageSlugs,
   validateBlockValues,
-} from "@be-in-digital/cms"
+} from "@be-yours/cms"
 import { sanitizeRichTextHtml } from "./htmlSanitize"
 
 // ============================================================================

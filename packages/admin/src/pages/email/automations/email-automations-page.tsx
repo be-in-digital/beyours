@@ -50,7 +50,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { LoadingState } from "../../../components/loading-state"
 import { DeleteConfirmDialog } from "../../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../../stores/admin-api-store"

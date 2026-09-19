@@ -32,7 +32,7 @@
 
 import { convexTest } from "convex-test"
 import { describe, expect, test } from "vitest"
-import { listJobs } from "@be-in-digital/convex-functions/autoTranslate"
+import { listJobs } from "@be-yours/convex-functions/autoTranslate"
 import schema from "../../convex/schema"
 import type { Id } from "../../convex/_generated/dataModel"
 

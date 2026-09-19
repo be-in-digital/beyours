@@ -238,7 +238,7 @@ test("and the Release itself is not gated on it", () => {
  *
  * WHAT THIS HOLDS SHUT (#389). `apps/themes/.github/workflows/ci.yml` is
  * published verbatim into `beyours-boilerplate`, where `package.json` pins
- * `"@be-in-digital/admin": "^9.0.0"` — a RANGE — while this repository links the
+ * `"@be-yours/admin": "^9.0.0"` — a RANGE — while this repository links the
  * engine with `workspace:^` and tests the current source.
  *
  * So on 7 September 2026, #387 fixed `addChoice`, merged green here, and the
@@ -263,7 +263,7 @@ test("the template's e2e job prints the engine versions it installed", () => {
   expect(e2e, "the template has no e2e job").toBeDefined()
 
   const printing = (e2e?.steps ?? []).filter((step) =>
-    /@be-in-digital\//.test(step.run ?? ""),
+    /@be-yours\//.test(step.run ?? ""),
   )
   expect(printing.length, "no step reads the installed engine versions").toBeGreaterThan(0)
 })
@@ -279,7 +279,7 @@ test("and it prints them before anything can fail", () => {
   ) as Workflow
   const steps = template.jobs?.["e2e"]?.steps ?? []
 
-  const reportAt = steps.findIndex((step) => /@be-in-digital\//.test(step.run ?? ""))
+  const reportAt = steps.findIndex((step) => /@be-yours\//.test(step.run ?? ""))
   const buildAt = steps.findIndex((step) => /^pnpm build$/m.test(step.run ?? ""))
 
   expect(reportAt).toBeGreaterThanOrEqual(0)

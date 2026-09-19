@@ -14,7 +14,7 @@ import {
   CardDescription,
   Button,
   Badge,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { BlogAutoConfigForm } from "./BlogAutoConfigForm"
 

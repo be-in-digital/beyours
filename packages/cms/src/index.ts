@@ -1,5 +1,5 @@
 /**
- * @be-in-digital/cms
+ * @be-yours/cms
  *
  * CMS package for BeYours Engine.
  * Provides registry definitions, types, and validation for the CMS system.
@@ -54,7 +54,7 @@ export type { ValidationError, ValidationResult } from "./validation/validateBlo
 //
 //   Failed to analyze cms.js: Cannot read properties of undefined (reading 'bind')
 //
-// It ships from `@be-in-digital/cms/sanitize` instead, so only the server-side
+// It ships from `@be-yours/cms/sanitize` instead, so only the server-side
 // callers that actually sanitize pull the parser in.
 //
 // The refusal check below is DOM-free and dependency-free, so it stays here for

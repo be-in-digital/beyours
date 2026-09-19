@@ -7,7 +7,7 @@
  * one asks the other question, which nothing asked: whether every complete
  * Convex definition the engine package EXPORTS is wrapped by an app at all.
  *
- * WHY IT MATTERS. A `{ args, handler }` in `@be-in-digital/convex-functions` is
+ * WHY IT MATTERS. A `{ args, handler }` in `@be-yours/convex-functions` is
  * not reachable by anything until an app wraps it in `query`, `mutation` or one
  * of the guarded forms. Unwrapped, it compiles, it is covered by its unit tests,
  * it appears in the package's exports — and no screen, script or webhook can

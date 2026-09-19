@@ -11,10 +11,10 @@
  *
  * WHY IT DOES NOT IMPORT THE ENGINE'S SCANNER. Two reasons, both structural.
  *
- *   1. `apps/site` depends on NONE of the `@be-in-digital/*` packages, on
+ *   1. `apps/site` depends on NONE of the `@be-yours/*` packages, on
  *      purpose — it is a website, not an instance of the product, and
  *      `dependency-hygiene.test.ts` next door is what keeps it that way.
- *      Importing `@be-in-digital/ui/contrast-scan` here would be the first
+ *      Importing `@be-yours/ui/contrast-scan` here would be the first
  *      engine dependency this app has ever had, to run a test.
  *   2. It would not work if it did. `loadTokens` parses `--token: H S% L%`
  *      triples, because that is what the engine's `globals.css` declares. This
@@ -99,7 +99,11 @@ function loadTokens(): Map<string, Map<string, Rgb>> {
   const blocks = new Map<string, Map<string, Rgb>>()
   for (const selector of [":root", ".admin-scope"]) {
     const tokens = new Map<string, Rgb>()
-    const pattern = selector.replace(/[.]/g, "\\$&")
+    // Every metacharacter, not just the dot: escaping `.` alone leaves a
+    // backslash in the input free to escape whatever follows it. The selector
+    // list above is two literals today, so this is a latent defect rather than
+    // a live one, and closing it costs one character class.
+    const pattern = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     const head = new RegExp(String.raw`(?:^|[}{;])\s*${pattern}\s*\{`, "g")
     let match: RegExpExecArray | null
     while ((match = head.exec(css))) {

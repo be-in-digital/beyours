@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Badge, Button } from "@be-in-digital/ui"
+import { Badge, Button } from "@be-yours/ui"
 
 interface HeadingProps {
     badge?: string;

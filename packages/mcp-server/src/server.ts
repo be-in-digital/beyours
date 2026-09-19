@@ -106,7 +106,7 @@ export async function startServer() {
       {
         uri: uri.href,
         mimeType: "text/markdown",
-        text: `# @be-in-digital Package Ecosystem\n\n${packages.length} packages available.\n\n${formatPackageList(packages)}`,
+        text: `# @be-yours Package Ecosystem\n\n${packages.length} packages available.\n\n${formatPackageList(packages)}`,
       },
     ],
   }));
@@ -151,7 +151,7 @@ export async function startServer() {
 
   server.tool(
     "search_feature",
-    "Search for components, hooks, stores, functions, types across all @be-in-digital packages",
+    "Search for components, hooks, stores, functions, types across all @be-yours packages",
     { query: z.string().describe("Search term (e.g. 'cart', 'button', 'order', 'kitchen')") },
     async ({ query }) => {
       const results = searchPackages(query);
@@ -169,7 +169,7 @@ export async function startServer() {
   server.tool(
     "get_package_info",
     "Get full details about a specific package including all exports, setup steps, and dependencies",
-    { name: z.string().describe("Package name (e.g. 'ui', 'core', 'restaurant', '@be-in-digital/ui')") },
+    { name: z.string().describe("Package name (e.g. 'ui', 'core', 'restaurant', '@be-yours/ui')") },
     async ({ name }) => {
       const pkg = getPackageByName(name);
       if (!pkg) {
@@ -275,7 +275,7 @@ export async function startServer() {
         "\n## Prerequisites",
         "1. Configure your `.npmrc` for GitHub Packages:",
         "```",
-        "@be-in-digital:registry=https://npm.pkg.github.com",
+        "@be-yours:registry=https://npm.pkg.github.com",
         '//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}',
         "```",
         "2. Set `GITHUB_TOKEN` environment variable with a PAT that has `read:packages` scope.",

@@ -17,7 +17,7 @@ import {
 } from '../services/product'
 // The order mutation's own implementation, imported so these tests assert
 // agreement rather than a literal that used to be right.
-import { isWithinWindow } from '@be-in-digital/convex-schema'
+import { isWithinWindow } from '@be-yours/convex-schema'
 import type { ProductDoc, CartSelectedOption } from '../types'
 
 describe('Product Service', () => {

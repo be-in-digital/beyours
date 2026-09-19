@@ -27,6 +27,7 @@ import type {
   Allergen,
   AllergenLocale,
 } from "../components/restaurant/AllergenBadge"
+import { stripTags } from "./strip-tags"
 
 function render(allergen: string, props: { showLabel?: boolean; locale?: AllergenLocale } = {}) {
   return renderToStaticMarkup(<AllergenBadge allergen={allergen} {...props} />)
@@ -43,7 +44,7 @@ function withoutAccents(term: string) {
 
 /** Strip tags so assertions read the text a diner sees. */
 function text(html: string) {
-  return html.replace(/<[^>]*>/g, "")
+  return stripTags(html)
 }
 
 describe("AllergenBadge — values measured in this repository", () => {

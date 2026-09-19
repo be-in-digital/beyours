@@ -103,7 +103,7 @@ vi.mock("@/lib/hooks/use-store-id", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: () => {}, error: () => {} } }))
 
-vi.mock("@be-in-digital/restaurant", () => ({
+vi.mock("@be-yours/restaurant", () => ({
   // Called both ways in this tree — with a selector, and bare for the whole
   // store — so the mock has to answer both.
   useCartStore: (selector?: (s: unknown) => unknown) => {
@@ -199,7 +199,7 @@ const { StorefrontFooter } = await import("@/components/storefront/storefront-fo
 const HomepageContent = (await import("@/app/(storefront)/_components/HomepageContent")).default
 // The page mounts tooltips without a provider of its own — the real one lives
 // in the storefront layout, above it.
-const { TooltipProvider } = await import("@be-in-digital/ui")
+const { TooltipProvider } = await import("@be-yours/ui")
 const { ProductGrid } = await import("@/components/storefront/product-grid")
 
 beforeAll(() => {

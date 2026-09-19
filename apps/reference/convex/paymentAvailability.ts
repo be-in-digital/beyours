@@ -1,5 +1,5 @@
 import { query } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/globalSettings";
+import * as defs from "@be-yours/convex-functions/globalSettings";
 
 /**
  * Whether this deployment can actually take a card right now.

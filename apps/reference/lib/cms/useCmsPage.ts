@@ -6,11 +6,11 @@ import { api } from "@/convex/_generated/api"
 import {
   useStorefrontStoreSelection,
   useLanguageStore,
-} from "@be-in-digital/restaurant"
+} from "@be-yours/restaurant"
 import {
   getFieldDefinition,
-} from "@be-in-digital/cms"
-import type { CmsFieldValue, CmsBlockValues } from "@be-in-digital/cms"
+} from "@be-yours/cms"
+import type { CmsFieldValue, CmsBlockValues } from "@be-yours/cms"
 import { resolveCmsStoreId, type IdentifiedStore } from "./cms-store-id"
 import type { Id } from "@/convex/_generated/dataModel"
 

@@ -16,8 +16,8 @@ import {
   requiresEditorialPermission,
   UNAUTHENTICATED_ERROR,
 } from "@/lib/services/upload-authorization"
-import { getExtensionFromMimeType } from "@be-in-digital/cms"
-import { sanitizeSvg } from "@be-in-digital/cms/sanitize"
+import { getExtensionFromMimeType } from "@be-yours/cms"
+import { sanitizeSvg } from "@be-yours/cms/sanitize"
 import { isInlineSafeContentType } from "@/lib/services/file-serving"
 
 // Deliberately narrower than the shared folder list.
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
 
     // Generate unique key.
     //
-    // From `@be-in-digital/cms`, which calls itself the single source of truth
+    // From `@be-yours/cms`, which calls itself the single source of truth
     // and is what the presigned Convex flow uses. This route kept a private
     // copy holding six of its twelve entries, so every type the shared list
     // knows and the copy did not was stored as `.bin`: an mp4 or a webm — both

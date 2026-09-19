@@ -18,8 +18,8 @@ import { useAction, useConvex } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { CheckCircle2, Loader2, AlertTriangle } from "lucide-react"
-import { Button } from "@be-in-digital/ui"
-import { useCartStore, clearCheckoutAttempt } from "@be-in-digital/restaurant"
+import { Button } from "@be-yours/ui"
+import { useCartStore, clearCheckoutAttempt } from "@be-yours/restaurant"
 import { convexErrorMessage } from "@/lib/convex-error"
 
 type Outcome =

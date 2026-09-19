@@ -3,11 +3,11 @@
 import { useQuery, useMutation, useAction } from "convex/react"
 import { toast } from "sonner"
 import { useState, use, useEffect } from "react"
-import { type AddressValue } from "@be-in-digital/ui"
+import { type AddressValue } from "@be-yours/ui"
 import {
   FOLLOWS_GLOBAL_HOURS_BY_DEFAULT,
   followsGlobalHours,
-} from "@be-in-digital/convex-schema"
+} from "@be-yours/convex-schema"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { centsToEuros, eurosToCents } from "../../lib/formatters"
 import { convexErrorMessage } from "../../lib/convex-error"

@@ -6,7 +6,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { sendEmail } from "./emailTransport";
-import { renderTemplateToEmailHtml } from "@be-in-digital/marketing";
+import { renderTemplateToEmailHtml } from "@be-yours/marketing";
 import {
   DEFAULT_INACTIVE_AFTER_DAYS,
   canDispatch,
@@ -14,11 +14,11 @@ import {
   isLapsed,
   nextStep,
   occurrenceFor,
-} from "@be-in-digital/convex-functions/automationDispatch";
+} from "@be-yours/convex-functions/automationDispatch";
 import {
   configurationSetFields,
   resolveConfigurationSet,
-} from "@be-in-digital/convex-functions/sesSending";
+} from "@be-yours/convex-functions/sesSending";
 
 /**
  * Send one step of an automation to one subscriber, then schedule the next.
@@ -83,7 +83,7 @@ export const runStep = internalAction({
 
     const template: any = await ctx.runQuery(
       internal.emailTemplates.getByIdInternal,
-      // `AutomationStep` is a plain shape in @be-in-digital/convex-functions,
+      // `AutomationStep` is a plain shape in @be-yours/convex-functions,
       // deliberately unaware of any schema, so it types this as a string. The
       // column it comes from is `v.id("emailTemplates")`, so the value is an
       // id; the cast is the boundary between the two views, not a guess.

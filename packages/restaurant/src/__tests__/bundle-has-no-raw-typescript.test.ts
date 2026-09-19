@@ -2,8 +2,8 @@
  * Nothing this package imports may reach `dist` as a runtime TypeScript import.
  *
  * WHY THIS EXISTS. Several engine packages publish raw `.ts` on purpose:
- * `@be-in-digital/convex-schema` publishes its whole source, and
- * `@be-in-digital/core` declares nine subpaths pointing straight at `src/`. That
+ * `@be-yours/convex-schema` publishes its whole source, and
+ * `@be-yours/core` declares nine subpaths pointing straight at `src/`. That
  * is deliberate — the Convex bundler compiles them, and a schema has to stay
  * readable as source. It also means that any of them left EXTERNAL by `tsup`
  * becomes a runtime `require` for a `.ts` file in the published bundle.
@@ -52,7 +52,7 @@ function sources(dir: string = SRC, out: string[] = []): string[] {
   return out
 }
 
-/** Every `@be-in-digital/…` specifier this package imports, deduplicated. */
+/** Every `@be-yours/…` specifier this package imports, deduplicated. */
 function engineImports(): string[] {
   const found = new Set<string>()
   for (const file of sources()) {
@@ -60,7 +60,7 @@ function engineImports(): string[] {
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/^[ \t]*\/\/.*$/gm, "")
     for (const match of source.matchAll(
-      /from\s+["'](@be-in-digital\/[^"']+)["']/g
+      /from\s+["'](@be-yours\/[^"']+)["']/g
     )) {
       found.add(match[1]!)
     }
@@ -123,8 +123,8 @@ describe("the published bundle", () => {
 
   it("bundles every import that resolves to raw TypeScript", async () => {
     /*
-     * THE DEFECT, TWICE. `@be-in-digital/convex-schema` was external and broke
-     * every client's Playwright run; `@be-in-digital/core/status-labels` was
+     * THE DEFECT, TWICE. `@be-yours/convex-schema` was external and broke
+     * every client's Playwright run; `@be-yours/core/status-labels` was
      * external and broke the same runs on Node 20, after the first fix.
      */
     const bundled = await bundledSpecifiers()

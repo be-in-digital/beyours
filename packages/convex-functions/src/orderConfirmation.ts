@@ -18,8 +18,8 @@
  * @module orderConfirmation
  */
 
-import type { OrderConfirmationInput } from "@be-in-digital/core/aws/ses/order-confirmation"
-import type { NoticeFailureInput } from "@be-in-digital/convex-schema"
+import type { OrderConfirmationInput } from "@be-yours/core/aws/ses/order-confirmation"
+import type { NoticeFailureInput } from "@be-yours/convex-schema"
 
 /** What the app hands to the sender. Deliberately small — the action re-reads. */
 export interface OrderConfirmationDispatch {

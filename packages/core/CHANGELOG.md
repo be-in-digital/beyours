@@ -1,4 +1,22 @@
-# @be-in-digital/core
+# @be-yours/core
+
+## 1.0.0
+
+### Major Changes
+
+- Renamed from `@be-in-digital/core` to `@be-yours/core`, and reset to 1.0.0.
+
+  The npm scope now matches the GitHub organisation that owns this repository,
+  which is what GitHub Packages requires: a package published to
+  `npm.pkg.github.com` must carry the owning org as its scope, and the org is
+  `be-yours`. The previous scope belonged to `be-in-digital`, the agency.
+
+  The version is a reset, not a bump. Under the new scope this package has no
+  published history, so `1.0.0` is its first release rather than a downgrade
+  from `4.3.1`. The old scope keeps everything it published: those
+  versions stay on the registry and already-deployed client sites continue to
+  resolve them until they are migrated. See `RELEASE_HOLD.md` for the
+  migration and the conditions this release is held on.
 
 ## 4.3.1
 
@@ -140,7 +158,7 @@
   decided is hostile. It goes through `purgeS3Objects` now.
 
   **CMS video uploads landed as `.bin`.** The upload route kept a private
-  six-entry MIME-to-extension map while `@be-in-digital/cms`'s `MIME_TO_EXT` —
+  six-entry MIME-to-extension map while `@be-yours/cms`'s `MIME_TO_EXT` —
   which calls itself the single source of truth, and is what the presigned Convex
   flow uses — held twelve. `ALLOWED_MIME_TYPES.cms` admits mp4, webm and three
   Office formats; all six fell through to `"bin"`.
@@ -159,12 +177,12 @@
   zero call sites, and it declared `MIN_PASSWORD_LENGTH = 8` against the live
   `minPasswordLength: 12`, with five lifecycle hooks whose bodies were a
   `console.info` and a list of TODOs over names like "lock the account after N
-  attempts". `@be-in-digital/convex-schema` loses the six printer types that
+  attempts". `@be-yours/convex-schema` loses the six printer types that
   outlived the `printerSettings` table — `PrinterType = 'network' | 'usb' |
 'bluetooth'`, the ESC/POS transports `CLAUDE.md` records as decided against.
   Both are BREAKING on a published API and neither had a consumer.
 
-  **`@be-in-digital/admin`** gains `PAYMENT_STATUS_LABELS`, so the payments screen
+  **`@be-yours/admin`** gains `PAYMENT_STATUS_LABELS`, so the payments screen
   stops declaring six operator-facing strings of its own, and the dashboard's
   recent-orders table stops declaring eleven — `lib/vocabulary.ts` claimed "label
   drift is now impossible" while two screens held their own copies.
@@ -283,7 +301,7 @@
   diner-facing booking feature, and the todo had gone stale — it still cited
   `scheduledAt`, deleted three PRs earlier, and two line numbers that had moved.
 
-  **Why `@be-in-digital/core` is a major.** `./aws/ses/order-confirmation` is a
+  **Why `@be-yours/core` is a major.** `./aws/ses/order-confirmation` is a
   first-class entry in that package's `exports` map — `convex-functions` and both
   apps import it across the package boundary — and this removes `scheduledFor`
   from the exported `OrderConfirmationInput` interface and drops `timingLine`'s
@@ -351,7 +369,7 @@
   broken rather than merely unused, and exports left behind by a removal that only
   finished on one side of a package boundary.
 
-  **`@be-in-digital/ui` shipped a second toast system whose hook could only
+  **`@be-yours/ui` shipped a second toast system whose hook could only
   throw.** The product's toasts are `sonner`, mounted in each app's
   `app/providers.tsx` and imported by 129 files. Beside it, `Toast.tsx` held a
   module-private `ToastContext` defaulting to `undefined`, and exported a
@@ -370,7 +388,7 @@
   is republished without a second decision, which is how the provider reached a
   client API in the first place.
 
-  **`@be-in-digital/marketing` kept the pure half of a mutation #397 removed.**
+  **`@be-yours/marketing` kept the pure half of a mutation #397 removed.**
   That PR deleted `incrementRevenue` from `convex-functions` and left a tombstone
   saying why — nothing writes a `converted` email event and no order carries the
   campaign that led to it, so the attribution behind a "revenu attribué" figure
@@ -383,7 +401,7 @@
   against, not the finishing of a removal, so they are recorded here and left
   alone.
 
-  **`@be-in-digital/restaurant` published five cart selectors nothing selected
+  **`@be-yours/restaurant` published five cart selectors nothing selected
   with.** `useCartItems`, `useCartSummary`, `useCartItemCount`, `useCartOrderType`
   and `useCartStoreId` were compiled into `dist` and exported from both the root
   and `./hooks`, with zero references in either app, any package or any test. The
@@ -395,9 +413,9 @@
   and now teaches `getSummary` off the store, which is what the cart page actually
   does.
 
-  **`@be-in-digital/admin` exported four components no screen mounts.** Two auth
+  **`@be-yours/admin` exported four components no screen mounts.** Two auth
   forms — `ForgotPasswordForm` and `ResetPasswordForm` — which both apps rewrote
-  inline from `@be-in-digital/ui` primitives rather than import, plus a
+  inline from `@be-yours/ui` primitives rather than import, plus a
   `StatusBadge` and a `DateDisplay`. The `StatusBadge` _interface_ in
   `lib/vocabulary.ts` is a different, live thing and is untouched.
 
@@ -417,7 +435,7 @@
   claim nobody checked, and this one would have shipped as the changelog of a
   major bump.
 
-  **`@be-in-digital/core` carried 466 lines of i18n examples.** Fifteen exported
+  **`@be-yours/core` carried 466 lines of i18n examples.** Fifteen exported
   `example1_…` through `example15_…` functions, on no barrel, in no `exports` map
   and in no `tsup` entry — so never compiled into `dist`, but shipped in the
   tarball by `"files": ["dist", "src"]`. No supported import path reaches them,
@@ -425,12 +443,12 @@
   about the package shipping no JSX; they now make that claim on their own
   authority.
 
-  `@be-in-digital/mcp-server` is a patch because its registry advertised `Toast` to
+  `@be-yours/mcp-server` is a patch because its registry advertised `Toast` to
   client builds as a "Toast notification system". It is a box, and now says so.
 
   **One thing this does NOT do, said plainly.** The class (c) sweep in the same
   change removes 71 public _registrations_ from `apps/*/convex` while leaving the
-  handler definitions they wrapped exported from `@be-in-digital/convex-functions`
+  handler definitions they wrapped exported from `@be-yours/convex-functions`
   — so roughly sixty definitions there now have no registration anywhere. That is
   deliberate, and it is the opposite of what was done to `incrementRevenueStat`
   above, so the difference is worth stating. `incrementRevenue` was removed by
@@ -482,10 +500,10 @@
     100% of executions; the `S3Service.delete` JSDoc did not say the optional
     methods gate the purge, nor that nothing in `apps/*` calls it;
     `IMPLEMENTATION.md` and the `createS3Service` entry in
-    `@be-in-digital/mcp-server`'s registry still described the obsolete
+    `@be-yours/mcp-server`'s registry still described the obsolete
     four-method interface.
 
-  No new dependency: `@be-in-digital/core` still has exactly one AWS SDK
+  No new dependency: `@be-yours/core` still has exactly one AWS SDK
   dependency, `@aws-sdk/client-sesv2`. The adapter stays injected.
 
   Refs #414 (OBS-2), #331.
@@ -545,9 +563,9 @@
   `OrderStatusBadge` and `StoreStatusBadge` held eleven English labels between
   them and took no label from outside, so a diner following their order read
   « Preparing » and « Out for Delivery » between French sentences. The vocabulary
-  now lives once in `@be-in-digital/core/status-labels` — the source-language word
+  now lives once in `@be-yours/core/status-labels` — the source-language word
   and the catalogue key, per status — the badges take a `labels` override, and
-  `useOrderStatusLabels` / `useStoreStatusLabels` in `@be-in-digital/restaurant`
+  `useOrderStatusLabels` / `useStoreStatusLabels` in `@be-yours/restaurant`
   resolve it through `t()` for the locale being rendered. Two further copies of
   the same eight words are gone with it: a private map in the order page and
   `getOrderStatusLabel`'s English map. `order.delivered` was missing from the
@@ -580,10 +598,10 @@
   reading this file had no way to learn that the package had grown a new entry
   point. Written from the diff of `5f61648`, not from memory.
 
-  `@be-in-digital/core` gained two exports, taking it from ten public subpaths
+  `@be-yours/core` gained two exports, taking it from ten public subpaths
   to twelve:
-  - **`@be-in-digital/core/email`** — the barrel, built by `tsup` (`src/email/index.ts`).
-  - **`@be-in-digital/core/email/providers`** — the transport switch itself.
+  - **`@be-yours/core/email`** — the barrel, built by `tsup` (`src/email/index.ts`).
+  - **`@be-yours/core/email/providers`** — the transport switch itself.
 
   What they are for: `EMAIL_PROVIDER` chooses which transport carries a
   deployment's mail, so a client whose AWS SES production-access request is
@@ -612,7 +630,7 @@
   #405) fails CI when a `packages/*` source has moved since its last bump and no
   changeset names it. Verified by reproduction on 09/09/2026 — a one-file change
   under `packages/core/src` with no changeset naming `core` gives
-  `@be-in-digital/core  2.5.0  drifted` and exit 1. At #405's merge, CI ran only
+  `@be-yours/core  2.5.0  drifted` and exit 1. At #405's merge, CI ran only
   `check:pending-release`, which reports changesets that exist and is silent
   about a missing one.
 
@@ -632,7 +650,7 @@
   was seen by nobody, and finding it meant opening each client's console in turn —
   while the maintenance contract sells support.
 
-  `@be-in-digital/core/sentry` gains the pieces a Convex module needs to report
+  `@be-yours/core/sentry` gains the pieces a Convex module needs to report
   without an SDK: `parseSentryDsn`, `buildSentryErrorEvent`, `buildSentryEnvelope`,
   `describeUnknownError`, `redactSentryExtra` and a `'convex'` member on
   `SentryRuntime`, which reads `SENTRY_DSN` from the Convex environment store
@@ -681,7 +699,7 @@
   one would make dine-in service depend on the gamification QR codes being
   configured — a restaurant can serve _sur place_ without ever running the wheel
   of fortune. The two share a representation instead:
-  `@be-in-digital/core/dining` normalises and bounds a table label for both.
+  `@be-yours/core/dining` normalises and bounds a table label for both.
 
   Required at the storefront, optional on the server. Uber Eats and Deliveroo
   forward `dine_in` orders that carry no table of their own, and refusing those
@@ -712,7 +730,7 @@
 
   For an EU food business under INCO 1169/2011 that is a regulatory surface.
 
-  `@be-in-digital/core/allergens` is now the single source of truth: the
+  `@be-yours/core/allergens` is now the single source of truth: the
   fourteen Annex II allergens plus `shellfish` and the two dietary markers, the
   alias table that matches French and English spellings through accents,
   ligatures and punctuation, the localised labels, and the Uber Eats mapping.
@@ -871,7 +889,7 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
   a Saturday-night checkout failure was seen by nobody. Shipping the variable
   without the integration buys the confidence without the coverage.
 
-  New `@be-in-digital/core/sentry` resolves the `Sentry.init` options for the
+  New `@be-yours/core/sentry` resolves the `Sentry.init` options for the
   three runtimes:
   - `resolveSentryOptions(runtime, env?)` returns `null` when the DSN is unset,
     empty, or is not a DSN — a project-page URL pasted instead of the client key
@@ -952,7 +970,7 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
   `avatars` therefore succeeded, stored a `/api/files/<key>` URL, and that URL
   returned 404 — the object was written and then unreachable. Category images in
   the admin were the visible case.
-  - New `@be-in-digital/core/aws/folders` holds `S3_FOLDERS` and
+  - New `@be-yours/core/aws/folders` holds `S3_FOLDERS` and
     `isKnownS3Folder`. Like `aws/media-url`, it has no imports, so Convex actions
     can use it without pulling the package into their bundle.
   - `S3Folder` now covers all eleven folders, and `ALLOWED_MIME_TYPES` and
@@ -967,14 +985,14 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
 ### Patch Changes
 
 - 7f0122b: Republished from main. Fixes two problems with the 2.0.1 tarballs that broke consumers:
-  - `@be-in-digital/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
+  - `@be-yours/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
   - The type fixes that were on main but never published (promotion-form/email-config in admin, Uber Eats signatures in integrations/convex-functions) go out with this patch — they had been committed without a changeset.
 
 ## 2.0.1
 
 ### Patch Changes
 
-- 1a5ca27: Rename package scope from @beindigital-engine to @be-in-digital for GitHub Packages compatibility
+- 1a5ca27: Rename package scope from @beindigital-engine to @be-yours for GitHub Packages compatibility
 
 ## 2.0.0
 
@@ -995,7 +1013,7 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
+  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
   ```
 
 ## 1.0.0
@@ -1017,5 +1035,5 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
+  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
   ```

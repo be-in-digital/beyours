@@ -1,11 +1,11 @@
-# Usage examples - @be-in-digital/convex-schema
+# Usage examples - @be-yours/convex-schema
 
 This document walks through concrete examples of using the schema and the validators.
 
 ## Installing in a project
 
 ```bash
-pnpm add @be-in-digital/convex-schema
+pnpm add @be-yours/convex-schema
 ```
 
 ## Using the Convex schema
@@ -13,7 +13,7 @@ pnpm add @be-in-digital/convex-schema
 ### In convex/schema.ts
 
 ```typescript
-import { schema } from '@be-in-digital/convex-schema'
+import { schema } from '@be-yours/convex-schema'
 
 export default schema
 ```
@@ -24,7 +24,7 @@ export default schema
 
 ```typescript
 import { mutation } from './_generated/server'
-import { createStoreSchema } from '@be-in-digital/convex-schema'
+import { createStoreSchema } from '@be-yours/convex-schema'
 
 export const createStore = mutation({
   args: {},
@@ -49,7 +49,7 @@ export const createStore = mutation({
 
 ```typescript
 import { mutation } from './_generated/server'
-import { createProductSchema } from '@be-in-digital/convex-schema'
+import { createProductSchema } from '@be-yours/convex-schema'
 
 export const createProduct = mutation({
   handler: async (ctx, rawArgs) => {
@@ -142,7 +142,7 @@ export const createProduct = mutation({
 
 ```typescript
 import { mutation } from './_generated/server'
-import { createOrderSchema } from '@be-in-digital/convex-schema'
+import { createOrderSchema } from '@be-yours/convex-schema'
 
 export const createOrder = mutation({
   handler: async (ctx, rawArgs) => {
@@ -230,7 +230,7 @@ import {
   createGameSchema,
   createPrizeSchema,
   playGameSchema
-} from '@be-in-digital/convex-schema'
+} from '@be-yours/convex-schema'
 
 // Create a game
 export const createGame = mutation({
@@ -362,7 +362,7 @@ import { mutation } from './_generated/server'
 import {
   createLanguageSchema,
   batchTranslateSchema
-} from '@be-in-digital/convex-schema'
+} from '@be-yours/convex-schema'
 
 // Add a language
 export const addLanguage = mutation({
@@ -417,7 +417,7 @@ export const translateProducts = mutation({
 
 ```typescript
 import { mutation } from './_generated/server'
-import { createKitchenTicketSchema } from '@be-in-digital/convex-schema'
+import { createKitchenTicketSchema } from '@be-yours/convex-schema'
 
 export const createKitchenTicket = mutation({
   handler: async (ctx, rawArgs) => {
@@ -472,7 +472,7 @@ export const createKitchenTicket = mutation({
 
 ```typescript
 import { mutation } from './_generated/server'
-import { createPaymentSchema } from '@be-in-digital/convex-schema'
+import { createPaymentSchema } from '@be-yours/convex-schema'
 
 export const createPayment = mutation({
   handler: async (ctx, rawArgs) => {
@@ -512,7 +512,7 @@ export const createPayment = mutation({
 
 ```typescript
 import { mutation } from './_generated/server'
-import { createProductSchema } from '@be-in-digital/convex-schema'
+import { createProductSchema } from '@be-yours/convex-schema'
 import { ZodError } from 'zod'
 
 export const createProduct = mutation({

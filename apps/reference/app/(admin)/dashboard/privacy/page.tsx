@@ -1,4 +1,4 @@
-import { PrivacyPage } from "@be-in-digital/admin"
+import { PrivacyPage } from "@be-yours/admin"
 
 export default function Page() {
   return <PrivacyPage />

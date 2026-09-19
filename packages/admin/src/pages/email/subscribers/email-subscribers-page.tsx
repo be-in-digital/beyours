@@ -41,7 +41,7 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { LoadingState } from "../../../components/loading-state"
 import { ResolvingStore } from "../../../components/resolving-store"
 import { DeleteConfirmDialog } from "../../../components/delete-confirm-dialog"

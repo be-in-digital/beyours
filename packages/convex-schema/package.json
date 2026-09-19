@@ -1,12 +1,12 @@
 {
-  "name": "@be-in-digital/convex-schema",
-  "version": "6.9.0",
+  "name": "@be-yours/convex-schema",
+  "version": "1.0.0",
   "publishConfig": {
     "access": "restricted"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/be-in-digital/beyours.git",
+    "url": "https://github.com/be-yours/beyours.git",
     "directory": "packages/convex-schema"
   },
   "files": [

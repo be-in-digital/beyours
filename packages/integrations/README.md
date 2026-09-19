@@ -1,4 +1,4 @@
-# `@be-in-digital/integrations`
+# `@be-yours/integrations`
 
 The third-party delivery platforms: **Uber Eats**, **Deliveroo** and **Uber
 Direct**. OAuth, menu synchronisation, order ingestion, store status, and the
@@ -15,7 +15,7 @@ but a shape, and flattening them would invite calling Deliveroo's mapper on an
 Uber payload.
 
 ```ts
-import { uberEats, deliveroo, uberDirect } from "@be-in-digital/integrations"
+import { uberEats, deliveroo, uberDirect } from "@be-yours/integrations"
 ```
 
 | Namespace | Modules |

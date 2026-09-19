@@ -3,7 +3,7 @@
 > How a restaurant's look is actually set: design tokens in `packages/ui`, colour
 > presets in the admin Design page, and branding from the CMS.
 
-There is **no `@be-in-digital/themes` package**. One was planned, and what
+There is **no `@be-yours/themes` package**. One was planned, and what
 existed contained nothing but `export {}`; it has been removed. No import of it
 works, and nothing in the engine loads a named theme. This guide describes the
 three mechanisms that do run.
@@ -40,7 +40,7 @@ Fonts are chosen the same way — in the app, through Next.js font loading and t
 Tailwind config — not by the engine.
 
 > **Note on Tailwind sources.** `apps/*/app/globals.css` declares the engine
-> packages as Tailwind sources (`@source "../node_modules/@be-in-digital/ui/src/**/*"`).
+> packages as Tailwind sources (`@source "../node_modules/@be-yours/ui/src/**/*"`).
 > Without those lines, a class used only inside `packages/ui` or `packages/admin`
 > produces no CSS at all. Do not remove them, and do not rewrite them as relative
 > paths into `packages/` — the file ships verbatim to the client boilerplate,
@@ -69,7 +69,7 @@ id**. A store does not remember which preset it came from.
 The page is exported as `DesignPage`:
 
 ```tsx
-import { DesignPage } from "@be-in-digital/admin/pages";
+import { DesignPage } from "@be-yours/admin/pages";
 
 export default function Page() {
   return <DesignPage />;

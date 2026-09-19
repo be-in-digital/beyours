@@ -38,7 +38,7 @@ import {
   EmptyDescription,
   AddressAutocomplete,
   type AddressValue,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { slugify } from "../../lib/formatters"

@@ -11,7 +11,7 @@
  * it replaced.
  */
 
-/** Mirrors `GAME_STATS_WINDOW_MS` in `@be-in-digital/convex-functions/gamePlay`. */
+/** Mirrors `GAME_STATS_WINDOW_MS` in `@be-yours/convex-functions/gamePlay`. */
 export const GAME_STATS_WINDOW_DAYS = 30
 
 /** Suffix for a card whose number is a window rather than a total. */

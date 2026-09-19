@@ -32,7 +32,7 @@
 import type { ActionCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { deliberateSettlementRefusal } from "@be-in-digital/convex-functions/paymentSettlement";
+import { deliberateSettlementRefusal } from "@be-yours/convex-functions/paymentSettlement";
 
 /** What a return page hands `internalSettle`, plus where the refusal came from. */
 export interface ReturnSettlement {

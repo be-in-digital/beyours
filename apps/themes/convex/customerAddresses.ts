@@ -1,5 +1,5 @@
 import { query, mutation } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/customerAddresses";
+import * as defs from "@be-yours/convex-functions/customerAddresses";
 import { v } from "convex/values";
 
 /**

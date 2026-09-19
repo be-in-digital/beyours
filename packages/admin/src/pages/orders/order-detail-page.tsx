@@ -30,7 +30,7 @@ import {
   Label,
   Textarea,
   Button,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { OrderStatusActions } from "./order-status-actions"
 import { UberDirectPanel } from "./uber-direct-panel"
 import { DeliverooDecisionPanel } from "./deliveroo-decision-panel"
@@ -49,7 +49,7 @@ import type {
   Payment,
   BadgeVariant,
 } from "../../lib/types"
-import { hasPermission, type Role } from "@be-in-digital/core"
+import { hasPermission, type Role } from "@be-yours/core"
 import {
   ORDER_STATUS_CONFIG,
   ORDER_PAYMENT_STATUS_CONFIG,

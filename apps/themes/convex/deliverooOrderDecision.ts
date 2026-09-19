@@ -15,7 +15,7 @@ import type { Id } from "./_generated/dataModel";
  * A restaurant that chose manual had no way to run a service.
  *
  * The API calls existed — `deliveroo.acceptOrder` and `deliveroo.rejectOrder` in
- * `@be-in-digital/integrations` — and only the webhook's automatic paths called
+ * `@be-yours/integrations` — and only the webhook's automatic paths called
  * them.
  *
  * BOTH SIDES MOVE, AND THE PLATFORM MOVES FIRST. Deliveroo is the party that owes
@@ -62,7 +62,7 @@ export const accept = action({
     const credentials = await deliverooCredentials();
     if (!credentials) return { accepted: false, reason: "deliveroo_not_configured" };
 
-    const { deliveroo } = await import("@be-in-digital/integrations");
+    const { deliveroo } = await import("@be-yours/integrations");
     // The platform first: if this throws, the internal status is untouched and
     // the order is still awaiting a decision, which is true.
     await deliveroo.acceptOrder(credentials, order.externalOrderId);
@@ -98,7 +98,7 @@ export const reject = action({
     const credentials = await deliverooCredentials();
     if (!credentials) return { rejected: false, reason: "deliveroo_not_configured" };
 
-    const { deliveroo } = await import("@be-in-digital/integrations");
+    const { deliveroo } = await import("@be-yours/integrations");
     await deliveroo.rejectOrder(credentials, order.externalOrderId, args.reason ?? "busy");
 
     // `cancelled`, and `updateStatus` carries the rest: it cancels the kitchen
@@ -126,7 +126,7 @@ export const reject = action({
  */
 async function deliverooCredentials() {
   try {
-    const { getPackageEnv, isSandbox } = await import("@be-in-digital/core/env");
+    const { getPackageEnv, isSandbox } = await import("@be-yours/core/env");
     const pkg = getPackageEnv();
     const clientId = pkg.DELIVEROO_CLIENT_ID;
     const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;

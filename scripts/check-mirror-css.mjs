@@ -29,7 +29,7 @@
  * materialises the shippable cut into a temporary directory. Its
  * `node_modules` is then assembled the way a client's `pnpm install` leaves it:
  * every ordinary dependency symlinked to the one `apps/themes` already
- * resolved, and every `@be-in-digital/*` package rebuilt from the files its
+ * resolved, and every `@be-yours/*` package rebuilt from the files its
  * `files` field actually PUBLISHES. That second half matters — dropping `src`
  * from `packages/ui`'s `files` would break client stylesheets exactly as badly
  * as a wrong path, and would be just as invisible here.
@@ -105,17 +105,17 @@ function installClientModules(mirror) {
   const target = join(mirror, "node_modules")
   mkdirSync(target, { recursive: true })
   for (const entry of readdirSync(source)) {
-    if (entry === "@be-in-digital") continue
+    if (entry === "@be-yours") continue
     symlinkSync(join(source, entry), join(target, entry))
   }
 
   const pkg = JSON.parse(readFileSync(join(THEMES, "package.json"), "utf8"))
-  const engine = Object.keys(pkg.dependencies ?? {}).filter((d) => d.startsWith("@be-in-digital/"))
-  if (engine.length === 0) fail("apps/themes declares no @be-in-digital dependency — that cannot be right.")
+  const engine = Object.keys(pkg.dependencies ?? {}).filter((d) => d.startsWith("@be-yours/"))
+  if (engine.length === 0) fail("apps/themes declares no @be-yours dependency — that cannot be right.")
 
-  mkdirSync(join(target, "@be-in-digital"), { recursive: true })
+  mkdirSync(join(target, "@be-yours"), { recursive: true })
   for (const dep of engine) {
-    const name = dep.slice("@be-in-digital/".length)
+    const name = dep.slice("@be-yours/".length)
     const from = join(PACKAGES, name)
     if (!existsSync(from)) fail(`${dep} is a dependency of apps/themes but packages/${name} does not exist.`)
 
@@ -246,7 +246,7 @@ function pathInputs(root) {
 function assertEngineCoverage(mirror, engine, sources) {
   const bare = []
   for (const dep of engine) {
-    const src = join(PACKAGES, dep.slice("@be-in-digital/".length), "src")
+    const src = join(PACKAGES, dep.slice("@be-yours/".length), "src")
     if (!existsSync(src)) continue
 
     const scanned = sources.some((s) => !relative(join(mirror, "node_modules", dep), s.resolved).startsWith(".."))
@@ -342,7 +342,7 @@ try {
     console.error(`  ${file}:  @${directive} "${target}"`)
     console.error(`    → ${resolved}`)
     console.error(`    ${why}: apps/themes is the repository root on a client site.`)
-    console.error(`    Reach the engine through node_modules/@be-in-digital/* instead — pnpm links`)
+    console.error(`    Reach the engine through node_modules/@be-yours/* instead — pnpm links`)
     console.error(`    that to packages/* inside this workspace, so one path works in both layouts.`)
   }
 

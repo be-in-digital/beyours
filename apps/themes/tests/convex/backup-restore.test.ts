@@ -29,8 +29,8 @@ import {
   BACKUP_PAGE_SIZE,
   BACKUP_TABLES,
   DEFERRED_REMAP_TABLES,
-} from "@be-in-digital/convex-functions/backupTables"
-import { invoiceRefusal } from "@be-in-digital/convex-functions/invoices"
+} from "@be-yours/convex-functions/backupTables"
+import { invoiceRefusal } from "@be-yours/convex-functions/invoices"
 
 const modules = import.meta.glob("../../convex/**/*.ts")
 

@@ -8,14 +8,14 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
   getExtensionFromMimeType,
   validateMediaUpload,
-} from "@be-in-digital/cms";
-import { buildMediaUrl } from "@be-in-digital/core/aws/media-url";
+} from "@be-yours/cms";
+import { buildMediaUrl } from "@be-yours/core/aws/media-url";
 import {
   S3_FOLDERS,
   type S3Folder as CoreS3Folder,
-} from "@be-in-digital/core/aws/folders";
+} from "@be-yours/core/aws/folders";
 
-// The folder list is defined once, in @be-in-digital/core/aws/folders, and is
+// The folder list is defined once, in @be-yours/core/aws/folders, and is
 // what /api/files will serve. Redeclaring it here is how category, blog and
 // storefront uploads ended up with URLs that 404.
 const ALLOWED_FOLDERS = S3_FOLDERS;
@@ -54,7 +54,7 @@ function createS3Client() {
 
 /**
  * The bucket is private: a key becomes either a CDN URL or a path on this
- * app's own `/api/files` proxy. One policy, in `@be-in-digital/core`.
+ * app's own `/api/files` proxy. One policy, in `@be-yours/core`.
  */
 function buildPublicUrl(key: string): string {
   return buildMediaUrl(key, process.env.AWS_S3_PUBLIC_BASE_URL)

@@ -59,7 +59,7 @@ vi.mock("sonner", () => ({ toast: { success: () => {}, error: () => {} } }))
 
 import { EmailSegmentsPage } from "../pages/email/segments/email-segments-page"
 import { useAdminApiStore } from "../stores/admin-api-store"
-import { useAdminStoreSelection } from "@be-in-digital/restaurant"
+import { useAdminStoreSelection } from "@be-yours/restaurant"
 
 /** One segment, with the stored count deliberately wrong. */
 const SEGMENT = {

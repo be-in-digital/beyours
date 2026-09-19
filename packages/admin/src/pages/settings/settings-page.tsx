@@ -6,7 +6,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { LoadingState } from "../../components/loading-state"
 import { useSettingsForm } from "./use-settings-form"
 import { GeneralTab } from "./general-tab"

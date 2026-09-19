@@ -2,20 +2,20 @@ import { v } from "convex/values";
 import { action, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import * as defs from "@be-in-digital/convex-functions/payments";
-import { collectionOnOrder } from "@be-in-digital/convex-functions/paymentLedger";
+import * as defs from "@be-yours/convex-functions/payments";
+import { collectionOnOrder } from "@be-yours/convex-functions/paymentLedger";
 import {
   storeQuery,
   storeMutation,
   storeIdFromDocument,
   storeIdFromField,
 } from "./lib/storeFunctions";
-import { requireStorePermission } from "@be-in-digital/convex-functions/auth";
+import { requireStorePermission } from "@be-yours/convex-functions/auth";
 import {
   planRefund,
   routeRefund,
   type PaymentForRefund,
-} from "@be-in-digital/convex-functions/refundPolicy";
+} from "@be-yours/convex-functions/refundPolicy";
 import { mayReleaseRefundReservation } from "./lib/refundOutcome";
 
 const paymentsStoreId = storeIdFromDocument("Payment not found");

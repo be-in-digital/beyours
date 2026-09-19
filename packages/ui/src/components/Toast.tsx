@@ -9,7 +9,7 @@
  * `useToast` hook that threw "useToast must be used within ToastProvider" when
  * it was absent. `ToastProvider` was mounted in no app, in no package and in no
  * test, so the hook did not merely go unused — every possible caller of it got
- * the throw. It was on the published API of `@be-in-digital/ui` by way of
+ * the throw. It was on the published API of `@be-yours/ui` by way of
  * `components/index.ts`, so a client site pinning this package could import
  * `useToast`, wire a screen to it, and discover at runtime that the only
  * behaviour it has is to crash.

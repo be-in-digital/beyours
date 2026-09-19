@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * ENGINE update (npm channel) — updates the @be-in-digital/* packages
- * published to GitHub Packages from be-in-digital/beyours.
+ * ENGINE update (npm channel) — updates the @be-yours/* packages
+ * published to GitHub Packages from be-yours/beyours.
  *
  * Usage:
  *   pnpm update:engine            # honors the ranges (^2.x → latest 2.x)
@@ -34,7 +34,7 @@ const pkg = JSON.parse(fs.readFileSync(PKG_PATH, "utf8"))
 
 if (pkg.pnpm && pkg.pnpm.overrides) {
   const linked = Object.entries(pkg.pnpm.overrides).filter(
-    ([k, v]) => k.startsWith("@be-in-digital/") && String(v).startsWith("link:"),
+    ([k, v]) => k.startsWith("@be-yours/") && String(v).startsWith("link:"),
   )
   if (linked.length > 0) {
     console.error(
@@ -45,10 +45,10 @@ if (pkg.pnpm && pkg.pnpm.overrides) {
 }
 
 const engineDeps = Object.keys(pkg.dependencies).filter((d) =>
-  d.startsWith("@be-in-digital/"),
+  d.startsWith("@be-yours/"),
 )
 if (engineDeps.length === 0) {
-  console.error("Aucun package @be-in-digital/* dans dependencies.")
+  console.error("Aucun package @be-yours/* dans dependencies.")
   process.exit(1)
 }
 
@@ -128,7 +128,7 @@ for (const [label, command] of steps) {
 
 console.log("\nCHANGELOGs :")
 for (const dep of engineDeps) {
-  const dir = dep.replace("@be-in-digital/", "")
+  const dir = dep.replace("@be-yours/", "")
   console.log(`  ${ENGINE_REPO}/blob/main/packages/${dir}/CHANGELOG.md`)
 }
 

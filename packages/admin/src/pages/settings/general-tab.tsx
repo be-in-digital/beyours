@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
   Switch,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { CURRENCIES, TIMEZONES } from "./settings-constants"
 
 interface GeneralTabProps {
@@ -61,7 +61,7 @@ export function GeneralTab({
             missing. The admin IS currency-aware: the payments and refund
             screens format with `formatPrice(amount, payment.currency)`, so a
             payment taken in another currency is displayed in it. The storefront
-            is not: `formatPrice` in @be-in-digital/restaurant defaults to
+            is not: `formatPrice` in @be-yours/restaurant defaults to
             ('EUR', 'fr-FR') and all 27 storefront call sites per app pass the
             amount alone, so every public price renders in euros whatever is
             stored in `globalSettings.currency`. Re-enable this once those call
@@ -167,7 +167,7 @@ export function GeneralTab({
             />
           </div>
           {/* Click & Collect is disabled on purpose. `ORDER_TYPE_SERVICE`
-              (@be-in-digital/convex-schema) maps the three order types onto the
+              (@be-yours/convex-schema) maps the three order types onto the
               other three switches and never reads this one, so flipping it
               changes nothing an owner can observe. Same convention as the email
               automations, which stay disabled with a stated reason rather than

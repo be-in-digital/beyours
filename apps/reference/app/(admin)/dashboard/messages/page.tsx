@@ -1,4 +1,4 @@
-import { MessagesPage } from "@be-in-digital/admin"
+import { MessagesPage } from "@be-yours/admin"
 
 export default function Page() {
   return <MessagesPage />

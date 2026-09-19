@@ -4,7 +4,7 @@ import { action } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { v } from "convex/values"
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3"
-import { mediaKeyFromUrl } from "@be-in-digital/core/aws/media-url"
+import { mediaKeyFromUrl } from "@be-yours/core/aws/media-url"
 
 /**
  * OpenAI fetches an `image_url` from its own servers, so a URL that only this

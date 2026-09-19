@@ -37,7 +37,7 @@ import {
   EXPORTED_TABLES,
   EXPORT_ONLY_TABLES,
   REDACTED_BACKUP_FIELDS,
-} from "@be-in-digital/convex-functions/backupTables"
+} from "@be-yours/convex-functions/backupTables"
 
 /**
  * The source of `backupTables.ts`, read rather than remembered.
@@ -49,7 +49,7 @@ import {
  * the day it was written. A comment nothing checks is a comment that drifts.
  */
 const BACKUP_TABLES_SRC = readFileSync(
-  createRequire(import.meta.url).resolve("@be-in-digital/convex-functions/backupTables"),
+  createRequire(import.meta.url).resolve("@be-yours/convex-functions/backupTables"),
   "utf8",
 )
 

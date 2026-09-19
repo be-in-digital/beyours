@@ -20,9 +20,9 @@
 
 import { useEffect } from "react"
 import { useQuery } from "convex/react"
-import { useLanguageStore } from "@be-in-digital/restaurant"
-import type { Language } from "@be-in-digital/restaurant"
-import { resolveEstablishmentLanguages } from "@be-in-digital/core"
+import { useLanguageStore } from "@be-yours/restaurant"
+import type { Language } from "@be-yours/restaurant"
+import { resolveEstablishmentLanguages } from "@be-yours/core"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { useStoreId } from "@/lib/hooks/use-store-id"

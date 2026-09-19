@@ -14,8 +14,8 @@
  *   apps/reference/convex/uberEatsActions.ts → runValidation
  */
 
-import { uberEats } from "@be-in-digital/integrations"
-import { isSandbox } from "@be-in-digital/core/env"
+import { uberEats } from "@be-yours/integrations"
+import { isSandbox } from "@be-yours/core/env"
 
 const TEST_STORE_UUID = "480eab8c-cc25-4c2b-b92f-70d7a1984f97"
 

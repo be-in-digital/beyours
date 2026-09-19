@@ -19,7 +19,7 @@
  * pure so they can be tested without a database.
  */
 
-import { Role, type Permission } from "@be-in-digital/core/auth/rbac"
+import { Role, type Permission } from "@be-yours/core/auth/rbac"
 
 /** The person performing the change. */
 export interface ProvisioningActor {

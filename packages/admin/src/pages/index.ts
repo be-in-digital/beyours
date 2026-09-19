@@ -5,7 +5,7 @@
  * — the only broken one of the eight subpaths this package publishes (`.`,
  * `./components`, `./stores`, `./stores/api`, `./pages`, `./lib`, `./hooks`,
  * `./game`). Ten entries in `packages/mcp-server`'s registry point client
- * builds at `@be-in-digital/admin/pages`, and every one of them failed to
+ * builds at `@be-yours/admin/pages`, and every one of them failed to
  * resolve.
  *
  * This note said twenty, which was never the count of anything: `exports` in

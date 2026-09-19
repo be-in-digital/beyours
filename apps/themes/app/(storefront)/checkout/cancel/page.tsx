@@ -14,7 +14,7 @@ import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { XCircle } from "lucide-react"
-import { Button } from "@be-in-digital/ui"
+import { Button } from "@be-yours/ui"
 
 function CheckoutCancelContent() {
   const orderId = useSearchParams().get("orderId") ?? undefined

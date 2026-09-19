@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
   Separator,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

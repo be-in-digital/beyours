@@ -1,6 +1,6 @@
 /**
  * The render-time half of the allow-list in
- * `@be-in-digital/convex-functions/htmlSanitize`.
+ * `@be-yours/convex-functions/htmlSanitize`.
  *
  * DOMPurify's default is much wider than what may be *written*: it keeps
  * `<form>`, `<table>`, `<svg>`, `<video autoplay>` and `style`. None of that is

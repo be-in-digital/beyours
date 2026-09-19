@@ -1,4 +1,4 @@
-import { createEmailRouteHandler } from "@be-in-digital/core"
+import { createEmailRouteHandler } from "@be-yours/core"
 
 // EMAIL_API_SECRET is the dedicated credential for this route; BETTER_AUTH_SECRET
 // is a transitional fallback so deployments that predate the split keep sending.

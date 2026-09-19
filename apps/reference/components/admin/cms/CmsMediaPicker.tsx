@@ -27,9 +27,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@be-in-digital/ui"
-import { validateMediaUpload } from "@be-in-digital/cms"
-import type { MediaKind } from "@be-in-digital/cms"
+} from "@be-yours/ui"
+import { validateMediaUpload } from "@be-yours/cms"
+import type { MediaKind } from "@be-yours/cms"
 import type { Id } from "@/convex/_generated/dataModel"
 
 interface MediaItem {

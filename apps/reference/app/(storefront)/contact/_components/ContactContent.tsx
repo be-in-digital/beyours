@@ -13,7 +13,7 @@ import {
 import { motion } from "framer-motion"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import { Button, Badge } from "@be-in-digital/ui"
+import { Button, Badge } from "@be-yours/ui"
 import { useCmsPage } from "@/lib/cms/useCmsPage"
 import { parseColoredText } from "@/lib/parse-colored-text"
 import { useStoreId } from "@/lib/hooks/use-store-id"
@@ -21,7 +21,7 @@ import {
     formatStoreAddressLines,
     formatWeeklyHours,
     resolveStoreHours,
-} from "@be-in-digital/restaurant"
+} from "@be-yours/restaurant"
 import type { Id } from "@/convex/_generated/dataModel"
 import { toast } from "sonner"
 

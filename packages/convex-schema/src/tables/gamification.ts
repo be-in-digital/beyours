@@ -197,7 +197,7 @@ export const gamePlaysTable = defineTable({
      *
      * The notice will be reworded, and a bare boolean would then claim that
      * every past player agreed to today's text. `GAME_CONSENT_NOTICE_VERSION`
-     * in `@be-in-digital/convex-functions/gamePlay` is the current one; the
+     * in `@be-yours/convex-functions/gamePlay` is the current one; the
      * wording itself is in `packages/admin/src/game/consent-copy.ts`.
      */
     noticeVersion: v.string(),

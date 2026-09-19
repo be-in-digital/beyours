@@ -27,7 +27,7 @@ measured Convex inventory.
 | `apps/themes` | One Vercel project **per client**, from that client's own repository | push to the client's `main` |
 | `apps/themes/convex` | One Convex deployment **per client** | `npx convex deploy` from the client's clone |
 | `apps/themes/demos` | Its own Vercel deployment, `noindex` (`apps/themes/demos/vercel.json`) | with the template |
-| `packages/*` | GitHub Packages, `@be-in-digital/*` | merging the changesets version PR |
+| `packages/*` | GitHub Packages, `@be-yours/*` | merging the changesets version PR |
 | `apps/themes` (as a tree) | `be-in-digital/beyours-boilerplate`, the distribution mirror | `publish-mirror.yml` |
 
 `apps/reference` deploys to nothing in production. It is the bench.
@@ -47,7 +47,7 @@ and `themes` and skips `site`. A change at the repository root invalidates every
 See [`ARCHITECTURE.md`](ARCHITECTURE.md#3-a-push-only-builds-what-it-touches).
 
 Setup for a client project — the Root Directory, the `NODE_AUTH_TOKEN` needed to
-install `@be-in-digital/*` from GitHub Packages, custom domains — is
+install `@be-yours/*` from GitHub Packages, custom domains — is
 [`apps/docs/deployment/vercel.md`](apps/docs/deployment/vercel.md) and
 [`apps/docs/deployment/github-packages.md`](apps/docs/deployment/github-packages.md).
 Both are current; do not duplicate their steps here.
@@ -375,7 +375,7 @@ Five operational facts:
   excludes `tests/` and `.template/`, and no `include` glob names `.js`/`.mjs`, so
   115 of the 691 files the mirror ships are never compiled — among them the
   mirror's own `eslint.config.mjs`, which imports
-  `@be-in-digital/convex-functions/eslint/convex-auth`. A subpath lost from *that*
+  `@be-yours/convex-functions/eslint/convex-auth`. A subpath lost from *that*
   import breaks a client's `pnpm lint` with this gate green; the exports gate below
   is what catches it. Three overlapping gates, none complete alone.
 
@@ -471,7 +471,7 @@ What to revoke and in what order is
 
 | Channel | Command | Carries |
 | --- | --- | --- |
-| npm | `pnpm update:engine` | Business logic — the `@be-in-digital/*` packages, by semver |
+| npm | `pnpm update:engine` | Business logic — the `@be-yours/*` packages, by semver |
 | git | `pnpm update:template` | The application shell — routes, Convex wrappers, scripts, configs |
 
 A site can take one without the other. **The maintenance freeze is not enforced

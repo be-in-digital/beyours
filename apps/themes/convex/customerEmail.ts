@@ -33,8 +33,8 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
 import { emailSender, sendEmail } from "./emailTransport";
-import { renderOrderConfirmation } from "@be-in-digital/core/aws/ses/order-confirmation";
-import { renderOrderReady } from "@be-in-digital/core/aws/ses/order-ready";
+import { renderOrderConfirmation } from "@be-yours/core/aws/ses/order-confirmation";
+import { renderOrderReady } from "@be-yours/core/aws/ses/order-ready";
 
 async function sendViaSES(params: {
   toEmail: string;

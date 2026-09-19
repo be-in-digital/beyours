@@ -44,31 +44,31 @@ beindigital/
 
 | Package | Purpose |
 |---------|---------|
-| `@be-in-digital/ui` | Reusable React components |
-| `@be-in-digital/restaurant` | Restaurant-specific logic |
-| `@be-in-digital/admin` | Admin dashboard pages |
+| `@be-yours/ui` | Reusable React components |
+| `@be-yours/restaurant` | Restaurant-specific logic |
+| `@be-yours/admin` | Admin dashboard pages |
 
 ### Backend
 
 | Package | Purpose |
 |---------|---------|
-| `@be-in-digital/convex-functions` | Server-side functions |
-| `@be-in-digital/integrations` | Third-party API clients |
+| `@be-yours/convex-functions` | Server-side functions |
+| `@be-yours/integrations` | Third-party API clients |
 
 ### Shared
 
 | Package | Purpose |
 |---------|---------|
-| `@be-in-digital/core` | Auth, payments, i18n, AWS |
-| `@be-in-digital/convex-schema` | Schema definitions and types |
-| `@be-in-digital/cms` | CMS block registry |
-| `@be-in-digital/marketing` | Email template rendering |
+| `@be-yours/core` | Auth, payments, i18n, AWS |
+| `@be-yours/convex-schema` | Schema definitions and types |
+| `@be-yours/cms` | CMS block registry |
+| `@be-yours/marketing` | Email template rendering |
 
 ### Tooling
 
 | Package | Purpose |
 |---------|---------|
-| `@be-in-digital/mcp-server` | AI assistant integration |
+| `@be-yours/mcp-server` | AI assistant integration |
 
 ## Dependency Graph
 

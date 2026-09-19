@@ -3,13 +3,13 @@
 import { useMemo } from "react"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import { isStoreOpen, resolveStoreHours } from "@be-in-digital/restaurant"
+import { isStoreOpen, resolveStoreHours } from "@be-yours/restaurant"
 import {
   isWithinBusinessHours,
   resolveStoreServices,
-} from "@be-in-digital/convex-schema"
+} from "@be-yours/convex-schema"
 import type { Id } from "@/convex/_generated/dataModel"
-import type { StoreHoursStatus } from "@be-in-digital/restaurant"
+import type { StoreHoursStatus } from "@be-yours/restaurant"
 
 /**
  * Hook: useStoreStatus

@@ -14,7 +14,7 @@
  * schema and not to this file would fall through to the `transport` wording and
  * tell an owner the provider failed when it had not.
  *
- * Read as text rather than imported: `@be-in-digital/convex-schema` is a
+ * Read as text rather than imported: `@be-yours/convex-schema` is a
  * workspace dependency of this package for its validators, but what is being
  * compared is the SET OF LITERALS each side declares, and a type cannot be
  * enumerated at runtime.

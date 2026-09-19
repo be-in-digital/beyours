@@ -1,6 +1,6 @@
 # `apps/reference` — the engine's reference application
 
-All ten `@be-in-digital/*` packages wired together into an application that
+All ten `@be-yours/*` packages wired together into an application that
 runs: storefront, admin dashboard, CMS, kitchen display, QR games, i18n.
 
 **It is sold to nobody.** It is the test bench: an engine feature is built here,

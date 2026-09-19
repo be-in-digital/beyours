@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { Role } from "@be-in-digital/core/auth/rbac"
+import { Role } from "@be-yours/core/auth/rbac"
 import {
   assertCanAssignProfile,
   bootstrapTokenMatches,

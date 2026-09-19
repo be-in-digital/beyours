@@ -7,7 +7,7 @@
  */
 
 import { create } from "zustand"
-import type { Role } from "@be-in-digital/core"
+import type { Role } from "@be-yours/core"
 
 interface AdminUser {
   id: string

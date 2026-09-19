@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.0.0
+
+### Major Changes
+
+- Renamed from `@be-in-digital/convex-functions` to `@be-yours/convex-functions`, and reset to 1.0.0.
+
+  The npm scope now matches the GitHub organisation that owns this repository,
+  which is what GitHub Packages requires: a package published to
+  `npm.pkg.github.com` must carry the owning org as its scope, and the org is
+  `be-yours`. The previous scope belonged to `be-in-digital`, the agency.
+
+  The version is a reset, not a bump. Under the new scope this package has no
+  published history, so `1.0.0` is its first release rather than a downgrade
+  from `7.7.0`. The old scope keeps everything it published: those
+  versions stay on the registry and already-deployed client sites continue to
+  resolve them until they are migrated. See `RELEASE_HOLD.md` for the
+  migration and the conditions this release is held on.
+
 ## 7.7.0
 
 ### Minor Changes
@@ -26,7 +44,7 @@
 ### Patch Changes
 
 - Updated dependencies [957f8f4]
-  - @be-in-digital/convex-schema@6.9.0
+  - @be-yours/convex-schema@6.9.0
 
 ## 7.6.1
 
@@ -137,7 +155,7 @@
   `updatedBy` from the client, and each app's own wrapper supersedes it.
 
 - Updated dependencies [2a0e474]
-  - @be-in-digital/convex-schema@6.8.1
+  - @be-yours/convex-schema@6.8.1
 
 ## 7.6.0
 
@@ -269,8 +287,8 @@
 - Updated dependencies [edff522]
 - Updated dependencies [bf17240]
 - Updated dependencies [0c172fa]
-  - @be-in-digital/convex-schema@6.8.0
-  - @be-in-digital/core@4.3.1
+  - @be-yours/convex-schema@6.8.0
+  - @be-yours/core@4.3.1
 
 ## 7.5.1
 
@@ -298,7 +316,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   with `content:read` and no anonymous reader loses anything.
 
 - Updated dependencies
-  - @be-in-digital/convex-schema@6.7.0
+  - @be-yours/convex-schema@6.7.0
 
 ## 7.5.0
 
@@ -483,7 +501,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
 
 - Updated dependencies [17e67d3]
 - Updated dependencies
-  - @be-in-digital/convex-schema@6.6.0
+  - @be-yours/convex-schema@6.6.0
 
 ## 7.4.0
 
@@ -524,8 +542,8 @@ storefront page content, no auth by design`. That annotation was wrong about the
 ### Patch Changes
 
 - Updated dependencies [d0a7fa6]
-  - @be-in-digital/convex-schema@6.5.0
-  - @be-in-digital/core@4.3.0
+  - @be-yours/convex-schema@6.5.0
+  - @be-yours/core@4.3.0
 
 ## 7.3.0
 
@@ -609,7 +627,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
 - Updated dependencies [f5edeca]
 - Updated dependencies [4a648b5]
 - Updated dependencies [0419711]
-  - @be-in-digital/convex-schema@6.4.0
+  - @be-yours/convex-schema@6.4.0
 
 ## 7.2.0
 
@@ -707,7 +725,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
 
 - Updated dependencies [b8c6f3e]
 - Updated dependencies [390c8d5]
-  - @be-in-digital/convex-schema@6.3.0
+  - @be-yours/convex-schema@6.3.0
 
 ## 7.1.0
 
@@ -731,14 +749,14 @@ storefront page content, no auth by design`. That annotation was wrong about the
 ### Patch Changes
 
 - Updated dependencies [c5500af]
-  - @be-in-digital/core@4.2.0
+  - @be-yours/core@4.2.0
 
 ## 7.0.1
 
 ### Patch Changes
 
 - Updated dependencies [92dc32f]
-  - @be-in-digital/convex-schema@6.2.0
+  - @be-yours/convex-schema@6.2.0
 
 ## 7.0.0
 
@@ -781,7 +799,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   which is the failure mode that gets a guard switched off rather than obeyed.
 
 - Updated dependencies [549026f]
-  - @be-in-digital/core@4.1.0
+  - @be-yours/core@4.1.0
 
 ## 6.2.0
 
@@ -828,14 +846,14 @@ storefront page content, no auth by design`. That annotation was wrong about the
 
   **And twenty-one icon-only controls were smaller than WCAG 2.5.8 allows**, from
   22×22 down to the 16×16 password reveal on the sign-in dialog. `scanTargetSize`
-  in `@be-in-digital/ui/target-size` measures every one of them from the markup,
+  in `@be-yours/ui/target-size` measures every one of them from the markup,
   each control is now at least 24×24, and the sweep is a test rather than a list
   that goes stale on the next filter chip.
 
 ### Patch Changes
 
 - Updated dependencies [e5394e5]
-  - @be-in-digital/convex-schema@6.1.0
+  - @be-yours/convex-schema@6.1.0
 
 ## 6.1.0
 
@@ -1084,7 +1102,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   decided is hostile. It goes through `purgeS3Objects` now.
 
   **CMS video uploads landed as `.bin`.** The upload route kept a private
-  six-entry MIME-to-extension map while `@be-in-digital/cms`'s `MIME_TO_EXT` —
+  six-entry MIME-to-extension map while `@be-yours/cms`'s `MIME_TO_EXT` —
   which calls itself the single source of truth, and is what the presigned Convex
   flow uses — held twelve. `ALLOWED_MIME_TYPES.cms` admits mp4, webm and three
   Office formats; all six fell through to `"bin"`.
@@ -1103,12 +1121,12 @@ storefront page content, no auth by design`. That annotation was wrong about the
   zero call sites, and it declared `MIN_PASSWORD_LENGTH = 8` against the live
   `minPasswordLength: 12`, with five lifecycle hooks whose bodies were a
   `console.info` and a list of TODOs over names like "lock the account after N
-  attempts". `@be-in-digital/convex-schema` loses the six printer types that
+  attempts". `@be-yours/convex-schema` loses the six printer types that
   outlived the `printerSettings` table — `PrinterType = 'network' | 'usb' |
 'bluetooth'`, the ESC/POS transports `CLAUDE.md` records as decided against.
   Both are BREAKING on a published API and neither had a consumer.
 
-  **`@be-in-digital/admin`** gains `PAYMENT_STATUS_LABELS`, so the payments screen
+  **`@be-yours/admin`** gains `PAYMENT_STATUS_LABELS`, so the payments screen
   stops declaring six operator-facing strings of its own, and the dashboard's
   recent-orders table stops declaring eleven — `lib/vocabulary.ts` claimed "label
   drift is now impossible" while two screens held their own copies.
@@ -1172,8 +1190,8 @@ storefront page content, no auth by design`. That annotation was wrong about the
 - Updated dependencies [6d6df2d]
 - Updated dependencies [b9e20ea]
 - Updated dependencies [6d6df2d]
-  - @be-in-digital/convex-schema@6.0.0
-  - @be-in-digital/core@4.0.0
+  - @be-yours/convex-schema@6.0.0
+  - @be-yours/core@4.0.0
 
 ## 6.0.0
 
@@ -1377,7 +1395,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   by reading an establishment's whole history, so a delete does not get more
   expensive the longer a restaurant has been trading.
 
-  **BREAKING:** `@be-in-digital/convex-functions` no longer exports
+  **BREAKING:** `@be-yours/convex-functions` no longer exports
   `uberEatsOrders`, and the `./uberEatsOrders` subpath is removed. Both apps'
   wrappers and generated `api.d.ts` are updated here.
 
@@ -1448,7 +1466,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   diner-facing booking feature, and the todo had gone stale — it still cited
   `scheduledAt`, deleted three PRs earlier, and two line numbers that had moved.
 
-  **Why `@be-in-digital/core` is a major.** `./aws/ses/order-confirmation` is a
+  **Why `@be-yours/core` is a major.** `./aws/ses/order-confirmation` is a
   first-class entry in that package's `exports` map — `convex-functions` and both
   apps import it across the package boundary — and this removes `scheduledFor`
   from the exported `OrderConfirmationInput` interface and drops `timingLine`'s
@@ -1471,7 +1489,7 @@ storefront page content, no auth by design`. That annotation was wrong about the
   `cms*` singletons** — so a "backup" of a restaurant's website did not contain
   that website's pages, and a restore reached zero orders (#169, #366).
 
-  **One list now**, `@be-in-digital/convex-functions/backupTables`, read by both
+  **One list now**, `@be-yours/convex-functions/backupTables`, read by both
   sides: 53 tables exported and restored, 3 exported and never re-inserted, 21
   excluded with the reason written down next to the name.
 
@@ -1807,8 +1825,8 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
 - Updated dependencies [58f890f]
 - Updated dependencies [ecb21a1]
 - Updated dependencies [ecb21a1]
-  - @be-in-digital/convex-schema@5.0.0
-  - @be-in-digital/core@3.0.0
+  - @be-yours/convex-schema@5.0.0
+  - @be-yours/core@3.0.0
 
 ## 5.0.0
 
@@ -1953,9 +1971,9 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
   `OrderStatusBadge` and `StoreStatusBadge` held eleven English labels between
   them and took no label from outside, so a diner following their order read
   « Preparing » and « Out for Delivery » between French sentences. The vocabulary
-  now lives once in `@be-in-digital/core/status-labels` — the source-language word
+  now lives once in `@be-yours/core/status-labels` — the source-language word
   and the catalogue key, per status — the badges take a `labels` override, and
-  `useOrderStatusLabels` / `useStoreStatusLabels` in `@be-in-digital/restaurant`
+  `useOrderStatusLabels` / `useStoreStatusLabels` in `@be-yours/restaurant`
   resolve it through `t()` for the locale being rendered. Two further copies of
   the same eight words are gone with it: a private map in the order page and
   `getOrderStatusLabel`'s English map. `order.delivered` was missing from the
@@ -2042,8 +2060,8 @@ than assume.`discountTypeValidator`keeps all five **literals** deliberately:`upd
 ### Patch Changes
 
 - Updated dependencies [16521f2]
-  - @be-in-digital/convex-schema@4.1.0
-  - @be-in-digital/core@2.5.0
+  - @be-yours/convex-schema@4.1.0
+  - @be-yours/core@2.5.0
 
 ## 4.0.0
 
@@ -2261,7 +2279,7 @@ cronJobs` across both apps returned nothing. An owner who configured "weekly,
   actually rely on.
 
   New `isWithinBusinessHours` and `resolveStoreHours` in
-  `@be-in-digital/convex-schema` — the only package `convex-functions` and
+  `@be-yours/convex-schema` — the only package `convex-functions` and
   `restaurant` can both import, which is why `storeStatus` and `storeServices` are
   there already. `orders.create` refuses an order outside the resolved week, on the
   establishment's clock and honouring `useGlobalHours`; `isStoreOpen` and
@@ -2284,7 +2302,7 @@ cronJobs` across both apps returned nothing. An owner who configured "weekly,
   late menu as an empty set. Two opposite failures out of one seam: the late menu
   was greyed out for every hour it was actually served, and a diner in another
   timezone saw a dish, added it, and was refused at payment — with the unreadable
-  error above. `timeWindow` moved to `@be-in-digital/convex-schema` and
+  error above. `timeWindow` moved to `@be-yours/convex-schema` and
   `isProductScheduledNow` renders from it; `isProductAvailable`, the product card,
   the grid, the menu and the favourites grid all take the establishment's
   timezone, which `useStoreStatus` now returns.
@@ -2664,7 +2682,7 @@ Server Error`. `SettlementRejectedError` joins the family, so the sentence that
   one would make dine-in service depend on the gamification QR codes being
   configured — a restaurant can serve _sur place_ without ever running the wheel
   of fortune. The two share a representation instead:
-  `@be-in-digital/core/dining` normalises and bounds a table label for both.
+  `@be-yours/core/dining` normalises and bounds a table label for both.
 
   Required at the storefront, optional on the server. Uber Eats and Deliveroo
   forward `dine_in` orders that carry no table of their own, and refusing those
@@ -2695,7 +2713,7 @@ Server Error`. `SettlementRejectedError` joins the family, so the sentence that
 
   For an EU food business under INCO 1169/2011 that is a regulatory surface.
 
-  `@be-in-digital/core/allergens` is now the single source of truth: the
+  `@be-yours/core/allergens` is now the single source of truth: the
   fourteen Annex II allergens plus `shellfish` and the two dietary markers, the
   alias table that matches French and English spellings through accents,
   ligatures and punctuation, the localised labels, and the Uber Eats mapping.
@@ -2816,8 +2834,8 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
   SumUp connection row — never reached the storefront. So `useState("card")`
   landed every diner on the dead tile, and a second inline fallback resolved to
   card too. Both rules moved into one pure `resolvePaymentMethod`
-  (`@be-in-digital/restaurant`), fed by a new `paymentAvailability.get` query
-  (def in `@be-in-digital/convex-functions/globalSettings`, mounted by both
+  (`@be-yours/restaurant`), fed by a new `paymentAvailability.get` query
+  (def in `@be-yours/convex-functions/globalSettings`, mounted by both
   apps) that answers a single boolean and mirrors exactly the checks the
   charge-starting actions make — including `getSiteEnv()`'s `sk_` validation,
   so a pasted publishable key reads as unavailable instead of arming a tile in
@@ -2832,7 +2850,7 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
   production redacts to "Server Error" — so the checkout showed its generic
   retry toast for a payment that could never work, on the very tile it had
   pre-selected. New `CardPaymentUnavailableError` in
-  `@be-in-digital/convex-functions/refusal` joins the `RefusalError` family:
+  `@be-yours/convex-functions/refusal` joins the `RefusalError` family:
   « Le paiement par carte est indisponible pour le moment. Choisissez un autre
   moyen de paiement. » crosses the wire like every other checkout refusal. The
   staff-facing paths (verify, refund, reconcile) keep their plain errors — their
@@ -2918,7 +2936,7 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
 paymentConnections convex/stripe.ts` returned 0 — the charge path never read the
   row at all, so the deception could come back with no test going red anywhere.
 
-  New subpath `@be-in-digital/convex-functions/stripeChargeRouting` exports
+  New subpath `@be-yours/convex-functions/stripeChargeRouting` exports
   `resolveStripeCharge(connection)`. It throws for exactly one status —
   `connected`, the literal whose meaning is "charges are routed to the connected
   account" — and returns `{ mode: "platform" }` for `onboarding_complete`,
@@ -3009,9 +3027,9 @@ element/`), so it has been rewritten to assert the corrected message.
 - Updated dependencies [cde4410]
 - Updated dependencies [91d388a]
 - Updated dependencies [bd17a78]
-  - @be-in-digital/convex-schema@4.0.0
-  - @be-in-digital/cms@3.1.0
-  - @be-in-digital/core@2.4.0
+  - @be-yours/convex-schema@4.0.0
+  - @be-yours/cms@3.1.0
+  - @be-yours/core@2.4.0
 
 ## 3.0.0
 
@@ -3033,11 +3051,11 @@ element/`), so it has been rewritten to assert the corrected message.
   Measured on the real tarball rather than argued, with a consumer on convex
   1.42.0:
 
-  |                                                       | Result                                                                                                                                  |
-  | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-  | **Before** — `dependencies: { convex: "1.44.0" }`     | installs quietly, **two copies**: the consumer's `convex@1.42.0` and a nested `@be-in-digital/convex-schema/node_modules/convex@1.44.0` |
-  | **After** — `peerDependencies: { convex: "^1.44.0" }` | npm **refuses**: `npm error peer convex@"^1.44.0" from @be-in-digital/convex-schema@2.2.0`                                              |
-  | **After**, consumer on 1.44.0                         | installs, exactly one copy                                                                                                              |
+  |                                                       | Result                                                                                                                             |
+  | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+  | **Before** — `dependencies: { convex: "1.44.0" }`     | installs quietly, **two copies**: the consumer's `convex@1.42.0` and a nested `@be-yours/convex-schema/node_modules/convex@1.44.0` |
+  | **After** — `peerDependencies: { convex: "^1.44.0" }` | npm **refuses**: `npm error peer convex@"^1.44.0" from @be-yours/convex-schema@2.2.0`                                              |
+  | **After**, consumer on 1.44.0                         | installs, exactly one copy                                                                                                         |
 
   Two copies of `convex/values` means two sets of validators, which is the same
   class of failure as the two React contexts that once crashed the admin — quieter,
@@ -3194,7 +3212,7 @@ element/`), so it has been rewritten to assert the corrected message.
   wired, with no reader or writer". Two of the three were, and the reason they
   looked wired is worth recording: the only screens that wrote them lived in
   `apps/themes/components/admin/settings/`, a folder no route renders. Both apps
-  route `/dashboard/settings` and `/dashboard/stores/[id]` to `@be-in-digital/admin`,
+  route `/dashboard/settings` and `/dashboard/stores/[id]` to `@be-yours/admin`,
   so those six components had been orphaned and left behind. The folder is deleted.
 
   `orderConfirmation` was the worse of the two. `"manual"` promised that staff
@@ -3290,8 +3308,8 @@ element/`), so it has been rewritten to assert the corrected message.
 - Updated dependencies [aa2880f]
 - Updated dependencies [629e88e]
 - Updated dependencies [74de4e9]
-  - @be-in-digital/convex-schema@3.0.0
-  - @be-in-digital/core@2.3.0
+  - @be-yours/convex-schema@3.0.0
+  - @be-yours/core@2.3.0
 
 ## 2.2.2
 
@@ -3299,7 +3317,7 @@ element/`), so it has been rewritten to assert the corrected message.
 
 - Updated dependencies [3178b2d]
 - Updated dependencies [e13cd4e]
-  - @be-in-digital/core@2.2.0
+  - @be-yours/core@2.2.0
 
 ## 2.2.1
 
@@ -3308,8 +3326,8 @@ element/`), so it has been rewritten to assert the corrected message.
 - Updated dependencies [3a25d85]
 - Updated dependencies [7e727ff]
 - Updated dependencies [5837a81]
-  - @be-in-digital/core@2.1.0
-  - @be-in-digital/cms@3.0.0
+  - @be-yours/core@2.1.0
+  - @be-yours/cms@3.0.0
 
 ## 2.2.0
 
@@ -3342,7 +3360,7 @@ element/`), so it has been rewritten to assert the corrected message.
   own profile too, so only a super admin could let them back in.
 
 - Updated dependencies [285b579]
-  - @be-in-digital/convex-schema@2.2.0
+  - @be-yours/convex-schema@2.2.0
 
 ## 2.1.0
 
@@ -3353,7 +3371,7 @@ element/`), so it has been rewritten to assert the corrected message.
 
   The mutation wrote whatever status it was handed. Nothing stopped an order going from `pending` straight to `completed`, or a cancelled order being revived — the transition table existed but only the storefront services consulted it, as advice.
 
-  Three layers each carried their own opinion and they had drifted. The admin UI offered "Envoyer en livraison" on a ready order while the services table forbade `ready -> out_for_delivery`. The table is now single and lives in `@be-in-digital/convex-schema` (`ORDER_STATUS_TRANSITIONS`, `canTransitionOrderStatus`, `getNextOrderStatuses`); the services and the mutation both read it, and `ready -> out_for_delivery` is allowed, matching the button that already existed.
+  Three layers each carried their own opinion and they had drifted. The admin UI offered "Envoyer en livraison" on a ready order while the services table forbade `ready -> out_for_delivery`. The table is now single and lives in `@be-yours/convex-schema` (`ORDER_STATUS_TRANSITIONS`, `canTransitionOrderStatus`, `getNextOrderStatuses`); the services and the mutation both read it, and `ready -> out_for_delivery` is allowed, matching the button that already existed.
 
   **Behaviour change:** `updateStatus` now throws `Invalid order status transition: <from> -> <to>` instead of writing. Replaying the current status is an idempotent no-op rather than an error, so webhook retries and double-clicked buttons stay harmless. `updateFromWebhook` is deliberately left unguarded — Uber Eats and Deliveroo are authoritative for the orders they own.
 
@@ -3363,20 +3381,20 @@ element/`), so it has been rewritten to assert the corrected message.
 
 - Updated dependencies [5eec48d]
 - Updated dependencies [83f6af9]
-  - @be-in-digital/convex-schema@2.1.0
+  - @be-yours/convex-schema@2.1.0
 
 ## 2.0.2
 
 ### Patch Changes
 
 - 7f0122b: Republished from main. Fixes two problems with the 2.0.1 tarballs that broke consumers:
-  - `@be-in-digital/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
+  - `@be-yours/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
   - The type fixes that were on main but never published (promotion-form/email-config in admin, Uber Eats signatures in integrations/convex-functions) go out with this patch — they had been committed without a changeset.
 
 - Updated dependencies [7f0122b]
-  - @be-in-digital/cms@2.0.2
-  - @be-in-digital/convex-schema@2.0.2
-  - @be-in-digital/core@2.0.2
+  - @be-yours/cms@2.0.2
+  - @be-yours/convex-schema@2.0.2
+  - @be-yours/core@2.0.2
 
 ## 2.0.1
 
@@ -3394,22 +3412,22 @@ element/`), so it has been rewritten to assert the corrected message.
     webhook handlers can skip duplicate kitchen-ticket creation and double
     auto-accept when Uber/Deliveroo retry a delivery (idempotent order import).
 
-- 1a5ca27: Rename package scope from @beindigital-engine to @be-in-digital for GitHub Packages compatibility
+- 1a5ca27: Rename package scope from @beindigital-engine to @be-yours for GitHub Packages compatibility
 - Updated dependencies [321adad]
 - Updated dependencies [1a5ca27]
-  - @be-in-digital/convex-schema@2.0.1
-  - @be-in-digital/core@2.0.1
-  - @be-in-digital/cms@2.0.1
+  - @be-yours/convex-schema@2.0.1
+  - @be-yours/core@2.0.1
+  - @be-yours/cms@2.0.1
 
 ## 2.0.1
 
 ### Patch Changes
 
-- b8aaa34: Rename package scope from @beindigital-engine to @be-in-digital for GitHub Packages compatibility
+- b8aaa34: Rename package scope from @beindigital-engine to @be-yours for GitHub Packages compatibility
 - Updated dependencies [b8aaa34]
-  - @be-in-digital/core@2.0.1
-  - @be-in-digital/cms@2.0.1
-  - @be-in-digital/convex-schema@2.0.1
+  - @be-yours/core@2.0.1
+  - @be-yours/cms@2.0.1
+  - @be-yours/convex-schema@2.0.1
 
 ## 2.0.0
 
@@ -3430,15 +3448,15 @@ element/`), so it has been rewritten to assert the corrected message.
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
+  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
   ```
 
 ### Patch Changes
 
 - Updated dependencies [7c3d4da]
-  - @be-in-digital/convex-schema@2.0.0
-  - @be-in-digital/core@2.0.0
-  - @be-in-digital/cms@2.0.0
+  - @be-yours/convex-schema@2.0.0
+  - @be-yours/core@2.0.0
+  - @be-yours/cms@2.0.0
 
 ## 1.0.0
 
@@ -3459,17 +3477,17 @@ element/`), so it has been rewritten to assert the corrected message.
 
   ```bash
   npm login --scope=@beindigital-engine
-  pnpm add @be-in-digital/core @be-in-digital/ui @be-in-digital/restaurant
+  pnpm add @be-yours/core @be-yours/ui @be-yours/restaurant
   ```
 
 ### Patch Changes
 
 - Updated dependencies [ad4d8d2]
-  - @be-in-digital/convex-schema@1.0.0
-  - @be-in-digital/core@1.0.0
-  - @be-in-digital/cms@1.0.0
+  - @be-yours/convex-schema@1.0.0
+  - @be-yours/core@1.0.0
+  - @be-yours/cms@1.0.0
 
-All notable changes to `@be-in-digital/convex-functions` will be documented in this file.
+All notable changes to `@be-yours/convex-functions` will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).

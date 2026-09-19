@@ -1,4 +1,4 @@
-# @be-in-digital/ui
+# @be-yours/ui
 
 > 59 accessible, themeable React components built on Radix UI and Tailwind CSS v4.
 > The engine's one design system — see `packages/ui/COMPONENTS.md` for what it
@@ -16,7 +16,7 @@
 ## Installation
 
 ```bash
-pnpm add @be-in-digital/ui
+pnpm add @be-yours/ui
 ```
 
 ### Peer Dependencies
@@ -36,13 +36,13 @@ in the stylesheet:
 /* app/globals.css */
 @import "tailwindcss";
 
-@source "../node_modules/@be-in-digital/ui/src/**/*";
-@source "../node_modules/@be-in-digital/admin/src/**/*";
+@source "../node_modules/@be-yours/ui/src/**/*";
+@source "../node_modules/@be-yours/admin/src/**/*";
 ```
 
 Two details, both learned the hard way:
 
-- **`node_modules/@be-in-digital/*`, not a relative path into `packages/`.** The
+- **`node_modules/@be-yours/*`, not a relative path into `packages/`.** The
   same stylesheet ships to the repository a client site is cloned from, where
   the app *is* the root and `../../../packages` resolves above it — matching
   nothing, silently, because Tailwind reports no error for a glob that hits no
@@ -59,11 +59,11 @@ keep `src`.
 One specifier, always:
 
 ```tsx
-import { Button, Card, Input, Badge } from "@be-in-digital/ui";
+import { Button, Card, Input, Badge } from "@be-yours/ui";
 ```
 
-`@be-in-digital/ui/components`, `/restaurant` and `/admin` resolve to the same
-modules and exist only for compatibility. `@be-in-digital/ui/branding` is the
+`@be-yours/ui/components`, `/restaurant` and `/admin` resolve to the same
+modules and exist only for compatibility. `@be-yours/ui/branding` is the
 one subpath worth using: a pure function, importable from a server component
 without pulling the component graph with it.
 
@@ -81,7 +81,7 @@ in `next.config.ts`.
 | `PageHeader` | Page title with optional breadcrumb and actions |
 
 ```tsx
-import { Container, Section, PageHeader } from "@be-in-digital/ui";
+import { Container, Section, PageHeader } from "@be-yours/ui";
 
 <Container>
   <PageHeader
@@ -112,7 +112,7 @@ import { Container, Section, PageHeader } from "@be-in-digital/ui";
 #### Button
 
 ```tsx
-import { Button } from "@be-in-digital/ui";
+import { Button } from "@be-yours/ui";
 
 // Variants
 <Button variant="default">Primary</Button>
@@ -139,7 +139,7 @@ import { Button } from "@be-in-digital/ui";
 #### Input
 
 ```tsx
-import { Input } from "@be-in-digital/ui";
+import { Input } from "@be-yours/ui";
 
 <Input placeholder="Email" type="email" />
 <Input type="password" />
@@ -148,7 +148,7 @@ import { Input } from "@be-in-digital/ui";
 #### FormField
 
 ```tsx
-import { FormField, Input } from "@be-in-digital/ui";
+import { FormField, Input } from "@be-yours/ui";
 
 <FormField label="Email" error="Invalid email" description="We'll never share your email">
   <Input type="email" />
@@ -170,7 +170,7 @@ import { FormField, Input } from "@be-in-digital/ui";
 #### Badge
 
 ```tsx
-import { Badge } from "@be-in-digital/ui";
+import { Badge } from "@be-yours/ui";
 
 <Badge variant="success">Active</Badge>
 <Badge variant="warning">Pending</Badge>
@@ -180,7 +180,7 @@ import { Badge } from "@be-in-digital/ui";
 #### Card
 
 ```tsx
-import { Card, CardHeader, CardTitle, CardContent } from "@be-in-digital/ui";
+import { Card, CardHeader, CardTitle, CardContent } from "@be-yours/ui";
 
 <Card>
   <CardHeader>
@@ -207,7 +207,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@be-in-digital/ui";
 #### Dialog
 
 ```tsx
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@be-in-digital/ui";
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@be-yours/ui";
 
 <Dialog>
   <DialogTrigger asChild>

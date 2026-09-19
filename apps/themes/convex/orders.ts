@@ -2,18 +2,18 @@ import { query, internalMutation, internalQuery, mutation } from "./_generated/s
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
-import * as defs from "@be-in-digital/convex-functions/orders";
-import { orderInvoiceSurface } from "@be-in-digital/convex-functions/invoices";
+import * as defs from "@be-yours/convex-functions/orders";
+import { orderInvoiceSurface } from "@be-yours/convex-functions/invoices";
 import {
   buildOrderConfirmationPayload,
   planOrderConfirmation,
   releaseOrderConfirmationClaim,
-} from "@be-in-digital/convex-functions/orderConfirmation";
+} from "@be-yours/convex-functions/orderConfirmation";
 import {
   readyPayload,
   releaseReadyClaim,
-} from "@be-in-digital/convex-functions/orderReady";
-import { noticeFailureInputValidator } from "@be-in-digital/convex-schema";
+} from "@be-yours/convex-functions/orderReady";
+import { noticeFailureInputValidator } from "@be-yours/convex-schema";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 import { v } from "convex/values";
 
@@ -455,7 +455,7 @@ export const releaseReadyNoticeClaim = internalMutation({
  * Scheduled from `crons.ts`; internal because a sweep runs with no identity.
  * The webhooks repair this on a platform redelivery, which is the fast path;
  * this is the backstop for a retry that never comes. Definition and reasoning
- * live in `@be-in-digital/convex-functions/orders`.
+ * live in `@be-yours/convex-functions/orders`.
  */
 export const sweepTicketlessPlatformOrders = internalMutation(
   defs.sweepTicketlessPlatformOrders

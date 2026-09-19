@@ -35,7 +35,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 /** The reasons Deliveroo accepts, in its own vocabulary, as an owner reads them. */
 export const DELIVEROO_REJECT_REASONS: Array<{ value: string; label: string }> = [

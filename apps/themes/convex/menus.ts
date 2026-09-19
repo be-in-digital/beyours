@@ -1,7 +1,7 @@
 import { internalMutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import * as defs from "@be-in-digital/convex-functions/menus";
-import { touchesTranslatableText } from "@be-in-digital/convex-functions/autoTranslate";
+import * as defs from "@be-yours/convex-functions/menus";
+import { touchesTranslatableText } from "@be-yours/convex-functions/autoTranslate";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 import { scheduleMenuSync } from "./lib/menuSync";
 import { scheduleTranslation } from "./autoTranslate";

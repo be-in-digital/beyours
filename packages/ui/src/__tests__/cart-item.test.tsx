@@ -9,6 +9,7 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 import { CartItem } from "../components/restaurant/CartItem"
+import { stripTags } from "./strip-tags"
 
 const noop = () => {}
 
@@ -87,17 +88,14 @@ describe("CartItem — accessible names", () => {
 
 describe("CartItem — content", () => {
   it("renders the name, price and quantity", () => {
-    const shown = render().replace(/<[^>]*>/g, "")
+    const shown = stripTags(render())
     expect(shown).toContain("Pizza Margherita")
     expect(shown).toContain("12,50 €")
     expect(shown).toContain("2")
   })
 
   it("renders the chosen options", () => {
-    const shown = render({ options: ["Grande", "Extra fromage"] }).replace(
-      /<[^>]*>/g,
-      ""
-    )
+    const shown = stripTags(render({ options: ["Grande", "Extra fromage"] }))
     expect(shown).toContain("Grande, Extra fromage")
   })
 

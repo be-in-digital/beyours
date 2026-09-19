@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { schema } from "@be-in-digital/convex-schema"
+import { schema } from "@be-yours/convex-schema"
 import {
   STORE_SCOPED_TABLES,
   CASCADE_BATCH_SIZE,

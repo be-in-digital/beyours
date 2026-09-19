@@ -9,19 +9,19 @@ import {
   singleProductVisionSchema,
   menuVisionResultSchema,
   enrichmentResultSchema,
-} from "@be-in-digital/convex-schema/validators"
+} from "@be-yours/convex-schema/validators"
 import type {
   ProductSuggestion,
   AnalyzeImageResult,
   AiField,
   ParsingWarning,
-} from "@be-in-digital/convex-schema/types"
-import { buildMediaUrl, mediaKeyFromUrl } from "@be-in-digital/core/aws/media-url"
+} from "@be-yours/convex-schema/types"
+import { buildMediaUrl, mediaKeyFromUrl } from "@be-yours/core/aws/media-url"
 import {
   ALLERGEN_KIND,
   KNOWN_ALLERGENS,
   resolveAllergens,
-} from "@be-in-digital/core/allergens"
+} from "@be-yours/core/allergens"
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -54,7 +54,7 @@ function createS3Client() {
 
 /**
  * The bucket is private: a key becomes either a CDN URL or a path on this
- * app's own `/api/files` proxy. One policy, in `@be-in-digital/core`.
+ * app's own `/api/files` proxy. One policy, in `@be-yours/core`.
  */
 function buildPublicUrl(key: string): string {
   return buildMediaUrl(key, process.env.AWS_S3_PUBLIC_BASE_URL)
@@ -218,7 +218,7 @@ async function processImage(imageUrl: string): Promise<ProcessedImage> {
  * diner is eventually shown. Asked in French for "les allergènes très
  * probables", it answered in free prose — a different wording every run — and
  * none of that resolves against the vocabulary in
- * `@be-in-digital/core/allergens`. Every surface downstream then has to render
+ * `@be-yours/core/allergens`. Every surface downstream then has to render
  * it as unverified, which is how an unrecognised value entered the database in
  * the first place.
  *

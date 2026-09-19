@@ -3,7 +3,7 @@
  *
  * Kept free of the AWS SDK and of every other import so Convex actions can pull
  * it in without dragging the rest of the package into their bundle. Exposed as
- * `@be-in-digital/core/aws/folders`.
+ * `@be-yours/core/aws/folders`.
  *
  * The bucket is private and `/api/files` is the read path, so this list is what
  * decides whether an uploaded object is reachable at all: the proxy serves a

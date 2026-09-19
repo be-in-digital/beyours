@@ -1,5 +1,5 @@
 import * as React from "react"
-import { STORE_STATUS_VOCABULARY } from "@be-in-digital/core/status-labels"
+import { STORE_STATUS_VOCABULARY } from "@be-yours/core/status-labels"
 import { Badge } from "../Badge"
 
 export type StoreStatus = "open" | "closed" | "temporarily_unavailable"
@@ -14,7 +14,7 @@ export interface StoreStatusBadgeProps {
    * say, on a store selector written entirely in French: a diner picking a
    * location read « Temporarily Unavailable » under a French heading.
    * Storefront callers pass `useStoreStatusLabels()` from
-   * `@be-in-digital/restaurant`, which resolves these through `t()` for the
+   * `@be-yours/restaurant`, which resolves these through `t()` for the
    * locale being rendered.
    */
   labels?: Partial<Record<StoreStatus, string>>

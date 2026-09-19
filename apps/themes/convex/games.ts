@@ -1,4 +1,4 @@
-import * as defs from "@be-in-digital/convex-functions/games";
+import * as defs from "@be-yours/convex-functions/games";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // A game document carries its `winRatio`. Exposed publicly, the odds the owner

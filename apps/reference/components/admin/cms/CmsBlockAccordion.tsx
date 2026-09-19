@@ -1,13 +1,13 @@
 "use client"
 
 import { RotateCcw, ChevronDown } from "lucide-react"
-import { Button, Collapsible, CollapsibleContent, CollapsibleTrigger } from "@be-in-digital/ui"
+import { Button, Collapsible, CollapsibleContent, CollapsibleTrigger } from "@be-yours/ui"
 import { CmsFieldRenderer } from "./CmsFieldRenderer"
 import type {
   BlockDefinition,
   CmsFieldValue,
   CmsBlockValues,
-} from "@be-in-digital/cms"
+} from "@be-yours/cms"
 
 interface CmsBlockAccordionProps {
   blockDef: BlockDefinition

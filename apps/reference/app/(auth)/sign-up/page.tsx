@@ -18,7 +18,7 @@ import {
   Loader2,
   MailCheck,
 } from "lucide-react"
-import { Button, Input, Label } from "@be-in-digital/ui"
+import { Button, Input, Label } from "@be-yours/ui"
 
 /**
  * Where to land after authenticating.

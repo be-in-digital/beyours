@@ -15,7 +15,7 @@ import {
   storeMutation,
 } from "./lib/storeFunctions";
 import { v } from "convex/values"
-import * as mediaDefs from "@be-in-digital/convex-functions/cmsMedia"
+import * as mediaDefs from "@be-yours/convex-functions/cmsMedia"
 
 // ============================================================================
 // Queries

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { formatPrice, useCartStore, useTranslation } from "@be-in-digital/restaurant"
+import { formatPrice, useCartStore, useTranslation } from "@be-yours/restaurant"
 
 /**
  * What the cart just did, said out loud.

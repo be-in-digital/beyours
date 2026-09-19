@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
   CardContent,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from "recharts"
 import { BarChart3 } from "lucide-react"
 import { formatPrice } from "../../lib/formatters"

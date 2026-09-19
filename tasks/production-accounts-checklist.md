@@ -66,7 +66,7 @@ one). Decide per service which brand owns it before creating duplicates.
 
 | Service | Used for | Env vars | Notes |
 |---|---|---|---|
-| **GitHub** | org `be-in-digital`, private Packages `@be-in-digital/*` | `NODE_AUTH_TOKEN` | Needs a `read:packages` PAT. Actions budget must stay funded — it hit zero on 2026-08-16 and every workflow died. |
+| **GitHub** | org `be-yours`, Packages `@be-yours/*` (was org `be-in-digital`, scope `@be-in-digital/*`) | `NODE_AUTH_TOKEN` | Needs a `read:packages` PAT. Actions budget must stay funded — it hit zero on 2026-08-16 and every workflow died. |
 | **Convex** | backend, 1 deployment per client + `apps/site` | `CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_URL`, `CONVEX_SITE_URL` | See §0. |
 | **Vercel** | `beyours.fr` + 1 project per client | — | |
 | **AWS** | S3 (uploads) + SES (transactional email) — **one account per client**, see [`aws-ownership.md`](../apps/docs/deployment/aws-ownership.md) | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `AWS_S3_BUCKET_NAME`, `AWS_SES_*` | SES starts **in sandbox** (eu-west-3) and production access is granted **per account** — one request per client, reviewed by hand, and **already refused once** on the BeYours account. Sequence it early: a refusal leaves a client site unable to email at all, since only `apps/site` has a Resend fallback. Check where a request stands with `DOMAIN=<domain> pnpm ses:check`. Procedure: [`client-aws-onboarding-runbook.md`](./client-aws-onboarding-runbook.md). |

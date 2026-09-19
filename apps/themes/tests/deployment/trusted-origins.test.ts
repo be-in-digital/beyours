@@ -54,7 +54,7 @@ describe("the shipped site trusts only the origins it was configured with", () =
   })
 
   it("derives its Convex origins from SITE_URL, which a deployment cannot boot without", () => {
-    // `siteRequiredShape` in `@be-in-digital/core/env` refuses to start without
+    // `siteRequiredShape` in `@be-yours/core/env` refuses to start without
     // it, so this is not a fallback that can quietly be missing — which is what
     // makes dropping the literal safe for a developer as well.
     expect(read("convex/auth.ts")).toMatch(/trustedOrigins:\s*process\.env\.SITE_URL/)

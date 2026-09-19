@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
   Separator,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { formatDate } from "../../lib/formatters"
 import { STATUS_LABELS, STATUS_VARIANTS, type ContactMessage } from "./message-status"
 

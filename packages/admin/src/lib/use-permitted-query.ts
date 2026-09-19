@@ -24,7 +24,7 @@
  */
 
 import { useQuery } from "convex/react"
-import { hasPermission, type Permission, type Role } from "@be-in-digital/core"
+import { hasPermission, type Permission, type Role } from "@be-yours/core"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

@@ -1,11 +1,11 @@
 import { v } from "convex/values"
-import { ORDER_TERMINAL_STATUSES } from "@be-in-digital/convex-schema"
+import { ORDER_TERMINAL_STATUSES } from "@be-yours/convex-schema"
 // The NARROW subpath, as `auth.ts` uses. The package root resolves to
 // `core/dist/index.mjs`, which imports `randomUUID` from node's `crypto` — and
 // a Convex function runs in the V8 runtime, where that cannot be bundled. The
 // push fails at bundling with `Could not resolve "crypto"`, which in CI showed
 // up as the deploy hanging rather than as an error anyone could read.
-import { hasPermission, type Role } from "@be-in-digital/core/auth/rbac"
+import { hasPermission, type Role } from "@be-yours/core/auth/rbac"
 import {
   ANONYMISED_CUSTOMER_NAME,
   DAY_MS,

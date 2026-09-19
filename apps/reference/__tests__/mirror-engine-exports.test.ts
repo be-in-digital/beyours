@@ -27,14 +27,14 @@ import {
  * Measured on this repository at the time of writing: every engine version was
  * last set on 2026-09-01 (#278), and `./sesSending`, `./stripeChargeRouting`,
  * `./htmlSanitize`, `./platformWebhookFailures`, `./platformWebhook`,
- * `./paymentEvents`, `./blogAutoPlanner` and `@be-in-digital/admin/game` were
+ * `./paymentEvents`, `./blogAutoPlanner` and `@be-yours/admin/game` were
  * all added on 2026-09-04. Shipped `apps/themes` modules import every one of
  * them. A client's `pnpm install` succeeds; `next build` and `convex deploy`
  * then die with `ERR_PACKAGE_PATH_NOT_EXPORTED` — with all four required checks
  * green, `check:mirror-css` included, because it symlinks `packages/<name>` and
  * so never sees the pinned version either.
  *
- * The changeset behind `@be-in-digital/admin@9.0.0` ("Ship the gamification
+ * The changeset behind `@be-yours/admin@9.0.0` ("Ship the gamification
  * player flow in the client template", now in `packages/admin/CHANGELOG.md`)
  * already described this window and noted it "does not close on its own if the
  * release never publishes". These are the assertions that make it close.
@@ -117,18 +117,18 @@ function packFixture(
 describe("finding what a tree imports", () => {
   test("it reads static, dynamic, type-only and require forms", () => {
     const root = tree({
-      "convex/a.ts": `import { x } from "@be-in-digital/convex-functions/orders"`,
-      "convex/b.ts": `const m = await import("@be-in-digital/core/sentry")`,
-      "convex/c.ts": `import type { T } from "@be-in-digital/convex-schema/types"`,
-      "lib/d.js": `const y = require("@be-in-digital/ui")`,
+      "convex/a.ts": `import { x } from "@be-yours/convex-functions/orders"`,
+      "convex/b.ts": `const m = await import("@be-yours/core/sentry")`,
+      "convex/c.ts": `import type { T } from "@be-yours/convex-schema/types"`,
+      "lib/d.js": `const y = require("@be-yours/ui")`,
     })
 
     const found = engineImportsIn(root)
-    expect([...(found.get("@be-in-digital/convex-functions") ?? [])]).toEqual(["./orders"])
-    expect([...(found.get("@be-in-digital/core") ?? [])]).toEqual(["./sentry"])
-    expect([...(found.get("@be-in-digital/convex-schema") ?? [])]).toEqual(["./types"])
+    expect([...(found.get("@be-yours/convex-functions") ?? [])]).toEqual(["./orders"])
+    expect([...(found.get("@be-yours/core") ?? [])]).toEqual(["./sentry"])
+    expect([...(found.get("@be-yours/convex-schema") ?? [])]).toEqual(["./types"])
     // A bare specifier is the root export, which an `exports` map calls ".".
-    expect([...(found.get("@be-in-digital/ui") ?? [])]).toEqual(["."])
+    expect([...(found.get("@be-yours/ui") ?? [])]).toEqual(["."])
   })
 
   /**
@@ -138,17 +138,17 @@ describe("finding what a tree imports", () => {
    */
   test("it looks everywhere a client would resolve, and nowhere it would not", () => {
     const root = tree({
-      "app/page.tsx": `import "@be-in-digital/admin/game"`,
-      "tests/x.test.ts": `import "@be-in-digital/marketing/email"`,
-      "node_modules/dep/index.js": `import "@be-in-digital/core/should-not-be-seen"`,
-      ".next/server/chunk.js": `import "@be-in-digital/cms/also-not"`,
-      "README.md": `import "@be-in-digital/ui/nor-this"`,
+      "app/page.tsx": `import "@be-yours/admin/game"`,
+      "tests/x.test.ts": `import "@be-yours/marketing/email"`,
+      "node_modules/dep/index.js": `import "@be-yours/core/should-not-be-seen"`,
+      ".next/server/chunk.js": `import "@be-yours/cms/also-not"`,
+      "README.md": `import "@be-yours/ui/nor-this"`,
     })
 
     const found = engineImportsIn(root)
     expect([...found.keys()].sort()).toEqual([
-      "@be-in-digital/admin",
-      "@be-in-digital/marketing",
+      "@be-yours/admin",
+      "@be-yours/marketing",
     ])
   })
 })
@@ -220,7 +220,7 @@ describe("resolving a subpath against a published exports map", () => {
 describe("reading the published exports from the tarball", () => {
   test("a strict map is read back exactly as the manifest declares it", () => {
     const tarball = packFixture({
-      name: "@be-in-digital/fixture-strict",
+      name: "@be-yours/fixture-strict",
       exports: { ".": "./index.js", "./game": "./game.js", "./aws/*": "./aws/*.js" },
     })
     expect(tarballContents(tarball).exports).toEqual({
@@ -237,7 +237,7 @@ describe("reading the published exports from the tarball", () => {
    * distinguishable from a lookup that failed.
    */
   test("a manifest with no exports field reads as undefined, the legacy shape", () => {
-    const tarball = packFixture({ name: "@be-in-digital/fixture-legacy" })
+    const tarball = packFixture({ name: "@be-yours/fixture-legacy" })
     expect(tarballContents(tarball).exports).toBeUndefined()
     expect(exportsResolve(tarballContents(tarball).exports, "./anything")).toBe(true)
   })
@@ -254,7 +254,7 @@ describe("reading the published exports from the tarball", () => {
 describe("reading what the tarball ships", () => {
   test("the file list is the archive's own, package-relative, files only", () => {
     const tarball = packFixture({
-      name: "@be-in-digital/fixture-files",
+      name: "@be-yours/fixture-files",
       exports: { ".": "./dist/index.js" },
     })
 
@@ -279,7 +279,7 @@ describe("reading what the tarball ships", () => {
   test("a path too long for the ustar header is read back whole", () => {
     const long = `./dist/${"a".repeat(120)}.js`
     const tarball = packFixture({
-      name: "@be-in-digital/fixture-long",
+      name: "@be-yours/fixture-long",
       exports: { "./long": long },
     })
 
@@ -297,33 +297,33 @@ describe("reading what the tarball ships", () => {
  * `next build` dies one step further along on ERR_MODULE_NOT_FOUND — the same
  * broken delivery the map half exists to stop.
  *
- * Recorded twice: `@be-in-digital/restaurant` c1af162 ("The build only bundled
+ * Recorded twice: `@be-yours/restaurant` c1af162 ("The build only bundled
  * `src/index.ts`, so those three `exports` entries pointed at files that never
  * existed — in the workspace and in the published tarball alike") and
- * `@be-in-digital/core`, whose `./auth/rbac` pointed at `src/auth/rbac.ts`
+ * `@be-yours/core`, whose `./auth/rbac` pointed at `src/auth/rbac.ts`
  * while the tarball shipped only `dist/`.
  */
 describe("a subpath declared but not shipped", () => {
   test("the missing file is named, and told apart from a missing release", () => {
     const root = tree({
-      "app/page.tsx": `import { useStore } from "@be-in-digital/fixture/stores"`,
+      "app/page.tsx": `import { useStore } from "@be-yours/fixture/stores"`,
     })
     const tarball = packFixture(
       {
-        name: "@be-in-digital/fixture",
+        name: "@be-yours/fixture",
         exports: { ".": "./dist/index.js", "./stores": "./dist/stores.js" },
       },
       { omit: ["./dist/stores.js"] },
     )
 
     const published = {
-      "@be-in-digital/fixture": { version: "6.0.0", ...tarballContents(tarball) },
+      "@be-yours/fixture": { version: "6.0.0", ...tarballContents(tarball) },
     }
     const problems = unresolvableImports(engineImportsIn(root), published)
 
     expect(problems).toEqual([
       {
-        pkg: "@be-in-digital/fixture",
+        pkg: "@be-yours/fixture",
         subpath: "./stores",
         version: "6.0.0",
         reason: "declared but not shipped",
@@ -357,7 +357,7 @@ describe("a subpath declared but not shipped", () => {
     const unbuilt = ["stores", "services", "hooks"]
     const tarball = packFixture(
       {
-        name: "@be-in-digital/restaurant",
+        name: "@be-yours/restaurant",
         exports: {
           ".": {
             types: "./dist/index.d.ts",
@@ -374,9 +374,9 @@ describe("a subpath declared but not shipped", () => {
 
     const problems = unresolvableImports(
       new Map([
-        ["@be-in-digital/restaurant", new Set([".", "./stores", "./services", "./hooks"])],
+        ["@be-yours/restaurant", new Set([".", "./stores", "./services", "./hooks"])],
       ]),
-      { "@be-in-digital/restaurant": { version: "6.0.0", ...tarballContents(tarball) } },
+      { "@be-yours/restaurant": { version: "6.0.0", ...tarballContents(tarball) } },
     )
 
     expect(problems.map((p) => p.subpath).sort()).toEqual(["./hooks", "./services", "./stores"])
@@ -398,7 +398,7 @@ describe("a subpath declared but not shipped", () => {
    */
   test("an entry with one leaf shipped is left alone; with none, both are named", () => {
     const manifest = {
-      name: "@be-in-digital/fixture",
+      name: "@be-yours/fixture",
       exports: { "./x": { types: "./dist/x.d.ts", import: "./dist/x.mjs" } },
     }
 
@@ -422,7 +422,7 @@ describe("a subpath declared but not shipped", () => {
    */
   test("a wildcard target is expanded against the import that matched it", () => {
     const tarball = packFixture(
-      { name: "@be-in-digital/fixture", exports: { "./aws/*": "./src/aws/*.ts" } },
+      { name: "@be-yours/fixture", exports: { "./aws/*": "./src/aws/*.ts" } },
       { ship: ["./src/aws/folders.ts"] },
     )
 
@@ -477,13 +477,13 @@ describe("a subpath declared but not shipped", () => {
   test("a mixed report keeps the build remedy apart from the release remedy", () => {
     const message = describeUnresolvable([
       {
-        pkg: "@be-in-digital/admin",
+        pkg: "@be-yours/admin",
         subpath: "./game",
         version: "8.0.0",
         reason: "not exported by the published version",
       },
       {
-        pkg: "@be-in-digital/restaurant",
+        pkg: "@be-yours/restaurant",
         subpath: "./stores",
         version: "6.0.0",
         reason: "declared but not shipped",
@@ -491,9 +491,9 @@ describe("a subpath declared but not shipped", () => {
       },
     ])
 
-    expect(message).toContain("@be-in-digital/admin@8.0.0 does not export ./game")
+    expect(message).toContain("@be-yours/admin@8.0.0 does not export ./game")
     expect(message).toContain("releasing the engine")
-    expect(message).toContain("@be-in-digital/restaurant@6.0.0 declares ./stores")
+    expect(message).toContain("@be-yours/restaurant@6.0.0 declares ./stores")
     expect(message).toContain("the BUILD is")
   })
 })
@@ -507,17 +507,17 @@ describe("a lookup that failed stops the sync", () => {
    * as "anything resolves" is exactly how the gate was a no-op (#380).
    */
   test("a package whose tarball could not be read is flagged, once", () => {
-    const imports = new Map([["@be-in-digital/core", new Set([".", "./sentry", "./env"])]])
+    const imports = new Map([["@be-yours/core", new Set([".", "./sentry", "./env"])]])
     const published = {
-      "@be-in-digital/core": { version: "2.4.0", exports: EXPORTS_UNKNOWN },
+      "@be-yours/core": { version: "2.4.0", exports: EXPORTS_UNKNOWN },
     }
 
     const problems = unresolvableImports(imports, published)
     expect(problems).toHaveLength(1)
-    expect(problems[0]).toMatchObject({ pkg: "@be-in-digital/core", version: "2.4.0" })
+    expect(problems[0]).toMatchObject({ pkg: "@be-yours/core", version: "2.4.0" })
 
     const message = describeUnresolvable(problems)
-    expect(message).toContain("@be-in-digital/core@2.4.0")
+    expect(message).toContain("@be-yours/core@2.4.0")
     expect(message).toContain("could not be read")
     expect(message).toContain("NODE_AUTH_TOKEN")
     expect(message).not.toContain("releasing the engine")
@@ -525,16 +525,16 @@ describe("a lookup that failed stops the sync", () => {
 
   test("a mixed report keeps both remedies apart", () => {
     const imports = new Map([
-      ["@be-in-digital/admin", new Set(["./game"])],
-      ["@be-in-digital/core", new Set(["."])],
+      ["@be-yours/admin", new Set(["./game"])],
+      ["@be-yours/core", new Set(["."])],
     ])
     const published = {
-      "@be-in-digital/admin": { version: "8.0.0", exports: { ".": "./dist/index.js" } },
-      "@be-in-digital/core": { version: "2.4.0", exports: EXPORTS_UNKNOWN },
+      "@be-yours/admin": { version: "8.0.0", exports: { ".": "./dist/index.js" } },
+      "@be-yours/core": { version: "2.4.0", exports: EXPORTS_UNKNOWN },
     }
 
     const message = describeUnresolvable(unresolvableImports(imports, published))
-    expect(message).toContain("@be-in-digital/admin@8.0.0 does not export ./game")
+    expect(message).toContain("@be-yours/admin@8.0.0 does not export ./game")
     expect(message).toContain("releasing the engine")
     expect(message).toContain("could not be read")
   })
@@ -548,10 +548,10 @@ describe("the defect this exists for", () => {
    */
   test("a subpath added without a version bump is caught", () => {
     const imports = new Map([
-      ["@be-in-digital/convex-functions", new Set([".", "./orders", "./sesSending"])],
+      ["@be-yours/convex-functions", new Set([".", "./orders", "./sesSending"])],
     ])
     const published = {
-      "@be-in-digital/convex-functions": {
+      "@be-yours/convex-functions": {
         version: "3.0.0",
         exports: { ".": "./dist/index.js", "./orders": "./dist/orders.js" },
       },
@@ -559,7 +559,7 @@ describe("the defect this exists for", () => {
 
     expect(unresolvableImports(imports, published)).toEqual([
       {
-        pkg: "@be-in-digital/convex-functions",
+        pkg: "@be-yours/convex-functions",
         subpath: "./sesSending",
         version: "3.0.0",
         reason: "not exported by the published version",
@@ -568,9 +568,9 @@ describe("the defect this exists for", () => {
   })
 
   test("a tree the pinned versions do resolve raises nothing", () => {
-    const imports = new Map([["@be-in-digital/core", new Set([".", "./sentry"])]])
+    const imports = new Map([["@be-yours/core", new Set([".", "./sentry"])]])
     const published = {
-      "@be-in-digital/core": {
+      "@be-yours/core": {
         version: "2.4.0",
         exports: { ".": "./dist/index.js", "./sentry": "./dist/sentry/index.js" },
       },
@@ -585,11 +585,11 @@ describe("the defect this exists for", () => {
    * how this class of defect stayed invisible in the first place.
    */
   test("a package that is not published at all is reported, not skipped", () => {
-    const imports = new Map([["@be-in-digital/brand-new", new Set(["."])]])
+    const imports = new Map([["@be-yours/brand-new", new Set(["."])]])
 
     expect(unresolvableImports(imports, {})).toEqual([
       {
-        pkg: "@be-in-digital/brand-new",
+        pkg: "@be-yours/brand-new",
         subpath: "*",
         version: null,
         reason: "not published",
@@ -606,14 +606,14 @@ describe("the defect this exists for", () => {
   test("the failure says what to do about it", () => {
     const message = describeUnresolvable([
       {
-        pkg: "@be-in-digital/admin",
+        pkg: "@be-yours/admin",
         subpath: "./game",
         version: "8.0.0",
         reason: "not exported by the published version",
       },
     ])
 
-    expect(message).toContain("@be-in-digital/admin@8.0.0 does not export ./game")
+    expect(message).toContain("@be-yours/admin@8.0.0 does not export ./game")
     expect(message).toContain("ERR_PACKAGE_PATH_NOT_EXPORTED")
     expect(message).toContain("changeset")
     expect(message).toContain("Do not work")
@@ -628,20 +628,20 @@ describe("the defect this exists for", () => {
 describe("the real resolution path, against a fixture tarball", () => {
   test("a subpath the tarball lacks is caught, from source file to report", () => {
     const root = tree({
-      "app/game.tsx": `import { GamePlayerFlow } from "@be-in-digital/fixture/game"`,
-      "app/page.tsx": `import { Button } from "@be-in-digital/fixture"`,
+      "app/game.tsx": `import { GamePlayerFlow } from "@be-yours/fixture/game"`,
+      "app/page.tsx": `import { Button } from "@be-yours/fixture"`,
     })
     const tarball = packFixture({
-      name: "@be-in-digital/fixture",
+      name: "@be-yours/fixture",
       exports: { ".": "./index.js" },
     })
 
     const published = {
-      "@be-in-digital/fixture": { version: "1.0.0", ...tarballContents(tarball) },
+      "@be-yours/fixture": { version: "1.0.0", ...tarballContents(tarball) },
     }
     expect(unresolvableImports(engineImportsIn(root), published)).toEqual([
       {
-        pkg: "@be-in-digital/fixture",
+        pkg: "@be-yours/fixture",
         subpath: "./game",
         version: "1.0.0",
         reason: "not exported by the published version",
@@ -652,20 +652,20 @@ describe("the real resolution path, against a fixture tarball", () => {
   /**
    * The 2026-09 incident itself, kept reproducible: the REAL imports of the
    * shipped template, against a tarball whose manifest carries the `exports`
-   * map the registry actually served for `@be-in-digital/admin@8.0.0` — seven
+   * map the registry actually served for `@be-yours/admin@8.0.0` — seven
    * keys, no `./game` — measured in #380 by `npm pack`. `GameContent.tsx`
-   * imports `@be-in-digital/admin/game`, so the gate must go red on this
+   * imports `@be-yours/admin/game`, so the gate must go red on this
    * state; through `npm view` it flagged nothing, and every clone of the
    * boilerplate died at `next build`. The release deletes this state from the
    * registry; this fixture keeps it answerable here.
    */
   test("the template's real imports go red against the published admin@8.0.0 map", () => {
     const imports = engineImportsIn(path.join(REPO_ROOT, "apps/themes"))
-    const adminImports = imports.get("@be-in-digital/admin")
-    expect(adminImports, "apps/themes no longer imports @be-in-digital/admin — update this replay").toBeDefined()
+    const adminImports = imports.get("@be-yours/admin")
+    expect(adminImports, "apps/themes no longer imports @be-yours/admin — update this replay").toBeDefined()
 
     const publishedAdmin = packFixture({
-      name: "@be-in-digital/admin",
+      name: "@be-yours/admin",
       exports: {
         ".": "./dist/index.js",
         "./components": "./dist/components/index.js",
@@ -677,12 +677,12 @@ describe("the real resolution path, against a fixture tarball", () => {
       },
     })
     const problems = unresolvableImports(
-      new Map([["@be-in-digital/admin", adminImports as Set<string>]]),
-      { "@be-in-digital/admin": { version: "8.0.0", ...tarballContents(publishedAdmin) } },
+      new Map([["@be-yours/admin", adminImports as Set<string>]]),
+      { "@be-yours/admin": { version: "8.0.0", ...tarballContents(publishedAdmin) } },
     )
 
     expect(problems).toContainEqual({
-      pkg: "@be-in-digital/admin",
+      pkg: "@be-yours/admin",
       subpath: "./game",
       version: "8.0.0",
       reason: "not exported by the published version",
@@ -690,7 +690,7 @@ describe("the real resolution path, against a fixture tarball", () => {
   })
 
   /**
-   * The `@be-in-digital/core` occurrence, replayed against its REAL exports
+   * The `@be-yours/core` occurrence, replayed against its REAL exports
    * map: `./auth/rbac` pointed at `src/auth/rbac.ts` while the tarball shipped
    * only `dist/`, so the subpath resolved in the map and no file answered it
    * (`packages/core/CHANGELOG.md`). The map is read from the package rather
@@ -715,21 +715,21 @@ describe("the real resolution path, against a fixture tarball", () => {
     ).not.toHaveLength(0)
 
     const tarball = packFixture(
-      { name: "@be-in-digital/core", exports: manifest.exports },
+      { name: "@be-yours/core", exports: manifest.exports },
       { omit: intoSrc },
     )
     const imported = engineImportsIn(path.join(REPO_ROOT, "apps/themes")).get(
-      "@be-in-digital/core",
+      "@be-yours/core",
     )
-    expect(imported, "apps/themes no longer imports @be-in-digital/core").toBeDefined()
+    expect(imported, "apps/themes no longer imports @be-yours/core").toBeDefined()
 
     const problems = unresolvableImports(
-      new Map([["@be-in-digital/core", imported as Set<string>]]),
-      { "@be-in-digital/core": { version: manifest.version, ...tarballContents(tarball) } },
+      new Map([["@be-yours/core", imported as Set<string>]]),
+      { "@be-yours/core": { version: manifest.version, ...tarballContents(tarball) } },
     )
 
     expect(problems).toContainEqual({
-      pkg: "@be-in-digital/core",
+      pkg: "@be-yours/core",
       subpath: "./auth/rbac",
       version: manifest.version,
       reason: "declared but not shipped",
@@ -761,7 +761,7 @@ describe("the real resolution path, against a fixture tarball", () => {
     for (const pkg of imports.keys()) {
       const manifest = JSON.parse(
         fs.readFileSync(
-          path.join(REPO_ROOT, "packages", pkg.slice("@be-in-digital/".length), "package.json"),
+          path.join(REPO_ROOT, "packages", pkg.slice("@be-yours/".length), "package.json"),
           "utf8",
         ),
       ) as { version: string; exports?: unknown }
@@ -892,7 +892,7 @@ describe("the publisher runs the guard", () => {
 describe("describeUnresolvable names the missing half", () => {
   const behind = [
     {
-      pkg: "@be-in-digital/ui",
+      pkg: "@be-yours/ui",
       subpath: "./contrast",
       version: "3.1.0",
       reason: "not exported by the published version",
@@ -913,7 +913,7 @@ describe("describeUnresolvable names the missing half", () => {
 
   test("with the changeset already written, it asks for the version bump", () => {
     const message = describeUnresolvable(behind, {
-      covered: new Set(["@be-in-digital/ui"]),
+      covered: new Set(["@be-yours/ui"]),
     })
 
     expect(message).toContain("VERSION BUMP")
@@ -928,16 +928,16 @@ describe("describeUnresolvable names the missing half", () => {
       [
         ...behind,
         {
-          pkg: "@be-in-digital/convex-functions",
+          pkg: "@be-yours/convex-functions",
           subpath: "./paymentLedger",
           version: "5.0.0",
           reason: "not exported by the published version",
         },
       ],
-      { covered: new Set(["@be-in-digital/ui"]) },
+      { covered: new Set(["@be-yours/ui"]) },
     )
 
-    expect(message).toContain("already waiting for @be-in-digital/ui")
+    expect(message).toContain("already waiting for @be-yours/ui")
     expect(message).toContain("For the rest, add a changeset")
   })
 
@@ -945,7 +945,7 @@ describe("describeUnresolvable names the missing half", () => {
     // The one line that has to survive every branch: the reflex fix is to
     // delete the import, and that ships a client a template missing the
     // feature rather than a template that builds.
-    for (const covered of [new Set<string>(), new Set(["@be-in-digital/ui"])]) {
+    for (const covered of [new Set<string>(), new Set(["@be-yours/ui"])]) {
       expect(describeUnresolvable(behind, { covered })).toContain(
         "Do not work around it by removing the import",
       )

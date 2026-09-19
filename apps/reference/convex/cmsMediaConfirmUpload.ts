@@ -28,8 +28,8 @@ import {
   getExtensionFromMimeType,
   inspectSvgForActiveContent,
   validateMediaUpload,
-} from "@be-in-digital/cms"
-import { buildMediaUrl } from "@be-in-digital/core/aws/media-url"
+} from "@be-yours/cms"
+import { buildMediaUrl } from "@be-yours/core/aws/media-url"
 
 const SVG_MIME = "image/svg+xml"
 
@@ -45,7 +45,7 @@ function createS3Client() {
 
 /**
  * The bucket is private: a key becomes either a CDN URL or a path on this
- * app's own `/api/files` proxy. One policy, in `@be-in-digital/core`.
+ * app's own `/api/files` proxy. One policy, in `@be-yours/core`.
  */
 function buildPublicUrl(key: string): string {
   return buildMediaUrl(key, process.env.AWS_S3_PUBLIC_BASE_URL)

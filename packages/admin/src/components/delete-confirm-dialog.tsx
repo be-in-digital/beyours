@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   Button,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { AlertTriangle } from "lucide-react"
 
 interface DeleteConfirmDialogProps {

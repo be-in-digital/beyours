@@ -16,7 +16,7 @@ import {
   Loader2,
   AlertTriangle,
 } from "lucide-react"
-import { Button, Input, Label, Skeleton } from "@be-in-digital/ui"
+import { Button, Input, Label, Skeleton } from "@be-yours/ui"
 
 function ResetPasswordSkeleton() {
   return (

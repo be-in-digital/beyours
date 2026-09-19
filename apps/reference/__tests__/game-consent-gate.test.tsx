@@ -14,8 +14,8 @@ import type React from "react"
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, describe, expect, test, vi } from "vitest"
-import { WelcomeScreen } from "@be-in-digital/admin/game"
-import { gameConsentNotice } from "@be-in-digital/admin/game"
+import { WelcomeScreen } from "@be-yours/admin/game"
+import { gameConsentNotice } from "@be-yours/admin/game"
 
 ;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

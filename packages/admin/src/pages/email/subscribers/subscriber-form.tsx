@@ -11,7 +11,7 @@ import {
   Input,
   Label,
   DialogFooter,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
 

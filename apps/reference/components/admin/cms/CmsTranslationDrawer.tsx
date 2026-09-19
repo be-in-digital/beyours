@@ -12,8 +12,8 @@ import {
   Label,
   Badge,
   Textarea,
-} from "@be-in-digital/ui"
-import type { FieldDefinition } from "@be-in-digital/cms"
+} from "@be-yours/ui"
+import type { FieldDefinition } from "@be-yours/cms"
 
 interface TranslationEntry {
   value: string
@@ -30,7 +30,28 @@ interface CmsTranslationDrawerProps {
 }
 
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim()
+  // TWO passes and a tail, because `replace(/<[^>]*>/g, "")` on its own is not
+  // tag removal — it is tag removal once, over well-formed tags only.
+  //
+  //   `<scr<x>ipt>`   removing the inner match splices its neighbours back
+  //                   together, so a second pass is needed to see the result
+  //   `<script src=x` never matches the pattern AT ALL — there is no closing
+  //                   `>` — so the single-pass form hands back, untouched, the
+  //                   exact string it was asked to remove
+  //
+  // The loop settles the first. The tail settles the second: after the loop no
+  // `<` can have a `>` anywhere after it (the loop would have eaten that pair),
+  // so every surviving `<` opens a tag that never closed and the rest of the
+  // string belongs to it. The input is Tiptap's own HTML, where a literal `<`
+  // is always `&lt;`, so nothing legitimate is lost.
+  let previous: string
+  let current = html
+  do {
+    previous = current
+    current = current.replace(/<[^>]*>/g, "")
+  } while (current !== previous)
+
+  return current.replace(/<[^>]*$/, "").trim()
 }
 
 export function CmsTranslationDrawer({

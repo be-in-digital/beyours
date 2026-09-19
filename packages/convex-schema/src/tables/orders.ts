@@ -87,7 +87,7 @@ export const ordersTable = defineTable({
    *
    * A label rather than a number — dining rooms use `A3` and `Terrasse 4` as
    * readily as `12`. Same representation as `gameQRCodes.tableNumber`; see
-   * `@be-in-digital/core/dining` for why they are not the same field.
+   * `@be-yours/core/dining` for why they are not the same field.
    */
   tableNumber: v.optional(v.string()),
   status: v.union(
@@ -138,7 +138,7 @@ export const ordersTable = defineTable({
      *
      * Each row's `subtotal` is that dish's SHARE of the bundle price, split pro
      * rata on à-la-carte value; see `allocateBundlePrice` in
-     * `@be-in-digital/convex-functions/menuLine`. The shares sum to exactly the
+     * `@be-yours/convex-functions/menuLine`. The shares sum to exactly the
      * formule's price, so nothing downstream needs to know a formule was
      * involved to get the money right.
      *

@@ -16,7 +16,7 @@ const providerValidator = v.union(
 
 /**
  * Connection status validator — must stay equal to the `status` union in
- * `@be-in-digital/convex-schema` (`tables/paymentConnections.ts`), which
+ * `@be-yours/convex-schema` (`tables/paymentConnections.ts`), which
  * documents what each value means.
  *
  * `onboarding_complete` says the provider account exists and onboarding

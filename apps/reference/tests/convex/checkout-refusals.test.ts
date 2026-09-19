@@ -32,7 +32,7 @@ import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"
 import { convexErrorMessage, convexErrorPayload } from "../../lib/convex-error"
-import { updateStatus as updateStatusDef } from "@be-in-digital/convex-functions/orders"
+import { updateStatus as updateStatusDef } from "@be-yours/convex-functions/orders"
 
 /** Advance an order without going through the permissioned wrapper. */
 const internalUpdateStatus = (

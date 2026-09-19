@@ -25,7 +25,7 @@ The email marketing system provides a complete solution:
 ## Setup
 
 ```bash
-pnpm add @be-in-digital/marketing @be-in-digital/core
+pnpm add @be-yours/marketing @be-yours/core
 ```
 
 ### AWS SES Configuration
@@ -44,7 +44,7 @@ AWS_SES_FROM_EMAIL=newsletter@yourdomain.com
 The `EmailDashboardPage` provides a full campaign management UI:
 
 ```tsx
-import { EmailDashboardPage } from "@be-in-digital/admin/pages";
+import { EmailDashboardPage } from "@be-yours/admin/pages";
 
 export default function EmailAdmin() {
   return <EmailDashboardPage />;
@@ -54,8 +54,8 @@ export default function EmailAdmin() {
 ### Programmatic
 
 ```typescript
-import { renderTemplateToEmailHtml, validateCampaign } from "@be-in-digital/marketing";
-import { getSESService } from "@be-in-digital/core";
+import { renderTemplateToEmailHtml, validateCampaign } from "@be-yours/marketing";
+import { getSESService } from "@be-yours/core";
 
 // 1. Build email content
 const html = renderTemplateToEmailHtml({
@@ -102,8 +102,8 @@ for (const subscriber of subscribers) {
 ### Double Opt-In
 
 ```typescript
-import { generateDoubleOptInToken } from "@be-in-digital/marketing";
-import { getSESService } from "@be-in-digital/core";
+import { generateDoubleOptInToken } from "@be-yours/marketing";
+import { getSESService } from "@be-yours/core";
 
 // 1. Customer signs up
 const token = generateDoubleOptInToken(email);
@@ -127,7 +127,7 @@ export async function GET(req: Request) {
 ### CSV Import
 
 ```typescript
-import { parseSubscriberCsv } from "@be-in-digital/marketing";
+import { parseSubscriberCsv } from "@be-yours/marketing";
 
 const subscribers = parseSubscriberCsv(csvContent);
 // Validates emails, deduplicates, normalizes
@@ -139,7 +139,7 @@ const subscribers = parseSubscriberCsv(csvContent);
 Target specific subscriber groups:
 
 ```typescript
-import { buildSegmentFilter } from "@be-in-digital/marketing";
+import { buildSegmentFilter } from "@be-yours/marketing";
 
 // VIP customers who ordered recently
 const filter = buildSegmentFilter({
@@ -165,7 +165,7 @@ const filter = buildSegmentFilter({
 ## Analytics
 
 ```typescript
-import { computeStatRates } from "@be-in-digital/marketing";
+import { computeStatRates } from "@be-yours/marketing";
 
 const stats = computeStatRates({
   sent: 1000,

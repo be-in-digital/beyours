@@ -10,8 +10,8 @@
  */
 
 import { useMemo } from 'react'
-import { localizeDocument, localizeDocuments } from '@be-in-digital/core'
-import type { TranslatorFunction, TranslatableDocument } from '@be-in-digital/core'
+import { localizeDocument, localizeDocuments } from '@be-yours/core'
+import type { TranslatorFunction, TranslatableDocument } from '@be-yours/core'
 import { useLanguageStore, buildTranslator } from '../stores/language'
 
 export interface UseTranslationResult {

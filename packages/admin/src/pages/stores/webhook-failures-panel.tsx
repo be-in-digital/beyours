@@ -38,7 +38,7 @@ import {
   CardHeader,
   CardTitle,
   Skeleton,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { convexErrorMessage } from "../../lib/convex-error"
 import { formatDate } from "../../lib/formatters"

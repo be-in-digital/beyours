@@ -36,8 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DynamicFavicon` client component for runtime favicon injection from CMS
 
 #### MCP Server & Documentation
-- 6 new exports registered in MCP server for `@be-in-digital/core` (env schemas, getters, validation)
-- 5 new exports registered for `@be-in-digital/admin` (AppSidebar, StoreSelector, StoreGuard, pages)
+- 6 new exports registered in MCP server for `@be-yours/core` (env schemas, getters, validation)
+- 5 new exports registered for `@be-yours/admin` (AppSidebar, StoreSelector, StoreGuard, pages)
 - Updated documentation: `core.md`, `admin.md`, `environment-variables.md`, `multi-store.md`, `cms-content.md`
 
 - **Auto Blog Engine**: AI-powered blog article generation using GPT-4o-mini with SEO optimization

@@ -11,7 +11,7 @@ import {
   Button,
   Badge,
   Separator,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { cn } from "@/lib/utils"
 
 export type BillingInterval = "monthly" | "annual"

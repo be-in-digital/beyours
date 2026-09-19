@@ -611,7 +611,7 @@ A 50,000-ticket dataset degrades neither the KDS nor the completed tab.
 ## P0-14 · Uber cancellation and scheduled-order webhooks match names Uber never sends — **RESOLVED**
 **List:** P0 blockers · **Priority:** urgent · **Parent:** #103
 
-> **Resolved 2026-09-04.** `classifyUberEvent` (in `@be-in-digital/convex-functions/platformWebhook`,
+> **Resolved 2026-09-04.** `classifyUberEvent` (in `@be-yours/convex-functions/platformWebhook`,
 > so both apps render from one copy) normalises the `.notification` suffix and matches Uber's
 > real catalogue. The `eats.order.status_update` branch and its status map are deleted. One
 > test per real event, asserting the database effect rather than the HTTP code — and a
@@ -728,7 +728,7 @@ Second bug on the same path: `:83` reads `result?.imported`, while `importBatch`
 returns `{ inserted, skipped }`.
 
 **Fix.** In `handleImport`: generate a token per row with
-`generateDoubleOptInToken()` (already exported from `@be-in-digital/marketing`), drop
+`generateDoubleOptInToken()` (already exported from `@be-yours/marketing`), drop
 `source` and `storeId` from the row objects, pass `consentSource`, and read
 `result.inserted`.
 
@@ -1454,7 +1454,7 @@ was proven red against the unfixed code.
   backoff with jitter honouring `Retry-After`; Deliveroo's token cache never hit at all,
   because it demanded 5 minutes of life from a 300-second token.
 - [x] **Sandbox flags default to production, read in 20 files.** Measured: **37 read sites
-  across 25 files**, not 20. Centralised in `@be-in-digital/core/env`.
+  across 25 files**, not 20. Centralised in `@be-yours/core/env`.
 - [x] **Deliveroo failures are acknowledged as 200.** The handler now returns 500 when
   processing genuinely failed so Deliveroo retries, and keeps 200 for duplicates and
   unhandled events, which must never be retried. An unclassified failure fails safe toward
@@ -1833,7 +1833,7 @@ was proven red against the unfixed code.
   → add `convex-test` + `@edge-runtime/vm` and copy `tests/convex/`.
 - [ ] **6,449 lines of dead admin components ship to every client.**
   39 files under `apps/themes/components/admin/{dashboard,design,games,orders,payments,products,settings,stores,team}/`,
-  with **zero importers** — the pages import from `@be-in-digital/admin`. An integrator
+  with **zero importers** — the pages import from `@be-yours/admin`. An integrator
   customising the orders table edits a file with no effect.
 - [ ] **French accents stripped across the shipped admin.** 188 accented characters in
   `reference` versus 53 in `themes`, on visible strings: "Commande prete",
@@ -1845,7 +1845,7 @@ was proven red against the unfixed code.
   optimizer returns 400 on the hero and on every product without a photo.
   `apps/reference` was already fixed — drift in the wrong direction.
 - [ ] **The update check can never report a release.** `system.ts:352-356` fetches
-  `registry.npmjs.org/@be-in-digital/restaurant-theme`, a package that does not exist
+  `registry.npmjs.org/@be-yours/restaurant-theme`, a package that does not exist
   (everything is on GitHub Packages). The catalogue stays empty, so a lapsed maintenance
   contract is never enforced and a real update is never announced. The file's own
   `TODO(beyours)` says so.
@@ -1920,7 +1920,7 @@ Mandatory order, unchanged: regenerate in the Deliveroo portal → propagate
 `tasks/secret-rotation-runbook.md` (history rewrite).
 
 Cost of the rewrite, re-measured 2026-09-09 on a full (un-shallowed) clone: **472 commits on
-`main`, 72 remote branches, 75 tags** — 63 of the tags being the `@be-in-digital/*` release
+`main`, 72 remote branches, 75 tags** — 63 of the tags being the `@be-yours/*` release
 anchors. That is up from the 393 / 8 / 59-of-60 recorded on 4 Sep, and it grows every week the
 decision waits. The blocker that deferred it last time has mostly expired: **2 open PRs**
 (#420, #421 — both drafts opened 2026-09-09), down from 14. A draft PR's SHAs are invalidated
@@ -2077,7 +2077,7 @@ a filter over past payments that can never match is not an announcement — whil
 the badge map stays, so a legacy row would still render.
 
 **Not closed by this card:** `apps/docs/guides/payments.md` imports seven
-functions from `@be-in-digital/core`, and `packages/core/src` has no `payments/`
+functions from `@be-yours/core`, and `packages/core/src` has no `payments/`
 directory — every one is module-not-found, Square's and the four real providers'
 alike. A warning now sits at the top of that guide; rewriting it is #330
 NEW2-SOLD-3, not this card.

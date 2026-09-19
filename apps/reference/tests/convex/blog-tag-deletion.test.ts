@@ -27,7 +27,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { convexTest } from "convex-test"
 import { describe, expect, test } from "vitest"
-import { deleteTag as deleteTagCore } from "@be-in-digital/convex-functions/blog"
+import { deleteTag as deleteTagCore } from "@be-yours/convex-functions/blog"
 import schema from "../../convex/schema"
 import type { Id } from "../../convex/_generated/dataModel"
 

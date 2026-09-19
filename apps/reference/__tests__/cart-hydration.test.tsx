@@ -37,7 +37,7 @@ const ITEMS = [
 ]
 let items: typeof ITEMS = []
 
-vi.mock("@be-in-digital/restaurant", () => ({
+vi.mock("@be-yours/restaurant", () => ({
   useCartHydrated: () => hydrated,
   useCartStore: (selector: (s: Record<string, unknown>) => unknown) =>
     selector({

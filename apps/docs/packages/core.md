@@ -1,4 +1,4 @@
-# @be-in-digital/core
+# @be-yours/core
 
 > Authentication, RBAC, internationalization, AWS services and environment
 > validation — the foundation layer.
@@ -18,7 +18,7 @@ The source is exactly five directories: `auth/`, `aws/`, `env/`, `i18n/`,
 ## Installation
 
 ```bash
-pnpm add @be-in-digital/core
+pnpm add @be-yours/core
 ```
 
 ## Authentication
@@ -40,7 +40,7 @@ Built on **Better Auth** + Convex.
 ### Setup
 
 ```typescript
-import { Role, hasPermission } from "@be-in-digital/core/auth/rbac";
+import { Role, hasPermission } from "@be-yours/core/auth/rbac";
 ```
 
 **There is no auth configuration in this package.** `createAuthConfig` was
@@ -73,8 +73,8 @@ The constant is `DEFAULT_I18N_CONFIG`; `I18nConfig` is the type it satisfies.
 There is no `i18nConfig` export, and no `TranslationProvider`:
 
 ```typescript
-import { DEFAULT_I18N_CONFIG, COMMON_LANGUAGES } from "@be-in-digital/core";
-import type { I18nConfig, I18nProviderComponent, I18nProviderProps } from "@be-in-digital/core";
+import { DEFAULT_I18N_CONFIG, COMMON_LANGUAGES } from "@be-yours/core";
+import type { I18nConfig, I18nProviderComponent, I18nProviderProps } from "@be-yours/core";
 ```
 
 `I18nProviderComponent` and `I18nProviderProps` are **types**. The provider
@@ -84,11 +84,11 @@ provider.
 
 ### useTranslation Hook
 
-Same story: `@be-in-digital/core` exports the type `UseTranslation`, and the
-running hook lives in `@be-in-digital/restaurant`, on top of the language store.
+Same story: `@be-yours/core` exports the type `UseTranslation`, and the
+running hook lives in `@be-yours/restaurant`, on top of the language store.
 
 ```typescript
-import { useTranslation } from "@be-in-digital/restaurant";
+import { useTranslation } from "@be-yours/restaurant";
 
 function ProductCard({ product }) {
   const { t, locale, defaultLocale, isReady } = useTranslation();
@@ -112,7 +112,7 @@ reads no environment — the HTTP client and the key are injected, which is what
 keeps the package loadable from the Convex runtime.
 
 ```typescript
-import { translateText, batchTranslate, estimateTranslationCost } from "@be-in-digital/core";
+import { translateText, batchTranslate, estimateTranslationCost } from "@be-yours/core";
 
 // Single translation
 const translated = await translateText(
@@ -149,7 +149,7 @@ import {
   detectLocale,              // walks the whole priority chain
   resolveRequestLocale,      // the store's active languages are the allow-list
   setLocale,                 // writes cookie + localStorage together
-} from "@be-in-digital/core";
+} from "@be-yours/core";
 
 const currentLocale = getLocaleFromLocalStorage(); // "fr" | null
 setLocale("en");
@@ -166,9 +166,9 @@ The payment code is Convex:
 
 | What | Where |
 |------|-------|
-| Query/mutation definitions (`settlePayment`, `reserveRefund`, …) | `@be-in-digital/convex-functions/payments` |
-| Refund decisions (`planRefund`, `routeRefund`) | `@be-in-digital/convex-functions/refundPolicy` |
-| Settlement binding (`assertSettlesOrder`) | `@be-in-digital/convex-functions/paymentSettlement` |
+| Query/mutation definitions (`settlePayment`, `reserveRefund`, …) | `@be-yours/convex-functions/payments` |
+| Refund decisions (`planRefund`, `routeRefund`) | `@be-yours/convex-functions/refundPolicy` |
+| Settlement binding (`assertSettlesOrder`) | `@be-yours/convex-functions/paymentSettlement` |
 | Provider SDK calls and webhooks | each app's `convex/stripe.ts`, `sumup.ts`, `paypal.ts`, `stripeWebhook.ts` |
 
 Square is announced but **not implemented** — no code reads a Square credential,
@@ -204,8 +204,8 @@ the Convex runtime, and injecting the client is what makes it testable
 `createS3Service` and use the returned instance.
 
 ```typescript
-import { createS3Service, S3_FOLDERS } from "@be-in-digital/core";
-import type { S3Operations } from "@be-in-digital/core";
+import { createS3Service, S3_FOLDERS } from "@be-yours/core";
+import type { S3Operations } from "@be-yours/core";
 
 declare const client: S3Operations; // your adapter over @aws-sdk/client-s3
 const s3 = createS3Service(config, client);
@@ -224,7 +224,7 @@ const download = await s3.getPresignedDownloadUrl(key);
 await s3.delete(key);
 ```
 
-**S3 folders** are the allow-list in `@be-in-digital/core/aws/folders`. It is the
+**S3 folders** are the allow-list in `@be-yours/core/aws/folders`. It is the
 single source of truth: the `/api/files` proxy serves a folder only if it appears
 here, so an upload into an unlisted folder produces a URL that 404s.
 
@@ -246,7 +246,7 @@ Same shape as S3: `sendEmail` and `sendTemplatedEmail` are **methods on the
 service**, not module-level exports.
 
 ```typescript
-import { createSESService, createSESv2Operations, getSESService } from "@be-in-digital/core";
+import { createSESService, createSESv2Operations, getSESService } from "@be-yours/core";
 
 const ses = createSESService(config, createSESv2Operations(awsConfig));
 // or, server-side, build it from the environment:
@@ -278,7 +278,7 @@ action.
 Role-based access control for admin operations.
 
 ```typescript
-import { hasPermission, Role } from "@be-in-digital/core";
+import { hasPermission, Role } from "@be-yours/core";
 
 // Roles: super_admin, client_admin, manager, kitchen, waiter, delivery, customer
 const canManageProducts = hasPermission(user.role, "products:write");
@@ -326,8 +326,8 @@ cp apps/reference/.env.example apps/reference/.env.local
 ### Schemas
 
 ```typescript
-import { packageEnvSchema, siteEnvSchema } from "@be-in-digital/core/env";
-import type { PackageEnv, SiteEnv } from "@be-in-digital/core/env";
+import { packageEnvSchema, siteEnvSchema } from "@be-yours/core/env";
+import type { PackageEnv, SiteEnv } from "@be-yours/core/env";
 ```
 
 - **packageEnvSchema**: Platform-level vars (AWS, OpenAI, Uber Eats, Deliveroo)
@@ -336,7 +336,7 @@ import type { PackageEnv, SiteEnv } from "@be-in-digital/core/env";
 ### Getters (lazy-loaded, memoized)
 
 ```typescript
-import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env";
+import { getPackageEnv, getSiteEnv } from "@be-yours/core/env";
 
 const { AWS_REGION, OPENAI_API_KEY } = getPackageEnv();
 const { NEXT_PUBLIC_CONVEX_URL, STRIPE_SECRET_KEY } = getSiteEnv();
@@ -347,7 +347,7 @@ const { NEXT_PUBLIC_CONVEX_URL, STRIPE_SECRET_KEY } = getSiteEnv();
 The app validates all env vars at startup via `instrumentation.ts`:
 
 ```typescript
-import { validateAllEnv, formatEnvReport } from "@be-in-digital/core/env";
+import { validateAllEnv, formatEnvReport } from "@be-yours/core/env";
 
 const { ok, missing } = validateAllEnv();
 if (!ok) {

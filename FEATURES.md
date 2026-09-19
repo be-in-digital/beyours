@@ -188,7 +188,7 @@ disponible aujourd'hui".
 status polling. There is no `printerSettings` table: it was declared for that path,
 never gained a reader or a writer, and has been removed from the schema — along with
 the six unconsumed types (`PrinterType = 'network' | 'usb' | 'bluetooth'` among them)
-that outlived it on `@be-in-digital/convex-schema`'s public API. What ships is
+that outlived it on `@be-yours/convex-schema`'s public API. What ships is
 `stores.printConfig`. The three cloud-printing providers in `kitchen-print.ts:151,157,163` are
 declared `available: false`. The decided path is cloud printing (Star CloudPRNT /
 Epson Server Direct Print, where the printer polls an HTTP endpoint) rather than a
@@ -199,7 +199,7 @@ restaurant's LAN — LAUNCH-04 §3.
 **was** exported as a real mutation in both apps with no UI calling it; #413
 removed that wrapper along with the rest of the callerless public surface, so
 the mutation is no longer registered on a client's backend. The definition
-survives in `@be-in-digital/convex-functions`, and `assignedTo` still appears in
+survives in `@be-yours/convex-functions`, and `assignedTo` still appears in
 `packages/admin/src/pages/kitchen/ticket-card.tsx:32` as a prop type that is
 never rendered — so the feature is exactly as absent as before, with one less
 unreviewed endpoint standing in for it. *Priority management* — the schema has a priority field and all three

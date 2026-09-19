@@ -1,4 +1,4 @@
-# @be-in-digital/restaurant
+# @be-yours/restaurant
 
 > Business logic, Zustand stores, and React hooks for restaurant storefront features.
 
@@ -11,19 +11,19 @@
 - [Types](#types)
 
 > This package contains **no React components**. `ProductCard`, `CartItem` and
-> the rest of the storefront UI live in `@be-in-digital/ui/restaurant`.
+> the rest of the storefront UI live in `@be-yours/ui/restaurant`.
 
 ## Installation
 
 ```bash
-pnpm add @be-in-digital/restaurant
+pnpm add @be-yours/restaurant
 ```
 
 ## Zustand Stores
 
 All client-side state is managed with Zustand. Each store is standalone and can be used independently.
 
-`@be-in-digital/restaurant/stores` exports exactly four stores plus one helper:
+`@be-yours/restaurant/stores` exports exactly four stores plus one helper:
 
 | Export | What it holds |
 |--------|---------------|
@@ -42,7 +42,7 @@ see [Store Selection](#store-selection) for why.
 Manages shopping cart state.
 
 ```typescript
-import { useCartStore } from "@be-in-digital/restaurant/stores";
+import { useCartStore } from "@be-yours/restaurant/stores";
 
 function CartButton() {
   const items = useCartStore((s) => s.items);
@@ -107,7 +107,7 @@ geolocation could silently move the dashboard.
 import {
   useAdminStoreSelection,
   useStorefrontStoreSelection,
-} from "@be-in-digital/restaurant/stores";
+} from "@be-yours/restaurant/stores";
 
 function AdminStoreSwitcher() {
   const storeId = useAdminStoreSelection((s) => s.storeId);
@@ -126,7 +126,7 @@ function AdminStoreSwitcher() {
 
 Each store exposes `{ storeId, setStoreId }` — nothing else. There is no
 `store`, no `availableStores`, no `isOpen`. For opening hours, call
-`isStoreOpen(hours, now, timeZone)` from `@be-in-digital/restaurant/services`,
+`isStoreOpen(hours, now, timeZone)` from `@be-yours/restaurant/services`,
 which returns a `StoreHoursStatus` (`{ isOpen, nextChange, currentPeriod? }`)
 and correctly reads the previous day's row so an 18:00–02:00 service is still
 open at 01:00.
@@ -149,7 +149,7 @@ Sort a list of stores by distance from the visitor. It does **not** fetch the
 stores — you pass them in, already loaded from Convex.
 
 ```typescript
-import { useNearestStore } from "@be-in-digital/restaurant/hooks";
+import { useNearestStore } from "@be-yours/restaurant/hooks";
 
 function StoreLocator({ stores }: { stores: StoreDoc[] }) {
   const { nearestStore, storesWithDistance, isLocating, locationError, requestLocation } =
@@ -181,7 +181,7 @@ tracking is `useQuery` against Convex; this turns the status it returns into
 something renderable.
 
 ```typescript
-import { useOrderStatus } from "@be-in-digital/restaurant/hooks";
+import { useOrderStatus } from "@be-yours/restaurant/hooks";
 
 function OrderTracker({ status }: { status: OrderStatus }) {
   const { label, color, isActive, nextStatuses } = useOrderStatus(status);
@@ -203,7 +203,7 @@ Hold a `ProductFilters` object and the setters that narrow it. It holds the
 query.
 
 ```typescript
-import { useProductFilters } from "@be-in-digital/restaurant/hooks";
+import { useProductFilters } from "@be-yours/restaurant/hooks";
 
 function MenuPage({ products }: { products: ProductDoc[] }) {
   const {
@@ -258,7 +258,7 @@ translatable fields for the active locale's values.
 
 ## Services
 
-`@be-in-digital/restaurant/services` holds the pure functions the hooks and the
+`@be-yours/restaurant/services` holds the pure functions the hooks and the
 backend share — no React, no Convex client:
 
 | Module | Notable exports |

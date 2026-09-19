@@ -18,14 +18,14 @@ The CMS package provides a flexible, block-based content management system. Rest
 ## Setup
 
 ```bash
-pnpm add @be-in-digital/cms
+pnpm add @be-yours/cms
 ```
 
 ### Initialize the Registry
 
 ```typescript
 // lib/cms.ts
-import { setCmsRegistry } from "@be-in-digital/cms";
+import { setCmsRegistry } from "@be-yours/cms";
 
 setCmsRegistry({
   pages: [
@@ -77,7 +77,7 @@ setCmsRegistry({
 ## Defining Pages
 
 ```typescript
-import { getPageDefinition, getCmsRegistry } from "@be-in-digital/cms";
+import { getPageDefinition, getCmsRegistry } from "@be-yours/cms";
 
 // Get a specific page
 const homePage = getPageDefinition("home");
@@ -106,7 +106,7 @@ console.log(registry.pages); // [{ slug: "home", ... }, ...]
 ### Validation
 
 ```typescript
-import { validateBlockValues } from "@be-in-digital/cms";
+import { validateBlockValues } from "@be-yours/cms";
 
 const result = validateBlockValues("hero", {
   title: "Welcome to La Bella",
@@ -124,7 +124,7 @@ if (!result.valid) {
 ### Upload Validation
 
 ```typescript
-import { validateMediaUpload } from "@be-in-digital/cms";
+import { validateMediaUpload } from "@be-yours/cms";
 
 const validation = validateMediaUpload(file);
 if (!validation.valid) {
@@ -154,7 +154,7 @@ isolate modules that have none. Convex-side callers use `containsActiveContent`
 from the barrel instead, which is DOM-free.
 
 ```typescript
-import { sanitizeSvg } from "@be-in-digital/cms/sanitize";
+import { sanitizeSvg } from "@be-yours/cms/sanitize";
 
 // Remove potentially malicious scripts from SVG
 const safeSvg = sanitizeSvg(rawSvgContent);
@@ -233,7 +233,7 @@ import { DynamicFavicon } from "@/components/dynamic-favicon";
 
 ```tsx
 // app/(storefront)/[slug]/page.tsx
-import { getPageDefinition } from "@be-in-digital/cms";
+import { getPageDefinition } from "@be-yours/cms";
 import { CmsBlockRenderer } from "@/components/cms/BlockRenderer";
 
 export default async function CmsPage({ params }: { params: { slug: string } }) {

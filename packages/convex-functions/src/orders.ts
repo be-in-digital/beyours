@@ -13,16 +13,16 @@ import type {
   BusinessHours,
   OrderStatus,
   OrderType,
-} from "@be-in-digital/convex-schema"
+} from "@be-yours/convex-schema"
 import {
   isWithinBusinessHours,
   resolveStoreHours,
-} from "@be-in-digital/convex-schema"
+} from "@be-yours/convex-schema"
 import {
   MAX_TABLE_NUMBER_LENGTH,
   isValidTableNumber,
   normalizeTableNumber,
-} from "@be-in-digital/core/dining"
+} from "@be-yours/core/dining"
 import {
   assertDayStarts,
   computeDashboardStats,
@@ -47,7 +47,7 @@ import {
   isOrderableStore,
   isPublishedStore,
   resolveStoreServices,
-} from "@be-in-digital/convex-schema"
+} from "@be-yours/convex-schema"
 import { create as kitchenTicketCreate } from "./kitchenTickets"
 import {
   customerKey,

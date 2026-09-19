@@ -16,7 +16,7 @@ import {
   CardTitle,
   AddressAutocomplete,
   type AddressValue,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 

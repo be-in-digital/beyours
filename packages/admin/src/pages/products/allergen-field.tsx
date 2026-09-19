@@ -2,8 +2,8 @@
 
 import { useId, useState } from "react"
 import { Plus, X } from "lucide-react"
-import { Badge, Button, Checkbox, Input, Label } from "@be-in-digital/ui"
-import type { Allergen } from "@be-in-digital/core/allergens"
+import { Badge, Button, Checkbox, Input, Label } from "@be-yours/ui"
+import type { Allergen } from "@be-yours/core/allergens"
 import {
   addAllergenValue,
   isDeclarableAllergenValue,
@@ -24,7 +24,7 @@ import {
  * That is how unrecognised French free text reached the database, where it
  * silently failed to reach Uber Eats' structured allergen field.
  *
- * The vocabulary is `@be-in-digital/core/allergens` and the arithmetic is
+ * The vocabulary is `@be-yours/core/allergens` and the arithmetic is
  * `./allergen-selection`. Nothing about which names exist, how they are matched
  * or what they are called is decided here.
  *

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest"
-import { Role, getRolePermissions, hasPermission } from "@be-in-digital/core/auth/rbac"
+import { Role, getRolePermissions, hasPermission } from "@be-yours/core/auth/rbac"
 import { ORDER_READ_PERMISSION, mayReadStoreOrders } from "../orders"
 
 /**

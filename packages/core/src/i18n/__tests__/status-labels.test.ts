@@ -2,12 +2,12 @@
  * The one status vocabulary the storefront reads through.
  *
  * WHAT WENT WRONG: `OrderStatusBadge` and `StoreStatusBadge` in
- * `@be-in-digital/ui` held eleven hardcoded English labels between them, with
+ * `@be-yours/ui` held eleven hardcoded English labels between them, with
  * no override prop, mounted on the diner's French order page and the French
  * store selector — « Preparing », « Out for Delivery », « Temporarily
  * Unavailable » between French sentences, unreachable by the translation layer
  * #148 shipped. There were two more copies of the same words: a private map in
- * the order page and `getOrderStatusLabel` in `@be-in-digital/restaurant`.
+ * the order page and `getOrderStatusLabel` in `@be-yours/restaurant`.
  * Four maps, two languages, one set of eleven states.
  *
  * This module is the one they all read now. It holds, per status, the

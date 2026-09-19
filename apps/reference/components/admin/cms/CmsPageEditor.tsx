@@ -17,7 +17,7 @@ import {
   AlertTriangle,
   Languages,
 } from "lucide-react"
-import { Button, Badge } from "@be-in-digital/ui"
+import { Button, Badge } from "@be-yours/ui"
 import { LoadingState } from "@/components/admin/LoadingState"
 import { CmsBlockAccordion } from "./CmsBlockAccordion"
 import { CmsTranslationDrawer } from "./CmsTranslationDrawer"
@@ -26,8 +26,8 @@ import {
   getPageDefinition,
   getBlockDefinition,
   getFieldDefinition,
-} from "@be-in-digital/cms"
-import type { CmsFieldValue, CmsBlockValues } from "@be-in-digital/cms"
+} from "@be-yours/cms"
+import type { CmsFieldValue, CmsBlockValues } from "@be-yours/cms"
 import type { Id } from "@/convex/_generated/dataModel"
 import Link from "next/link"
 

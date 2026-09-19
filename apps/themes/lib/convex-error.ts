@@ -11,7 +11,7 @@
  * silently degrades to a generic message under one of the two is a defect that
  * only shows up on the side nobody exercised.
  *
- * It lives here rather than in `@be-in-digital/core` on purpose: the mirror
+ * It lives here rather than in `@be-yours/core` on purpose: the mirror
  * pins `beyours-boilerplate` to the last PUBLISHED core, so a client site would
  * fail to build on a core export that has not shipped yet.
  */

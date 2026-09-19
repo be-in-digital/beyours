@@ -988,11 +988,11 @@ export default function OrdersPage() {
 
 ### Phase 1 - MVP (3 months)
 - [x] Base architecture
-- [ ] @be-in-digital/ui packages
-- [ ] @be-in-digital/restaurant packages
-- [ ] @be-in-digital/themes (6 themes)
-- [ ] @be-in-digital/convex-schema packages
-- [ ] @be-in-digital/convex-functions packages
+- [ ] @be-yours/ui packages
+- [ ] @be-yours/restaurant packages
+- [ ] @be-yours/themes (6 themes)
+- [ ] @be-yours/convex-schema packages
+- [ ] @be-yours/convex-functions packages
 - [ ] Better Auth integration
 - [ ] Complete admin dashboard
 - [ ] Kitchen Display System

@@ -3,7 +3,7 @@ import {
   ORDER_STATUSES,
   canTransitionOrderStatus,
   getNextOrderStatuses,
-} from "@be-in-digital/convex-schema"
+} from "@be-yours/convex-schema"
 import { statusTransitions } from "../pages/orders/order-status-transitions"
 
 /**

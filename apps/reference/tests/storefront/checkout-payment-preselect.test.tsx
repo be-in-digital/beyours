@@ -12,7 +12,7 @@
  * method-switch deadlock. The rule now comes from `resolvePaymentMethod`
  * fed by the server's `paymentAvailability.get`; this test pins the WIRING —
  * that the rendered form actually consults the availability answer — the
- * rule itself is pinned in `@be-in-digital/restaurant`'s own suite.
+ * rule itself is pinned in `@be-yours/restaurant`'s own suite.
  */
 
 import { act } from "react"
@@ -73,7 +73,7 @@ async function mountCheckoutForm(options: {
   onSubmit?: (data: unknown) => void
 }) {
   const { CheckoutForm } = await import("@/components/storefront/checkout-form")
-  const { useCartStore } = await import("@be-in-digital/restaurant")
+  const { useCartStore } = await import("@be-yours/restaurant")
   act(() => {
     useCartStore.getState().setOrderType("pickup")
   })

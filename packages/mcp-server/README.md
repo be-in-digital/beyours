@@ -1,4 +1,4 @@
-# `@be-in-digital/mcp-server`
+# `@be-yours/mcp-server`
 
 A Model Context Protocol server over the engine's package registry. It answers
 "which package exports this, and how do I import it" without anyone opening ten
@@ -10,7 +10,7 @@ A Model Context Protocol server over the engine's package registry. It answers
 
 ## What it serves
 
-`src/registry.ts` holds the catalogue: every `@be-in-digital/*` package, its
+`src/registry.ts` holds the catalogue: every `@be-yours/*` package, its
 subpath exports, and for each export the binding name and the import statement
 that brings it in. `src/server.ts` exposes that over MCP on a **stdio**
 transport.
@@ -31,8 +31,8 @@ it needed.
 ## Running it
 
 ```bash
-pnpm --filter @be-in-digital/mcp-server build
-pnpm --filter @be-in-digital/mcp-server start   # node dist/index.js, stdio
+pnpm --filter @be-yours/mcp-server build
+pnpm --filter @be-yours/mcp-server start   # node dist/index.js, stdio
 ```
 
 Point an MCP client at that command. It speaks stdio, so it is started by the
@@ -43,7 +43,7 @@ client rather than listening on a port.
 ## Keeping the catalogue honest
 
 ```bash
-pnpm --filter @be-in-digital/mcp-server sync:versions
+pnpm --filter @be-yours/mcp-server sync:versions
 ```
 
 `scripts/sync-package-versions.mjs` re-reads the workspace and writes the

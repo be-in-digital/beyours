@@ -1,7 +1,7 @@
 import { internalMutation, internalQuery, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import * as defs from "@be-in-digital/convex-functions/storeIntegrations";
+import * as defs from "@be-yours/convex-functions/storeIntegrations";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // Internal (no-auth) variant for webhook handlers, which run without a user identity.

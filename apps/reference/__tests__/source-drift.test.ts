@@ -71,9 +71,9 @@ describe("isReleasableSource", () => {
 
 describe("summariseDrift", () => {
   test("a package with source changes and no changeset has drifted", () => {
-    const { drifted } = summariseDrift([pkg("@be-in-digital/ui", ["packages/ui/src/button.tsx"])], new Set())
+    const { drifted } = summariseDrift([pkg("@be-yours/ui", ["packages/ui/src/button.tsx"])], new Set())
 
-    expect(drifted.map((row: Row) => row.name)).toEqual(["@be-in-digital/ui"])
+    expect(drifted.map((row: Row) => row.name)).toEqual(["@be-yours/ui"])
   })
 
   test("a changeset naming it stops it drifting, and does not make it released", () => {
@@ -84,29 +84,29 @@ describe("summariseDrift", () => {
     // cuts one. So the registry is still serving the build made before these
     // files moved, under the version number the workspace already carries.
     const { drifted, waiting, rows } = summariseDrift(
-      [pkg("@be-in-digital/ui", ["packages/ui/src/button.tsx"])],
-      new Set(["@be-in-digital/ui"]),
+      [pkg("@be-yours/ui", ["packages/ui/src/button.tsx"])],
+      new Set(["@be-yours/ui"]),
     )
 
     expect(drifted).toEqual([])
     expect(rows[0].state).toBe("waiting")
-    expect(waiting.map((row: Row) => row.name)).toEqual(["@be-in-digital/ui"])
+    expect(waiting.map((row: Row) => row.name)).toEqual(["@be-yours/ui"])
   })
 
   test("a changeset naming a DIFFERENT package does not", () => {
     // The source that moved is this package's, so this package is the one
     // `changeset publish` will skip. A sibling's release carries nothing.
     const { drifted } = summariseDrift(
-      [pkg("@be-in-digital/ui", ["packages/ui/src/button.tsx"])],
-      new Set(["@be-in-digital/core"]),
+      [pkg("@be-yours/ui", ["packages/ui/src/button.tsx"])],
+      new Set(["@be-yours/core"]),
     )
 
-    expect(drifted.map((row: Row) => row.name)).toEqual(["@be-in-digital/ui"])
+    expect(drifted.map((row: Row) => row.name)).toEqual(["@be-yours/ui"])
   })
 
   test("a package whose only change is a test is clean", () => {
     const { drifted, rows } = summariseDrift(
-      [pkg("@be-in-digital/ui", ["packages/ui/src/__tests__/button.test.tsx"])],
+      [pkg("@be-yours/ui", ["packages/ui/src/__tests__/button.test.tsx"])],
       new Set(),
     )
 
@@ -119,22 +119,22 @@ describe("summariseDrift", () => {
     // `actions/checkout` clones at depth 1, where a bump older than the tip has
     // no commit to find. Guessing "drifted" fails every shallow run; guessing
     // "clean" answers "all well" precisely when the check knows nothing.
-    const { drifted, unknown, rows } = summariseDrift([pkg("@be-in-digital/ui", [], null)], new Set())
+    const { drifted, unknown, rows } = summariseDrift([pkg("@be-yours/ui", [], null)], new Set())
 
     expect(drifted).toEqual([])
-    expect(unknown.map((row: Row) => row.name)).toEqual(["@be-in-digital/ui"])
+    expect(unknown.map((row: Row) => row.name)).toEqual(["@be-yours/ui"])
     expect(rows[0].state).toBe("unknown")
   })
 
   test("worst first, so a long list opens on what needs doing", () => {
     const { rows } = summariseDrift(
       [
-        pkg("@be-in-digital/a", []),
-        pkg("@be-in-digital/b", ["packages/b/src/x.ts"], null),
-        pkg("@be-in-digital/c", ["packages/c/src/x.ts"]),
-        pkg("@be-in-digital/d", ["packages/d/src/x.ts"]),
+        pkg("@be-yours/a", []),
+        pkg("@be-yours/b", ["packages/b/src/x.ts"], null),
+        pkg("@be-yours/c", ["packages/c/src/x.ts"]),
+        pkg("@be-yours/d", ["packages/d/src/x.ts"]),
       ],
-      new Set(["@be-in-digital/d"]),
+      new Set(["@be-yours/d"]),
     )
 
     expect(rows.map((row: Row) => row.state)).toEqual(["drifted", "unknown", "waiting", "clean"])
@@ -143,12 +143,12 @@ describe("summariseDrift", () => {
 
 describe("what it tells the reader", () => {
   const { rows, drifted } = summariseDrift(
-    [pkg("@be-in-digital/ui", ["packages/ui/src/a.ts", "packages/ui/src/b.ts"])],
+    [pkg("@be-yours/ui", ["packages/ui/src/a.ts", "packages/ui/src/b.ts"])],
     new Set(),
   )
 
   test("the log names the package, the version and the files", () => {
-    expect(formatTable(rows)).toContain("@be-in-digital/ui")
+    expect(formatTable(rows)).toContain("@be-yours/ui")
     expect(formatTable(rows)).toContain("2 source file(s) changed")
   })
 
@@ -163,7 +163,7 @@ describe("what it tells the reader", () => {
 
   test("more than five changed files are counted, not listed", () => {
     const many = summariseDrift(
-      [pkg("@be-in-digital/ui", Array.from({ length: 9 }, (_, i) => `packages/ui/src/f${i}.ts`))],
+      [pkg("@be-yours/ui", Array.from({ length: 9 }, (_, i) => `packages/ui/src/f${i}.ts`))],
       new Set(),
     )
 
@@ -186,8 +186,8 @@ describe("what it tells the reader", () => {
  */
 describe("a release that has not been cut", () => {
   const { rows, waiting } = summariseDrift(
-    [pkg("@be-in-digital/ui", ["packages/ui/src/a.ts", "packages/ui/src/b.ts"])],
-    new Set(["@be-in-digital/ui"]),
+    [pkg("@be-yours/ui", ["packages/ui/src/a.ts", "packages/ui/src/b.ts"])],
+    new Set(["@be-yours/ui"]),
   )
 
   test("the row says what the registry is serving, not that all is well", () => {
@@ -202,7 +202,7 @@ describe("a release that has not been cut", () => {
   test("the annotation names the packages and what a client installs", () => {
     const line = describeWaiting(waiting)
 
-    expect(line).toContain("@be-in-digital/ui@1.0.0")
+    expect(line).toContain("@be-yours/ui@1.0.0")
     expect(line).toContain("2 file(s)")
     expect(line).toContain("a client site installs that one")
   })
@@ -322,7 +322,7 @@ describe("a subpath the published version does not carry", () => {
 
   describe("what it tells whoever tripped it", () => {
     const row = {
-      name: "@be-in-digital/ui",
+      name: "@be-yours/ui",
       version: "3.1.0",
       workspaceVersion: "3.1.0",
       missing: ["./contrast", "./contrast-scan"],

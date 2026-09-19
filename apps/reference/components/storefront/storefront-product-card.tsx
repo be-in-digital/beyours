@@ -7,9 +7,9 @@ import {
   isProductAvailable,
   useLocalizedDocument,
   useTranslation,
-} from "@be-in-digital/restaurant"
-import type { ProductDoc } from "@be-in-digital/restaurant"
-import { Badge } from "@be-in-digital/ui"
+} from "@be-yours/restaurant"
+import type { ProductDoc } from "@be-yours/restaurant"
+import { Badge } from "@be-yours/ui"
 
 interface StorefrontProductCardProps {
   product: ProductDoc

@@ -122,7 +122,7 @@ function isSameOrigin(link: string, origin: string): boolean {
  * @example
  * ```typescript
  * // app/api/email/send/route.ts
- * import { createEmailRouteHandler } from '@be-in-digital/core'
+ * import { createEmailRouteHandler } from '@be-yours/core'
  *
  * const handler = createEmailRouteHandler({
  *   secret: process.env.EMAIL_API_SECRET ?? process.env.BETTER_AUTH_SECRET!,

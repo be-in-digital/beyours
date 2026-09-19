@@ -36,7 +36,7 @@ From `app/(admin)/orders/kitchen/SeedKitchenButton.tsx` to `app/kitchen/[storeId
 
 ### 6. Update the sidebar — support dynamic external links
 **File**: `packages/admin/src/components/app-sidebar.tsx`
-- Import `useStoreStore` from `@be-in-digital/restaurant`
+- Import `useStoreStore` from `@be-yours/restaurant`
 - For items marked `external: true`:
   - Build the href dynamically: `${entry.href}/${currentStore._id}`
   - Use `<a target="_blank">` instead of `<Link>`

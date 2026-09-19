@@ -6,7 +6,7 @@ import {
   TRIGGER_TOGGLE,
   canDispatch,
   type AutomationTrigger,
-} from "@be-in-digital/convex-functions/automationDispatch"
+} from "@be-yours/convex-functions/automationDispatch"
 import {
   AUTOMATION_CONTROLS,
   UNAVAILABLE_AUTOMATION_KEYS,

@@ -1,4 +1,4 @@
-# `@be-in-digital/restaurant`
+# `@be-yours/restaurant`
 
 Client-side business logic: the Zustand stores, the services that talk to
 Convex, and the React hooks the storefront is built out of.
@@ -22,7 +22,7 @@ Convex, and the React hooks the storefront is built out of.
 
 ```ts
 // Client state → Zustand, from here
-import { useCartStore } from "@be-in-digital/restaurant/stores"
+import { useCartStore } from "@be-yours/restaurant/stores"
 
 // Server state → Convex hooks, straight from convex/react
 import { useQuery } from "convex/react"
@@ -43,9 +43,9 @@ starts being a cache nobody invalidates.
 you rebuild**:
 
 ```bash
-pnpm --filter @be-in-digital/restaurant build
+pnpm --filter @be-yours/restaurant build
 # or, while iterating
-pnpm --filter @be-in-digital/restaurant dev
+pnpm --filter @be-yours/restaurant dev
 ```
 
 A stale `dist/` looks exactly like a bug in your component.

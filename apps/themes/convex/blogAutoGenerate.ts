@@ -18,9 +18,9 @@ import { internal } from "./_generated/api"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 import type { ActionCtx } from "./_generated/server"
 import type { Id } from "./_generated/dataModel"
-import { buildMediaUrl } from "@be-in-digital/core/aws/media-url"
-import { resolveApprovalMode } from "@be-in-digital/convex-functions/blogAutoGuards"
-import { sanitizeArticleHtml } from "@be-in-digital/convex-functions/htmlSanitize"
+import { buildMediaUrl } from "@be-yours/core/aws/media-url"
+import { resolveApprovalMode } from "@be-yours/convex-functions/blogAutoGuards"
+import { sanitizeArticleHtml } from "@be-yours/convex-functions/htmlSanitize"
 
 // ============================================================================
 // S3 Helpers (same pattern as cmsMediaProcess.ts)
@@ -38,7 +38,7 @@ function createS3Client() {
 
 /**
  * The bucket is private: a key becomes either a CDN URL or a path on this
- * app's own `/api/files` proxy. One policy, in `@be-in-digital/core`.
+ * app's own `/api/files` proxy. One policy, in `@be-yours/core`.
  */
 function buildPublicUrl(key: string): string {
   return buildMediaUrl(key, process.env.AWS_S3_PUBLIC_BASE_URL)

@@ -1,6 +1,6 @@
 "use client"
 
-import { Empty, EmptyHeader, EmptyTitle } from "@be-in-digital/ui"
+import { Empty, EmptyHeader, EmptyTitle } from "@be-yours/ui"
 
 interface DisplayTicket {
   _id: string

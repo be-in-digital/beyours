@@ -11,7 +11,7 @@ import {
   CarouselPrevious,
   CarouselNext,
   Skeleton,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { Heading, MealCard } from "@/components/website"
 
 interface TrendingProduct {

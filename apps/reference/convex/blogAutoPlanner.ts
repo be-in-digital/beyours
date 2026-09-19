@@ -16,7 +16,7 @@ import {
   dueJobIdsCore,
   failJobCore,
   planAutoBlogJobsCore,
-} from "@be-in-digital/convex-functions/blogAutoPlanner"
+} from "@be-yours/convex-functions/blogAutoPlanner"
 
 /**
  * Hourly: queue an article for every configuration whose hour has come.

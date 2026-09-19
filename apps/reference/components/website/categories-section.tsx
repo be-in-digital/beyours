@@ -4,7 +4,7 @@ import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import type { Id } from "@/convex/_generated/dataModel"
 import { useStoreId } from "@/lib/hooks/use-store-id"
-import { Skeleton } from "@be-in-digital/ui"
+import { Skeleton } from "@be-yours/ui"
 import { Heading, CategoryCard } from "@/components/website"
 
 /**

@@ -21,13 +21,13 @@ import {
   Checkbox,
   DialogFooter,
   SearchInput,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { RefreshCw, X, Package, FolderOpen } from "lucide-react"
 import {
   HONOURABLE_DISCOUNT_TYPES,
   UNHONOURABLE_DISCOUNT_TYPE_MESSAGE,
   isHonourableDiscountType,
-} from "@be-in-digital/convex-functions/promotionDiscount"
+} from "@be-yours/convex-functions/promotionDiscount"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { convexErrorMessage } from "../../lib/convex-error"

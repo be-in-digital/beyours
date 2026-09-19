@@ -11,8 +11,8 @@ import { internalMutation } from "./_generated/server"
 import {
   releaseImageQuota,
   reserveImageQuota,
-} from "@be-in-digital/convex-functions/blogAutoGuards"
-import { requireStorePermission } from "@be-in-digital/convex-functions/auth"
+} from "@be-yours/convex-functions/blogAutoGuards"
+import { requireStorePermission } from "@be-yours/convex-functions/auth"
 
 // ============================================================================
 // Internal Mutations

@@ -161,8 +161,8 @@ next change could reintroduce:
 npx turbo run build --filter='./packages/*'
 cd apps/reference && npx vitest run tests/convex/privacy-erasure.test.ts \
                                    tests/convex/privacy-retention.test.ts
-pnpm --filter @be-in-digital/convex-functions test src/__tests__/privacy.test.ts
-pnpm --filter @be-in-digital/admin test src/__tests__/privacy-surface.test.ts
+pnpm --filter @be-yours/convex-functions test src/__tests__/privacy.test.ts
+pnpm --filter @be-yours/admin test src/__tests__/privacy-surface.test.ts
 ```
 
 The one worth reading is `privacy-erasure.test.ts` → *"the adversarial sweep"*.

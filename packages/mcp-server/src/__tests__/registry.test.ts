@@ -5,7 +5,7 @@
  * `tsc` sees only strings, and this package's `test` script was
  * `vitest run --passWithNoTests` over zero files, so it exited 0 forever. It
  * had drifted to 23 false claims out of 148 and nine versions frozen at 2.0.1
- * while `@be-in-digital/admin` had reached 8.0.0.
+ * while `@be-yours/admin` had reached 8.0.0.
  *
  * These tests cover the parts that can be settled from the workspace manifests
  * alone. Whether each claim's *symbol* actually exists is a compile question,
@@ -72,9 +72,9 @@ function collectTargets(target: unknown): string[] {
   return [];
 }
 
-/** `@be-in-digital/admin/pages` -> `{ pkg: "admin", subpath: "./pages" }`. */
+/** `@be-yours/admin/pages` -> `{ pkg: "admin", subpath: "./pages" }`. */
 function splitImportPath(importPath: string): { pkg: string; subpath: string } | undefined {
-  const match = /^@be-in-digital\/([a-z-]+)(\/.*)?$/.exec(importPath);
+  const match = /^@be-yours\/([a-z-]+)(\/.*)?$/.exec(importPath);
   if (!match?.[1]) return undefined;
   return { pkg: match[1], subpath: match[2] ? `.${match[2]}` : "." };
 }
@@ -90,7 +90,7 @@ describe("registry versions", () => {
 
   it.each(Object.keys(PACKAGE_VERSIONS))("reports the workspace version of %s", (name) => {
     const generated = PACKAGE_VERSIONS[name as keyof typeof PACKAGE_VERSIONS];
-    // If this fails, run: pnpm --filter @be-in-digital/mcp-server sync:versions
+    // If this fails, run: pnpm --filter @be-yours/mcp-server sync:versions
     expect(generated).toBe(readManifest(name).version);
   });
 
@@ -107,7 +107,7 @@ describe("registry versions", () => {
     // a stale generated file was caught for every package except the one doing
     // the reporting. A release that bumps this package and forgets
     // `sync:versions` would have gone out announcing the version before it.
-    // If this fails, run: pnpm --filter @be-in-digital/mcp-server sync:versions
+    // If this fails, run: pnpm --filter @be-yours/mcp-server sync:versions
     expect(MCP_SERVER_VERSION).toBe(readManifest("mcp-server").version);
   });
 });

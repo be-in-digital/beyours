@@ -52,7 +52,7 @@ vi.mock("@/lib/admin/hooks", () => ({
 /** The role the component reads, set per test. */
 let role: string | null = null
 
-vi.mock("@be-in-digital/admin", async (importOriginal) => {
+vi.mock("@be-yours/admin", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>()
   return {
     ...actual,

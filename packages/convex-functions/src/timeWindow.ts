@@ -1,5 +1,5 @@
 /**
- * Recurring time windows — re-exported from `@be-in-digital/convex-schema`.
+ * Recurring time windows — re-exported from `@be-yours/convex-schema`.
  *
  * WHY IT MOVED: the storefront asks the same question this module answers, and
  * gave a different answer. `packages/restaurant`'s `isProductScheduledNow` read
@@ -20,4 +20,4 @@ export {
   restaurantClock,
   parseClockTime,
   isWithinWindow,
-} from "@be-in-digital/convex-schema"
+} from "@be-yours/convex-schema"

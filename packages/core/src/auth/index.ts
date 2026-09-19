@@ -1,12 +1,12 @@
 /**
- * @be-in-digital/core - Authentication and RBAC
+ * @be-yours/core - Authentication and RBAC
  *
  * A complete authentication solution built on Better Auth, plus a
  * role-based access control system, for the BeYours engine.
  *
  * @module auth
  *
- * `@be-in-digital/core/auth` is NOT a resolvable specifier. The package's
+ * `@be-yours/core/auth` is NOT a resolvable specifier. The package's
  * `exports` map is the list of what is, and it has grown since this note said
  * six: it now publishes twelve — `.`, `./env`, `./email`, `./sentry`,
  * `./allergens`, `./status-labels`, `./dining`, `./auth/rbac`,
@@ -20,11 +20,11 @@
  * @example
  * ```ts
  * // RBAC — the subpath, resolved straight from source
- * import { Role, hasPermission } from '@be-in-digital/core/auth/rbac'
+ * import { Role, hasPermission } from '@be-yours/core/auth/rbac'
  *
  * // Everything else — the package root
- * import { useAuth, usePermission } from '@be-in-digital/core'
- * import { requireAuth, requirePermission } from '@be-in-digital/core'
+ * import { useAuth, usePermission } from '@be-yours/core'
+ * import { requireAuth, requirePermission } from '@be-yours/core'
  * ```
  */
 

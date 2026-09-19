@@ -29,16 +29,16 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import {
   DEFAULT_PRIZE_BUDGET,
   PRIZE_BUDGET_LIMITS,
   resolvePrizeBudget,
-} from "@be-in-digital/convex-functions/prizeBudget"
+} from "@be-yours/convex-functions/prizeBudget"
 import {
   MAX_COOLDOWN_HOURS,
   resolveCooldownHours,
-} from "@be-in-digital/convex-functions/gamePlay"
+} from "@be-yours/convex-functions/gamePlay"
 import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { useAdminApiStore } from "../../stores/admin-api-store"

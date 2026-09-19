@@ -12,7 +12,7 @@
  * localStorage, or a direct call to the mutation each produced an order at 4
  * a.m. in an empty building.
  *
- * The rule itself is `isWithinBusinessHours` in `@be-in-digital/convex-schema`,
+ * The rule itself is `isWithinBusinessHours` in `@be-yours/convex-schema`,
  * covered by `openingHours.test.ts` there — the same function `useStoreStatus`
  * calls, so the browser's toast and this refusal cannot drift apart. What is
  * held here is that the mutation actually asks it.

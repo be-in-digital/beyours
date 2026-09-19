@@ -609,7 +609,7 @@ describe('isProductOutOfStock', () => {
 
 /**
  * Allergens used to be declared on `ProductRecord`, declared on the wire type
- * in `@be-in-digital/integrations`, and read zero times in between — every
+ * in `@be-yours/integrations`, and read zero times in between — every
  * dish went to Uber Eats with no allergen declaration at all, and nothing
  * reported it. These tests hold that seam shut.
  */

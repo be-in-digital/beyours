@@ -1,4 +1,4 @@
-# `@be-in-digital/ui`
+# `@be-yours/ui`
 
 The design system: 46 base components, 8 restaurant components, 5 admin
 components, plus the branding compiler and the accessibility tooling the
@@ -38,7 +38,7 @@ in each app's `app/(storefront)/layout.tsx`, emits them **unlayered** so they
 beat the defaults in `globals.css`'s `@layer base`.
 
 ```ts
-import { buildBrandingCss } from "@be-in-digital/ui/branding"
+import { buildBrandingCss } from "@be-yours/ui/branding"
 
 const css = buildBrandingCss(store.branding, { scopes: STOREFRONT_SCOPES })
 ```

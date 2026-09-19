@@ -1,12 +1,12 @@
 /**
  * Convex authorization helpers
  *
- * Bridges Better Auth identity with the RBAC system in @be-in-digital/core.
+ * Bridges Better Auth identity with the RBAC system in @be-yours/core.
  * Call these from app-level mutation/query wrappers to enforce permissions.
  */
 
 import { ConvexError } from "convex/values"
-import { Role, hasPermission, type Permission } from "@be-in-digital/core/auth/rbac"
+import { Role, hasPermission, type Permission } from "@be-yours/core/auth/rbac"
 import { creatorAdministersNewStore } from "./profileProvisioning"
 import { profileAllowsPermission } from "./teamAccess"
 

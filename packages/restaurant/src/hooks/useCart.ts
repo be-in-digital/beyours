@@ -5,7 +5,7 @@
  *
  * WHAT WAS HERE. Five more selector wrappers — `useCartItems`,
  * `useCartSummary`, `useCartItemCount`, `useCartOrderType` and
- * `useCartStoreId` — compiled into `@be-in-digital/restaurant`'s `dist` and
+ * `useCartStoreId` — compiled into `@be-yours/restaurant`'s `dist` and
  * published on both the root and the `./hooks` subpath. Not one of them had a
  * single reference anywhere in the repository, in either app, in any package or
  * in any test. The storefront reaches for `useCartStore` with an inline

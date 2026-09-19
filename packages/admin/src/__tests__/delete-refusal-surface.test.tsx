@@ -82,9 +82,9 @@ import { EmailCampaignsPage } from "../pages/email/campaigns/email-campaigns-pag
 import { EmailSubscribersPage } from "../pages/email/subscribers/email-subscribers-page"
 import { PromotionsPage } from "../pages/promotions/promotions-page"
 import { MenusTab } from "../pages/products/menus-tab"
-import { RELAUNCHABLE_STATUSES } from "@be-in-digital/convex-functions/emailCampaigns"
+import { RELAUNCHABLE_STATUSES } from "@be-yours/convex-functions/emailCampaigns"
 import { useAdminApiStore } from "../stores/admin-api-store"
-import { useAdminStoreSelection } from "@be-in-digital/restaurant"
+import { useAdminStoreSelection } from "@be-yours/restaurant"
 
 const STORE = "stores:1"
 const NOW = 1_700_000_000_000
@@ -353,7 +353,7 @@ describe("email campaigns — email-campaigns-page", () => {
       "utf8"
     )
     expect(source).toContain(
-      'from "@be-in-digital/convex-functions/emailCampaigns"'
+      'from "@be-yours/convex-functions/emailCampaigns"'
     )
     expect(source).toContain("RELAUNCHABLE_STATUSES.includes(campaign.status)")
 

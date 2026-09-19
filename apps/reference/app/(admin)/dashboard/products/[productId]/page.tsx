@@ -1,4 +1,4 @@
-import { EditProductPage } from "@be-in-digital/admin"
+import { EditProductPage } from "@be-yours/admin"
 
 export default function Page({
   params,

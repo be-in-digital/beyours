@@ -38,7 +38,7 @@ export interface SESConfig extends AWSConfig {
 }
 
 // The folder list lives in its own import-free module so Convex can use it.
-// Re-exported here so existing `@be-in-digital/core` consumers keep working.
+// Re-exported here so existing `@be-yours/core` consumers keep working.
 export { S3_FOLDERS, PRIVATE_S3_FOLDERS, isKnownS3Folder, isPrivateS3Folder } from './folders'
 export type { S3Folder, PrivateS3Folder } from './folders'
 

@@ -26,7 +26,7 @@ import { ClaimForm, type ClaimValues } from "./claim-form"
 import { RewardTicket } from "./reward-ticket"
 import { CooldownScreen } from "./cooldown-screen"
 import { gameConsentNotice, GAME_CONSENT_NOTICE_VERSION } from "./consent-copy"
-import { DEFAULT_CUSTOMER_RETENTION_DAYS } from "@be-in-digital/convex-functions/privacyPolicy"
+import { DEFAULT_CUSTOMER_RETENTION_DAYS } from "@be-yours/convex-functions/privacyPolicy"
 
 /**
  * Player flow state machine:

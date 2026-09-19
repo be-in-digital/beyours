@@ -3,8 +3,8 @@
 import { v } from "convex/values";
 import { internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import type { StoreIntegrationRecord } from "@be-in-digital/convex-functions/uberEatsMenuSync";
-import { getPackageEnv, isSandbox } from "@be-in-digital/core/env";
+import type { StoreIntegrationRecord } from "@be-yours/convex-functions/uberEatsMenuSync";
+import { getPackageEnv, isSandbox } from "@be-yours/core/env";
 
 /**
  * Push a store's platform status (ONLINE / PAUSED / OFFLINE) to Uber Eats or
@@ -57,7 +57,7 @@ export const pushStoreStatus = internalAction({
         if (!clientId || !clientSecret) {
           throw new Error("Uber Eats API credentials not configured in environment");
         }
-        const { uberEats } = await import("@be-in-digital/integrations");
+        const { uberEats } = await import("@be-yours/integrations");
         await uberEats.updateStoreStatus(
           {
             clientId,
@@ -82,7 +82,7 @@ export const pushStoreStatus = internalAction({
         if (!integration.brandId) {
           throw new Error("Deliveroo integration has no brandId");
         }
-        const { deliveroo } = await import("@be-in-digital/integrations");
+        const { deliveroo } = await import("@be-yours/integrations");
         await deliveroo.updateStoreStatus(
           {
             clientId,

@@ -10,7 +10,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { APP_VERSION } from "../../lib/constants"
 import type { SystemInfo, MaintenanceOverview } from "./types"
 import { formatDate, formatTimestamp } from "./helpers"

@@ -24,7 +24,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
     const rawBody = await request.text();
     const signature = request.headers.get("x-uber-signature") ?? "";
 
-    const { getPackageEnv } = await import("@be-in-digital/core/env");
+    const { getPackageEnv } = await import("@be-yours/core/env");
     const pkg = getPackageEnv();
     // Uber Direct rides on the same app credentials as Uber Eats; a dedicated
     // webhook secret takes precedence when one is configured.
@@ -48,7 +48,7 @@ export const handleWebhook = httpAction(async (ctx, request) => {
       });
     }
 
-    const { uberDirect } = await import("@be-in-digital/integrations");
+    const { uberDirect } = await import("@be-yours/integrations");
     const isValid = await uberDirect.verifyUberDirectSignature(
       rawBody,
       signature,
