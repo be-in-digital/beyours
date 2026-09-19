@@ -323,6 +323,38 @@ ensure_price() { # $1 = lookup_key, $2 = product id, $3 = cents, $4 = interval
   LAST_ID="$id"
 }
 
+assert_coupon_restriction() { # $1 = the creation product the coupon must name
+  # Read the coupon BACK and check it carries the restriction. A POST that
+  # returns 200 proves Stripe accepted the request, not that it understood
+  # the parameter: a misencoded `applies_to` is dropped silently and the
+  # coupon is created unrestricted. This is the one property no later check
+  # catches, because an unrestricted 100% coupon still produces the right
+  # TOTAL — it just spreads the discount across every line.
+  local product="$1" got
+  api GET "coupons/$COUPON_ID"
+  die_on_error "reading back coupon '$COUPON_ID'"
+  got="$(python3 -c '
+import json,sys
+try: d=json.load(open(sys.argv[1],encoding="utf-8"))
+except Exception: print(""); sys.exit(0)
+print(",".join((d.get("applies_to") or {}).get("products") or []))' "$RESP")"
+
+  if [ "$got" != "$product" ]; then
+    echo "  ✗ coupon '$COUPON_ID' is NOT restricted to $product." >&2
+    if [ -z "$got" ]; then
+      echo "    It carries NO product restriction: a 100% coupon that applies to" >&2
+      echo "    EVERY line of the session, maintenance included." >&2
+    else
+      echo "    It is restricted to: $got" >&2
+    fi
+    echo "    applies_to cannot be changed on an existing coupon. Delete it and" >&2
+    echo "    re-run this script:" >&2
+    echo "      curl -sS -X DELETE https://api.stripe.com/v1/coupons/$COUPON_ID -u \"\$STRIPE_SECRET_KEY:\"" >&2
+    exit 1
+  fi
+  echo "    verified: applies_to = $got"
+}
+
 ensure_coupon() { # $1 = creation product id
   local product="$1" id redeemed max
   # A 404 here is the expected "not created yet" answer, so this one GET is
@@ -338,6 +370,10 @@ ensure_coupon() { # $1 = creation product id
     if [ -n "$redeemed" ] && [ "$redeemed" != "0" ]; then
       echo "  ! times_redeemed is $redeemed, not 0 — only $((max - redeemed)) seats remain." >&2
     fi
+    # An existing coupon gets the same check as a new one. Without this, a
+    # re-run over a coupon created unrestricted says "already exists" and
+    # moves on, which is how the defect would have reached the live account.
+    assert_coupon_restriction "$product"
   elif [ "$APPLY" -eq 0 ]; then
     echo "  + would create coupon '$COUPON_ID'  percent_off=100  max_redemptions=10"
     echo "    applies_to = $product   duration=once   redeem_by unset"
@@ -349,16 +385,22 @@ ensure_coupon() { # $1 = creation product id
     # max_redemptions 10 mirrors foundersOffer.totalSlots.
     # redeem_by is deliberately unset: "It ends when the slots run out,
     # never on a date."
+    # `applies_to[products][0]`, with the INDEX. The bare `[]` form is a
+    # Rack/PHP convention Stripe does not parse; it created the coupon with
+    # no product restriction at all and reported success, which is the worst
+    # of the three outcomes — an unrestricted 100% coupon spreads pro rata
+    # over every line, so the total is right and the invoice is wrong.
     api POST coupons \
       --data-urlencode "id=$COUPON_ID" \
       --data-urlencode "percent_off=100" \
       --data-urlencode "duration=once" \
       --data-urlencode "max_redemptions=10" \
-      --data-urlencode "applies_to[products][]=$product"
+      --data-urlencode "applies_to[products][0]=$product"
     die_on_error "creating coupon '$COUPON_ID'"
     id="$(field id)"
     [ -n "$id" ] || { echo "  ✗ Stripe returned no coupon id." >&2; exit 1; }
     echo "  + created coupon: $id"
+    assert_coupon_restriction "$product"
   fi
   LAST_ID="$id"
 }
