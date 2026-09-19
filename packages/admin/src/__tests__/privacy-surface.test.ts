@@ -34,7 +34,7 @@ describe("the RGPD screen", () => {
       expect(source, `apps/${app} must render the package page`).toContain(
         "PrivacyPage"
       )
-      expect(source).toContain("@be-in-digital/admin")
+      expect(source).toContain("@be-yours/admin")
     }
   })
 

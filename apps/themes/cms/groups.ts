@@ -1,4 +1,4 @@
-import type { CmsGroupDefinition } from "@be-in-digital/cms"
+import type { CmsGroupDefinition } from "@be-yours/cms"
 
 export const cmsGroups: CmsGroupDefinition[] = [
   { id: "storefront", label: "Vitrine", order: 1 },

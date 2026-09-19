@@ -1,4 +1,4 @@
-import type { DocId } from "@be-in-digital/convex-schema/dataModel"
+import type { DocId } from "@be-yours/convex-schema/dataModel"
 
 /** Client mirrors of the public payloads returned by convex/gamePlay.ts. */
 

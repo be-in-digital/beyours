@@ -46,8 +46,8 @@ const uberApi = {
 
 // The signature verifier stays REAL: a test that skipped it would prove
 // nothing about a signed webhook. Only the network calls are replaced.
-vi.mock("@be-in-digital/integrations", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@be-in-digital/integrations")>()
+vi.mock("@be-yours/integrations", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@be-yours/integrations")>()
   return {
     ...actual,
     uberEats: {

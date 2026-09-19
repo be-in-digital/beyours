@@ -45,7 +45,7 @@ Nothing else in this repository is load-bearing.
 flowchart TB
     subgraph repo["This repository — be-in-digital/beyours"]
         direction TB
-        subgraph pkgs["packages/ — 10 engine packages, scope @be-in-digital"]
+        subgraph pkgs["packages/ — 10 engine packages, scope @be-yours"]
             P1["convex-schema · convex-functions<br/>admin · ui<br/><i>shipped as TypeScript source</i>"]
             P2["core · restaurant · cms<br/>integrations · marketing · mcp-server<br/><i>shipped as dist/ (tsup)</i>"]
         end
@@ -60,7 +60,7 @@ flowchart TB
     pkgs -->|"workspace:^"| A3
     A1 -.->|"depends on NO engine package"| pkgs
 
-    pkgs ==>|"changesets publish"| REG["GitHub Packages<br/>@be-in-digital/*"]
+    pkgs ==>|"changesets publish"| REG["GitHub Packages<br/>@be-yours/*"]
     A3 ==>|"scripts/publish-mirror.mjs"| MIR["be-in-digital/beyours-boilerplate<br/><i>the distribution mirror</i>"]
 
     REG -->|"pnpm update:engine — npm channel"| CLI
@@ -206,7 +206,7 @@ Four companion documents sit beside this one, and
 
 ## The engine packages
 
-Ten packages published to **GitHub Packages** under the `@be-in-digital/*`
+Ten packages published to **GitHub Packages** under the `@be-yours/*`
 scope, versioned together by changesets. Sizes exclude tests.
 
 | Package | Contents | Files | Lines | Shipped as | Version |
@@ -251,13 +251,27 @@ done
 > `packages/ui/package.json` has no `build` script and its `main` is
 > `./src/index.ts`. Corrected 2026-09-10 by running the loop above.
 
-### The scope stays `@be-in-digital`
+### The scope is `@be-yours`, and it moved once
 
-The repositories were renamed to `beyours-*`; the npm scope was not. Changing it
-would break every client site on its next install. So it remains
-`@be-in-digital/*` — a registry identifier, not a brand name.
+It used to be `@be-in-digital/*`, and this section used to say it never would
+move — "changing it would break every client site on its next install", which
+was true and is still the cost. It moved anyway, deliberately, and the reason is
+narrower than a rebrand: **GitHub Packages requires an npm scope to be exactly
+the login of the organisation that owns the packages.** This repository lives at
+`be-yours/beyours`. `be-in-digital` is the agency's org, and publishing the
+product's engine into it made the scope a thing to explain rather than read.
 
-The three apps use the other scope, `@beyours/*`. Two scopes, deliberately.
+What the move does NOT do is delete anything. Every version ever published under
+`@be-in-digital/*` is still on the registry and still resolves, so a deployed
+client site keeps installing and keeps working until somebody migrates it on
+purpose. The migration is four lines and it is in
+[`RELEASE_HOLD.md`](RELEASE_HOLD.md).
+
+The scope is `@be-yours`, with hyphens. The three applications use `@beyours/*`,
+without. Two scopes, still deliberately — the apps are `private: true` and are
+never published, so nothing makes them match the org login, and nothing should:
+a scope that reaches a registry and a scope that never leaves the workspace are
+different kinds of name.
 
 ---
 
@@ -277,7 +291,7 @@ sequenceDiagram
     Dev->>Repo: prove it in apps/reference
     Dev->>Repo: pnpm changeset
     Note over Repo: merge to main
-    Repo->>Reg: release.yml publishes @be-in-digital/*
+    Repo->>Reg: release.yml publishes @be-yours/*
     Repo->>Mir: publish-mirror.yml pushes apps/themes
     Note over Mir: typechecks against the REGISTRY<br/>before it publishes
     Dev->>Cli: beyours create client-luigi --template pizzeria
@@ -377,7 +391,7 @@ keeps working.
 
 | Channel | Command | What it carries |
 | --- | --- | --- |
-| **npm** | `pnpm update:engine` | Business logic — the `@be-in-digital/*` packages, by semver |
+| **npm** | `pnpm update:engine` | Business logic — the `@be-yours/*` packages, by semver |
 | **git** | `pnpm update:template` | The application shell — routes, Convex wrappers, scripts, configs |
 
 They are separate because they move at different speeds: a logic fix spreads
@@ -442,12 +456,15 @@ Three levels, not to be confused:
 | **Be in Digital** | The agency's registered trade name, operated by the company |
 | **TUUM AGENCY SAS** | The legal entity — SIREN 930 817 697, RCS Paris |
 
-**Never run a global find-and-replace.** These occurrences of `beindigital` must
-survive:
+**Never run a global find-and-replace.** The npm scope did move, once, and
+[the section above](#the-scope-is-be-yours-and-it-moved-once) says what it cost
+to do it properly. These occurrences of `beindigital` and `be-in-digital` must
+survive, and a careless sweep takes them with it:
 
 | Identifier | Why it does not move |
 | --- | --- |
-| `@be-in-digital/*` | npm registry scope — changing it breaks every client site |
+| `be-in-digital/beyours-boilerplate` | The mirror repository clients clone from — it lives in the agency's org |
+| `TURBO_TEAM: be-in-digital` · `--scope be-in-digital` | Turborepo and Vercel team slugs, registered under that name |
 | `.beindigital-site.json` | Init sentinel present in every deployed site |
 | `beindigital-addresses` · `beindigital-favorites` | `localStorage` keys — renaming them wipes end customers' addresses and favourites |
 | `beindigital-email-tracking` | A Configuration Set that exists in AWS SES |
@@ -595,7 +612,7 @@ The second `tsc` pass over `convex/tsconfig.json` is the only safety net under
 | `pnpm test:e2e:debug` | Playwright inspector, `apps/reference` |
 
 For any other workspace, name it:
-`pnpm --filter @be-in-digital/core test:coverage`,
+`pnpm --filter @be-yours/core test:coverage`,
 `pnpm --filter @beyours/themes test:e2e:debug`.
 
 Suite sizes at `f6c33c3`:
@@ -726,7 +743,7 @@ These run inside a client repository, or inside `apps/themes` here. Prefix with
 | `pnpm template:apply <slug>` | Apply a template. `default` restores the original theme |
 | `pnpm update:engine` | npm channel. `--latest` crosses majors (breaking), `--check` prints versions and changes nothing |
 | `pnpm update:template` | git channel. `--dry-run` lists the commits, `--first` handles a repo made with "Use this template" |
-| `pnpm engine:link [path]` | Consume `@be-in-digital/*` from a local clone instead of the registry — no `NODE_AUTH_TOKEN` needed |
+| `pnpm engine:link [path]` | Consume `@be-yours/*` from a local clone instead of the registry — no `NODE_AUTH_TOKEN` needed |
 | `pnpm engine:unlink` | Undo the above |
 | `pnpm env:setup` | Wizard: required variables, then integrations |
 | `pnpm env:check` | Verify the three env files agree |

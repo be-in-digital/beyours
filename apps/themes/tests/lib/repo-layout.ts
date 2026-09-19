@@ -32,7 +32,7 @@
  * individual test has to guess from a missing file. A test that needs
  * something only the monorepo has asks for it here and gets `null` in a client
  * site; a test that needs the ENGINE — which a client does have, installed
- * under `node_modules/@be-in-digital/` rather than checked out under
+ * under `node_modules/@be-yours/` rather than checked out under
  * `packages/` — gets it in both.
  *
  * `__tests__/client-stylesheet.test.ts` reached the same answer first, by hand,
@@ -98,9 +98,9 @@ export function monorepoPath(...segments: string[]): string | null {
  * Every directory holding ENGINE code, wherever this checkout keeps it.
  *
  * The engine is present in both layouts and that is what separates it from
- * everything above: a client installs `@be-in-digital/*` from GitHub Packages,
+ * everything above: a client installs `@be-yours/*` from GitHub Packages,
  * so the code that calls a Convex function is under
- * `node_modules/@be-in-digital/` there and under `packages/` here. Same code,
+ * `node_modules/@be-yours/` there and under `packages/` here. Same code,
  * two addresses.
  *
  * `sources` is what to walk. `includesBuildOutput` says whether `dist/` is
@@ -147,7 +147,7 @@ export function engineSourceRoots(): {
   ) as { dependencies?: Record<string, string> }
 
   const sources = Object.keys(manifest.dependencies ?? {})
-    .filter((name) => name.startsWith("@be-in-digital/"))
+    .filter((name) => name.startsWith("@be-yours/"))
     .map((name) => path.join(APP_ROOT, "node_modules", name))
     .filter((dir) => fs.existsSync(dir))
 
@@ -160,7 +160,7 @@ export function engineSourceRoots(): {
  * `engineSourceRoots()` answers "which directories hold engine code"; this
  * answers "where is THIS file", which is what a test asserting something about
  * a named module needs. Same two addresses: `packages/<pkg>/…` in the monorepo,
- * `node_modules/@be-in-digital/<pkg>/…` in a delivered site.
+ * `node_modules/@be-yours/<pkg>/…` in a delivered site.
  *
  * `null` when it is not there, so a caller can fail loudly with its own message
  * instead of an ENOENT from a `readFileSync` three frames down. A test that
@@ -178,6 +178,6 @@ export function enginePackageFile(pkg: string, relative: string): string | null 
   const candidate =
     layout === "monorepo"
       ? path.join(MONOREPO_ROOT as string, "packages", pkg, relative)
-      : path.join(APP_ROOT, "node_modules", "@be-in-digital", pkg, relative)
+      : path.join(APP_ROOT, "node_modules", "@be-yours", pkg, relative)
   return fs.existsSync(candidate) ? candidate : null
 }

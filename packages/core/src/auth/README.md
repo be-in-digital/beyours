@@ -1,4 +1,4 @@
-# Auth Module - @be-in-digital/core
+# Auth Module - @be-yours/core
 
 This module provides a complete authentication solution based on **Better Auth** plus an **RBAC (Role-Based Access Control)** system for BeYours Engine.
 
@@ -28,7 +28,7 @@ Handles the 7 roles and their granular permissions.
 
 **Usage example:**
 ```ts
-import { Role, hasPermission } from '@be-in-digital/core'
+import { Role, hasPermission } from '@be-yours/core'
 
 // Check a permission
 hasPermission(Role.MANAGER, 'products:write') // true
@@ -76,7 +76,7 @@ Hooks and utilities for the React frontend.
 **After installing better-auth/react:**
 ```tsx
 import { createAuthClient } from 'better-auth/react'
-import { usePermission, Role } from '@be-in-digital/core'
+import { usePermission, Role } from '@be-yours/core'
 
 // Create the client
 const authClient = createAuthClient({
@@ -105,7 +105,7 @@ Middlewares for Server Components and API Routes.
 
 **Example in a Server Component:**
 ```ts
-import { requireAuth, requirePermission } from '@be-in-digital/core'
+import { requireAuth, requirePermission } from '@be-yours/core'
 
 export default async function DashboardPage() {
   const session = await requireAuth()
@@ -115,7 +115,7 @@ export default async function DashboardPage() {
 
 **Example in an API Route:**
 ```ts
-import { withAuthRoute } from '@be-in-digital/core'
+import { withAuthRoute } from '@be-yours/core'
 
 export const DELETE = withAuthRoute(
   async (req, session) => {
@@ -132,10 +132,10 @@ The RBAC module is 100% tested, with 47 tests covering every scenario.
 
 ```bash
 # Run the tests
-pnpm --filter @be-in-digital/core test
+pnpm --filter @be-yours/core test
 
 # Tests in watch mode
-pnpm --filter @be-in-digital/core test:watch
+pnpm --filter @be-yours/core test:watch
 ```
 
 ## 📝 Environment variables
@@ -188,7 +188,7 @@ export const authClient = createAuthClient({
 })
 
 // Export the hooks
-export { useAuth, usePermission, useRole } from '@be-in-digital/core'
+export { useAuth, usePermission, useRole } from '@be-yours/core'
 ```
 
 ### 4. Add the provider
@@ -211,7 +211,7 @@ export default function RootLayout({ children }) {
 
 ### 5. Protect the pages
 ```tsx
-import { requireAuth, requirePermission } from '@be-in-digital/core'
+import { requireAuth, requirePermission } from '@be-yours/core'
 
 export default async function ProductsPage() {
   await requirePermission('products:read')

@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
   Badge,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 interface GlobalServices {
   dineIn?: boolean

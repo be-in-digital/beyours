@@ -17,7 +17,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import type { SystemInfo } from "./types"
 

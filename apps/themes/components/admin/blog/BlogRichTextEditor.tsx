@@ -26,7 +26,7 @@ import {
   RefreshCw,
   Sparkles,
 } from "lucide-react"
-import { Button } from "@be-in-digital/ui"
+import { Button } from "@be-yours/ui"
 import { CmsMediaPicker } from "@/components/admin/cms/CmsMediaPicker"
 import { UnsplashImagePicker } from "@/components/admin/blog/UnsplashImagePicker"
 import { GenerateImageDialog } from "@/components/admin/blog/GenerateImageDialog"

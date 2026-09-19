@@ -7,7 +7,7 @@ import DOMPurify from "isomorphic-dompurify"
 import { ARTICLE_SANITIZE_PROFILE } from "@/lib/blog/sanitize-profile"
 import Link from "next/link"
 import { ArrowLeft, Eye } from "lucide-react"
-import { Badge, Button } from "@be-in-digital/ui"
+import { Badge, Button } from "@be-yours/ui"
 import { LoadingState } from "@/components/admin/LoadingState"
 import type { Id } from "@/convex/_generated/dataModel"
 

@@ -76,7 +76,7 @@ interface StripeAccountLinkResponse {
 // @guarded-inline: consumes the single-use OAuth state issued by
 // generateOAuthUrl, with a TTL, before trusting `account_id` or writing the row
 export const stripeCallback = httpAction(async (ctx, request) => {
-  const { getSiteEnv } = await import("@be-in-digital/core/env");
+  const { getSiteEnv } = await import("@be-yours/core/env");
   const site = getSiteEnv();
   const url = new URL(request.url);
   const accountId = url.searchParams.get("account_id");
@@ -170,7 +170,7 @@ export const stripeCallback = httpAction(async (ctx, request) => {
 // @guarded-inline: consumes the single-use OAuth state before minting a link,
 // then issues a fresh one for the link it hands back
 export const stripeRefresh = httpAction(async (ctx, request) => {
-  const { getSiteEnv } = await import("@be-in-digital/core/env");
+  const { getSiteEnv } = await import("@be-yours/core/env");
   const site = getSiteEnv();
   const url = new URL(request.url);
   const accountId = url.searchParams.get("account_id");
@@ -264,7 +264,7 @@ export const stripeRefresh = httpAction(async (ctx, request) => {
 // a third party's SumUp merchant account and routed the restaurant's card
 // takings into it.
 export const sumupCallback = httpAction(async (ctx, request) => {
-  const { getSiteEnv } = await import("@be-in-digital/core/env");
+  const { getSiteEnv } = await import("@be-yours/core/env");
   const site = getSiteEnv();
   const url = new URL(request.url);
   const code = url.searchParams.get("code");

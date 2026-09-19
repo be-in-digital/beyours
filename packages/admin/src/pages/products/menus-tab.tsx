@@ -42,7 +42,7 @@ import {
   EmptyTitle,
   EmptyDescription,
   EmptyContent,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { MenuFormDialog } from "./menu-form-dialog"
 import { convexErrorMessage } from "../../lib/convex-error"

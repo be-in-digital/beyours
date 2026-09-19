@@ -55,7 +55,7 @@ describe("publishablePackages", () => {
       .filter((entry) => entry.isDirectory())
 
     expect(found.length).toBe(dirs.length)
-    expect(found.map((pkg: Pkg) => pkg.name)).toContain("@be-in-digital/core")
+    expect(found.map((pkg: Pkg) => pkg.name)).toContain("@be-yours/core")
   })
 
   test("reports each package's directory relative to the repository", () => {
@@ -266,11 +266,11 @@ describe("owedBump", () => {
   test("the message names the packages and the command that releases them", () => {
     const verdict = owedBump({
       willPublish: false,
-      changesets: [changeset("a.md", "@be-in-digital/convex-functions")],
+      changesets: [changeset("a.md", "@be-yours/convex-functions")],
     })!
 
     const text = formatOwedBump(verdict)
-    expect(text).toContain("@be-in-digital/convex-functions")
+    expect(text).toContain("@be-yours/convex-functions")
     expect(text).toContain("pnpm version-packages")
     // The mirror half is the part nobody connected: eight failing syncs whose
     // cause was an unreleased engine.
@@ -278,6 +278,6 @@ describe("owedBump", () => {
 
     const summary = formatOwedBumpSummary(verdict)
     expect(summary).toContain("### A version bump is owed")
-    expect(summary).toContain("@be-in-digital/convex-functions")
+    expect(summary).toContain("@be-yours/convex-functions")
   })
 })

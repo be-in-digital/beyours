@@ -1,5 +1,5 @@
 /**
- * `@be-in-digital/admin/pages` carries every screen the root barrel does.
+ * `@be-yours/admin/pages` carries every screen the root barrel does.
  *
  * `package.json` declared `"./pages": "./src/pages/index.ts"` for the life of
  * the entry with no such file behind it — the one broken subpath of the twenty
@@ -57,7 +57,7 @@ function starReExports(source: string): string[] {
   )
 }
 
-describe("@be-in-digital/admin/pages", () => {
+describe("@be-yours/admin/pages", () => {
   it("is the file the exports map points at", () => {
     const manifest = JSON.parse(read("package.json")) as {
       exports?: Record<string, string>

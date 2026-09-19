@@ -1,6 +1,6 @@
 import { query, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-import * as defs from "@be-in-digital/convex-functions/promotions";
+import * as defs from "@be-yours/convex-functions/promotions";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // === Queries ===

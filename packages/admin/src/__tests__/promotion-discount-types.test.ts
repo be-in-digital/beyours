@@ -30,12 +30,12 @@
 import { describe, it, expect } from "vitest"
 import fs from "node:fs"
 import path from "node:path"
-import { create, update } from "@be-in-digital/convex-functions/promotions"
+import { create, update } from "@be-yours/convex-functions/promotions"
 import {
   HONOURABLE_DISCOUNT_TYPES,
   UNHONOURABLE_DISCOUNT_TYPES,
   WITHDRAWN_PROMOTION_CONFIG_FIELDS,
-} from "@be-in-digital/convex-functions/promotionDiscount"
+} from "@be-yours/convex-functions/promotionDiscount"
 
 const PROMOTIONS = path.join(__dirname, "..", "pages", "promotions")
 const read = (file: string): string =>
@@ -50,7 +50,7 @@ describe("the type picker", () => {
     // `promotionDiscount.ts` and the option comes back here on the same
     // commit, with no second edit to remember.
     expect(form).toContain(
-      'from "@be-in-digital/convex-functions/promotionDiscount"'
+      'from "@be-yours/convex-functions/promotionDiscount"'
     )
     expect(form).toContain("HONOURABLE_DISCOUNT_TYPES.map(")
   })

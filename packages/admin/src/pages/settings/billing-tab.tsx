@@ -1,7 +1,7 @@
 "use client"
 
 import type { Dispatch, SetStateAction } from "react"
-import { Button, Input, Label, Textarea } from "@be-in-digital/ui"
+import { Button, Input, Label, Textarea } from "@be-yours/ui"
 
 /** The billing-identity block as the form edits it — strings only. */
 export interface SellerFormState {

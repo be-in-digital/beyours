@@ -2,7 +2,7 @@
 
 ## ✅ Complete Implementation
 
-The i18n system has been fully implemented in the `@be-in-digital/core` package.
+The i18n system has been fully implemented in the `@be-yours/core` package.
 
 ### 📁 Files Created
 
@@ -129,7 +129,7 @@ packages/core/src/i18n/
 The package builds correctly:
 
 ```bash
-pnpm --filter @be-in-digital/core build
+pnpm --filter @be-yours/core build
 # ✅ CJS build success (20.37 KB)
 # ✅ ESM build success (17.51 KB)
 # ✅ DTS build success (32.41 KB)
@@ -157,7 +157,7 @@ import {
   DEFAULT_I18N_CONFIG,
   COMMON_LANGUAGES,
   isRtlLocale,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 ```
 
 ### 🎨 Provided Examples

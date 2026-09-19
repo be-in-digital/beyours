@@ -1,5 +1,5 @@
 import { query } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/translations";
+import * as defs from "@be-yours/convex-functions/translations";
 import { storeMutation } from "./lib/storeFunctions";
 
 // @public-by-design: translations of already-public content (product names, UI strings)

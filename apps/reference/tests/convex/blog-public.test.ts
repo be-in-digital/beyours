@@ -19,8 +19,8 @@ import { describe, expect, test } from "vitest"
 import { api } from "../../convex/_generated/api"
 import schema from "../../convex/schema"
 import type { Id } from "../../convex/_generated/dataModel"
-import { saveDraftCore } from "@be-in-digital/convex-functions/blog"
-import { publishArticleCore } from "@be-in-digital/convex-functions/blogPublish"
+import { saveDraftCore } from "@be-yours/convex-functions/blog"
+import { publishArticleCore } from "@be-yours/convex-functions/blogPublish"
 
 const modules = import.meta.glob("../../convex/**/*.ts")
 

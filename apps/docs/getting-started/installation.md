@@ -1,6 +1,6 @@
 # Installation
 
-This guide walks you through setting up a project that uses `@be-in-digital` packages.
+This guide walks you through setting up a project that uses `@be-yours` packages.
 
 ## Table of Contents
 
@@ -22,7 +22,7 @@ This guide walks you through setting up a project that uses `@be-in-digital` pac
 
 ## Configure GitHub Packages
 
-All `@be-in-digital` packages are hosted privately on **GitHub Packages**. You need a Personal Access Token (PAT) to install them.
+All `@be-yours` packages are hosted privately on **GitHub Packages**. You need a Personal Access Token (PAT) to install them.
 
 ### 1. Create a GitHub PAT
 
@@ -36,7 +36,7 @@ All `@be-in-digital` packages are hosted privately on **GitHub Packages**. You n
 Create or update `.npmrc` at the root of your project:
 
 ```ini
-@be-in-digital:registry=https://npm.pkg.github.com
+@be-yours:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
@@ -63,20 +63,20 @@ pnpx create-next-app@latest my-restaurant --typescript --tailwind --app
 cd my-restaurant
 
 # Install core packages
-pnpm add @be-in-digital/ui @be-in-digital/core @be-in-digital/restaurant
+pnpm add @be-yours/ui @be-yours/core @be-yours/restaurant
 
 # Install backend packages
-pnpm add @be-in-digital/convex-schema @be-in-digital/convex-functions
+pnpm add @be-yours/convex-schema @be-yours/convex-functions
 
 # Optional: Install admin dashboard
-pnpm add @be-in-digital/admin
+pnpm add @be-yours/admin
 ```
 
 ### Existing Project
 
 ```bash
 # Add the .npmrc first (see above), then:
-pnpm add @be-in-digital/ui
+pnpm add @be-yours/ui
 ```
 
 ## Configure Convex
@@ -163,7 +163,7 @@ UBER_DIRECT_WEBHOOK_SECRET=
 
 ## Tailwind CSS Configuration
 
-If using `@be-in-digital/ui`, update your `tailwind.config.ts`:
+If using `@be-yours/ui`, update your `tailwind.config.ts`:
 
 ```typescript
 import type { Config } from "tailwindcss";
@@ -172,8 +172,8 @@ const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx}",
     "./components/**/*.{js,ts,jsx,tsx}",
-    // Scan @be-in-digital/ui components
-    "./node_modules/@be-in-digital/ui/**/*.{js,ts,jsx,tsx}",
+    // Scan @be-yours/ui components
+    "./node_modules/@be-yours/ui/**/*.{js,ts,jsx,tsx}",
   ],
   // ...
 };
@@ -194,7 +194,7 @@ npm whoami --registry=https://npm.pkg.github.com  # Should show your GitHub user
 
 ### `404 Not Found` for a package
 
-Ensure you have access to the `be-in-digital` GitHub organization and the package exists.
+Ensure you have access to the `be-yours` GitHub organization and the package exists. A token that was only granted `read:packages` on `be-in-digital` will 401 against the `@be-yours` scope — the two are different organisations.
 
 ### Peer dependency warnings
 

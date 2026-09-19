@@ -19,7 +19,7 @@
 Identity is **Better Auth**, stored in the Convex Better Auth *component*, and
 reached from the app through `@convex-dev/better-auth`. Authorization is a
 separate system: a `userProfiles` row carries the role, and the RBAC helpers in
-`@be-in-digital/core/auth/rbac` decide what that role may do.
+`@be-yours/core/auth/rbac` decide what that role may do.
 
 What ships:
 
@@ -33,13 +33,13 @@ What does **not** ship, and must not be described as if it did:
 - **Social / OAuth login.** No provider is configured anywhere. `createAuth`
   in `convex/auth.ts` registers exactly one plugin, `convex({ authConfig })`,
   and there is no `socialProviders` block. `OAuthProvider` exists as a *type*
-  in `@be-in-digital/core` and has no implementation behind it.
+  in `@be-yours/core` and has no implementation behind it.
 - **Two-factor authentication.** `userProfiles.twoFactorEnabled` is a
   placeholder that every writer sets to `false`; nothing reads it and no
   screen can turn it on.
 - **Magic links.** An email template is declared; nothing sends one.
 
-`@be-in-digital/core/auth` also exports `createAuthConfig`, `authHooks` and a
+`@be-yours/core/auth` also exports `createAuthConfig`, `authHooks` and a
 React client (`useAuth`, `AuthProvider`, `usePermission`). **None of it is
 used by any app in this repository** — the apps go through Better Auth's own
 client instead, as below. Only the RBAC half of that package is load-bearing.
@@ -237,7 +237,7 @@ place a client cannot skip:
 
 ```typescript
 import { requireStorePermission, requireStaff, getAuthUser }
-  from "@be-in-digital/convex-functions/auth";
+  from "@be-yours/convex-functions/auth";
 
 export const update = mutation({
   args: { storeId: v.id("stores"), /* … */ },
@@ -274,7 +274,7 @@ so unticking a module can take access away but can never add it.
 Zustand store; the admin components read the store.
 
 ```tsx
-import { useAdminAuthStore } from "@be-in-digital/admin";
+import { useAdminAuthStore } from "@be-yours/admin";
 
 function AdminLayout({ children }) {
   const { user, role, isAuthenticated, isLoading } = useAdminAuthStore();
@@ -297,7 +297,7 @@ bundle, so "nothing in the UI calls it" is not a protection.
 
 ### Roles
 
-Seven, from `Role` in `@be-in-digital/core/auth/rbac`. The values below are the
+Seven, from `Role` in `@be-yours/core/auth/rbac`. The values below are the
 literals stored in `userProfiles.role`.
 
 | Role | Description | Scope |
@@ -315,8 +315,8 @@ There is no `owner`, `admin` or `staff` role.
 ### Check Permissions
 
 ```typescript
-import { hasPermission } from "@be-in-digital/core/auth/rbac";
-import { useAdminAuthStore } from "@be-in-digital/admin";
+import { hasPermission } from "@be-yours/core/auth/rbac";
+import { useAdminAuthStore } from "@be-yours/admin";
 
 function DeleteProductButton({ product }) {
   const role = useAdminAuthStore((s) => s.role);
@@ -327,13 +327,13 @@ function DeleteProductButton({ product }) {
 }
 ```
 
-Import from `@be-in-digital/core/auth/rbac`, the subpath the apps actually use.
-`@be-in-digital/core` re-exports the same symbols; `@be-in-digital/core/auth`
+Import from `@be-yours/core/auth/rbac`, the subpath the apps actually use.
+`@be-yours/core` re-exports the same symbols; `@be-yours/core/auth`
 is **not** a resolvable subpath — it is absent from the package's `exports`
 map, so that import fails at build time.
 
 The function is `hasPermission(role, permission)`. There is no
-`checkPermission` in `@be-in-digital/core` — the name exists only as an
+`checkPermission` in `@be-yours/core` — the name exists only as an
 internal Convex query in `convex/authHelpers.ts`, which is a different thing.
 
 Companions: `hasAnyPermission`, `hasAllPermissions`, `getRolePermissions`,

@@ -36,7 +36,7 @@ export interface Hsl {
 /**
  * The blob as it arrives here: every value unknown until it is parsed.
  *
- * The typed shape is `StoreBranding` in `@be-in-digital/convex-schema`, and
+ * The typed shape is `StoreBranding` in `@be-yours/convex-schema`, and
  * this module deliberately does not import it. The stored column is
  * `v.any()`, so a deployment can hold anything, and a design-system package
  * has no business depending on the database schema to say so.

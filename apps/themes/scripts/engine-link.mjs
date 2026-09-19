@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Development mode: consume the @be-in-digital/* packages from a local clone
+ * Development mode: consume the @be-yours/* packages from a local clone
  * of beyours (pnpm symlinks) instead of the GitHub Packages registry.
  * Useful to:
  *   - develop the engine and a site side by side without publishing;
@@ -84,7 +84,7 @@ function link() {
     const pkgJson = path.join(packagesDir, dir, "package.json")
     if (!fs.existsSync(pkgJson)) continue
     const { name } = JSON.parse(fs.readFileSync(pkgJson, "utf8"))
-    if (!name || !name.startsWith("@be-in-digital/")) continue
+    if (!name || !name.startsWith("@be-yours/")) continue
     pkg.pnpm.overrides[name] = `link:${path.join(packagesDir, dir)}`
     linked.push(name)
   }
@@ -144,7 +144,7 @@ function unlink() {
   const pkg = readPkg()
   if (pkg.pnpm && pkg.pnpm.overrides) {
     for (const key of Object.keys(pkg.pnpm.overrides)) {
-      if (key.startsWith("@be-in-digital/")) delete pkg.pnpm.overrides[key]
+      if (key.startsWith("@be-yours/")) delete pkg.pnpm.overrides[key]
     }
     if (Object.keys(pkg.pnpm.overrides).length === 0) delete pkg.pnpm.overrides
     if (Object.keys(pkg.pnpm).length === 0) delete pkg.pnpm

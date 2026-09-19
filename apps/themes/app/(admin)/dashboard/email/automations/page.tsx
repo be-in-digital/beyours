@@ -1,4 +1,4 @@
-import { EmailAutomationsPage } from "@be-in-digital/admin"
+import { EmailAutomationsPage } from "@be-yours/admin"
 
 export default function Page() {
   return <EmailAutomationsPage />

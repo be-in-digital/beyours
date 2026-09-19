@@ -9,7 +9,7 @@
  * removes something.
  *
  * The vocabulary itself — the names, the matching, the labels — is
- * `@be-in-digital/core/allergens` and is not restated here. There is one alias
+ * `@be-yours/core/allergens` and is not restated here. There is one alias
  * table in this repository and this file is not it.
  *
  * WHY PURE, AND WHY SEPARATE FROM THE COMPONENT: `packages/admin` has no jsdom
@@ -29,7 +29,7 @@ import {
   resolveAllergens,
   type Allergen,
   type AllergenLocale,
-} from "@be-in-digital/core/allergens"
+} from "@be-yours/core/allergens"
 
 /** One canonical name the owner can tick. */
 export interface AllergenOption {

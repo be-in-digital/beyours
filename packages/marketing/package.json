@@ -1,12 +1,12 @@
 {
-  "name": "@be-in-digital/marketing",
-  "version": "3.0.0",
+  "name": "@be-yours/marketing",
+  "version": "1.0.0",
   "publishConfig": {
     "access": "restricted"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/be-in-digital/beyours.git",
+    "url": "https://github.com/be-yours/beyours.git",
     "directory": "packages/marketing"
   },
   "files": [

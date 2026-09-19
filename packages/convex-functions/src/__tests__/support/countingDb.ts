@@ -16,7 +16,7 @@
  * It is also index-faithful, deliberately. The hand-rolled doubles elsewhere in
  * this suite accept `withIndex("by_anything")` and silently apply the equality
  * filters, which means a query can name an index that does not exist and pass.
- * This one reads the real declared indexes out of `@be-in-digital/convex-schema`
+ * This one reads the real declared indexes out of `@be-yours/convex-schema`
  * and enforces Convex's own rule: equalities must cover a prefix of the index
  * fields, in order, and a range bound may only be placed on the field directly
  * after that prefix. Fixing a query by filtering in JavaScript on a field the
@@ -24,7 +24,7 @@
  * three of the five defects this file was written for.
  */
 
-import * as schemaTables from "@be-in-digital/convex-schema/tables"
+import * as schemaTables from "@be-yours/convex-schema/tables"
 
 /** Any document, as the double stores it. */
 export interface MockDoc {
@@ -242,7 +242,7 @@ export function createCountingDb(
     const indexes = DECLARED_INDEXES[table]
     if (!indexes) {
       throw new Error(
-        `countingDb: table "${table}" is not declared in @be-in-digital/convex-schema/tables`
+        `countingDb: table "${table}" is not declared in @be-yours/convex-schema/tables`
       )
     }
     return indexes

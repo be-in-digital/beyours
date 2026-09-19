@@ -1,5 +1,5 @@
 import { internalMutation } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/paymentEvents";
+import * as defs from "@be-yours/convex-functions/paymentEvents";
 
 // === Internal Mutations (for provider webhooks and the nightly sweep) ===
 //

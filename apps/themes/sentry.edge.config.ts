@@ -6,7 +6,7 @@
  * the SDK — one `Sentry.init` cannot serve both.
  */
 import * as Sentry from '@sentry/nextjs'
-import { resolveSentryOptions } from '@be-in-digital/core/sentry'
+import { resolveSentryOptions } from '@be-yours/core/sentry'
 
 const options = resolveSentryOptions('edge')
 

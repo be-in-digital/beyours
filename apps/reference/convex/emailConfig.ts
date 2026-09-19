@@ -1,4 +1,4 @@
-import * as defs from "@be-in-digital/convex-functions/emailConfig";
+import * as defs from "@be-yours/convex-functions/emailConfig";
 import { internalQuery } from "./_generated/server";
 import { storeQuery, storeMutation } from "./lib/storeFunctions";
 

@@ -1,4 +1,4 @@
-# @be-in-digital/integrations
+# @be-yours/integrations
 
 > Third-party integrations: Uber Eats and Deliveroo API clients, menu sync, order handling, webhook security.
 
@@ -16,7 +16,7 @@
 ## Installation
 
 ```bash
-pnpm add @be-in-digital/integrations
+pnpm add @be-yours/integrations
 ```
 
 ### Environment Variables
@@ -37,11 +37,11 @@ UBER_DIRECT_WEBHOOK_SECRET=your_webhook_secret
 
 ## Shape of the Package
 
-There is **one entry point** — `@be-in-digital/integrations` — and it exports
+There is **one entry point** — `@be-yours/integrations` — and it exports
 three namespaces plus the shared `common` module:
 
 ```typescript
-import { uberEats, deliveroo, uberDirect } from "@be-in-digital/integrations";
+import { uberEats, deliveroo, uberDirect } from "@be-yours/integrations";
 ```
 
 Everything is reached through its namespace. Nothing is exported flat: there is
@@ -66,7 +66,7 @@ expiry. You rarely call it directly — `fetchUberEats` / `fetchDeliveroo` do.
 ### Menu Sync
 
 ```typescript
-import { uberEats } from "@be-in-digital/integrations";
+import { uberEats } from "@be-yours/integrations";
 
 // Read the current menu back from Uber Eats
 const { categories, rawMenu } = await uberEats.pullMenu(credentials, storeId);
@@ -110,7 +110,7 @@ escape hatch `fetchUberEats(credentials, path, options)`.
 ### Menu Sync
 
 ```typescript
-import { deliveroo } from "@be-in-digital/integrations";
+import { deliveroo } from "@be-yours/integrations";
 
 const menu = await deliveroo.pullMenu(credentials, /* … */);
 
@@ -150,7 +150,7 @@ app's Convex action (`apps/reference/convex/uberDirect.ts`), which owns the
 credentials and the retry policy.
 
 ```typescript
-import { uberDirect } from "@be-in-digital/integrations";
+import { uberDirect } from "@be-yours/integrations";
 
 // Build the body of POST /v1/eats/deliveries/orders
 const body = uberDirect.buildCreateDeliveryRequest(order, { currency: "EUR" /* … */ });
@@ -181,7 +181,7 @@ Crypto API so they run unchanged inside a Convex isolate, and all three return
 `false` rather than throwing.
 
 ```typescript
-import { uberEats, deliveroo, uberDirect } from "@be-in-digital/integrations";
+import { uberEats, deliveroo, uberDirect } from "@be-yours/integrations";
 
 // Uber Eats — HMAC-SHA256 of the raw body, hex, in `x-uber-signature`
 const ok = await uberEats.verifyUberEatsSignature(rawBody, signature, clientSecret);
@@ -234,7 +234,7 @@ accepting a message it should have refused.
 Failures throw `IntegrationError` from `common`:
 
 ```typescript
-import { IntegrationError } from "@be-in-digital/integrations";
+import { IntegrationError } from "@be-yours/integrations";
 
 catch (error) {
   if (error instanceof IntegrationError) {

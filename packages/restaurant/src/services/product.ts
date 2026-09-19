@@ -11,8 +11,8 @@ import {
   resolveAllergens,
   type ResolvedAllergen,
   type AllergenLocale,
-} from '@be-in-digital/core/allergens'
-import { isWithinWindow } from '@be-in-digital/convex-schema'
+} from '@be-yours/core/allergens'
+import { isWithinWindow } from '@be-yours/convex-schema'
 import type { ProductDoc, ProductFilters, ProductSortBy, CartSelectedOption } from '../types'
 
 /**
@@ -107,7 +107,7 @@ export const isSameAllergenFilter = (a: string, b: string): boolean => {
  * Can this product carry one of the allergens the diner asked to exclude?
  *
  * Both sides go through `normalizeAllergen` from
- * `@be-in-digital/core/allergens` — the one vocabulary in the repository — so a
+ * `@be-yours/core/allergens` — the one vocabulary in the repository — so a
  * filter on `gluten` matches `Gluten`, `GLUTEN`, `blé` and `Céréales contenant
  * du gluten` alike. The previous implementation compared the two raw strings,
  * which meant a diner who excluded `gluten` was still served a dish tagged

@@ -31,7 +31,7 @@ import path from "node:path"
 import {
   ALLERGEN_LABELS,
   KNOWN_ALLERGENS,
-} from "@be-in-digital/core/allergens"
+} from "@be-yours/core/allergens"
 
 import {
   addAllergenValue,
@@ -254,7 +254,7 @@ describe("both writers of products.allergens share one control", () => {
   })
 
   it("takes its names, matching and labels from core and defines none of its own", () => {
-    expect(allergenSelection).toContain('from "@be-in-digital/core/allergens"')
+    expect(allergenSelection).toContain('from "@be-yours/core/allergens"')
     for (const file of sourceFiles(ADMIN_SRC)) {
       const source = read(file)
       // A second alias table, label map or normaliser is exactly how the four

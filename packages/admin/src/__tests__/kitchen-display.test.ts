@@ -67,7 +67,7 @@ describe("the range this form offers", () => {
     // Imported here rather than re-typed: this is a test, so pulling the
     // engine module in costs nothing at runtime, and a literal copied into an
     // assertion would drift with the thing it is supposed to catch.
-    const engine = await import("@be-in-digital/convex-functions/stores")
+    const engine = await import("@be-yours/convex-functions/stores")
 
     expect(MIN_AUTO_DISMISS_MINUTES).toBe(engine.MIN_AUTO_DISMISS_MINUTES)
     expect(MAX_AUTO_DISMISS_MINUTES).toBe(engine.MAX_AUTO_DISMISS_MINUTES)

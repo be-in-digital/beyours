@@ -138,7 +138,7 @@ export function isWithinBusinessHours(
 /**
  * The same rule, asked about a moment somebody else has already read.
  *
- * `isStoreOpen` in `@be-in-digital/restaurant` keeps its own reading frame —
+ * `isStoreOpen` in `@be-yours/restaurant` keeps its own reading frame —
  * it has to, because it also reports when the service next changes and that
  * arithmetic is done on a `Date`. Handing it the rule rather than the clock is
  * what stops one call describing two different moments: it reported "open, no

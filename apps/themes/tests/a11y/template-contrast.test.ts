@@ -51,8 +51,8 @@
 import { readdirSync, existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
-import { AA_LARGE, AA_TEXT, contrast, type Rgb } from "@be-in-digital/ui/contrast"
-import { formatFailures, loadTokens, scanContrast } from "@be-in-digital/ui/contrast-scan"
+import { AA_LARGE, AA_TEXT, contrast, type Rgb } from "@be-yours/ui/contrast"
+import { formatFailures, loadTokens, scanContrast } from "@be-yours/ui/contrast-scan"
 
 /** The four token scopes a delivered site renders under. */
 const SCOPES = [
@@ -213,7 +213,7 @@ function declaredSurface(file: string, pattern: RegExp): string {
 
 /** `bg-[#120d1a]` on the wrapper every QR-game screen renders inside. */
 const GAME_ARENA = declaredSurface(
-  "node_modules/@be-in-digital/admin/src/game/game-shell.tsx",
+  "node_modules/@be-yours/admin/src/game/game-shell.tsx",
   /className="[^"]*\bbg-\[(#[0-9a-fA-F]{3,8})\]/
 )
 
@@ -254,12 +254,12 @@ const REGIONS = [
   { dir: "components/website", scope: ".storefront-theme" },
   { dir: "app/(auth)", scope: ".storefront-theme" },
   // The two trees whose background is painted by a shell in another file.
-  { dir: "node_modules/@be-in-digital/admin/src/game", scope: "", surface: GAME_ARENA },
+  { dir: "node_modules/@be-yours/admin/src/game", scope: "", surface: GAME_ARENA },
   { dir: "app/display", scope: "", surface: KITCHEN_DISPLAY },
   // One FILE: `block-preview.tsx` draws an EMAIL, which lands on its own white
   // ground whatever the admin's colour scheme is.
   {
-    dir: "node_modules/@be-in-digital/admin/src/pages/email/templates/block-preview.tsx",
+    dir: "node_modules/@be-yours/admin/src/pages/email/templates/block-preview.tsx",
     scope: "",
     surface: "#ffffff",
   },
@@ -267,8 +267,8 @@ const REGIONS = [
   { dir: "app", scope: "", surface: "background" },
   { dir: "components", scope: "", surface: "background" },
   { dir: "lib", scope: "", surface: "background" },
-  { dir: "node_modules/@be-in-digital/ui/src", scope: "", surface: "background" },
-  { dir: "node_modules/@be-in-digital/admin/src", scope: "", surface: "background" },
+  { dir: "node_modules/@be-yours/ui/src", scope: "", surface: "background" },
+  { dir: "node_modules/@be-yours/admin/src", scope: "", surface: "background" },
 ]
 
 /** 28 seconds measured for all 51; the ceiling is a stall detector. */

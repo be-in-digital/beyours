@@ -15,7 +15,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { DeleteConfirmDialog } from "@/components/admin/DeleteConfirmDialog"
 import type { Id } from "@/convex/_generated/dataModel"
 

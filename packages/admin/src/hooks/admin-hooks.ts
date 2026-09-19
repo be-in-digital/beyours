@@ -5,7 +5,7 @@ import { useQuery } from "convex/react"
 import {
   useAdminStoreSelection,
   type StoreDoc,
-} from "@be-in-digital/restaurant"
+} from "@be-yours/restaurant"
 import { useAdminApiStore } from "../stores/admin-api-store"
 
 /**

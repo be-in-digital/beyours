@@ -73,6 +73,35 @@ permissions:
 
 jobs:
   # ── The observer ───────────────────────────────────────────────────────────
+  # IS ANY OF THIS WORTH REPORTING TODAY?
+  #
+  # `stale` and `release-waiting` both measure distance from the registry: is
+  # the boilerplate carrying what `apps/themes` says, and has a merged bump gone
+  # unpublished. While `RELEASE_HOLD.md` is in the tree both answers are yes BY
+  # DESIGN — the hold is the thing stopping the publish, and the mirror stands
+  # down behind it — so a daily issue on each would report the decision back to
+  # the people who took it.
+  #
+  # That is the failure this whole workflow exists to avoid, pointed the other
+  # way: an alert nobody can act on is an alert everybody learns to mute, and a
+  # muted channel is how the twelve-day outage in `publish-mirror.yml` stayed
+  # invisible. So the two distance checks stand down; `inconclusive` and
+  # `mirror-ci` do not, because a cancelled run and a broken mirror CI are just
+  # as real during a hold as outside one.
+  hold:
+    name: Is publication held?
+    if: github.event_name != 'workflow_run'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      held: ${{ steps.hold.outputs.held }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: hold
+        run: node scripts/check-release-hold.mjs --report
+
   inconclusive:
     name: Report an unfinished sync
     if: >-
@@ -319,7 +348,9 @@ jobs:
   # ── The backstop ───────────────────────────────────────────────────────────
   stale:
     name: Is the mirror current?
-    if: github.event_name != 'workflow_run'
+    needs: [hold]
+    # Held means this measures a deliberate state — see the `hold` job.
+    if: github.event_name != 'workflow_run' && needs.hold.outputs.held != 'true'
     runs-on: ubuntu-latest
     # `--check` does the whole gate before it compares: it clones the mirror,
     # pins the engine versions the registry serves, installs them and
@@ -342,7 +373,7 @@ jobs:
         with:
           node-version: 20
           registry-url: "https://npm.pkg.github.com"
-          scope: "@be-in-digital"
+          scope: "@be-yours"
           cache: "pnpm"
 
       # CAN THIS JOB EVEN ASK THE QUESTION?
@@ -649,7 +680,7 @@ jobs:
   # does not gate, and must not: batching a few fixes into one release is the
   # intended workflow, so `Lint` would fail every pull request opened while a
   # changeset sits in `.changeset/`. Measured on 15 September 2026 at
-  # `a92a0e51`: `@be-in-digital/admin` was `waiting`, so passing `--fail-waiting`
+  # `a92a0e51`: `@be-yours/admin` was `waiting`, so passing `--fail-waiting`
   # in `Lint` would have turned `main` itself red that day, and every branch off
   # it. #519 asked for that placement or an argument against it; this is the
   # argument, and this job is where the flag belongs instead.
@@ -666,7 +697,9 @@ jobs:
   # registry read is what `packages: read` is for.
   release-waiting:
     name: Is a release still owed?
-    if: github.event_name != 'workflow_run'
+    needs: [hold]
+    # Held means this measures a deliberate state — see the `hold` job.
+    if: github.event_name != 'workflow_run' && needs.hold.outputs.held != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -690,7 +723,7 @@ jobs:
         with:
           node-version: 20
           registry-url: "https://npm.pkg.github.com"
-          scope: "@be-in-digital"
+          scope: "@be-yours"
           cache: "pnpm"
 
       - name: How long has a release been owed?

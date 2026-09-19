@@ -25,7 +25,7 @@
  * first assertion and fail the second.
  *
  * The double is `support/countingDb`: it reads the real declared indexes out of
- * `@be-in-digital/convex-schema` and refuses a query that names one that does
+ * `@be-yours/convex-schema` and refuses a query that names one that does
  * not exist. The four indexes these guards needed — `gamePlays.by_gameId`,
  * `gamePlays.by_prizeId`, `prizeRedemptions.by_prizeId`,
  * `promotionUsages.by_orderId` — are therefore proved by these tests to be

@@ -6,7 +6,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@/convex/_generated/api"
-import { DEFAULT_NOTIFICATION_PREFERENCES } from "@be-in-digital/convex-functions/userProfiles"
+import { DEFAULT_NOTIFICATION_PREFERENCES } from "@be-yours/convex-functions/userProfiles"
 import {
   Package,
   MapPin,
@@ -34,7 +34,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { authClient } from "@/lib/auth-client"
 
 // === Types ===

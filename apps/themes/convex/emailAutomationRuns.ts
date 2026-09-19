@@ -1,5 +1,5 @@
 import { internalMutation, internalQuery } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/emailAutomationRuns";
+import * as defs from "@be-yours/convex-functions/emailAutomationRuns";
 
 /**
  * What an automation has already sent, and to whom.

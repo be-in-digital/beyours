@@ -17,7 +17,7 @@
  * here.
  *
  * The double is index-faithful (see `support/countingDb`): it reads the real
- * declared indexes out of `@be-in-digital/convex-schema` and enforces Convex's
+ * declared indexes out of `@be-yours/convex-schema` and enforces Convex's
  * own rule about equalities and range bounds, so "narrow it in JavaScript
  * instead" — the shape three of these defects actually had — cannot pass either.
  *

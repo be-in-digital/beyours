@@ -39,7 +39,7 @@ import { APP_ROOT, enginePackageFile } from "../lib/repo-layout"
 const CONVEX = join(APP_ROOT, "convex")
 
 /**
- * A file in `@be-in-digital/core`'s env module, at whichever of its two
+ * A file in `@be-yours/core`'s env module, at whichever of its two
  * addresses this checkout uses.
  *
  * This file SHIPS. `join(process.cwd(), "../../packages/core/src/env")` is an
@@ -52,7 +52,7 @@ function envSource(name: string): string {
   const file = enginePackageFile("core", `src/env/${name}`)
   if (file === null) {
     throw new Error(
-      `@be-in-digital/core/src/env/${name} is not in this checkout, so every ` +
+      `@be-yours/core/src/env/${name} is not in this checkout, so every ` +
         "variable below would read as undeclared"
     )
   }

@@ -9,7 +9,7 @@ import {
   PaginationNext,
   PaginationPrevious,
   ButtonGroup,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 interface StoresPaginationProps {
   currentPage: number

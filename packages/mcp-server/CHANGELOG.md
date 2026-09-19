@@ -1,4 +1,22 @@
-# @be-in-digital/mcp-server
+# @be-yours/mcp-server
+
+## 1.0.0
+
+### Major Changes
+
+- Renamed from `@be-in-digital/mcp-server` to `@be-yours/mcp-server`, and reset to 1.0.0.
+
+  The npm scope now matches the GitHub organisation that owns this repository,
+  which is what GitHub Packages requires: a package published to
+  `npm.pkg.github.com` must carry the owning org as its scope, and the org is
+  `be-yours`. The previous scope belonged to `be-in-digital`, the agency.
+
+  The version is a reset, not a bump. Under the new scope this package has no
+  published history, so `1.0.0` is its first release rather than a downgrade
+  from `1.1.14`. The old scope keeps everything it published: those
+  versions stay on the registry and already-deployed client sites continue to
+  resolve them until they are migrated. See `RELEASE_HOLD.md` for the
+  migration and the conditions this release is held on.
 
 ## 1.1.14
 
@@ -13,13 +31,13 @@
 
   `admin` takes a MAJOR from two `minor` changesets, and the reason is
   mechanical rather than a judgement about its API: it declares
-  `@be-in-digital/convex-schema` and `@be-in-digital/convex-functions` as
+  `@be-yours/convex-schema` and `@be-yours/convex-functions` as
   `workspace:^` **peerDependencies**, and changesets escalates a package whose
   internal peer takes a minor, because the widened peer range is breaking for
   whoever installs it. That is why every `admin` release since 14.0.0 is a
   major except the two — 15.0.1 and 22.0.1 — that left both peers alone.
 
-  Regenerated with `pnpm --filter @be-in-digital/mcp-server sync:versions` in the
+  Regenerated with `pnpm --filter @be-yours/mcp-server sync:versions` in the
   same commit as the bump, which is the only ordering that leaves the index
   agreeing with the versions it indexes — the file is this server's answer to
   "which version do I install", so it is correct between two releases only by
@@ -102,7 +120,7 @@
   `src/package-versions.ts` is generated from the workspace manifests, so every
   release moves it — and a release that moved it without naming this package
   would publish a registry still quoting the versions before the bump. The
-  server would then answer "which version of `@be-in-digital/admin` should I
+  server would then answer "which version of `@be-yours/admin` should I
   install" with the one a client already has.
 
 ## 1.1.7
@@ -131,14 +149,14 @@
 
 ### Patch Changes
 
-- Report `@be-in-digital/ui` at 4.3.2
+- Report `@be-yours/ui` at 4.3.2
 
   `PACKAGE_VERSIONS` is what this server tells a consumer to install, so it is
   only correct between two releases by accident. The `ui` bump to 4.3.2 left it
   naming 4.3.1, and `registry.test.ts` caught it — `expected '4.3.1' to be
 '4.3.2'`.
 
-  Regenerated with `pnpm --filter @be-in-digital/mcp-server sync:versions`, the
+  Regenerated with `pnpm --filter @be-yours/mcp-server sync:versions`, the
   command the generated file's own header names, rather than edited by hand.
 
 ## 1.1.4
@@ -154,7 +172,7 @@
   versioned, so it would have named four versions a client cannot install and
   `registry.test.ts` failed on the first of them.
 
-  Regenerated with `pnpm --filter @be-in-digital/mcp-server sync:versions`, the
+  Regenerated with `pnpm --filter @be-yours/mcp-server sync:versions`, the
   command the failing test names in its own message. The table does not list
   this package, so cutting this release does not invalidate it again.
 
@@ -165,7 +183,7 @@
 - Report the versions this release actually cut
 
   `src/package-versions.ts` is generated from the workspace manifests by
-  `pnpm --filter @be-in-digital/mcp-server sync:versions`, and consuming the
+  `pnpm --filter @be-yours/mcp-server sync:versions`, and consuming the
   pending changesets moved several packages. Regenerated, so the registry answers
   with the versions a client can install rather than the ones it could yesterday.
 
@@ -181,7 +199,7 @@
 - Report the versions this release actually cut
 
   `src/package-versions.ts` is generated from the workspace manifests by
-  `pnpm --filter @be-in-digital/mcp-server sync:versions`, and consuming the
+  `pnpm --filter @be-yours/mcp-server sync:versions`, and consuming the
   pending changesets moved several packages. Regenerated, so the registry answers
   with the versions a client can install rather than the ones it could yesterday.
 
@@ -197,7 +215,7 @@
 - Report the versions this release actually cut
 
   `src/package-versions.ts` is generated from the workspace manifests by
-  `pnpm --filter @be-in-digital/mcp-server sync:versions`, and eight consumed
+  `pnpm --filter @be-yours/mcp-server sync:versions`, and eight consumed
   changesets moved nine packages. Regenerated, so the registry answers with the
   versions a client can install rather than the ones it could yesterday.
 
@@ -212,7 +230,7 @@
 
 - d89ade4: Release the MCP registry that eight merged commits have been rewriting
 
-  `@be-in-digital/mcp-server` last moved to 1.0.4 on 30/08/2026. Since then eight
+  `@be-yours/mcp-server` last moved to 1.0.4 on 30/08/2026. Since then eight
   commits changed 368 lines of its source — `src/registry.ts`, `src/server.ts`,
   and the new generated `src/package-versions.ts` — and none of them carried a
   changeset. `changeset publish` answers `already published` and skips a package
@@ -225,7 +243,7 @@
 
   What is actually released here:
   - `src/package-versions.ts`, generated by `pnpm --filter
-@be-in-digital/mcp-server sync:versions`, so the registry reports the version
+@be-yours/mcp-server sync:versions`, so the registry reports the version
     each engine package really carries rather than a literal typed by hand;
   - `importStatement` and `importBinding` on the registry, so a consumer is told
     the import to write rather than left to assemble it;
@@ -244,7 +262,7 @@
   broken rather than merely unused, and exports left behind by a removal that only
   finished on one side of a package boundary.
 
-  **`@be-in-digital/ui` shipped a second toast system whose hook could only
+  **`@be-yours/ui` shipped a second toast system whose hook could only
   throw.** The product's toasts are `sonner`, mounted in each app's
   `app/providers.tsx` and imported by 129 files. Beside it, `Toast.tsx` held a
   module-private `ToastContext` defaulting to `undefined`, and exported a
@@ -263,7 +281,7 @@
   is republished without a second decision, which is how the provider reached a
   client API in the first place.
 
-  **`@be-in-digital/marketing` kept the pure half of a mutation #397 removed.**
+  **`@be-yours/marketing` kept the pure half of a mutation #397 removed.**
   That PR deleted `incrementRevenue` from `convex-functions` and left a tombstone
   saying why — nothing writes a `converted` email event and no order carries the
   campaign that led to it, so the attribution behind a "revenu attribué" figure
@@ -276,7 +294,7 @@
   against, not the finishing of a removal, so they are recorded here and left
   alone.
 
-  **`@be-in-digital/restaurant` published five cart selectors nothing selected
+  **`@be-yours/restaurant` published five cart selectors nothing selected
   with.** `useCartItems`, `useCartSummary`, `useCartItemCount`, `useCartOrderType`
   and `useCartStoreId` were compiled into `dist` and exported from both the root
   and `./hooks`, with zero references in either app, any package or any test. The
@@ -288,9 +306,9 @@
   and now teaches `getSummary` off the store, which is what the cart page actually
   does.
 
-  **`@be-in-digital/admin` exported four components no screen mounts.** Two auth
+  **`@be-yours/admin` exported four components no screen mounts.** Two auth
   forms — `ForgotPasswordForm` and `ResetPasswordForm` — which both apps rewrote
-  inline from `@be-in-digital/ui` primitives rather than import, plus a
+  inline from `@be-yours/ui` primitives rather than import, plus a
   `StatusBadge` and a `DateDisplay`. The `StatusBadge` _interface_ in
   `lib/vocabulary.ts` is a different, live thing and is untouched.
 
@@ -310,7 +328,7 @@
   claim nobody checked, and this one would have shipped as the changelog of a
   major bump.
 
-  **`@be-in-digital/core` carried 466 lines of i18n examples.** Fifteen exported
+  **`@be-yours/core` carried 466 lines of i18n examples.** Fifteen exported
   `example1_…` through `example15_…` functions, on no barrel, in no `exports` map
   and in no `tsup` entry — so never compiled into `dist`, but shipped in the
   tarball by `"files": ["dist", "src"]`. No supported import path reaches them,
@@ -318,12 +336,12 @@
   about the package shipping no JSX; they now make that claim on their own
   authority.
 
-  `@be-in-digital/mcp-server` is a patch because its registry advertised `Toast` to
+  `@be-yours/mcp-server` is a patch because its registry advertised `Toast` to
   client builds as a "Toast notification system". It is a box, and now says so.
 
   **One thing this does NOT do, said plainly.** The class (c) sweep in the same
   change removes 71 public _registrations_ from `apps/*/convex` while leaving the
-  handler definitions they wrapped exported from `@be-in-digital/convex-functions`
+  handler definitions they wrapped exported from `@be-yours/convex-functions`
   — so roughly sixty definitions there now have no registration anywhere. That is
   deliberate, and it is the opposite of what was done to `incrementRevenueStat`
   above, so the difference is worth stating. `incrementRevenue` was removed by
@@ -375,10 +393,10 @@
     100% of executions; the `S3Service.delete` JSDoc did not say the optional
     methods gate the purge, nor that nothing in `apps/*` calls it;
     `IMPLEMENTATION.md` and the `createS3Service` entry in
-    `@be-in-digital/mcp-server`'s registry still described the obsolete
+    `@be-yours/mcp-server`'s registry still described the obsolete
     four-method interface.
 
-  No new dependency: `@be-in-digital/core` still has exactly one AWS SDK
+  No new dependency: `@be-yours/core` still has exactly one AWS SDK
   dependency, `@aws-sdk/client-sesv2`. The adapter stays injected.
 
   Refs #414 (OBS-2), #331.
@@ -445,7 +463,7 @@
   a Saturday-night checkout failure was seen by nobody. Shipping the variable
   without the integration buys the confidence without the coverage.
 
-  New `@be-in-digital/core/sentry` resolves the `Sentry.init` options for the
+  New `@be-yours/core/sentry` resolves the `Sentry.init` options for the
   three runtimes:
   - `resolveSentryOptions(runtime, env?)` returns `null` when the DSN is unset,
     empty, or is not a DSN — a project-page URL pasted instead of the client key
@@ -522,5 +540,5 @@
 ### Patch Changes
 
 - 7f0122b: Republished from main. Fixes two problems with the 2.0.1 tarballs that broke consumers:
-  - `@be-in-digital/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
+  - `@be-yours/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
   - The type fixes that were on main but never published (promotion-form/email-config in admin, Uber Eats signatures in integrations/convex-functions) go out with this patch — they had been committed without a changeset.

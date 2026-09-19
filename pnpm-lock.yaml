@@ -66,31 +66,31 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1024.0
         version: 3.1024.0
-      '@be-in-digital/admin':
+      '@be-yours/admin':
         specifier: workspace:^
         version: link:../../packages/admin
-      '@be-in-digital/cms':
+      '@be-yours/cms':
         specifier: workspace:^
         version: link:../../packages/cms
-      '@be-in-digital/convex-functions':
+      '@be-yours/convex-functions':
         specifier: workspace:^
         version: link:../../packages/convex-functions
-      '@be-in-digital/convex-schema':
+      '@be-yours/convex-schema':
         specifier: workspace:^
         version: link:../../packages/convex-schema
-      '@be-in-digital/core':
+      '@be-yours/core':
         specifier: workspace:^
         version: link:../../packages/core
-      '@be-in-digital/integrations':
+      '@be-yours/integrations':
         specifier: workspace:^
         version: link:../../packages/integrations
-      '@be-in-digital/marketing':
+      '@be-yours/marketing':
         specifier: workspace:^
         version: link:../../packages/marketing
-      '@be-in-digital/restaurant':
+      '@be-yours/restaurant':
         specifier: workspace:^
         version: link:../../packages/restaurant
-      '@be-in-digital/ui':
+      '@be-yours/ui':
         specifier: workspace:^
         version: link:../../packages/ui
       '@convex-dev/better-auth':
@@ -432,31 +432,31 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1024.0
         version: 3.1024.0
-      '@be-in-digital/admin':
+      '@be-yours/admin':
         specifier: workspace:^
         version: link:../../packages/admin
-      '@be-in-digital/cms':
+      '@be-yours/cms':
         specifier: workspace:^
         version: link:../../packages/cms
-      '@be-in-digital/convex-functions':
+      '@be-yours/convex-functions':
         specifier: workspace:^
         version: link:../../packages/convex-functions
-      '@be-in-digital/convex-schema':
+      '@be-yours/convex-schema':
         specifier: workspace:^
         version: link:../../packages/convex-schema
-      '@be-in-digital/core':
+      '@be-yours/core':
         specifier: workspace:^
         version: link:../../packages/core
-      '@be-in-digital/integrations':
+      '@be-yours/integrations':
         specifier: workspace:^
         version: link:../../packages/integrations
-      '@be-in-digital/marketing':
+      '@be-yours/marketing':
         specifier: workspace:^
         version: link:../../packages/marketing
-      '@be-in-digital/restaurant':
+      '@be-yours/restaurant':
         specifier: workspace:^
         version: link:../../packages/restaurant
-      '@be-in-digital/ui':
+      '@be-yours/ui':
         specifier: workspace:^
         version: link:../../packages/ui
       '@convex-dev/better-auth':
@@ -671,22 +671,22 @@ importers:
 
   packages/admin:
     dependencies:
-      '@be-in-digital/convex-functions':
+      '@be-yours/convex-functions':
         specifier: workspace:^
         version: link:../convex-functions
-      '@be-in-digital/convex-schema':
+      '@be-yours/convex-schema':
         specifier: workspace:^
         version: link:../convex-schema
-      '@be-in-digital/core':
+      '@be-yours/core':
         specifier: workspace:^
         version: link:../core
-      '@be-in-digital/marketing':
+      '@be-yours/marketing':
         specifier: workspace:^
         version: link:../marketing
-      '@be-in-digital/restaurant':
+      '@be-yours/restaurant':
         specifier: workspace:^
         version: link:../restaurant
-      '@be-in-digital/ui':
+      '@be-yours/ui':
         specifier: workspace:^
         version: link:../ui
       '@hookform/resolvers':
@@ -790,20 +790,20 @@ importers:
 
   packages/convex-functions:
     dependencies:
-      '@be-in-digital/cms':
+      '@be-yours/cms':
         specifier: workspace:*
         version: link:../cms
-      '@be-in-digital/convex-schema':
+      '@be-yours/convex-schema':
         specifier: workspace:*
         version: link:../convex-schema
-      '@be-in-digital/core':
+      '@be-yours/core':
         specifier: workspace:*
         version: link:../core
       sanitize-html:
         specifier: ^2.17.5
         version: 2.17.7
     devDependencies:
-      '@be-in-digital/integrations':
+      '@be-yours/integrations':
         specifier: workspace:*
         version: link:../integrations
       '@types/node':
@@ -874,7 +874,7 @@ importers:
 
   packages/integrations:
     dependencies:
-      '@be-in-digital/core':
+      '@be-yours/core':
         specifier: workspace:^
         version: link:../core
     devDependencies:
@@ -930,10 +930,10 @@ importers:
 
   packages/restaurant:
     dependencies:
-      '@be-in-digital/convex-schema':
+      '@be-yours/convex-schema':
         specifier: workspace:^
         version: link:../convex-schema
-      '@be-in-digital/core':
+      '@be-yours/core':
         specifier: workspace:^
         version: link:../core
       react:
@@ -964,7 +964,7 @@ importers:
 
   packages/ui:
     dependencies:
-      '@be-in-digital/core':
+      '@be-yours/core':
         specifier: workspace:^
         version: link:../core
       '@hookform/resolvers':

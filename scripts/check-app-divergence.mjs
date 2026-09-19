@@ -90,7 +90,7 @@ const ALLOWED = [
 
   // Gamification used to sit here — seven rows of it. The template stubbed the
   // player flow and four admin screens, and this list documented the gap
-  // instead of closing it. The flow now lives in `@be-in-digital/admin/game`
+  // instead of closing it. The flow now lives in `@be-yours/admin/game`
   // and both apps render it from identical thin pages, so there is nothing
   // left to allow.
 

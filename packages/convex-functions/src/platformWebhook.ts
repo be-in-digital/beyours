@@ -10,8 +10,8 @@
  * with a test surface, and the apps are transport over it.
  */
 
-import { canTransitionOrderStatus } from "@be-in-digital/convex-schema"
-import type { OrderStatus } from "@be-in-digital/convex-schema"
+import { canTransitionOrderStatus } from "@be-yours/convex-schema"
+import type { OrderStatus } from "@be-yours/convex-schema"
 
 // ---------------------------------------------------------------------------
 // Uber Eats event identity

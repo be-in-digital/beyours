@@ -2,7 +2,7 @@
  * Which actions the admin UI offers for each order status.
  *
  * Kept React-free and separate from the component so it can be checked against
- * the status machine in `@be-in-digital/convex-schema`. The UI may offer fewer
+ * the status machine in `@be-yours/convex-schema`. The UI may offer fewer
  * transitions than the server allows — never more, or the button writes a state
  * `updateStatus` refuses.
  *

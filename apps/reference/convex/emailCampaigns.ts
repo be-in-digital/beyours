@@ -1,6 +1,6 @@
 import { internalAction, internalMutation, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
-import * as defs from "@be-in-digital/convex-functions/emailCampaigns";
+import * as defs from "@be-yours/convex-functions/emailCampaigns";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 const emailCampaignsStoreId = storeIdFromDocument("Campaign not found");

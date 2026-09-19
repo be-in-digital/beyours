@@ -3,7 +3,7 @@ import {
   XCircleIcon,
   AlertTriangleIcon,
 } from "lucide-react"
-import { Badge } from "@be-in-digital/ui"
+import { Badge } from "@be-yours/ui"
 import type { MaintenanceStatus, MigrationRequestStatus } from "./types"
 import { MIGRATION_STATUS_LABELS } from "./helpers"
 

@@ -126,7 +126,7 @@ describe('Order Service', () => {
      * 'Out for Delivery' — they pinned an English label map living one package
      * away from a badge that held a second English map of the same eight words,
      * both of them mounted on French screens. The words now come from the one
-     * vocabulary in `@be-in-digital/core/status-labels`, in the language this
+     * vocabulary in `@be-yours/core/status-labels`, in the language this
      * product is written in.
      */
     it('returns the source-language word for a status', () => {

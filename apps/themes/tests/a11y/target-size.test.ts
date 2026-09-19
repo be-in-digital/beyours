@@ -28,7 +28,7 @@ import {
   formatUndersized,
   MINIMUM_TARGET_PX,
   scanTargetSize,
-} from "@be-in-digital/ui/target-size"
+} from "@be-yours/ui/target-size"
 
 /**
  * The same regions the contrast sweep covers, minus the token-scope split it
@@ -38,8 +38,8 @@ const DIRS = [
   "app",
   "components",
   "lib",
-  "node_modules/@be-in-digital/ui/src",
-  "node_modules/@be-in-digital/admin/src",
+  "node_modules/@be-yours/ui/src",
+  "node_modules/@be-yours/admin/src",
 ]
 
 const SWEEP_BUDGET_MS = 120_000

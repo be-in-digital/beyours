@@ -86,13 +86,13 @@ describe("the Deliveroo webhook route", () => {
     // `packages/integrations/src` touches a Node built-in, so the runtime this
     // `httpAction` runs in can bundle the barrel. Checked rather than assumed,
     // because the day it stops being true this route stops deploying.
-    const { deliveroo } = await import("@be-in-digital/integrations")
+    const { deliveroo } = await import("@be-yours/integrations")
     expect(typeof deliveroo.verifyWebhookSignature).toBe("function")
   })
 
   test("and it still refuses what it was hardened to refuse", async () => {
     // Driven, not read: this is the behaviour the route now inherits.
-    const { deliveroo } = await import("@be-in-digital/integrations")
+    const { deliveroo } = await import("@be-yours/integrations")
     const body = new TextEncoder().encode("{}")
     const guid = "11111111-2222-3333-4444-555555555555"
 

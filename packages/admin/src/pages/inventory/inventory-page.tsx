@@ -43,7 +43,7 @@ import {
   PaginationNext,
   PaginationPrevious,
   ButtonGroup,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { ResolvingStore } from "../../components/resolving-store"
 
 const PAGE_SIZE = 25

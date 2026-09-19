@@ -35,8 +35,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@be-in-digital/ui"
-import { TRIGGER_READINESS } from "@be-in-digital/convex-functions/automationDispatch"
+} from "@be-yours/ui"
+import { TRIGGER_READINESS } from "@be-yours/convex-functions/automationDispatch"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
 import { convexErrorMessage } from "../../../lib/convex-error"

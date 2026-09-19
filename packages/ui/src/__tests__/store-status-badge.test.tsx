@@ -13,7 +13,7 @@
  * French, with no override prop, so the translation layer #148 shipped could
  * not reach them. The three cases that asserted those words were REWRITTEN:
  * they pinned the defect. What is asserted now is the source-language word,
- * from the one vocabulary in `@be-in-digital/core/status-labels`, and that a
+ * from the one vocabulary in `@be-yours/core/status-labels`, and that a
  * caller's own labels replace it.
  */
 

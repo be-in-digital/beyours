@@ -1,12 +1,12 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { GamePlayerFlow } from "@be-in-digital/admin/game"
+import { GamePlayerFlow } from "@be-yours/admin/game"
 import { api } from "@/convex/_generated/api"
 import { useCmsPage } from "@/lib/cms"
 
 /**
- * The player flow itself lives in `@be-in-digital/admin/game` so that the
+ * The player flow itself lives in `@be-yours/admin/game` so that the
  * bench and the client template render the same screens instead of drifting
  * apart — which is what happened while the template shipped a placeholder.
  *

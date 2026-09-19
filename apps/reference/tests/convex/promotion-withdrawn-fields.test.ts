@@ -19,7 +19,7 @@
  * see, on a form that renders none of the five, through an `update` that has no
  * way to clear an optional field. There was no route back.
  *
- * The unit tests in `@be-in-digital/convex-functions` hold the type refusal;
+ * The unit tests in `@be-yours/convex-functions` hold the type refusal;
  * this holds the args, because a validator is only exercised through the real
  * mutation. `packages/admin/src/__tests__/promotion-discount-types.test.ts`
  * held the form and not the server, which is exactly how the server half
@@ -31,7 +31,7 @@ import { afterEach, describe, expect, test } from "vitest"
 import {
   WITHDRAWN_PROMOTION_CONFIG_FIELDS,
   WITHDRAWN_PROMOTION_PRODUCT_FIELDS,
-} from "@be-in-digital/convex-functions/promotionDiscount"
+} from "@be-yours/convex-functions/promotionDiscount"
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"

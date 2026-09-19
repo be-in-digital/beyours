@@ -2,7 +2,7 @@
  * Boot-time environment validation for apps/site (beyours.fr).
  *
  * This app depends on none of the engine packages, so it does not share
- * `@be-in-digital/core/env` — it has its own surface and its own rules here.
+ * `@be-yours/core/env` — it has its own surface and its own rules here.
  * Dependency-free on purpose: no zod, nothing new in the bundle.
  *
  * ── What this can and cannot see ────────────────────────────────────────────

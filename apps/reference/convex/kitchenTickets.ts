@@ -1,7 +1,7 @@
 import { query, internalMutation, internalQuery, action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import * as defs from "@be-in-digital/convex-functions/kitchenTickets";
+import * as defs from "@be-yours/convex-functions/kitchenTickets";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 import { captureBackendError } from "./errorReporting";
 
@@ -192,7 +192,7 @@ export const requestReprint = storeMutation({
  * Helper: get Uber Eats credentials from env vars.
  */
 async function getUberEatsCredentials() {
-  const { getPackageEnv, isSandbox } = await import("@be-in-digital/core/env");
+  const { getPackageEnv, isSandbox } = await import("@be-yours/core/env");
   const pkg = getPackageEnv();
   const clientId = pkg.UBER_EATS_CLIENT_ID;
   const clientSecret = pkg.UBER_EATS_CLIENT_SECRET;
@@ -205,7 +205,7 @@ async function getUberEatsCredentials() {
  * Helper: get Deliveroo credentials from env vars.
  */
 async function getDeliverooCredentials() {
-  const { getPackageEnv, isSandbox } = await import("@be-in-digital/core/env");
+  const { getPackageEnv, isSandbox } = await import("@be-yours/core/env");
   const pkg = getPackageEnv();
   const clientId = pkg.DELIVEROO_CLIENT_ID;
   const clientSecret = pkg.DELIVEROO_CLIENT_SECRET;
@@ -266,7 +266,7 @@ export const acceptTicket = action({
       try {
         const creds = await getUberEatsCredentials();
         if (creds) {
-          const { uberEats } = await import("@be-in-digital/integrations");
+          const { uberEats } = await import("@be-yours/integrations");
           await uberEats.acceptOrder(creds, externalId);
           console.log(`Accepted Uber Eats order ${externalId}`);
         }
@@ -285,7 +285,7 @@ export const acceptTicket = action({
       try {
         const creds = await getDeliverooCredentials();
         if (creds) {
-          const { deliveroo } = await import("@be-in-digital/integrations");
+          const { deliveroo } = await import("@be-yours/integrations");
           await deliveroo.acceptOrder(creds, externalId);
           console.log(`Accepted Deliveroo order ${externalId}`);
         }
@@ -355,7 +355,7 @@ export const readyTicket = action({
       try {
         const creds = await getDeliverooCredentials();
         if (creds) {
-          const { deliveroo } = await import("@be-in-digital/integrations");
+          const { deliveroo } = await import("@be-yours/integrations");
           await deliveroo.updatePrepStage(creds, externalId, "ready");
           console.log(`Deliveroo order ${externalId} marked as ready`);
         }
@@ -370,10 +370,10 @@ export const readyTicket = action({
       }
     } else if (ticket.source === "uber_eats" && externalId) {
       try {
-        const { getPackageEnv, isSandbox } = await import("@be-in-digital/core/env");
+        const { getPackageEnv, isSandbox } = await import("@be-yours/core/env");
         const pkg = getPackageEnv();
         if (pkg.UBER_EATS_CLIENT_ID && pkg.UBER_EATS_CLIENT_SECRET) {
-          const { uberEats } = await import("@be-in-digital/integrations");
+          const { uberEats } = await import("@be-yours/integrations");
           await uberEats.markOrderAsReady(
             {
               clientId: pkg.UBER_EATS_CLIENT_ID,
@@ -530,7 +530,7 @@ export const cancelTicket = action({
       try {
         const creds = await getUberEatsCredentials();
         if (creds) {
-          const { uberEats } = await import("@be-in-digital/integrations");
+          const { uberEats } = await import("@be-yours/integrations");
           if (wasAccepted) {
             // Post-accept: use cancelOrder (refund handled by Uber)
             await uberEats.cancelOrder(creds, externalId, {
@@ -562,7 +562,7 @@ export const cancelTicket = action({
       try {
         const creds = await getDeliverooCredentials();
         if (creds) {
-          const { deliveroo } = await import("@be-in-digital/integrations");
+          const { deliveroo } = await import("@be-yours/integrations");
           if (!wasAccepted) {
             // Pre-accept: reject via API with reason from KDS
             const rejectReason = args.reason ?? "store_busy";

@@ -1,4 +1,4 @@
-import { GamesPage } from "@be-in-digital/admin"
+import { GamesPage } from "@be-yours/admin"
 
 export default function Page() {
   return <GamesPage />

@@ -11,19 +11,19 @@ import { query, internalMutation } from "./_generated/server"
 import type { QueryCtx } from "./_generated/server"
 import type { Id } from "./_generated/dataModel"
 import { internal } from "./_generated/api"
-import * as blogDefs from "@be-in-digital/convex-functions/blog"
+import * as blogDefs from "@be-yours/convex-functions/blog"
 import {
   createArticleCore,
   saveDraftCore,
   deleteArticleCore,
-} from "@be-in-digital/convex-functions/blog"
+} from "@be-yours/convex-functions/blog"
 import {
   publishArticleCore,
   scheduleArticleCore,
   unscheduleArticleCore,
   archiveArticleCore,
   unarchiveArticleCore,
-} from "@be-in-digital/convex-functions/blogPublish"
+} from "@be-yours/convex-functions/blogPublish"
 import { scheduleBlogTranslation } from "./blogAutoTranslate"
 import { storeQuery, storeMutation, storeIdFromField } from "./lib/storeFunctions";
 

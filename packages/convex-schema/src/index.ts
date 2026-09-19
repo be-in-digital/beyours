@@ -1,4 +1,4 @@
-// @be-in-digital/convex-schema
+// @be-yours/convex-schema
 // Package exports
 
 // Table definitions (for composing app schemas)

@@ -20,8 +20,8 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useQuery } from "convex/react"
-import { hasPermission, type Role } from "@be-in-digital/core"
-import { profileAllowsPermission } from "@be-in-digital/convex-functions/teamAccess"
+import { hasPermission, type Role } from "@be-yours/core"
+import { profileAllowsPermission } from "@be-yours/convex-functions/teamAccess"
 import { useAdminStoreId } from "../../hooks/admin-hooks"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminAuthStore } from "../../stores/admin-auth-store"
@@ -52,7 +52,7 @@ export interface DashboardOrder {
  * `revenue` is money COLLECTED, not money ordered, and `orderCount` is orders
  * placed — so the two are counted over different sets on purpose and
  * `uncollected` is the difference. See `dashboardStats.ts` in
- * `@be-in-digital/convex-functions` for the rule.
+ * `@be-yours/convex-functions` for the rule.
  */
 export interface DashboardTotals {
   revenue: number

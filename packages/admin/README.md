@@ -1,4 +1,4 @@
-# `@be-in-digital/admin`
+# `@be-yours/admin`
 
 The back office. 108 page components across 20 feature areas, plus the stores,
 hooks and helpers they need.
@@ -45,7 +45,7 @@ Feature areas under `./pages`: `dashboard`, `products`, `categories`,
 **Consent wording owns its own version.** `src/game/consent-copy.ts` holds the
 art. 7.1 notice shown before a diner plays, and its version string. The set the
 server accepts is `GAME_CONSENT_NOTICE_VERSIONS` in
-`@be-in-digital/convex-functions/gamePlay`. Change the copy, bump the version,
+`@be-yours/convex-functions/gamePlay`. Change the copy, bump the version,
 and add it there — otherwise `gamePlay.play` throws `CONSENT_REQUIRED`.
 
 **Kitchen printing has exactly one working transport.** `src/lib/kitchen-print.ts`

@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogTrigger,
   Button,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 /**
  * A fixture page, so it supplies its own key when the environment has none.

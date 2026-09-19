@@ -5,7 +5,7 @@
  * WHY THIS EXISTS: the same three-clause test was written inline twice, on the
  * payments page and on the order detail page, and both copies gated on
  * `status === "succeeded"` alone. The backend policy
- * (`@be-in-digital/convex-functions/refundPolicy`) accepts `succeeded` *and*
+ * (`@be-yours/convex-functions/refundPolicy`) accepts `succeeded` *and*
  * `partially_refunded`, so a payment refunded halfway could not be refunded the
  * rest of the way from the UI — the operator saw no button for a refund the
  * server would have granted. Two copies also meant fixing one and shipping the
@@ -18,7 +18,7 @@
  * backend and the test goes red here.
  */
 
-import { hasPermission, type Permission, type Role } from "@be-in-digital/core"
+import { hasPermission, type Permission, type Role } from "@be-yours/core"
 
 import type { PaymentProvider } from "./types"
 

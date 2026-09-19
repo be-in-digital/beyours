@@ -39,7 +39,7 @@ describe("classifyLookup", () => {
 
   test("a 404 is the registry answering: known, and absent", () => {
     for (const stderr of [
-      "npm error code E404\nnpm error 404 Not Found - GET https://npm.pkg.github.com/@be-in-digital%2fnope",
+      "npm error code E404\nnpm error 404 Not Found - GET https://npm.pkg.github.com/@be-yours%2fnope",
       "npm ERR! 404 Not Found - GET https://registry.npmjs.org/nope",
     ]) {
       expect(classifyLookup({ failure: stderr })).toEqual({ version: null, known: true })
@@ -80,14 +80,14 @@ describe("classifyLookup", () => {
 describe("lookupPublishedVersion", () => {
   test("passes the package name to the call and returns its judgement", () => {
     const asked: string[] = []
-    const result = lookupPublishedVersion("@be-in-digital/ui", {
+    const result = lookupPublishedVersion("@be-yours/ui", {
       ask: (pkg: string) => {
         asked.push(pkg)
         return "4.0.0\n"
       },
     })
 
-    expect(asked).toEqual(["@be-in-digital/ui"])
+    expect(asked).toEqual(["@be-yours/ui"])
     expect(result).toEqual({ version: "4.0.0", known: true })
   })
 
@@ -95,7 +95,7 @@ describe("lookupPublishedVersion", () => {
     // The caller is a check that must report; an exception here would take the
     // whole run down over one unreachable package.
     expect(
-      lookupPublishedVersion("@be-in-digital/ui", { ask: failing("npm error code ENEEDAUTH") }),
+      lookupPublishedVersion("@be-yours/ui", { ask: failing("npm error code ENEEDAUTH") }),
     ).toMatchObject({ known: false, version: null })
   })
 })

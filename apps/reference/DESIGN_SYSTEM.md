@@ -147,11 +147,11 @@ import { cn } from "@/lib/utils"
 
 ## Where the components live
 
-Every shared component comes from `@be-in-digital/ui`, and there is exactly one
+Every shared component comes from `@be-yours/ui`, and there is exactly one
 implementation of each:
 
 ```tsx
-import { Button, Card, Input, Badge } from "@be-in-digital/ui"
+import { Button, Card, Input, Badge } from "@be-yours/ui"
 ```
 
 This app used to carry its own `components/ui/` as well — 37 files, byte-
@@ -211,7 +211,7 @@ delivered site overrides it from, and which `pnpm template:apply` writes.
   colours reach what you build. A hard-coded `bg-[#FF6B00]` is a component that
   ignores the owner's palette.
 - Follow the component composition pattern from shadcn/ui
-- Take shared components from `@be-in-digital/ui`; keep genuinely site-specific
+- Take shared components from `@be-yours/ui`; keep genuinely site-specific
   ones in `components/`, composed out of the design system
 - Document new components with JSDoc comments
 

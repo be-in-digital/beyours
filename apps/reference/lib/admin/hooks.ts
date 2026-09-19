@@ -1,6 +1,6 @@
 "use client"
 
-import { useAdminStoreId as usePackageAdminStoreId } from "@be-in-digital/admin"
+import { useAdminStoreId as usePackageAdminStoreId } from "@be-yours/admin"
 import { useState, useEffect } from "react"
 import type { Id } from "@/convex/_generated/dataModel"
 

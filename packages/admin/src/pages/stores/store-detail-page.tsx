@@ -10,7 +10,7 @@ import {
   Alert,
   AlertDescription,
   AlertTitle,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { LoadingState } from "../../components/loading-state"
 import { DeleteConfirmDialog } from "../../components/delete-confirm-dialog"
 import { centsToEuros } from "../../lib/formatters"

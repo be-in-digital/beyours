@@ -346,7 +346,7 @@ export const createOrderSchema = z.object({
   //
   // Length is not bounded here. These schemas derive types (`CreateOrderInput`)
   // and are not what runs on a mutation, so a bound written here would be a
-  // second, unenforced copy of the one in `@be-in-digital/core/dining`, which
+  // second, unenforced copy of the one in `@be-yours/core/dining`, which
   // `orders.create` actually applies. This package deliberately does not depend
   // on `core`.
   tableNumber: z.string().optional(),

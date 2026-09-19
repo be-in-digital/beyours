@@ -15,7 +15,7 @@ import {
   Button,
   Badge,
   Separator,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 const PLAN_LABELS: Record<string, string> = {
   starter: "Starter",

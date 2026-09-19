@@ -1,4 +1,4 @@
-# @be-in-digital/cms — Complete Documentation
+# @be-yours/cms — Complete Documentation
 
 > Generic CMS package for BeYours Engine.
 > This package contains **no predefined pages**. Each application defines its own CMS pages.
@@ -29,7 +29,7 @@
 
 ### What is this package?
 
-`@be-in-digital/cms` is a **content definition framework** for the BeYours CMS. It provides:
+`@be-yours/cms` is a **content definition framework** for the BeYours CMS. It provides:
 
 - A **configurable registry** of pages and groups
 - Strict **TypeScript types** to define the content structure
@@ -121,7 +121,7 @@ The package is already available in the monorepo. To use it in an app:
 // package.json of your app
 {
   "dependencies": {
-    "@be-in-digital/cms": "workspace:*"
+    "@be-yours/cms": "workspace:*"
   }
 }
 ```
@@ -154,7 +154,7 @@ Groups organize your pages in the admin dashboard. Each group has:
 Create `apps/mon-app/cms/groups.ts`:
 
 ```typescript
-import type { CmsGroupDefinition } from "@be-in-digital/cms"
+import type { CmsGroupDefinition } from "@be-yours/cms"
 
 export const cmsGroups: CmsGroupDefinition[] = [
   { id: "main",    label: "Pages principales", order: 1 },
@@ -175,8 +175,8 @@ Create one file per page in `apps/mon-app/cms/pages/`. Example for a homepage:
 
 ```typescript
 // apps/mon-app/cms/pages/homepage.ts
-import type { PageDefinition } from "@be-in-digital/cms"
-import { seoBlock } from "@be-in-digital/cms"
+import type { PageDefinition } from "@be-yours/cms"
+import { seoBlock } from "@be-yours/cms"
 
 export const homepagePage: PageDefinition = {
   slug: "homepage",           // Unique identifier, matches the route
@@ -224,7 +224,7 @@ export const homepagePage: PageDefinition = {
 Create `apps/mon-app/cms/index.ts` to tie everything together:
 
 ```typescript
-import type { PageDefinition } from "@be-in-digital/cms"
+import type { PageDefinition } from "@be-yours/cms"
 import { cmsGroups } from "./groups"
 import { homepagePage } from "./pages/homepage"
 import { signInPage } from "./pages/sign-in"
@@ -249,7 +249,7 @@ export const appCmsConfig = {
 Create `apps/mon-app/lib/cms/init.ts`:
 
 ```typescript
-import { setCmsRegistry } from "@be-in-digital/cms"
+import { setCmsRegistry } from "@be-yours/cms"
 import { appCmsConfig } from "@/cms"
 
 setCmsRegistry(appCmsConfig)
@@ -290,7 +290,7 @@ Every Convex file that uses the CMS (`getPageDefinition`, `getBlockDefinition`, 
 
 ```typescript
 // convex/cms.ts
-import { setCmsRegistry } from "@be-in-digital/cms"
+import { setCmsRegistry } from "@be-yours/cms"
 import { appCmsConfig } from "../cms"   // ← RELATIVE import (not @/cms)
 setCmsRegistry(appCmsConfig)
 
@@ -305,16 +305,16 @@ setCmsRegistry(appCmsConfig)
 
 ```bash
 # Build the CMS package
-pnpm turbo build --filter=@be-in-digital/cms
+pnpm turbo build --filter=@be-yours/cms
 
 # Run the tests
-pnpm --filter @be-in-digital/cms test
+pnpm --filter @be-yours/cms test
 
 # Deploy Convex
 cd apps/mon-app && pnpx convex dev --once
 
 # Build Next.js
-pnpm turbo build --filter=@be-in-digital/mon-app
+pnpm turbo build --filter=@be-yours/mon-app
 ```
 
 If `setCmsRegistry()` detects an error in your configuration, it prints an explicit message:
@@ -455,7 +455,7 @@ interface SelectOption {
 Initializes the CMS registry. **Must be called before any access to the registry.**
 
 ```typescript
-import { setCmsRegistry } from "@be-in-digital/cms"
+import { setCmsRegistry } from "@be-yours/cms"
 
 setCmsRegistry({
   pages: { ... },           // Record<string, PageDefinition>
@@ -532,7 +532,7 @@ const field = getFieldDefinition("homepage", "hero", "title")
 Ready-to-use SEO block, to add to indexable pages.
 
 ```typescript
-import { seoBlock } from "@be-in-digital/cms"
+import { seoBlock } from "@be-yours/cms"
 
 export const homepagePage: PageDefinition = {
   slug: "homepage",
@@ -581,7 +581,7 @@ If several violations exist, **all** of them are listed in the same error messag
 Used on the Convex side, before persisting a draft. Validates the data entered by the admin against the block definition.
 
 ```typescript
-import { validateBlockValues, getBlockDefinition } from "@be-in-digital/cms"
+import { validateBlockValues, getBlockDefinition } from "@be-yours/cms"
 
 const blockDef = getBlockDefinition("homepage", "hero")
 const result = validateBlockValues(values, blockDef)
@@ -621,7 +621,7 @@ if (!result.valid) {
 Validates a file before upload.
 
 ```typescript
-import { validateMediaUpload } from "@be-in-digital/cms"
+import { validateMediaUpload } from "@be-yours/cms"
 
 const result = validateMediaUpload("photo.jpg", "image/jpeg", 2_000_000)
 
@@ -644,7 +644,7 @@ if (result.valid) {
 ### Utility functions
 
 ```typescript
-import { getMediaKind, getExtensionFromMimeType, CMS_MEDIA_LIMITS } from "@be-in-digital/cms"
+import { getMediaKind, getExtensionFromMimeType, CMS_MEDIA_LIMITS } from "@be-yours/cms"
 
 getMediaKind("image/jpeg")           // "image"
 getMediaKind("video/mp4")            // "video"
@@ -665,7 +665,7 @@ CMS_MEDIA_LIMITS.image.mimeTypes     // ["image/jpeg", "image/jpg", ...]
 
 Uploaded SVGs are cleaned automatically to strip dangerous elements.
 
-`sanitizeSvg` ships from the **`@be-in-digital/cms/sanitize` subpath**, not from
+`sanitizeSvg` ships from the **`@be-yours/cms/sanitize` subpath**, not from
 the package barrel. It delegates to DOMPurify, which parses the markup and so
 needs a DOM; the barrel is imported by Convex isolate modules (`convex/cms.ts`,
 `cmsAutoTranslate.ts`, `cmsSeedData.ts`, `cmsMediaConfirmUpload.ts`) that have
@@ -675,7 +675,7 @@ Importing it by subpath keeps the parser in the server-side callers that
 actually sanitize. See the sanitize section of `src/index.ts`.
 
 ```typescript
-import { sanitizeSvg } from "@be-in-digital/cms/sanitize"
+import { sanitizeSvg } from "@be-yours/cms/sanitize"
 
 const result = sanitizeSvg(svgContent)
 // result.sanitized    → cleaned SVG
@@ -690,7 +690,7 @@ dependency-free: it decodes entities first, then answers whether the markup
 contains anything that executes.
 
 ```typescript
-import { containsActiveContent, inspectSvgForActiveContent } from "@be-in-digital/cms"
+import { containsActiveContent, inspectSvgForActiveContent } from "@be-yours/cms"
 
 if (containsActiveContent(svgContent)) {
   // refuse before storing
@@ -735,7 +735,7 @@ The CMS registry is an **in-memory singleton**. It must be populated before any 
 
 You must add `setCmsRegistry()` if:
 - You create a **new Next.js root layout** that uses the CMS
-- You create a **new Convex file** that imports from `@be-in-digital/cms`
+- You create a **new Convex file** that imports from `@be-yours/cms`
 
 ---
 
@@ -745,7 +745,7 @@ You must add `setCmsRegistry()` if:
 
 ```typescript
 // cms/pages/sign-in.ts
-import type { PageDefinition } from "@be-in-digital/cms"
+import type { PageDefinition } from "@be-yours/cms"
 
 export const signInPage: PageDefinition = {
   slug: "sign-in",
@@ -817,8 +817,8 @@ export const signInPage: PageDefinition = {
 
 ```typescript
 // cms/pages/homepage.ts
-import type { PageDefinition } from "@be-in-digital/cms"
-import { seoBlock } from "@be-in-digital/cms"
+import type { PageDefinition } from "@be-yours/cms"
+import { seoBlock } from "@be-yours/cms"
 
 export const homepagePage: PageDefinition = {
   slug: "homepage",
@@ -893,7 +893,7 @@ export const homepagePage: PageDefinition = {
 1. Create the file `cms/pages/faq.ts`:
 
 ```typescript
-import type { PageDefinition } from "@be-in-digital/cms"
+import type { PageDefinition } from "@be-yours/cms"
 
 export const faqPage: PageDefinition = {
   slug: "faq",
@@ -937,7 +937,7 @@ const pages: Record<string, PageDefinition> = {
 
 ```bash
 cd apps/mon-app && pnpx convex dev --once
-pnpm turbo build --filter=@be-in-digital/mon-app
+pnpm turbo build --filter=@be-yours/mon-app
 ```
 
 The new page shows up automatically in the admin dashboard, in the "Vitrine" group.
@@ -1149,7 +1149,7 @@ export type {
   CmsFieldValue,
   CmsBlockValues,
   CmsGroupDefinition,
-} from "@be-in-digital/cms"
+} from "@be-yours/cms"
 
 // Registry API
 export {
@@ -1160,22 +1160,22 @@ export {
   getBlockDefinition,
   getFieldDefinition,
   getAllPageSlugs,
-} from "@be-in-digital/cms"
+} from "@be-yours/cms"
 
 // Reusable blocks
-export { seoBlock } from "@be-in-digital/cms"
+export { seoBlock } from "@be-yours/cms"
 
 // Value validation
-export { validateBlockValues } from "@be-in-digital/cms"
-export type { ValidationError, ValidationResult } from "@be-in-digital/cms"
+export { validateBlockValues } from "@be-yours/cms"
+export type { ValidationError, ValidationResult } from "@be-yours/cms"
 
 // SVG active-content check (DOM-free, safe in a Convex isolate)
-export { containsActiveContent, inspectSvgForActiveContent } from "@be-in-digital/cms"
-export type { ActiveContentReport } from "@be-in-digital/cms"
+export { containsActiveContent, inspectSvgForActiveContent } from "@be-yours/cms"
+export type { ActiveContentReport } from "@be-yours/cms"
 
 // SVG sanitization — subpath only, never the barrel (see section 10)
-export { sanitizeSvg } from "@be-in-digital/cms/sanitize"
-export type { SanitizeResult } from "@be-in-digital/cms/sanitize"
+export { sanitizeSvg } from "@be-yours/cms/sanitize"
+export type { SanitizeResult } from "@be-yours/cms/sanitize"
 
 // Media
 export {
@@ -1184,11 +1184,11 @@ export {
   getMediaKind,
   getExtensionFromMimeType,
   validateMediaUpload,
-} from "@be-in-digital/cms"
+} from "@be-yours/cms"
 export type {
   MediaKind,
   MediaLimits,
   MediaValidationError,
   MediaValidationResult,
-} from "@be-in-digital/cms"
+} from "@be-yours/cms"
 ```

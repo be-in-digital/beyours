@@ -16,8 +16,8 @@ import Link from "next/link"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 import { CheckCircle2, ChefHat, Clock, PackageCheck, XCircle } from "lucide-react"
-import { Skeleton, Button } from "@be-in-digital/ui"
-import { formatStoreAddress } from "@be-in-digital/restaurant"
+import { Skeleton, Button } from "@be-yours/ui"
+import { formatStoreAddress } from "@be-yours/restaurant"
 
 const STEPS = [
   { key: "pending", label: "Reçue", icon: Clock },

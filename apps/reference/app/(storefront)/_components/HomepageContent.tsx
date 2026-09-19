@@ -15,7 +15,7 @@ import {
     Play,
 } from "lucide-react"
 import { motion } from "framer-motion"
-import { Badge, Button } from "@be-in-digital/ui"
+import { Badge, Button } from "@be-yours/ui"
 import {
     Heading,
     FeatureItem,

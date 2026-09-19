@@ -8,7 +8,7 @@
  * well as on the way out.
  */
 import { describe, it, expect, vi } from "vitest"
-import { setCmsRegistry } from "@be-in-digital/cms"
+import { setCmsRegistry } from "@be-yours/cms"
 import { saveDraftBlockCore } from "../cms"
 
 setCmsRegistry({

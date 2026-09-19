@@ -121,7 +121,7 @@ describe("the editor's own shape", () => {
     // A second list here is a second list to drift. Implement a trigger in
     // `TRIGGER_READINESS` and the picker offers it on the same commit.
     expect(dialog).toContain("TRIGGER_READINESS")
-    expect(dialog).toContain("@be-in-digital/convex-functions/automationDispatch")
+    expect(dialog).toContain("@be-yours/convex-functions/automationDispatch")
   })
 
   it("sends inactiveAfterDays only for the trigger it belongs to", () => {

@@ -149,7 +149,7 @@
         // `pnpm test` rewrote one of its own inputs on every run: three floats
         // change, thirteen `#test` hashes change, and the cache could never hit
         // twice. Measured — one duration edited from 545.435 to 999.999 moved
-        // `@be-in-digital/core#test` from `a557b1b5dc87ac53` to
+        // `@be-yours/core#test` from `a557b1b5dc87ac53` to
         // `cfaa28aabb923c1e`. The `node_modules/.bin/*` symlinks came too, which
         // put resolved transitive versions in the key as a bonus.
         //
@@ -161,7 +161,7 @@
         // resolving for, so `../../apps/themes` becomes `../themes` from
         // `apps/reference` and stays `../../apps/themes` from `packages/core` —
         // and a negation written in one of those forms silently failed to match
-        // the other. `@be-in-digital/core#test` came out clean while
+        // the other. `@be-yours/core#test` came out clean while
         // `@beyours/reference#test` still carried the vitest cache. The rooted
         // `**/` form has no depth to disagree about.
         "!**/node_modules/**",
@@ -178,7 +178,7 @@
         // behind — 135 files. `tsconfig.tsbuildinfo` is TypeScript's
         // incremental state, rewritten by every `pnpm typecheck`. Measured the
         // same way as the vitest cache above: creating them moved
-        // `@be-in-digital/core#test` from `e7032e63ac4844fe` to
+        // `@be-yours/core#test` from `e7032e63ac4844fe` to
         // `1da57fb80a3c301f`, and appending one space to the tsbuildinfo alone
         // moved all thirteen `#test` hashes (`bbaeceabd8549872` →
         // `ff9e92c128b8dfad`).
@@ -391,7 +391,7 @@
         // `pnpm test` rewrote one of its own inputs on every run: three floats
         // change, thirteen `#test` hashes change, and the cache could never hit
         // twice. Measured — one duration edited from 545.435 to 999.999 moved
-        // `@be-in-digital/core#test` from `a557b1b5dc87ac53` to
+        // `@be-yours/core#test` from `a557b1b5dc87ac53` to
         // `cfaa28aabb923c1e`. The `node_modules/.bin/*` symlinks came too, which
         // put resolved transitive versions in the key as a bonus.
         //
@@ -403,7 +403,7 @@
         // resolving for, so `../../apps/themes` becomes `../themes` from
         // `apps/reference` and stays `../../apps/themes` from `packages/core` —
         // and a negation written in one of those forms silently failed to match
-        // the other. `@be-in-digital/core#test` came out clean while
+        // the other. `@be-yours/core#test` came out clean while
         // `@beyours/reference#test` still carried the vitest cache. The rooted
         // `**/` form has no depth to disagree about.
         "!**/node_modules/**",
@@ -420,7 +420,7 @@
         // behind — 135 files. `tsconfig.tsbuildinfo` is TypeScript's
         // incremental state, rewritten by every `pnpm typecheck`. Measured the
         // same way as the vitest cache above: creating them moved
-        // `@be-in-digital/core#test` from `e7032e63ac4844fe` to
+        // `@be-yours/core#test` from `e7032e63ac4844fe` to
         // `1da57fb80a3c301f`, and appending one space to the tsbuildinfo alone
         // moved all thirteen `#test` hashes (`bbaeceabd8549872` →
         // `ff9e92c128b8dfad`).

@@ -6,7 +6,7 @@
  */
 
 import { query, internalQuery, internalMutation } from "./_generated/server"
-import * as ownerEntitlementsDefs from "@be-in-digital/convex-functions/ownerEntitlements"
+import * as ownerEntitlementsDefs from "@be-yours/convex-functions/ownerEntitlements"
 
 // ============================================================================
 // Queries

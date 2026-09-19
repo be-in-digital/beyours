@@ -277,7 +277,7 @@ describe("where a deployment's email actually goes", () => {
  */
 describe("every provider has somewhere for its bounces to land", () => {
   test("each EMAIL_PROVIDERS value has a webhook route in http.ts", async () => {
-    const { EMAIL_PROVIDERS } = await import("@be-in-digital/core/email")
+    const { EMAIL_PROVIDERS } = await import("@be-yours/core/email")
     const source = readFileSync(
       join(__dirname, "..", "..", "convex", "http.ts"),
       "utf8"

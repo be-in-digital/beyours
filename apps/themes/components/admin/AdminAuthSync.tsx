@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useQuery } from "convex/react"
 import { authClient } from "@/lib/auth-client"
-import { useAdminAuthStore } from "@be-in-digital/admin"
+import { useAdminAuthStore } from "@be-yours/admin"
 import { api } from "@/convex/_generated/api"
 import type { Role } from "@/lib/rbac"
 

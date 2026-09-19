@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { Check, Loader2, X } from "lucide-react"
-import { Button } from "@be-in-digital/ui"
+import { Button } from "@be-yours/ui"
 
 const LOADING_STATES = [
   { text: "Amelioration de l'image" },

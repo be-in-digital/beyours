@@ -1,11 +1,11 @@
 import { internalQuery, internalMutation } from "./_generated/server"
 import { v } from "convex/values"
-import { Role } from "@be-in-digital/core/auth/rbac"
+import { Role } from "@be-yours/core/auth/rbac"
 import {
   remapIds,
   splitExportedRow,
   type IdMap,
-} from "@be-in-digital/convex-functions/backupRemap"
+} from "@be-yours/convex-functions/backupRemap"
 import {
   BACKUP_PAGE_SIZE,
   isArchiveRelinkTable,
@@ -13,7 +13,7 @@ import {
   isExportedTable,
   redactExportedRow,
   type BackupTable,
-} from "@be-in-digital/convex-functions/backupTables"
+} from "@be-yours/convex-functions/backupTables"
 
 /* ─── The allow-lists ─────────────────────────────────────────────────────────
  *
@@ -23,7 +23,7 @@ import {
  * list would have forced a choice between losing them from every backup and
  * letting a restore rewrite a numbered series.
  *
- * Both come from `@be-in-digital/convex-functions/backupTables`, which
+ * Both come from `@be-yours/convex-functions/backupTables`, which
  * `system.ts` also reads. They used to be written out twice and agree by hand;
  * between them they named 22 of this schema's 77 tables (#169).
  */

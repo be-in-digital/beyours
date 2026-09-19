@@ -166,8 +166,8 @@ group is set, the whole group is required.
 ### Validation schema (Zod)
 
 The schemas are defined in `packages/core/src/env/schemas.ts` and exported via:
-- `@be-in-digital/core` (main export)
-- `@be-in-digital/core/env` (sub-path export, no Node.js dependencies)
+- `@be-yours/core` (main export)
+- `@be-yours/core/env` (sub-path export, no Node.js dependencies)
 
 ```
 packages/core/src/env/
@@ -213,7 +213,7 @@ sees a check tighten at runtime.
 ### Getters
 
 ```typescript
-import { getPackageEnv, getSiteEnv } from '@be-in-digital/core/env'
+import { getPackageEnv, getSiteEnv } from '@be-yours/core/env'
 
 // BeYours platform variables - strict, throws on a missing required var
 const pkg = getPackageEnv()
@@ -237,7 +237,7 @@ site.STRIPE_SECRET_KEY   // string | undefined
 ### Startup validation
 
 ```typescript
-import { validateAllEnv, formatEnvReport } from '@be-in-digital/core/env'
+import { validateAllEnv, formatEnvReport } from '@be-yours/core/env'
 
 const { ok, missing } = validateAllEnv()
 if (!ok) console.error(formatEnvReport(missing))
@@ -286,12 +286,12 @@ operator can tell the two apart.
 ### apps/site validates itself, separately
 
 `apps/site` (the commercial site, beyours.fr) depends on **none** of the engine
-packages, so it does not use `@be-in-digital/core/env` at all. It has its own
+packages, so it does not use `@be-yours/core/env` at all. It has its own
 dependency-free validator:
 
 | | Engine apps | `apps/site` |
 |---|---|---|
-| Validator | `@be-in-digital/core/env` `validateAllEnv()` | `apps/site/lib/env.ts` `validateSiteEnv()` |
+| Validator | `@be-yours/core/env` `validateAllEnv()` | `apps/site/lib/env.ts` `validateSiteEnv()` |
 | Report | `formatEnvReport()` | `formatSiteEnvReport()` |
 | Tiers | `'package' \| 'site' \| 'feature'` | `'required' \| 'format' \| 'feature'` |
 | Dependencies | zod | none |
@@ -315,8 +315,8 @@ The Convex bundler distinguishes two runtimes:
 
 | Runtime | Files affected | Import pattern |
 |---|---|---|
-| **"use node"** (Node.js) | `oauthConnect.ts`, `teamMembersEmail.ts`, `deliverooWebhook.ts`, `validateIntegration.ts`, imports, menu syncs, orders | `import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env"` |
-| **V8 isolate** (httpAction, queries, mutations) | `uberEatsWebhook.ts`, `deliverooWebhookHandler.ts`, `oauthCallbackHandlers.ts`, `kitchenTickets.ts` | `const { getPackageEnv } = await import("@be-in-digital/core/env")` |
+| **"use node"** (Node.js) | `oauthConnect.ts`, `teamMembersEmail.ts`, `deliverooWebhook.ts`, `validateIntegration.ts`, imports, menu syncs, orders | `import { getPackageEnv, getSiteEnv } from "@be-yours/core/env"` |
+| **V8 isolate** (httpAction, queries, mutations) | `uberEatsWebhook.ts`, `deliverooWebhookHandler.ts`, `oauthCallbackHandlers.ts`, `kitchenTickets.ts` | `const { getPackageEnv } = await import("@be-yours/core/env")` |
 | **V8 isolate** (config module) | `auth.ts` | `process.env.SITE_URL` (keeps the direct pattern, no Zod) |
 
 > **Why doesn't `auth.ts` migrate?**
@@ -372,7 +372,7 @@ Six reference files for onboarding:
 5. **Update the matching `.env.example`** — including
    `apps/themes/.env.convex.example` if the variable is read from a Convex
    action, which is easy to miss and is where the gaps have historically been
-6. **Rebuild the package**: `pnpm --filter @be-in-digital/core build`
+6. **Rebuild the package**: `pnpm --filter @be-yours/core build`
 7. **Use the getter** in the consuming code:
    ```typescript
    const pkg = getPackageEnv()  // or getSiteEnv()

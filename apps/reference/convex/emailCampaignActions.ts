@@ -10,19 +10,19 @@ import { sendEmail } from "./emailTransport";
 import {
   buildSegmentFilter,
   renderTemplateToEmailHtml,
-} from "@be-in-digital/marketing";
+} from "@be-yours/marketing";
 import {
   ONE_WEEK_MS,
   resolveWeeklyCap,
   subjectFor,
   withinWeeklyCap,
-} from "@be-in-digital/convex-functions/campaignDelivery";
+} from "@be-yours/convex-functions/campaignDelivery";
 import {
   configurationSetFields,
   describeSendAbort,
   resolveConfigurationSet,
   shouldAbortSend,
-} from "@be-in-digital/convex-functions/sesSending";
+} from "@be-yours/convex-functions/sesSending";
 
 const BATCH_DELAY_MS = 100; // ~10 emails/sec, well below SES sandbox limit
 

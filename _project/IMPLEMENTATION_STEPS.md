@@ -80,7 +80,7 @@ apps/
 ```
 
 For each package:
-- [ ] `package.json` named `@be-in-digital/<nom>`
+- [ ] `package.json` named `@be-yours/<nom>`
 - [ ] `tsconfig.json` extending `tsconfig.base.json`
 - [ ] `tsup.config.ts` for the build
 - [ ] `src/index.ts` (barrel file)
@@ -129,7 +129,7 @@ For each package:
 
 #### 2.1 - Convex setup
 
-- [ ] Install Convex: `pnpm add convex --filter @be-in-digital/convex-schema`
+- [ ] Install Convex: `pnpm add convex --filter @be-yours/convex-schema`
 - [ ] Initialize Convex inside the package
 - [ ] Set up `convex/` with the generated files
 
@@ -235,7 +235,7 @@ Team functions:
 
 #### 3.1 - Better Auth authentication
 
-- [ ] Install Better Auth: `pnpm add better-auth --filter @be-in-digital/core`
+- [ ] Install Better Auth: `pnpm add better-auth --filter @be-yours/core`
 - [ ] Better Auth configuration with the Convex adapter
 - [ ] Email/password auth with email verification
 - [ ] OAuth providers: Google, Facebook, Apple

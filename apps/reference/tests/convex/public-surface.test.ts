@@ -120,7 +120,7 @@ const SKIP_DIRS = new Set([
  * roots must not have it — see ENGINE_SKIP.
  *
  * No symlink handling, and that is measured rather than assumed. Under pnpm
- * every engine package IS a link (`node_modules/@be-in-digital/admin` ->
+ * every engine package IS a link (`node_modules/@be-yours/admin` ->
  * `.pnpm/…`), and `readdirSync` resolves a link it is handed as the root, so a
  * root arrives here already followed. Below the root there is nothing to
  * follow: an engine package holds real directories, and its own

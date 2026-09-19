@@ -41,21 +41,21 @@ const nextConfig: NextConfig = {
   // The engine packages are published as TypeScript source (`files: ["src"]`)
   // and resolved from `src` by their own `exports` map, so Next has to compile
   // them. This app gets away without it today only because pnpm symlinks
-  // `node_modules/@be-in-digital/*` to `packages/*` and the resolved path then
+  // `node_modules/@be-yours/*` to `packages/*` and the resolved path then
   // falls outside `node_modules`. A client site installs a real directory, so
   // the mechanism that works here is not the one that works there — and the
   // asymmetry means the bench cannot catch it breaking. Same list as
   // `apps/themes/next.config.ts`.
   transpilePackages: [
-    "@be-in-digital/admin",
-    "@be-in-digital/cms",
-    "@be-in-digital/convex-functions",
-    "@be-in-digital/convex-schema",
-    "@be-in-digital/core",
-    "@be-in-digital/integrations",
-    "@be-in-digital/marketing",
-    "@be-in-digital/restaurant",
-    "@be-in-digital/ui",
+    "@be-yours/admin",
+    "@be-yours/cms",
+    "@be-yours/convex-functions",
+    "@be-yours/convex-schema",
+    "@be-yours/core",
+    "@be-yours/integrations",
+    "@be-yours/marketing",
+    "@be-yours/restaurant",
+    "@be-yours/ui",
     "@convex-dev/better-auth",
   ],
   async headers() {

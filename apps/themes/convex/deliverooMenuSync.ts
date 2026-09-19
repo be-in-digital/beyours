@@ -10,8 +10,8 @@ import {
   type StoreIntegrationRecord,
   type ProductRecord,
   type CategoryRecord,
-} from "@be-in-digital/convex-functions/deliverooMenuSync";
-import { getPackageEnv, isSandbox } from "@be-in-digital/core/env";
+} from "@be-yours/convex-functions/deliverooMenuSync";
+import { getPackageEnv, isSandbox } from "@be-yours/core/env";
 
 /**
  * Sync menu to a single Deliveroo store.
@@ -135,7 +135,7 @@ export const internalSyncStore = internalAction({
       const credentials = { clientId, clientSecret, sandboxMode };
 
       // 10. Push menu to Deliveroo (V1 API: PUT /v1/brands/{brandId}/menus/{menuId})
-      const { deliveroo } = await import("@be-in-digital/integrations");
+      const { deliveroo } = await import("@be-yours/integrations");
       const menuId = `menu-${integration.platformStoreId}`;
       await deliveroo.pushMenu(
         credentials,

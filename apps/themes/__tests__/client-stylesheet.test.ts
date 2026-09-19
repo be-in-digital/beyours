@@ -92,8 +92,8 @@ describe("the stylesheet survives the crossing to a client repository", () => {
   test("it declares the engine packages as Tailwind sources", () => {
     const sources = pathReferences(globals).filter((r) => r.directive === "source")
     expect(sources.map((s) => s.target)).toEqual([
-      "../node_modules/@be-in-digital/ui/src/**/*",
-      "../node_modules/@be-in-digital/admin/src/**/*",
+      "../node_modules/@be-yours/ui/src/**/*",
+      "../node_modules/@be-yours/admin/src/**/*",
     ])
   })
 
@@ -106,7 +106,7 @@ describe("the stylesheet survives the crossing to a client repository", () => {
         escapes,
         `${reference.target} resolves to ${target}, which is not inside the app — on a client site that is ` +
           `another machine's filesystem, or above the repository root, where it matches nothing and ` +
-          `Tailwind reports no error. Reach the engine through node_modules/@be-in-digital/*: pnpm links ` +
+          `Tailwind reports no error. Reach the engine through node_modules/@be-yours/*: pnpm links ` +
           `it to packages/* inside this workspace.`,
       ).toBe(false)
     },
@@ -126,7 +126,7 @@ describe("the stylesheet survives the crossing to a client repository", () => {
 /** The engine packages the stylesheet scans, as `{ pkg, directory }`. */
 const scanned = pathReferences(globals)
   .filter((r) => r.directive === "source")
-  .map((r) => r.target.match(/^\.\.\/node_modules\/(@be-in-digital\/[^/]+)\/([^/*]+)/))
+  .map((r) => r.target.match(/^\.\.\/node_modules\/(@be-yours\/[^/]+)\/([^/*]+)/))
   .filter((m): m is RegExpMatchArray => m !== null)
   .map((m) => ({ pkg: m[1] as string, directory: m[2] as string }))
 
@@ -163,7 +163,7 @@ describe("the stylesheet scans packages this app actually installs", () => {
  */
 describe.skipIf(!IN_MONOREPO)("the engine packages publish what the stylesheet scans", () => {
   test.each(scanned)("$pkg publishes $directory", ({ pkg, directory }) => {
-    const name = pkg.slice("@be-in-digital/".length)
+    const name = pkg.slice("@be-yours/".length)
     const manifest = JSON.parse(
       fs.readFileSync(path.join(REPO_ROOT, "packages", name, "package.json"), "utf8"),
     ) as { files?: string[] }

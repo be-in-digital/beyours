@@ -20,7 +20,7 @@
 
 import { useState } from "react"
 import { ArrowLeft, Star, Trash2 } from "lucide-react"
-import { Button, Label } from "@be-in-digital/ui"
+import { Button, Label } from "@be-yours/ui"
 import { ImageUploader } from "../../components/image-uploader"
 
 /** The most photographs one dish may carry. */

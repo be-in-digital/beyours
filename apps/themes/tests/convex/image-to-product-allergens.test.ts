@@ -20,8 +20,8 @@ import {
   ALLERGEN_KIND,
   KNOWN_ALLERGENS,
   resolveAllergens,
-} from "@be-in-digital/core/allergens"
-import { singleProductVisionSchema } from "@be-in-digital/convex-schema/validators"
+} from "@be-yours/core/allergens"
+import { singleProductVisionSchema } from "@be-yours/convex-schema/validators"
 import {
   MENU_SYSTEM_PROMPT,
   SINGLE_SYSTEM_PROMPT,

@@ -21,7 +21,7 @@
 
 import { convexTest } from "convex-test"
 import { afterEach, describe, expect, test } from "vitest"
-import { FIELD_LIMITS } from "@be-in-digital/convex-functions/rateLimit"
+import { FIELD_LIMITS } from "@be-yours/convex-functions/rateLimit"
 import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"

@@ -41,7 +41,7 @@ import { afterEach, describe, expect, test } from "vitest"
 import { api, internal } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"
-import { LANGUAGE_TRANSLATION_BATCH } from "@be-in-digital/convex-functions/languages"
+import { LANGUAGE_TRANSLATION_BATCH } from "@be-yours/convex-functions/languages"
 
 const modules = import.meta.glob("../../convex/**/*.ts")
 

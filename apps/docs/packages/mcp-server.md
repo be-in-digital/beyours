@@ -1,6 +1,6 @@
-# @be-in-digital/mcp-server
+# @be-yours/mcp-server
 
-> Model Context Protocol (MCP) server for AI assistants to navigate and use the @be-in-digital package ecosystem.
+> Model Context Protocol (MCP) server for AI assistants to navigate and use the @be-yours package ecosystem.
 
 ## Table of Contents
 
@@ -15,7 +15,7 @@
 
 ## What is MCP?
 
-The **Model Context Protocol (MCP)** is an open standard that allows AI assistants to access external tools and data sources. The `@be-in-digital/mcp-server` exposes the entire package ecosystem — components, hooks, stores, functions, types — to any MCP-compatible AI assistant.
+The **Model Context Protocol (MCP)** is an open standard that allows AI assistants to access external tools and data sources. The `@be-yours/mcp-server` exposes the entire package ecosystem — components, hooks, stores, functions, types — to any MCP-compatible AI assistant.
 
 This means your AI coding assistant can:
 - Search for components and functions across all 10 packages
@@ -28,7 +28,7 @@ This means your AI coding assistant can:
 ### From GitHub Packages
 
 ```bash
-pnpm add @be-in-digital/mcp-server
+pnpm add @be-yours/mcp-server
 ```
 
 ### From Source (in the monorepo)
@@ -47,7 +47,7 @@ Add to your Claude Code MCP configuration (`~/.claude/mcp.json` or project `.cla
   "mcpServers": {
     "beindigital": {
       "command": "npx",
-      "args": ["@be-in-digital/mcp-server"],
+      "args": ["@be-yours/mcp-server"],
       "env": {
         "GITHUB_TOKEN": "your_github_pat"
       }
@@ -63,7 +63,7 @@ Or if installed locally:
   "mcpServers": {
     "beindigital": {
       "command": "node",
-      "args": ["./node_modules/@be-in-digital/mcp-server/dist/index.js"]
+      "args": ["./node_modules/@be-yours/mcp-server/dist/index.js"]
     }
   }
 }
@@ -78,7 +78,7 @@ Add to your Cursor MCP settings (`.cursor/mcp.json`):
   "mcpServers": {
     "beindigital": {
       "command": "npx",
-      "args": ["@be-in-digital/mcp-server"]
+      "args": ["@be-yours/mcp-server"]
     }
   }
 }
@@ -90,7 +90,7 @@ Any editor or tool that supports MCP can use this server. The binary name is `be
 
 ```bash
 # Run directly
-npx @be-in-digital/mcp-server
+npx @be-yours/mcp-server
 
 # Or if globally installed
 beindigital-mcp
@@ -108,7 +108,7 @@ Lists all available packages with descriptions, categories, and export counts.
 
 Detailed information about a specific package including all exports, setup steps, dependencies, and examples.
 
-**Example:** `beindigital://packages/ui` returns full documentation for @be-in-digital/ui.
+**Example:** `beindigital://packages/ui` returns full documentation for @be-yours/ui.
 
 ## Available Tools
 
@@ -131,7 +131,7 @@ Get full details about a specific package.
 **Parameters:**
 | Param | Type | Description |
 |-------|------|-------------|
-| `name` | `string` | Package name (e.g., "ui", "core", "@be-in-digital/restaurant") |
+| `name` | `string` | Package name (e.g., "ui", "core", "@be-yours/restaurant") |
 
 ### `get_usage_example`
 
@@ -197,19 +197,19 @@ import paths, props/params, examples and tags.
 
 The registry is hand-maintained, and it drifted badly before anything checked it —
 23 of 148 claims named symbols or subpaths that did not exist, and every package
-version read `2.0.1` while `@be-in-digital/admin` had reached `8.0.0`. Two things
+version read `2.0.1` while `@be-yours/admin` had reached `8.0.0`. Two things
 hold it now:
 
 - **Versions are derived.** `src/package-versions.ts` is generated from the
-  workspace `package.json` files by `pnpm --filter @be-in-digital/mcp-server
+  workspace `package.json` files by `pnpm --filter @be-yours/mcp-server
   sync:versions`. Run it after a version bump; the tests fail if you forget.
 - **Every claim is compiled.** `apps/reference/__tests__/mcp-registry-imports.test.ts`
   renders one import per registry entry — through `importStatement()`, the same
   function the server prints — and type-checks the lot against the real packages.
   A claim that names a missing export or an undeclared subpath fails the build.
-  Its sibling `engine-doc-imports.test.ts` does the same for every `@be-in-digital`
+  Its sibling `engine-doc-imports.test.ts` does the same for every `@be-yours`
   import in the repository's Markdown and JSDoc.
 
 When you add an entry, give it the import path a consumer would really write —
 including a subpath where the export is not on the package barrel, as with
-`@be-in-digital/cms/sanitize`.
+`@be-yours/cms/sanitize`.

@@ -14,13 +14,13 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import {
   isProductAvailable,
   useCartStore,
   useLocalizedDocuments,
-} from "@be-in-digital/restaurant"
-import type { ProductDoc, NewCartItem } from "@be-in-digital/restaurant"
+} from "@be-yours/restaurant"
+import type { ProductDoc, NewCartItem } from "@be-yours/restaurant"
 import { useFavorites } from "@/lib/hooks/use-favorites"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"
 import { StorefrontProductCard } from "./storefront-product-card"

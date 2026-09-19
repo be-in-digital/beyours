@@ -4,9 +4,9 @@ import {
   internalQuery,
   internalMutation,
 } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/globalSettings";
-import { getAuthUser } from "@be-in-digital/convex-functions/auth";
-import { hasPermission, type Role } from "@be-in-digital/core/auth/rbac";
+import * as defs from "@be-yours/convex-functions/globalSettings";
+import { getAuthUser } from "@be-yours/convex-functions/auth";
+import { hasPermission, type Role } from "@be-yours/core/auth/rbac";
 
 /**
  * Global settings are owner-level, not store-level, so the store-scoped

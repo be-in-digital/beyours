@@ -30,7 +30,7 @@ import { enginePackageFile } from "../lib/repo-layout"
 import {
   createArticleCore,
   saveDraftCore,
-} from "@be-in-digital/convex-functions/blog"
+} from "@be-yours/convex-functions/blog"
 import schema from "../../convex/schema"
 import type { Id } from "../../convex/_generated/dataModel"
 
@@ -279,7 +279,7 @@ describe("re-filing an article under a rubric", () => {
     // and this pins that it stays that way.
     // Resolved through `repo-layout` rather than by walking up to `packages/`:
     // this file SHIPS, and that path exists only in the engine monorepo. A
-    // client's copy is under `node_modules/@be-in-digital/convex-functions`,
+    // client's copy is under `node_modules/@be-yours/convex-functions`,
     // which `enginePackageFile` knows about and a `../../../../` does not.
     const blog = enginePackageFile("convex-functions", "src/blog.ts")
     if (blog === null) {

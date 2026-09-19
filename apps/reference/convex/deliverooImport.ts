@@ -4,8 +4,8 @@ import { v } from "convex/values";
 import { action } from "./_generated/server";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { generateSlug } from "@be-in-digital/convex-functions";
-import { getPackageEnv, isSandbox } from "@be-in-digital/core/env";
+import { generateSlug } from "@be-yours/convex-functions";
+import { getPackageEnv, isSandbox } from "@be-yours/core/env";
 
 type CategoryRecord = {
   _id: Id<"categories">
@@ -93,7 +93,7 @@ export const importFromStore = action({
 
     try {
       // 4. Pull menu from Deliveroo
-      const { deliveroo } = await import("@be-in-digital/integrations");
+      const { deliveroo } = await import("@be-yours/integrations");
       const { categories: pulledCategories } = await deliveroo.pullMenu(
         credentials,
         brandId,

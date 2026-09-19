@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { create } from "@be-in-digital/convex-functions/stores"
+import { create } from "@be-yours/convex-functions/stores"
 import {
   buildStoreCreateArgs,
   type StoreCreateFormValues,

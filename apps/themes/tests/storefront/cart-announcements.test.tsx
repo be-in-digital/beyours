@@ -41,7 +41,7 @@ vi.mock("convex/react", () => ({
 const mounted: Array<{ root: Root; container: HTMLElement }> = []
 
 beforeEach(async () => {
-  const { useCartStore, useLanguageStore } = await import("@be-in-digital/restaurant")
+  const { useCartStore, useLanguageStore } = await import("@be-yours/restaurant")
   // The real catalogue, not a stub: what is being asserted is the SENTENCE a
   // diner hears, and `t()` answers with the key itself when nothing is loaded
   // — which would let a missing translation pass as a passing test. This is
@@ -95,7 +95,7 @@ const DISH = {
 
 /** Put a dish in the cart, outside React, the way a product card does. */
 async function addDish(overrides: Record<string, unknown> = {}) {
-  const { useCartStore } = await import("@be-in-digital/restaurant")
+  const { useCartStore } = await import("@be-yours/restaurant")
   await act(async () => {
     useCartStore.getState().addItem({ ...DISH, ...overrides } as never)
   })
@@ -142,7 +142,7 @@ describe("every mutation, not only the first", () => {
   test("a quantity change announces — this one used to be silent", async () => {
     const container = await mountAnnouncer()
     await addDish()
-    const { useCartStore } = await import("@be-in-digital/restaurant")
+    const { useCartStore } = await import("@be-yours/restaurant")
     const lineId = useCartStore.getState().items[0]!.lineId
 
     await act(async () => {
@@ -156,7 +156,7 @@ describe("every mutation, not only the first", () => {
   test("a removed line announces, and an emptied Box says so", async () => {
     const container = await mountAnnouncer()
     await addDish()
-    const { useCartStore } = await import("@be-in-digital/restaurant")
+    const { useCartStore } = await import("@be-yours/restaurant")
     const lineId = useCartStore.getState().items[0]!.lineId
 
     await act(async () => {
@@ -172,7 +172,7 @@ describe("every mutation, not only the first", () => {
     const container = await mountAnnouncer()
     await addDish()
     await addDish({ productId: "p2", name: "Napoli" })
-    const { useCartStore } = await import("@be-in-digital/restaurant")
+    const { useCartStore } = await import("@be-yours/restaurant")
 
     await act(async () => {
       useCartStore.getState().clearCart()
@@ -197,7 +197,7 @@ describe("every mutation, not only the first", () => {
     await addDish()
     const first = liveRegion(container).textContent
 
-    const { useCartStore } = await import("@be-in-digital/restaurant")
+    const { useCartStore } = await import("@be-yours/restaurant")
     await act(async () => {
       useCartStore.getState().setOrderType("delivery")
     })

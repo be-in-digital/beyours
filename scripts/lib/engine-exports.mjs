@@ -12,14 +12,14 @@
  *
  * Measured on this repository, 2026-09-05: every engine version was last set on
  * 2026-09-01 by #278, and `./sesSending`, `./stripeChargeRouting`,
- * `./htmlSanitize`, `./platformWebhookFailures` and `@be-in-digital/admin/game`
+ * `./htmlSanitize`, `./platformWebhookFailures` and `@be-yours/admin/game`
  * were all added on 2026-09-04. Six shipped `apps/themes` modules import them.
  * A client's `pnpm install` resolves happily and then `next build` and
  * `convex deploy` die with `ERR_PACKAGE_PATH_NOT_EXPORTED`, while all four
  * required checks are green — `check:mirror-css` included, because it symlinks
  * `packages/<name>` and so never sees the pinned version either.
  *
- * The changeset behind `@be-in-digital/admin@9.0.0` ("Ship the gamification
+ * The changeset behind `@be-yours/admin@9.0.0` ("Ship the gamification
  * player flow in the client template", now in `packages/admin/CHANGELOG.md`)
  * already described the window and said it "does not close on its own if the
  * release never publishes". This is the check that makes it close: a mismatch
@@ -48,7 +48,7 @@ import { gunzipSync } from "node:zlib"
 
 import { REGISTRY } from "./registry.mjs"
 
-const SCOPE = "@be-in-digital/"
+const SCOPE = "@be-yours/"
 
 /** Files whose imports a client's build or test run would actually resolve. */
 const SOURCE_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"]
@@ -72,9 +72,9 @@ const SKIPPED_DIRECTORIES = new Set([".git", "node_modules", ".next", ".turbo", 
 export const EXPORTS_UNKNOWN = Symbol("published exports could not be read")
 
 /**
- * Every `@be-in-digital/*` specifier the tree imports, as `pkg -> subpaths`.
+ * Every `@be-yours/*` specifier the tree imports, as `pkg -> subpaths`.
  *
- * A bare `@be-in-digital/core` records the subpath `.`, which is what an
+ * A bare `@be-yours/core` records the subpath `.`, which is what an
  * `exports` map calls it.
  */
 export function engineImportsIn(root) {
@@ -103,7 +103,7 @@ export function engineImportsIn(root) {
   // cost of the two errors is not symmetric: a missed import ships a client a
   // tree that will not build, an extra one costs a reader five minutes. So it
   // stays broad — write engine specifiers in prose as repository paths.
-  const specifiers = /["'](@be-in-digital\/[^"']+)["']/g
+  const specifiers = /["'](@be-yours\/[^"']+)["']/g
 
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -487,7 +487,7 @@ export function unresolvableImports(imports, published) {
  * `.changeset/`, and it exists because the advice was wrong in exactly the case
  * that mattered most. "Add a changeset for the package above" sends a reader to
  * a step that is already done, and this gate then repeats it on every run: eight
- * consecutive syncs failed on `@be-in-digital/ui`'s `./contrast` and
+ * consecutive syncs failed on `@be-yours/ui`'s `./contrast` and
  * `./contrast-scan` and `convex-functions`' `./paymentLedger` while changesets
  * for all three sat in `.changeset/`, unconsumed, because `changeset version`
  * had not been run. The changeset was never the missing half — the version bump

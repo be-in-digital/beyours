@@ -12,14 +12,14 @@ import {
   Empty,
   EmptyHeader,
   EmptyTitle,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import {
   useStorefrontStoreSelection,
   useCartStore,
   useNearestStore,
   useStoreStatusLabels,
   type StoreWithDistance,
-} from "@be-in-digital/restaurant"
+} from "@be-yours/restaurant"
 import { useQuery } from "convex/react"
 import { api } from "@/convex/_generated/api"
 

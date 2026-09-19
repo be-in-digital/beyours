@@ -4,7 +4,7 @@ import { usePaginatedQuery, useMutation } from "convex/react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Inbox } from "lucide-react"
-import { hasPermission, type Role } from "@be-in-digital/core"
+import { hasPermission, type Role } from "@be-yours/core"
 import {
   Badge,
   Button,
@@ -24,7 +24,7 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { LoadingState } from "../../components/loading-state"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminAuthStore } from "../../stores/admin-auth-store"

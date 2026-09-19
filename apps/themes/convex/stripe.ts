@@ -11,16 +11,16 @@ import {
   orderAlreadyCollected,
   paymentStatusAfterSettlement,
   readStripeCheckoutSession,
-} from "@be-in-digital/convex-functions/paymentSettlement";
+} from "@be-yours/convex-functions/paymentSettlement";
 import {
   resolveStripeCharge,
   StripeChargeRouteError,
-} from "@be-in-digital/convex-functions/stripeChargeRouting";
+} from "@be-yours/convex-functions/stripeChargeRouting";
 import {
   CardPaymentUnavailableError,
   OrderAlreadyPaidError,
-} from "@be-in-digital/convex-functions/refusal";
-import { assertCardChargeable } from "@be-in-digital/convex-functions/cardChargeFloor";
+} from "@be-yours/convex-functions/refusal";
+import { assertCardChargeable } from "@be-yours/convex-functions/cardChargeFloor";
 import { settleOrRecordRefusal } from "./settlementReturn";
 
 interface OrderData {
@@ -209,7 +209,7 @@ export const createCheckoutSession = action({
     }
 
     const Stripe = (await import("stripe")).default;
-    const { getSiteEnv } = await import("@be-in-digital/core/env");
+    const { getSiteEnv } = await import("@be-yours/core/env");
     const site = getSiteEnv();
 
     const secretKey = site.STRIPE_SECRET_KEY;
@@ -443,7 +443,7 @@ export const expireCheckoutSession = internalAction({
     // parses the environment and can throw, and so can the dynamic import.
     try {
       const Stripe = (await import("stripe")).default;
-      const { getSiteEnv } = await import("@be-in-digital/core/env");
+      const { getSiteEnv } = await import("@be-yours/core/env");
 
       // Nothing to expire on a deployment that takes no card payments.
       const secretKey = getSiteEnv().STRIPE_SECRET_KEY;
@@ -509,7 +509,7 @@ export const verifyCheckoutSession = action({
     });
 
     const Stripe = (await import("stripe")).default;
-    const { getSiteEnv } = await import("@be-in-digital/core/env");
+    const { getSiteEnv } = await import("@be-yours/core/env");
     const site = getSiteEnv();
 
     const secretKey = site.STRIPE_SECRET_KEY;
@@ -663,7 +663,7 @@ export const internalRefund = internalAction({
     await assertChargeableOnPlatform(ctx, "refund");
 
     const Stripe = (await import("stripe")).default;
-    const { getSiteEnv } = await import("@be-in-digital/core/env");
+    const { getSiteEnv } = await import("@be-yours/core/env");
 
     const secretKey = getSiteEnv().STRIPE_SECRET_KEY;
     if (!secretKey) throw new Error("STRIPE_SECRET_KEY is not configured");
@@ -734,7 +734,7 @@ export const reconcilePendingCheckouts = internalAction({
     args
   ): Promise<{ examined: number; settled: number; failed: number }> => {
     const Stripe = (await import("stripe")).default;
-    const { getSiteEnv } = await import("@be-in-digital/core/env");
+    const { getSiteEnv } = await import("@be-yours/core/env");
 
     const secretKey = getSiteEnv().STRIPE_SECRET_KEY;
     if (!secretKey) {
@@ -892,7 +892,7 @@ export const reconcilePendingCheckouts = internalAction({
 export const verifyStripeKey = internalAction({
   args: {},
   handler: async (ctx): Promise<{ checked: boolean; usable: boolean }> => {
-    const { getSiteEnv } = await import("@be-in-digital/core/env");
+    const { getSiteEnv } = await import("@be-yours/core/env");
 
     let secretKey: string | undefined;
     try {

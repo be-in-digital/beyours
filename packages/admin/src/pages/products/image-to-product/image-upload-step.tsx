@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import type { ImageToProductMode } from "@be-in-digital/convex-schema/types"
+import type { ImageToProductMode } from "@be-yours/convex-schema/types"
 import {
   Card,
   CardContent,
@@ -10,7 +10,7 @@ import {
   CardDescription,
   Button,
   Label,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { Camera, FileText, Sparkles } from "lucide-react"
 import { ImageUploader, type ImageUploaderProps } from "../../../components/image-uploader"
 

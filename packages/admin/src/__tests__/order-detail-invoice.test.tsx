@@ -74,7 +74,7 @@ vi.mock("next/link", () => ({
   ),
 }))
 
-import { Role } from "@be-in-digital/core"
+import { Role } from "@be-yours/core"
 import { OrderDetailPage } from "../pages/orders/order-detail-page"
 import { useAdminApiStore } from "../stores/admin-api-store"
 import { useAdminAuthStore } from "../stores/admin-auth-store"

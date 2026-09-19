@@ -27,7 +27,7 @@
  * re-run over the whole resolved set after the fixes, 389 of 398.
  *
  * WHY IT LIVES IN THE APP AND THE ENGINE BOTH. The scanner and the WCAG maths
- * are in `@be-in-digital/ui` — the package that owns the colours, next to
+ * are in `@be-yours/ui` — the package that owns the colours, next to
  * `readableForeground` and the branding sweep that guards the DERIVED palette.
  * The regions are here because only the app knows which of its trees render
  * under which token scope, and because a client site cloned from this template
@@ -44,8 +44,8 @@
 import { readFileSync, readdirSync, type Dirent } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
-import { AA_LARGE, AA_TEXT, contrast } from "@be-in-digital/ui/contrast"
-import { formatFailures, loadTokens, scanContrast } from "@be-in-digital/ui/contrast-scan"
+import { AA_LARGE, AA_TEXT, contrast } from "@be-yours/ui/contrast"
+import { formatFailures, loadTokens, scanContrast } from "@be-yours/ui/contrast-scan"
 
 /**
  * The token scope each tree renders under.
@@ -79,7 +79,7 @@ function declaredSurface(file: string, pattern: RegExp): string {
 
 /** `bg-[#120d1a]` on the wrapper every QR-game screen renders inside. */
 const GAME_ARENA = declaredSurface(
-  "node_modules/@be-in-digital/admin/src/game/game-shell.tsx",
+  "node_modules/@be-yours/admin/src/game/game-shell.tsx",
   /className="[^"]*\bbg-\[(#[0-9a-fA-F]{3,8})\]/
 )
 
@@ -105,14 +105,14 @@ const REGIONS = [
   // what the shell paints, and each is checked against its source below.
   //
   //   the QR game — `bg-[#120d1a]` on the wrapper in
-  //   `@be-in-digital/admin/src/game/game-shell.tsx`, opaque, covering all
+  //   `@be-yours/admin/src/game/game-shell.tsx`, opaque, covering all
   //   eleven screens under `game/`;
   //   the kitchen display — `background: #0f172a` on `.display-root`, in
   //   `app/display/[storeId]/display.css`, which no `.tsx` mentions at all.
   //
   // They come before the general `app`/`components` entries for the same
   // reason the scoped trees do: first region to claim a file wins it.
-  { dir: "node_modules/@be-in-digital/admin/src/game", scope: "", surface: GAME_ARENA },
+  { dir: "node_modules/@be-yours/admin/src/game", scope: "", surface: GAME_ARENA },
   { dir: "app/display", scope: "", surface: KITCHEN_DISPLAY },
   // One FILE, not a directory: `block-preview.tsx` draws an EMAIL, and an
   // email lands on its own white ground whatever the admin's colour scheme is
@@ -122,7 +122,7 @@ const REGIONS = [
   // neighbours in the same directory are ordinary admin chrome on
   // `--background`, so the declaration has to be this narrow.
   {
-    dir: "node_modules/@be-in-digital/admin/src/pages/email/templates/block-preview.tsx",
+    dir: "node_modules/@be-yours/admin/src/pages/email/templates/block-preview.tsx",
     scope: "",
     surface: "#ffffff",
   },
@@ -131,7 +131,7 @@ const REGIONS = [
   //
   // `surface: "background"` is the same kind of claim as the two literals
   // above, made about a token rather than a hex because the admin has two
-  // colour schemes: `SidebarInset` in `@be-in-digital/ui/src/components/
+  // colour schemes: `SidebarInset` in `@be-yours/ui/src/components/
   // Sidebar.tsx` paints `bg-background`, `app/(admin)/layout.tsx` renders every
   // page inside it, and nothing between them paints anything else. Without it
   // these trees produced a `<page>` surface flagged `surfaceKnown: false` and
@@ -146,8 +146,8 @@ const REGIONS = [
   { dir: "components", scope: "", surface: "background" },
   { dir: "lib", scope: "", surface: "background" },
   // And the two engine packages, which render inside the admin.
-  { dir: "node_modules/@be-in-digital/ui/src", scope: "", surface: "background" },
-  { dir: "node_modules/@be-in-digital/admin/src", scope: "", surface: "background" },
+  { dir: "node_modules/@be-yours/ui/src", scope: "", surface: "background" },
+  { dir: "node_modules/@be-yours/admin/src", scope: "", surface: "background" },
 ]
 
 /**
@@ -439,8 +439,8 @@ describe("the token matrix itself", () => {
    */
   it("renders the focus ring at the opacity measured above", () => {
     const roots = [
-      "node_modules/@be-in-digital/ui/src/components",
-      "node_modules/@be-in-digital/admin/src",
+      "node_modules/@be-yours/ui/src/components",
+      "node_modules/@be-yours/admin/src",
       // The app's own trees. The primitives were never where the worst of it
       // was — these hand-written fields were.
       "app",

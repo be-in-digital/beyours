@@ -12,7 +12,7 @@
  * therefore whether the fee charged is the fee displayed.
  */
 
-import { effectiveDeliveryFeeMode } from "@be-in-digital/convex-functions/deliveryQuote"
+import { effectiveDeliveryFeeMode } from "@be-yours/convex-functions/deliveryQuote"
 
 export interface OrderQuote {
   estimateId: string

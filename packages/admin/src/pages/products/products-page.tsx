@@ -34,7 +34,7 @@ import {
   EmptyTitle,
   EmptyDescription,
   EmptyContent,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { ProductsTable } from "./products-table"
 import { DuplicateCatalogModal } from "./duplicate-catalog-modal"
 import { MenusTab } from "./menus-tab"

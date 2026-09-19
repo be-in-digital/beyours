@@ -1,5 +1,5 @@
 /**
- * @be-in-digital/admin
+ * @be-yours/admin
  *
  * Shared admin dashboard package.
  * Provides auth guard, RBAC sidebar, header, page components, and utilities.
@@ -83,7 +83,7 @@ export {
   SidebarMenuItem,
   SidebarMenuButton,
   useSidebar,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 // Pages (lazy loaded by consuming apps)
 export { CustomersPage } from "./pages/customers"

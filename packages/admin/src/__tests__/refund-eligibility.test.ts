@@ -11,8 +11,8 @@ import { describe, it, expect } from "vitest"
 import {
   planRefund,
   RefundRejectedError,
-} from "@be-in-digital/convex-functions/refundPolicy"
-import { Role, hasPermission } from "@be-in-digital/core"
+} from "@be-yours/convex-functions/refundPolicy"
+import { Role, hasPermission } from "@be-yours/core"
 import {
   canRefundPayment,
   refundControlState,

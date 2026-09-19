@@ -1,4 +1,4 @@
-import * as defs from "@be-in-digital/convex-functions/gameQRCodes";
+import * as defs from "@be-yours/convex-functions/gameQRCodes";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 // `list` returns every QR code of a store. Exposed publicly, it handed an

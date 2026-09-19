@@ -4,7 +4,7 @@
  * (type-only imports from the engine are fine — they are erased at build).
  */
 
-import type { InvoiceRefusal } from "@be-in-digital/convex-functions/invoices"
+import type { InvoiceRefusal } from "@be-yours/convex-functions/invoices"
 
 /**
  * Kitchen tickets.
@@ -204,7 +204,7 @@ export interface Order {
   /**
    * Why a transactional notice did not reach the diner (#530).
    *
-   * Mirrors `noticeFailureValidator` in `@be-in-digital/convex-schema`. Restated
+   * Mirrors `noticeFailureValidator` in `@be-yours/convex-schema`. Restated
    * rather than imported because this file restates the whole order shape — the
    * admin reads Convex through a runtime-resolved `api` object and has no
    * generated `Doc` to lean on. Held to the schema by
@@ -239,7 +239,7 @@ export type PaymentProvider = "stripe" | "sumup" | "paypal" | "square" | "cash"
  * Health of a store's connection to a payment provider.
  *
  * Mirrors the `status` union of the `paymentConnections` table in
- * `@be-in-digital/convex-schema`, which documents each value. The one that is
+ * `@be-yours/convex-schema`, which documents each value. The one that is
  * easy to get wrong: `onboarding_complete` means the provider account exists
  * and onboarding finished, but charges are NOT routed to it — it is not a
  * success and not a failure, and it must never be rendered as either.

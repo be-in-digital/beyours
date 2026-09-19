@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useConvex, useMutation, useQuery } from "convex/react"
 import { toast } from "sonner"
 import { ShieldCheckIcon, DownloadIcon, SearchIcon, Trash2Icon } from "lucide-react"
-import { hasPermission, type Role } from "@be-in-digital/core"
+import { hasPermission, type Role } from "@be-yours/core"
 import {
   Alert,
   AlertDescription,
@@ -19,7 +19,7 @@ import {
   Label,
   PageHeader,
   Switch,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { useAdminAuthStore } from "../../stores/admin-auth-store"
 import { PrivacyReport, type PrivacyReportShape } from "./privacy-report"

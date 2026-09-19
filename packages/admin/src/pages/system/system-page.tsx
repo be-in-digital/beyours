@@ -9,7 +9,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { LoadingState } from "../../components"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import { APP_VERSION } from "../../lib/constants"

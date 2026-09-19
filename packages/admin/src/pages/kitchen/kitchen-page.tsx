@@ -22,7 +22,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { toast } from "sonner"
 import { TicketCard } from "./ticket-card"
 import { StationFilter } from "./station-filter"

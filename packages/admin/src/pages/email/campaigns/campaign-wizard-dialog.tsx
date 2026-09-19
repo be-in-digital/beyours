@@ -21,8 +21,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@be-in-digital/ui"
-import { validateCampaign } from "@be-in-digital/marketing"
+} from "@be-yours/ui"
+import { validateCampaign } from "@be-yours/marketing"
 import { useAdminApiStore } from "../../../stores/admin-api-store"
 import { useAdminStoreId } from "../../../hooks/admin-hooks"
 

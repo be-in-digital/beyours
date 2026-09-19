@@ -16,7 +16,7 @@ Complete internationalization system with unlimited multi-language support, auto
 
 ## 📦 Installation
 
-The `@be-in-digital/core` package is already installed in the monorepo.
+The `@be-yours/core` package is already installed in the monorepo.
 
 ```typescript
 import {
@@ -26,7 +26,7 @@ import {
   translateText,
   DEFAULT_I18N_CONFIG,
   COMMON_LANGUAGES,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 ```
 
 ## 🚀 Basic Usage
@@ -34,7 +34,7 @@ import {
 ### 1. Configuration
 
 ```typescript
-import { DEFAULT_I18N_CONFIG } from '@be-in-digital/core'
+import { DEFAULT_I18N_CONFIG } from '@be-yours/core'
 
 // Use the default config
 const config = {
@@ -46,7 +46,7 @@ const config = {
 ### 2. Language Detection
 
 ```typescript
-import { detectLocale } from '@be-in-digital/core'
+import { detectLocale } from '@be-yours/core'
 
 // Server side (Next.js)
 import { cookies, headers } from 'next/headers'
@@ -69,7 +69,7 @@ const locale = detectLocale(config, {
 ### 3. Language Persistence
 
 ```typescript
-import { setLocale, clearLocale } from '@be-in-digital/core'
+import { setLocale, clearLocale } from '@be-yours/core'
 
 // Set the language (cookie + localStorage)
 setLocale('fr', config)
@@ -81,7 +81,7 @@ clearLocale(config)
 ### 4. Translation
 
 ```typescript
-import { createTranslator } from '@be-in-digital/core'
+import { createTranslator } from '@be-yours/core'
 
 const translations = {
   welcome: 'Bienvenue',
@@ -101,7 +101,7 @@ t('items_count', { count: 5 }) // "5 articles"
 ### Setup
 
 ```typescript
-import { translateText, batchTranslate } from '@be-in-digital/core'
+import { translateText, batchTranslate } from '@be-yours/core'
 
 // Create an HTTP client (fetch example)
 const httpClient = {
@@ -154,7 +154,7 @@ results.forEach((result) => {
 ### Cost Estimation
 
 ```typescript
-import { estimateTranslationCost } from '@be-in-digital/core'
+import { estimateTranslationCost } from '@be-yours/core'
 
 const cost = estimateTranslationCost(text.length)
 // ~$0.001 per product
@@ -164,7 +164,7 @@ const cost = estimateTranslationCost(text.length)
 ## 🎨 RTL Languages (Right-to-Left)
 
 ```typescript
-import { isRtlLocale, getLocaleDirection } from '@be-in-digital/core'
+import { isRtlLocale, getLocaleDirection } from '@be-yours/core'
 
 const isRtl = isRtlLocale('ar') // true
 const direction = getLocaleDirection('ar') // 'rtl'
@@ -198,15 +198,15 @@ import type {
   UseTranslator,
   UseDirection,
   I18nProviderProps,
-} from '@be-in-digital/core'
+} from '@be-yours/core'
 ```
 
 ### Implementation example
 
 ```typescript
 // app/hooks/useTranslation.ts
-import { createTranslator } from '@be-in-digital/core'
-import type { UseTranslationReturn } from '@be-in-digital/core'
+import { createTranslator } from '@be-yours/core'
+import type { UseTranslationReturn } from '@be-yours/core'
 
 export function useTranslation(): UseTranslationReturn {
   const { locale, setLocale } = useLocale()
@@ -254,7 +254,7 @@ Use dot notation to organize keys:
 The i18n system is fully covered by 58 unit tests.
 
 ```bash
-pnpm --filter @be-in-digital/core test
+pnpm --filter @be-yours/core test
 ```
 
 ### Coverage
@@ -352,7 +352,7 @@ interface I18nConfig {
 ## 🚀 Migrating from an existing system
 
 ```typescript
-import { mergeTranslations, getMissingKeys } from '@be-in-digital/core'
+import { mergeTranslations, getMissingKeys } from '@be-yours/core'
 
 // Merge the old and new translations
 const merged = mergeTranslations(oldTranslations, newTranslations)
@@ -380,5 +380,5 @@ const translated = await batchTranslate(toTranslate, 'fr', 'en', httpClient, api
 ---
 
 **Version**: 2.0.0
-**Package**: `@be-in-digital/core`
+**Package**: `@be-yours/core`
 **Tests**: 58/58 passing ✅

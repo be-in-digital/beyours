@@ -33,7 +33,7 @@ const ITEMS = [
   },
 ]
 
-vi.mock("@be-in-digital/restaurant", () => ({
+vi.mock("@be-yours/restaurant", () => ({
   useCartStore: (selector: (s: Record<string, unknown>) => unknown) =>
     selector({
       items: ITEMS,

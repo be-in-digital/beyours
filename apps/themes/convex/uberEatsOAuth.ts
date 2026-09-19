@@ -3,7 +3,7 @@
 import { v } from "convex/values";
 import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { encrypt, decrypt } from "@be-in-digital/convex-functions/encryption";
+import { encrypt, decrypt } from "@be-yours/convex-functions/encryption";
 
 /**
  * Uber Eats OAuth Authorization Code flow (eats.pos_provisioning).
@@ -19,7 +19,7 @@ const REDIRECT_PATH = "/connect/uber-eats/callback";
 
 async function readCredentials() {
   const { getPackageEnv, getSiteEnv, isSandbox } = await import(
-    "@be-in-digital/core/env"
+    "@be-yours/core/env"
   );
   const pkg = getPackageEnv();
   const site = getSiteEnv();
@@ -49,7 +49,7 @@ export const exchangeOAuthToken = internalAction({
     const { credentials, siteUrl } = await readCredentials();
     if (!siteUrl) throw new Error("CONVEX_SITE_URL is not configured");
 
-    const { uberEats } = await import("@be-in-digital/integrations");
+    const { uberEats } = await import("@be-yours/integrations");
     const token = await uberEats.exchangeCodeForToken(
       credentials,
       args.code,
@@ -86,7 +86,7 @@ export const activateAndListStoresCore = internalAction({
   },
   handler: async (ctx, args) => {
     const { credentials } = await readCredentials();
-    const { uberEats } = await import("@be-in-digital/integrations");
+    const { uberEats } = await import("@be-yours/integrations");
 
     const conn = await ctx.runQuery(internal.uberEatsConnections.getConnection, {});
     if (!conn) {
@@ -168,7 +168,7 @@ export const generateAuthorizeUrl = action({
     // Persist the state (single-use, TTL) so the callback can verify it (CSRF).
     await ctx.runMutation(internal.oauthState.create, { provider: "uberEats", state });
 
-    const { uberEats } = await import("@be-in-digital/integrations");
+    const { uberEats } = await import("@be-yours/integrations");
     const url = uberEats.buildAuthorizeUrl({
       clientId: credentials.clientId,
       redirectUri: `${siteUrl}${REDIRECT_PATH}`,

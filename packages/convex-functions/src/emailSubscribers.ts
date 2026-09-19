@@ -738,7 +738,7 @@ const DOUBLE_OPT_IN_TTL_MS = 48 * 60 * 60 * 1000
  * database can assert that someone opted in when they never did, which is the
  * single thing the whole mechanism exists to prevent.
  *
- * `generateDoubleOptInToken()` in `@be-in-digital/marketing` already does this
+ * `generateDoubleOptInToken()` in `@be-yours/marketing` already does this
  * correctly and is deliberately NOT imported: `convex-functions` does not
  * depend on that package, and adding a whole workspace dependency — with the
  * publish-ordering it drags behind it — to reach two lines of `crypto` would

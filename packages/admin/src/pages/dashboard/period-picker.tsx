@@ -9,7 +9,7 @@
  * période ». The figures were real; the period was not a choice.
  */
 
-import { Button } from "@be-in-digital/ui"
+import { Button } from "@be-yours/ui"
 import { cn } from "../../lib/utils"
 import {
   DASHBOARD_PERIODS,

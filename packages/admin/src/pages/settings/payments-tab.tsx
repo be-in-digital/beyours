@@ -2,7 +2,7 @@
 
 import type { Dispatch, SetStateAction } from "react"
 import { Loader2 } from "lucide-react"
-import { Button, Input, Label, Switch } from "@be-in-digital/ui"
+import { Button, Input, Label, Switch } from "@be-yours/ui"
 import { FieldInfo } from "./field-info"
 import { HELP } from "./help-content"
 import type { PaymentConnection } from "./settings-types"

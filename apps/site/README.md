@@ -25,7 +25,7 @@ Next.js 16 (App Router) + Convex + Stripe + AWS SES.
 | **What it does** | Sells the BeYours offering and runs its operations |
 | **What comes in** | Prospects on the marketing pages, affiliates on the portal |
 | **What goes out** | Stripe orders, signed contracts, commissions, tracked incidents |
-| **What sets it apart** | It depends on **no** `@be-in-digital/*` package — this is a website, not an instance of the product |
+| **What sets it apart** | It depends on **no** `@be-yours/*` package — this is a website, not an instance of the product |
 | **Size** | 37 page routes · 1 route handler · 120 components · 60 Convex modules · 22 tables · 6 crons · ~63,000 lines |
 
 ```bash

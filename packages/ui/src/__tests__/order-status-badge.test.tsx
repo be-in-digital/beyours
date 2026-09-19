@@ -19,13 +19,13 @@
  * below that asserted 'Pending', 'Confirmed', 'Preparing', 'Ready',
  * 'Delivered', 'Cancelled', 'Out for Delivery' and 'Completed' were REWRITTEN:
  * they pinned that defect in place. What is asserted now is the source-language
- * word — from the one vocabulary in `@be-in-digital/core/status-labels` — and
+ * word — from the one vocabulary in `@be-yours/core/status-labels` — and
  * that a caller's own labels replace it.
  */
 
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
-import { ORDER_STATUS_VOCABULARY } from "@be-in-digital/core/status-labels"
+import { ORDER_STATUS_VOCABULARY } from "@be-yours/core/status-labels"
 import { OrderStatusBadge } from "../components/restaurant/OrderStatusBadge"
 import type { OrderStatus } from "../components/restaurant/OrderStatusBadge"
 

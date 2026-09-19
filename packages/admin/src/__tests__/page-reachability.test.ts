@@ -61,7 +61,7 @@ const ROUTES = Object.fromEntries(APPS.map((app) => [app, routeFiles(app)])) as 
 function mountsOf(app: string, name: string): string[] {
   const used = new RegExp(`\\b${name}\\b`)
   return ROUTES[app]!
-    .filter(({ src }) => src.includes("@be-in-digital/admin") && used.test(src))
+    .filter(({ src }) => src.includes("@be-yours/admin") && used.test(src))
     .map(({ file }) => file.split("(admin)")[1] as string)
 }
 
@@ -181,7 +181,7 @@ describe("the `./pages` subpath the registry advertises", () => {
     const registry = read(path.join(REPO, "packages/mcp-server/src/registry.ts"))
     const advertised = new Set<string>()
     for (const m of registry.matchAll(
-      /name:\s*"(\w+)",\s*\n\s*type:\s*"component",[\s\S]{0,400}?importPath:\s*"@be-in-digital\/admin\/pages"/g
+      /name:\s*"(\w+)",\s*\n\s*type:\s*"component",[\s\S]{0,400}?importPath:\s*"@be-yours\/admin\/pages"/g
     )) {
       advertised.add(m[1] as string)
     }

@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, test, vi } from "vitest"
-import { Role } from "@be-in-digital/core/auth/rbac"
+import { Role } from "@be-yours/core/auth/rbac"
 import {
   ACCESS_AUDIT_ACTIONS,
   ACCESS_AUDIT_OPERATIONS,

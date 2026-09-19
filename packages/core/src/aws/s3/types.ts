@@ -8,7 +8,7 @@
  * │  Usage:                                                     │
  * │  ┌───────────────────────────────────────────────────┐      │
  * │  │ import type { UploadOptions, UploadResult }       │      │
- * │  │   from '@be-in-digital/core'                           │      │
+ * │  │   from '@be-yours/core'                           │      │
  * │  │                                                   │      │
  * │  │ const opts: UploadOptions = {                     │      │
  * │  │   folder: 'products',                             │      │

@@ -29,17 +29,17 @@ import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import {
   formatPrice,
   useCartHydrated,
   useCartStore,
-} from "@be-in-digital/restaurant"
-import type { OrderType } from "@be-in-digital/restaurant"
+} from "@be-yours/restaurant"
+import type { OrderType } from "@be-yours/restaurant"
 import { useStoreId } from "@/lib/hooks/use-store-id"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"
 import { OrderTypeSelector } from "@/components/storefront/order-type-selector"
-import { isOrderTypeOffered, ORDER_TYPES } from "@be-in-digital/convex-schema"
+import { isOrderTypeOffered, ORDER_TYPES } from "@be-yours/convex-schema"
 
 export default function CartContent() {
   const router = useRouter()

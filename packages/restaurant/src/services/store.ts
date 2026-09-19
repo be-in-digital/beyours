@@ -10,7 +10,7 @@ import {
   isWithinBusinessHoursAt,
   parseClockTime,
   resolveStoreHours,
-} from '@be-in-digital/convex-schema'
+} from '@be-yours/convex-schema'
 import type { BusinessHours, Address, StoreDoc, StoreHoursStatus } from '../types'
 
 /**
@@ -22,9 +22,9 @@ import type { BusinessHours, Address, StoreDoc, StoreHoursStatus } from '../type
  * and the contact page, in both apps.
  *
  * Not "every caller", which this note said. `convex-functions/src/orders.ts`
- * imports it from `@be-in-digital/convex-schema` directly, and has to: the
+ * imports it from `@be-yours/convex-schema` directly, and has to: the
  * Convex runtime loads that package, and routing the import through
- * `@be-in-digital/restaurant` would pull a React storefront package into an
+ * `@be-yours/restaurant` would pull a React storefront package into an
  * isolate. The re-export is a convenience for one side, not a chokepoint for
  * both — and stating it as one invites somebody to "fix" the direct import.
  */

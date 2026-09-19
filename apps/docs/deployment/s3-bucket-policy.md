@@ -24,7 +24,7 @@ hosted, world-readable file.
 ## What that means in practice
 
 A stored S3 key becomes a URL in exactly one place: `buildMediaUrl()` in
-[`@be-in-digital/core/aws/media-url`](../../../packages/core/src/aws/media-url.ts).
+[`@be-yours/core/aws/media-url`](../../../packages/core/src/aws/media-url.ts).
 
 | `AWS_S3_PUBLIC_BASE_URL` | URL handed to the browser | Who reads S3 |
 |---|---|---|
@@ -85,7 +85,7 @@ Three things close that, and all three are applied by `setup-aws.sh`:
    file talks to the AWS SDK directly, and it is the only media-deletion path
    the delivered app runs.
 
-   `S3Service.delete` in `@be-in-digital/core` carries the same logic for a
+   `S3Service.delete` in `@be-yours/core` carries the same logic for a
    **consumer of the package** — nothing in `apps/*` calls it. And it purges
    only when the `S3Operations` adapter you injected implements
    `listObjectVersions` and `deleteObjectVersion`, which are optional on the
@@ -153,7 +153,7 @@ Worth knowing before writing code that touches media:
   takes a `siteUrl` and rewrites those paths — see `absolutiseUrls`.
 - **`/api/files` only serves the folders the product uploads to.** That list is
   defined once, in
-  [`@be-in-digital/core/aws/folders`](../../../packages/core/src/aws/folders.ts),
+  [`@be-yours/core/aws/folders`](../../../packages/core/src/aws/folders.ts),
   and every upload path derives its allowlist from it. Anything else in the
   bucket is not reachable through the app.
 

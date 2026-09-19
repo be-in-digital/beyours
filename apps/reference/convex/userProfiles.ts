@@ -1,17 +1,17 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
-import * as defs from "@be-in-digital/convex-functions/userProfiles";
-import { getAuthUser } from "@be-in-digital/convex-functions/auth";
+import * as defs from "@be-yours/convex-functions/userProfiles";
+import { getAuthUser } from "@be-yours/convex-functions/auth";
 import {
   assertCanAssignProfile,
   bootstrapTokenMatches,
   canClaimFirstAdmin,
-} from "@be-in-digital/convex-functions/profileProvisioning";
+} from "@be-yours/convex-functions/profileProvisioning";
 import {
   ACCESS_AUDIT_OPERATIONS,
   recordAccessAudit,
-} from "@be-in-digital/convex-functions/accessAudit";
-import { Role } from "@be-in-digital/core/auth/rbac";
+} from "@be-yours/convex-functions/accessAudit";
+import { Role } from "@be-yours/core/auth/rbac";
 
 
 // === Queries ===

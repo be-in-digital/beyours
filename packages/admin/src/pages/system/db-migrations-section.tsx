@@ -20,7 +20,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { useAdminApiStore } from "../../stores/admin-api-store"
 import type { SystemInfo } from "./types"
 import { formatTimestamp } from "./helpers"

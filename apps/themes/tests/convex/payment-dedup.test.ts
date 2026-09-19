@@ -27,16 +27,16 @@ import { afterEach, describe, expect, test } from "vitest"
 import { internal } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"
-import { planRefund } from "@be-in-digital/convex-functions/refundPolicy"
+import { planRefund } from "@be-yours/convex-functions/refundPolicy"
 import {
   assertSettlesOrder,
   deliberateSettlementRefusal,
   paymentStatusAfterSettlement,
-} from "@be-in-digital/convex-functions/paymentSettlement"
+} from "@be-yours/convex-functions/paymentSettlement"
 import {
   abandonedCheckoutSession,
   markCashPaid,
-} from "@be-in-digital/convex-functions/orders"
+} from "@be-yours/convex-functions/orders"
 
 const modules = import.meta.glob("../../convex/**/*.ts")
 

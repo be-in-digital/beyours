@@ -7,7 +7,7 @@ import {
   wheelEase,
 } from "../wheel"
 import type { GamePrize } from "../types"
-import type { DocId } from "@be-in-digital/convex-schema/dataModel"
+import type { DocId } from "@be-yours/convex-schema/dataModel"
 
 const prize = (id: string, name: string): GamePrize => ({
   id: id as DocId<"prizes">,

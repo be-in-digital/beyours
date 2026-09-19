@@ -15,7 +15,7 @@ silently.
 | Section | Answers |
 | --- | --- |
 | [`getting-started/`](./getting-started/introduction.md) | What the product is, how to install it, first steps |
-| [`packages/`](./packages/) | One page per `@be-in-digital/*` package |
+| [`packages/`](./packages/) | One page per `@be-yours/*` package |
 | [`guides/`](./guides/) | Feature-by-feature implementation guides |
 | [`deployment/`](./deployment/) | GitHub Packages, Vercel, the S3 bucket policy, the Infisical store, AWS ownership |
 | [`api-reference/`](./api-reference/) | Convex API and REST endpoints |

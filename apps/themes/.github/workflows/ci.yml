@@ -171,7 +171,7 @@ jobs:
       # WHICH ENGINE DID THIS RUN ACTUALLY TEST? (#389)
       #
       # This is the question a red run on this repository raises and the one its
-      # log could not answer. `package.json` pins `"@be-in-digital/admin": "^9.0.0"`
+      # log could not answer. `package.json` pins `"@be-yours/admin": "^9.0.0"`
       # — a RANGE — and this repository is the mirror of `apps/themes`, whose own
       # CI links the engine with `workspace:^` and therefore tests the current
       # source. So a fix merged in the engine is green there and absent here
@@ -199,8 +199,8 @@ jobs:
             node -e '
               const { readFileSync } = require("node:fs")
               const deps = JSON.parse(readFileSync("package.json", "utf8")).dependencies ?? {}
-              const engine = Object.keys(deps).filter((name) => name.startsWith("@be-in-digital/")).sort()
-              if (engine.length === 0) { console.log("no @be-in-digital/* dependency declared"); process.exit(0) }
+              const engine = Object.keys(deps).filter((name) => name.startsWith("@be-yours/")).sort()
+              if (engine.length === 0) { console.log("no @be-yours/* dependency declared"); process.exit(0) }
               for (const name of engine) {
                 let installed = "NOT INSTALLED"
                 try {
@@ -402,7 +402,7 @@ jobs:
 
       - name: Build
         # Before the Convex deploy, not after. `convex deploy` bundles convex/,
-        # which imports the @be-in-digital/* packages, and `pnpm start` below
+        # which imports the @be-yours/* packages, and `pnpm start` below
         # needs a build to serve.
         run: pnpm build
 

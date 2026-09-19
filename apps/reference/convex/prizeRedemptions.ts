@@ -1,7 +1,7 @@
 import { query } from "./_generated/server";
 import type { QueryCtx } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/gamePlay";
-import { requireStoreAccess } from "@be-in-digital/convex-functions/auth";
+import * as defs from "@be-yours/convex-functions/gamePlay";
+import { requireStoreAccess } from "@be-yours/convex-functions/auth";
 import { storeQuery, storeMutation } from "./lib/storeFunctions";
 
 /** Staff/admin side of the prize redemption flow. */

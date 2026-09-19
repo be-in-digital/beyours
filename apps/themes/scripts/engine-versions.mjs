@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * Which `@be-in-digital/*` versions this run actually installed.
+ * Which `@be-yours/*` versions this run actually installed.
  *
  * WHAT IT ANSWERS. The declared range is already in `package.json`. What a
  * failure cannot tell you is which version that range RESOLVED to, and this is
  * the one repository where the question matters: the application shell is
- * synced from the engine at HEAD, while the `@be-in-digital/*` packages arrive
+ * synced from the engine at HEAD, while the `@be-yours/*` packages arrive
  * from the registry at whatever was last published. Those two can be days
  * apart.
  *
@@ -27,7 +27,7 @@
  * That is precisely backwards, because the failure this diagnoses breaks the
  * build before it ever breaks Playwright. `scripts/check-mirror-build.mjs`
  * records the canonical instance: `Cannot find module
- * '@be-in-digital/admin/game'` — a **Typecheck** failure, in 71 of the
+ * '@be-yours/admin/game'` — a **Typecheck** failure, in 71 of the
  * boilerplate's last 100 runs. In every one of those, `web` went red, `e2e` was
  * skipped, and the three lines that would have said "declared `^8.0.0` →
  * installed `8.0.0`, and the symbol landed at HEAD" never printed. The
@@ -47,7 +47,7 @@
  */
 import { readFileSync, existsSync, appendFileSync } from 'node:fs'
 
-const ENGINE_SCOPE = '@be-in-digital/'
+const ENGINE_SCOPE = '@be-yours/'
 
 // The whole body, because the promise above has to be true rather than
 // intended. It was not: a malformed `package.json` threw SyntaxError and a
@@ -75,7 +75,7 @@ function main() {
     })
 
   if (rows.length === 0) {
-    console.log('No @be-in-digital/* dependency is declared.')
+    console.log('No @be-yours/* dependency is declared.')
     return
   }
 

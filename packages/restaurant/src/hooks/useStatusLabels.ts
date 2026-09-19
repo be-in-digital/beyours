@@ -8,7 +8,7 @@
  * showed « Preparing » and « Temporarily Unavailable » beside French copy.
  *
  * The keys and the source-language fallbacks live once, in
- * `@be-in-digital/core/status-labels`, so the word the badge prints untranslated
+ * `@be-yours/core/status-labels`, so the word the badge prints untranslated
  * and the word this resolves cannot name different things.
  */
 
@@ -21,7 +21,7 @@ import {
   resolveStatusLabels,
   type OrderStatusKey,
   type StoreStatusKey,
-} from '@be-in-digital/core/status-labels'
+} from '@be-yours/core/status-labels'
 import { useTranslation } from './useTranslation'
 
 /**

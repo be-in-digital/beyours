@@ -11,7 +11,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { formatPrice, formatOrderNumber, formatDate } from "../../lib/formatters"
 import type {
   Order,

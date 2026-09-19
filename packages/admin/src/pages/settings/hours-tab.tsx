@@ -1,6 +1,6 @@
 "use client"
 
-import { Button, Input, Label, Switch } from "@be-in-digital/ui"
+import { Button, Input, Label, Switch } from "@be-yours/ui"
 import { DAY_NAMES, DISPLAY_ORDER } from "./settings-constants"
 import type { StoreHours } from "./settings-types"
 

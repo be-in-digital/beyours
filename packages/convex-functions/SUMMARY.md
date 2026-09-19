@@ -370,4 +370,4 @@ These modules can be added later as needed.
 
 **Version:** 0.1.0
 **Created on:** February 14, 2026
-**Package:** `@be-in-digital/convex-functions`
+**Package:** `@be-yours/convex-functions`

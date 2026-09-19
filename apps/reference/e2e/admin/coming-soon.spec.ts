@@ -3,7 +3,7 @@ import { collectConsoleErrors } from "../helpers/console.helpers"
 
 test.describe("Screens that must render, whether or not they are built", () => {
   // The four gamification screens left this list when the player flow moved to
-  // `@be-in-digital/admin/game`: both apps now render the real
+  // `@be-yours/admin/game`: both apps now render the real
   // `Game{Catalog,QrCodes,Actions,Winners}Page`, and `games.spec.ts` asserts
   // them. `/dashboard/games/settings` is absent for a different reason — the
   // route has no page in either app. It was declared in `adminRoutes` and

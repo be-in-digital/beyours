@@ -1,4 +1,4 @@
-import * as defs from "@be-in-digital/convex-functions/orphanProducts";
+import * as defs from "@be-yours/convex-functions/orphanProducts";
 import { storeQuery, storeMutation, storeIdFromDocument } from "./lib/storeFunctions";
 
 const orphanStoreId = storeIdFromDocument("Orphan product not found");

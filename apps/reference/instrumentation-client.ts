@@ -11,7 +11,7 @@
  * yet. See `apps/docs/deployment/sentry.md`.
  */
 import * as Sentry from '@sentry/nextjs'
-import { resolveSentryOptions } from '@be-in-digital/core/sentry'
+import { resolveSentryOptions } from '@be-yours/core/sentry'
 
 const options = resolveSentryOptions('browser', {
   // Spelled out one key at a time, and deliberately not `process.env`.

@@ -52,7 +52,7 @@ export function isChangesetFile(name) {
  * A changeset is YAML frontmatter between `---` fences followed by prose:
  *
  *     ---
- *     "@be-in-digital/admin": patch
+ *     "@be-yours/admin": patch
  *     ---
  *
  *     Fix the product form's "Ajouter un choix" button doing nothing.

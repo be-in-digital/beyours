@@ -39,7 +39,7 @@ Enter your GitHub PAT with `read:packages` scope. Add it for all environments (P
 Ensure your `.npmrc` is committed to the repo:
 
 ```ini
-@be-in-digital:registry=https://npm.pkg.github.com
+@be-yours:registry=https://npm.pkg.github.com
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 

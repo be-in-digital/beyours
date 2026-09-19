@@ -3,7 +3,7 @@
 > Accept payments via Stripe, SumUp, PayPal and cash.
 
 > [!IMPORTANT]
-> **Payments are not in `@be-in-digital/core`.** That package holds `auth/`,
+> **Payments are not in `@be-yours/core`.** That package holds `auth/`,
 > `aws/`, `env/`, `i18n/` and `sentry/` — there is no `payments/` directory and
 > never was. The engine's payment code is a set of Convex functions:
 > `packages/convex-functions/src/` (`payments.ts`, `paymentSettlement.ts`,
@@ -49,7 +49,7 @@ visibility:
 
 ```typescript
 // convex/payments.ts (in the app)
-import * as defs from "@be-in-digital/convex-functions/payments";
+import * as defs from "@be-yours/convex-functions/payments";
 
 export const getByOrder = storeQuery({
   permission: "payments:read",
@@ -61,7 +61,7 @@ export const getByOrder = storeQuery({
 export const internalSettle = internalMutation(defs.settlePayment);
 ```
 
-Available definitions in `@be-in-digital/convex-functions/payments`:
+Available definitions in `@be-yours/convex-functions/payments`:
 `getByOrder`, `getByStore`, `getById`, `create`, `settlePayment`, `updateStatus`,
 `reserveRefund`, `confirmRefund`, `releaseRefund`, `attachCheckoutSession`,
 `listStrandedCheckouts`, `settleFromChargeEvent`, `recordProviderRefund`.
@@ -79,7 +79,7 @@ two `succeeded` rows and 96 € refundable.
 The amount is bound to the order before anything is marked paid:
 
 ```typescript
-import { assertSettlesOrder } from "@be-in-digital/convex-functions/paymentSettlement";
+import { assertSettlesOrder } from "@be-yours/convex-functions/paymentSettlement";
 ```
 
 ## Stripe
@@ -93,7 +93,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 All three or none — they are one feature group in `siteEnvSchema`, read through
-`getSiteEnv()` from `@be-in-digital/core/env`.
+`getSiteEnv()` from `@be-yours/core/env`.
 
 ### Create a Checkout Session
 
@@ -246,7 +246,7 @@ const { refundedAmount, isFullRefund } = await refundPayment({
 ```
 
 The decisions behind it are pure and live in
-`@be-in-digital/convex-functions/refundPolicy`:
+`@be-yours/convex-functions/refundPolicy`:
 
 ```typescript
 import {
@@ -255,7 +255,7 @@ import {
   RefundRejectedError,
   type RefundPlan,
   type RefundRoute,
-} from "@be-in-digital/convex-functions/refundPolicy";
+} from "@be-yours/convex-functions/refundPolicy";
 ```
 
 - **`planRefund({ payment, amount })`** validates and returns the state the

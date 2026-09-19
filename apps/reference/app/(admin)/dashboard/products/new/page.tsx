@@ -1,4 +1,4 @@
-import { NewProductPage } from "@be-in-digital/admin"
+import { NewProductPage } from "@be-yours/admin"
 
 export default function Page() {
   return <NewProductPage />

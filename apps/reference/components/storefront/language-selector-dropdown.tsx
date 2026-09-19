@@ -9,9 +9,9 @@ import {
   TooltipTrigger,
   TooltipContent,
   TooltipProvider,
-} from "@be-in-digital/ui"
-import { COMMON_LANGUAGES, type LanguageConfig } from "@be-in-digital/core"
-import { useLanguageStore, useTranslation } from "@be-in-digital/restaurant"
+} from "@be-yours/ui"
+import { COMMON_LANGUAGES, type LanguageConfig } from "@be-yours/core"
+import { useLanguageStore, useTranslation } from "@be-yours/restaurant"
 
 /**
  * The storefront language picker.

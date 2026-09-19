@@ -6,15 +6,15 @@
  */
 
 // Initialize CMS registry with app-specific pages (must run before any handler)
-import { setCmsRegistry } from "@be-in-digital/cms"
+import { setCmsRegistry } from "@be-yours/cms"
 import { appCmsConfig } from "../cms"
 setCmsRegistry(appCmsConfig)
 
 import { v } from "convex/values"
 import { query } from "./_generated/server"
-import * as cmsDefs from "@be-in-digital/convex-functions/cms"
-import { publishPageCore } from "@be-in-digital/convex-functions/cmsPublish"
-import { saveDraftBlockCore } from "@be-in-digital/convex-functions/cms"
+import * as cmsDefs from "@be-yours/convex-functions/cms"
+import { publishPageCore } from "@be-yours/convex-functions/cmsPublish"
+import { saveDraftBlockCore } from "@be-yours/convex-functions/cms"
 import { scheduleCmsTranslation, schedulePageTranslation } from "./cmsAutoTranslate"
 import { storeQuery, storeMutation } from "./lib/storeFunctions";
 

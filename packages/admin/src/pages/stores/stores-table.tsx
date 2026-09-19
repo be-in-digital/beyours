@@ -24,7 +24,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { formatShortDate } from "../../lib/formatters"
 import { cn } from "../../lib/utils"
 

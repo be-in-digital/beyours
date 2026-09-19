@@ -11,7 +11,7 @@ import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
-} from "@be-in-digital/ui";
+} from "@be-yours/ui";
 
 interface FavoriteButtonProps {
     itemId: string | number;

@@ -17,7 +17,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { TicketTimer } from "./ticket-timer"
 import { Clock, Play, CheckCircle, Package, Printer, X } from "lucide-react"
 
@@ -185,7 +185,7 @@ export function TicketCard({ ticket }: TicketCardProps) {
                   Deliveroo webhooks — so a grey "Normal" sat on every card of
                   every service and told the kitchen nothing, while making the
                   two values that do mean something harder to spot.
-                  `getPriorityLevel` in @be-in-digital/restaurant already
+                  `getPriorityLevel` in @be-yours/restaurant already
                   classifies an order (external platform -> vip, delivery ->
                   urgent) and is unit-tested, but nothing calls it; today the
                   only non-normal tickets come from `seedKitchenOrders`.

@@ -1,11 +1,11 @@
 /**
  * Error reporting for beyours.fr, resolved from the environment.
  *
- * ## Why this is not `@be-in-digital/core/sentry`
+ * ## Why this is not `@be-yours/core/sentry`
  *
  * That module exists and is well tested, and this one deliberately does not
  * import it. `apps/site` depends on **none** of the engine packages — the rule
- * is in the root `CLAUDE.md` and it is not stylistic: the ten `@be-in-digital/*`
+ * is in the root `CLAUDE.md` and it is not stylistic: the ten `@be-yours/*`
  * packages ship from a private GitHub registry, so a single import here would
  * put a `read:packages` token between this repository and every Vercel build of
  * the commercial site. `lib/env.ts` already carries the same duplication for the

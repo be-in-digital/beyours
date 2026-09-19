@@ -10,7 +10,7 @@ import {
   liveCampaignsReferencing,
   quoteNames,
 } from "./emailAssetReferences"
-import { emailBlockValidator } from "@be-in-digital/convex-schema"
+import { emailBlockValidator } from "@be-yours/convex-schema"
 
 const categoryValidator = v.union(
   v.literal("marketing"),

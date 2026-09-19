@@ -6,7 +6,7 @@
  * unlike the browser, where each key has to be named for Next to inline it.
  */
 import * as Sentry from '@sentry/nextjs'
-import { resolveSentryOptions } from '@be-in-digital/core/sentry'
+import { resolveSentryOptions } from '@be-yours/core/sentry'
 
 const options = resolveSentryOptions('server')
 

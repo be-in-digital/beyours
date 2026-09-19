@@ -97,7 +97,7 @@ async function seed(status: Doc<"paymentConnections">["status"] | null) {
  */
 async function checkoutWouldRefuse(status: Doc<"paymentConnections">["status"] | null) {
   const { resolveStripeCharge } = await import(
-    "@be-in-digital/convex-functions/stripeChargeRouting"
+    "@be-yours/convex-functions/stripeChargeRouting"
   )
   try {
     resolveStripeCharge(status ? { status, merchantId: "acct_test" } : null)

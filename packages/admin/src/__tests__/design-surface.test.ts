@@ -33,9 +33,9 @@
 import { describe, it, expect } from "vitest"
 import fs from "node:fs"
 import path from "node:path"
-import { BRANDING_FIELDS } from "@be-in-digital/convex-functions/stores"
-import { Role, hasPermission } from "@be-in-digital/core"
-import { buildBrandingCss } from "@be-in-digital/ui/branding"
+import { BRANDING_FIELDS } from "@be-yours/convex-functions/stores"
+import { Role, hasPermission } from "@be-yours/core"
+import { buildBrandingCss } from "@be-yours/ui/branding"
 
 import { adminRoutes } from "../config/admin-routes"
 import { navGroups, isCollapsible, type NavItem } from "../config/nav-config"

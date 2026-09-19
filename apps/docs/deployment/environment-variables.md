@@ -30,7 +30,7 @@ source rather than one copy per client:
 All env vars are validated at app startup using Zod schemas. The validation runs in `instrumentation.ts`:
 
 ```typescript
-import { validateAllEnv, formatEnvReport } from "@be-in-digital/core/env";
+import { validateAllEnv, formatEnvReport } from "@be-yours/core/env";
 
 const { ok, missing } = validateAllEnv();
 if (!ok) console.error(formatEnvReport(missing));
@@ -201,13 +201,13 @@ Full procedure for a new client: [`sentry.md`](./sentry.md).
 
 ```typescript
 // Validated getters (lazy-loaded, memoized)
-import { getPackageEnv, getSiteEnv } from "@be-in-digital/core/env";
+import { getPackageEnv, getSiteEnv } from "@be-yours/core/env";
 
 const { AWS_REGION } = getPackageEnv();
 const { STRIPE_SECRET_KEY } = getSiteEnv();
 
 // Schemas for custom validation
-import { packageEnvSchema, siteEnvSchema } from "@be-in-digital/core/env";
+import { packageEnvSchema, siteEnvSchema } from "@be-yours/core/env";
 ```
 
 ## Security Notes

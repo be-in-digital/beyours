@@ -21,7 +21,7 @@
  *         printf '%s %s' "$GUID" "$BODY" | openssl dgst -sha256 -hmac "$SECRET"
  *
  *  2. The real verifier and the real route. `verifyWebhookSignature` is
- *     exported from `@be-in-digital/integrations` and the Convex HTTP action
+ *     exported from `@be-yours/integrations` and the Convex HTTP action
  *     is mounted here with `convex-test`, so a signature this directory
  *     produces is put in front of the code that will judge it in production.
  *
@@ -39,7 +39,7 @@
 
 import crypto from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
-import { deliveroo } from "@be-in-digital/integrations";
+import { deliveroo } from "@be-yours/integrations";
 import {
   configureDeliverooEnv,
   newHarness,

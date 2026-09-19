@@ -108,11 +108,26 @@ product. `apps/reference` is where an engine feature is built and proven; it is 
 to nobody. `apps/themes` is the shippable counterpart, cloned into one repo and one
 Convex backend per client.
 
-**Two scopes, deliberately.** The three apps use `@beyours/*`; the ten engine packages
-under `packages/` use `@be-in-digital/*` (private GitHub Packages). Installing them
+**Two scopes, one hyphen apart, deliberately.** The three apps use `@beyours/*`;
+the ten engine packages under `packages/` use `@be-yours/*` — with hyphens — on
+GitHub Packages. The hyphens are not a typo and not a style: GitHub Packages
+requires an npm scope to be exactly the login of the organisation that owns the
+packages, and this repository lives at `be-yours/beyours`. The apps are never
+published, so nothing forces them to match and they do not.
+
+It was `@be-in-digital/*` until the rename, and every version published under
+that scope is still on the registry — a client site that has not been migrated
+still resolves it. Installing the engine
 needs a `read:packages` PAT in `NODE_AUTH_TOKEN`; without one, use
 `pnpm engine:link <engine-clone>` from inside `apps/themes` for local symlinks
 (the script lives there, not at the root).
+
+**Publication is currently HELD**, on purpose. `RELEASE_HOLD.md` at the root is
+the hold: while that file exists, `release.yml` verifies everything and
+publishes nothing, the mirror stands down instead of pinning versions that do
+not exist yet, and `pnpm release` refuses on a laptop. `pnpm check:release-hold`
+answers it. Deleting the file and merging is the release — nothing else has to
+change.
 
 > **BeYours is the product sold to restaurant owners. BeInDigital is the agency.**
 > Two brands, two businesses — read the Naming section of `README.md` before any
@@ -426,7 +441,7 @@ Both live in `packages/core/src/i18n/gpt-translation.ts`. There is no
 requires the HTTP client and the API key, they are not optional.
 
 ```typescript
-import { translateText, batchTranslate, estimateTranslationCost } from "@be-in-digital/core"
+import { translateText, batchTranslate, estimateTranslationCost } from "@be-yours/core"
 
 // One string. `context` steers the model; the rest have defaults.
 await translateText(text, "en", "fr", "product name", httpClient, apiKey)
@@ -438,7 +453,7 @@ await batchTranslate(items, "en", "es", httpClient, apiKey)
 `httpClient` is injected for the same reason the AWS services inject theirs: the
 package must stay loadable from the Convex runtime. Note also that the engine's
 own auto-translation pipeline is separate — it lives in
-`@be-in-digital/convex-functions/autoTranslate`, deliberately off that package's
+`@be-yours/convex-functions/autoTranslate`, deliberately off that package's
 barrel, and the apps drive it from there.
 
 **Cost**: ~$0.001 per product, $0.01 per page (`estimateTranslationCost`)
@@ -492,7 +507,7 @@ they hold the policy. `packages/core` therefore has no `@aws-sdk/client-s3`
 dependency at all; its one SDK dependency is `@aws-sdk/client-sesv2`, imported
 only by the SES adapter that `createSESv2Operations` lives in.
 
-Everything below comes from the package root, `@be-in-digital/core`; there is no
+Everything below comes from the package root, `@be-yours/core`; there is no
 `./aws/s3` or `./aws/ses` subpath. The two `./aws/*` subpaths that do exist are
 deliberately import-free so a Convex isolate can pull them in on their own:
 `./aws/folders` (the folder allow-list) and `./aws/media-url`.
@@ -502,7 +517,7 @@ There is no `uploadToS3`. Build the service and call `upload` on it; the
 client is injected, which is what makes it testable.
 
 ```typescript
-import { createS3Service, S3_FOLDERS } from "@be-in-digital/core"
+import { createS3Service, S3_FOLDERS } from "@be-yours/core"
 
 const s3 = createS3Service(config, client) // `client` is your S3Operations adapter
 const { key, url } = await s3.upload(buffer, {
@@ -540,7 +555,7 @@ proxy, and `getPublicUrl` returns that proxy or the CDN, never a direct S3 URL.
 (`packages/core/src/aws/ses/client.ts:38,45`), not top-level exports.
 
 ```typescript
-import { createSESService, createSESv2Operations, getSESService } from "@be-in-digital/core"
+import { createSESService, createSESv2Operations, getSESService } from "@be-yours/core"
 
 const ses = createSESService(config, createSESv2Operations(awsConfig))
 // or, server-side, read the config from the environment:
@@ -556,7 +571,7 @@ module-level functions.
 **How transactional mail actually leaves the product.** Convex has no SES
 credentials for the password-reset path, so it POSTs to the app's own
 `/api/email/send`, which is `createEmailRouteHandler({ secret, linkOrigin })`
-from `@be-in-digital/core` — that handler calls `getEmailService()`
+from `@be-yours/core` — that handler calls `getEmailService()`
 (`getSESService` is a deprecated alias). The two halves share one secret
 (`EMAIL_API_SECRET`, with `BETTER_AUTH_SECRET` as a transitional fallback) and
 must present the same one. Campaigns, automations, invitations, order
@@ -614,7 +629,7 @@ pnpm test:ui           # Vitest UI for apps/reference, the engine's test bench
 
 `test` and `test:coverage` fan out across the monorepo. `test:ui` cannot: a
 Vitest UI is one server per project, so the root script opens the bench. For
-any other workspace, name it — `pnpm --filter @be-in-digital/core test:coverage`.
+any other workspace, name it — `pnpm --filter @be-yours/core test:coverage`.
 
 ### E2E Tests (Playwright)
 ```bash

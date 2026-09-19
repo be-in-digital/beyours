@@ -31,7 +31,7 @@ Card detail: `tasks/sales-readiness-backlog.md` · Batch map: `tasks/battle-plan
 
 BeYours / BeInDigital Engine — pnpm + Turborepo monorepo.
 
-- `packages/*`, published as `@be-in-digital/*` — the engine: `convex-functions`,
+- `packages/*`, published as `@be-yours/*` — the engine: `convex-functions`,
   `convex-schema`, `core`, `restaurant`, `admin`, `cms`, `ui`, `integrations`,
   `marketing`, `mcp-server`.
 - `apps/reference` — the engine's test bench. Carries the CI e2e suite. Sold to nobody.
@@ -644,7 +644,7 @@ affected.
 
 **Read this before running any prompt in a shared worktree:** engine packages are consumed
 from `dist/`. A fresh worktree has none, and `apps/themes` then reports 8 failures that are
-purely `Failed to resolve entry for package "@be-in-digital/…"`. Run
+purely `Failed to resolve entry for package "@be-yours/…"`. Run
 `npx turbo run build --filter='./packages/*'` first; the suite is then clean at 47 files /
 541 passed / 13 skipped (the skips are Deliveroo sandbox scenarios needing live
 credentials). Do not read an unbuilt workspace as a regression.
@@ -1025,8 +1025,8 @@ differentiator that does not exist: every restaurant ships the same orange.
 **F-2 — Two forked copies of the design system render side by side, with different
 geometry.** Measured:
 ```
-apps/reference:  80 imports from @be-in-digital/ui | 100 from @/components/ui
-apps/themes:     80 imports from @be-in-digital/ui | 102 from @/components/ui
+apps/reference:  80 imports from @be-yours/ui | 100 from @/components/ui
+apps/themes:     80 imports from @be-yours/ui | 102 from @/components/ui
 Button, apps/reference: 25 files import the package one, 25 the local one
 Storefront only:         3 package, 9 local
 12 files import from BOTH (BlogAutoConfigForm.tsx:19-24 takes Button/Badge/Input/Separator
@@ -1080,12 +1080,12 @@ generated per registry claim, from its own `importPath`, and compiled:
 ```
 $ npx tsc --noEmit --moduleResolution bundler --strict zz-probe-imports.ts
 23 errors / 145 claims:
-  TS2305 '@be-in-digital/core' has no exported member 'CanAccess' | 'RoleGate'
+  TS2305 '@be-yours/core' has no exported member 'CanAccess' | 'RoleGate'
                                                     | 'uploadToS3' | 'sendEmail'
   TS2724 ... no exported member named 'sendTemplatedEmail'
-  TS2307 Cannot find module '@be-in-digital/admin/pages'   (x10 page components)
-  TS2305 '@be-in-digital/convex-functions' has no 'autoTranslate' | 'imageToProduct'
-  TS2305 '@be-in-digital/cms' has no 'sanitizeSvg'   (it is on /sanitize)
+  TS2307 Cannot find module '@be-yours/admin/pages'   (x10 page components)
+  TS2305 '@be-yours/convex-functions' has no 'autoTranslate' | 'imageToProduct'
+  TS2305 '@be-yours/cms' has no 'sanitizeSvg'   (it is on /sanitize)
   TS2339 Property 'client'|'menuSync'|'orders' does not exist on uberEats/deliveroo (x5)
 ```
 All nine package versions are stale too — the registry says `2.0.1` where admin is at

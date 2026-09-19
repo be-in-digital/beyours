@@ -28,14 +28,14 @@
  */
 
 import { convexTest } from "convex-test";
-import { deliveroo } from "@be-in-digital/integrations";
+import { deliveroo } from "@be-yours/integrations";
 // Loaded for its side effect: the webhook handler reaches this module through
-// `await import("@be-in-digital/core/env")` inside the request, and on a cold
+// `await import("@be-yours/core/env")` inside the request, and on a cold
 // module graph that dynamic import has been observed resolving to a namespace
 // whose exports were not yet bound — `getPackageEnv is not a function`, a 500,
 // and an assertion failing for a reason that has nothing to do with the
 // subject. Importing it statically here settles it before any test runs.
-import "@be-in-digital/core/env";
+import "@be-yours/core/env";
 import type { Id } from "../../convex/_generated/dataModel";
 import schema from "../../convex/schema";
 import { config } from "./test-config";
@@ -84,7 +84,7 @@ export const CLIENT_SECRET = "test-deliveroo-client-secret";
 /**
  * Configure the platform environment for a suite. Call once, from `beforeAll`.
  *
- * `@be-in-digital/core/env` parses `process.env` on first use and caches the
+ * `@be-yours/core/env` parses `process.env` on first use and caches the
  * result, so this must not be flipped mid-file — hence one call per suite and
  * an explicit choice about the API credentials.
  *

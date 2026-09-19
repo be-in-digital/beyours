@@ -1,4 +1,4 @@
-# @be-in-digital/marketing
+# @be-yours/marketing
 
 > Email marketing: HTML rendering with 28 block types, campaign validation, segmentation, double opt-in, statistics, CSV import.
 
@@ -14,7 +14,7 @@
 ## Installation
 
 ```bash
-pnpm add @be-in-digital/marketing
+pnpm add @be-yours/marketing
 ```
 
 ## Email Rendering
@@ -22,7 +22,7 @@ pnpm add @be-in-digital/marketing
 Render email templates to HTML with 28 block types.
 
 ```typescript
-import { renderTemplateToEmailHtml } from "@be-in-digital/marketing";
+import { renderTemplateToEmailHtml } from "@be-yours/marketing";
 
 const html = renderTemplateToEmailHtml({
   subject: "Spring Menu Launch",
@@ -96,7 +96,7 @@ const html = renderTemplateToEmailHtml({
 Validate campaigns before sending:
 
 ```typescript
-import { validateCampaign } from "@be-in-digital/marketing";
+import { validateCampaign } from "@be-yours/marketing";
 
 const result = validateCampaign({
   subject: "Spring Menu",
@@ -117,7 +117,7 @@ if (!result.valid) {
 Build subscriber filters for targeted campaigns:
 
 ```typescript
-import { buildSegmentFilter } from "@be-in-digital/marketing";
+import { buildSegmentFilter } from "@be-yours/marketing";
 
 const filter = buildSegmentFilter({
   rules: [
@@ -137,7 +137,7 @@ const subscribers = await ctx.db.query("emailSubscribers").filter(filter).collec
 ### Double Opt-In
 
 ```typescript
-import { generateDoubleOptInToken } from "@be-in-digital/marketing";
+import { generateDoubleOptInToken } from "@be-yours/marketing";
 
 // Generate verification token
 const token = generateDoubleOptInToken(email);
@@ -149,7 +149,7 @@ const token = generateDoubleOptInToken(email);
 ### CSV Import
 
 ```typescript
-import { parseSubscriberCsv } from "@be-in-digital/marketing";
+import { parseSubscriberCsv } from "@be-yours/marketing";
 
 const subscribers = parseSubscriberCsv(csvContent);
 // [{ email: "...", name: "...", tags: [...] }, ...]
@@ -160,7 +160,7 @@ const subscribers = parseSubscriberCsv(csvContent);
 ## Statistics
 
 ```typescript
-import { computeStatRates } from "@be-in-digital/marketing";
+import { computeStatRates } from "@be-yours/marketing";
 
 const stats = computeStatRates({
   sent: 1000,

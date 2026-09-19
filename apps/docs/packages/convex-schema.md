@@ -1,4 +1,4 @@
-# @be-in-digital/convex-schema
+# @be-yours/convex-schema
 
 > 50+ table definitions, 40+ Zod validators, and 100+ TypeScript types for the Convex database.
 
@@ -13,7 +13,7 @@
 ## Installation
 
 ```bash
-pnpm add @be-in-digital/convex-schema
+pnpm add @be-yours/convex-schema
 ```
 
 ### Dependencies
@@ -37,7 +37,7 @@ import {
   gamesTable,
   languagesTable,
   translationsTable,
-} from "@be-in-digital/convex-schema/tables";
+} from "@be-yours/convex-schema/tables";
 
 export default defineSchema({
   stores: storesTable,
@@ -95,7 +95,7 @@ import type {
   StoreDoc,
   ProductDoc,
   OrderDoc,
-} from "@be-in-digital/convex-schema";
+} from "@be-yours/convex-schema";
 
 function displayOrder(order: OrderDoc) {
   console.log(order.status, order.total, order.items.length);
@@ -115,7 +115,7 @@ function displayOrder(order: OrderDoc) {
 ## Enums
 
 ```typescript
-import { OrderStatus, GameType } from "@be-in-digital/convex-schema";
+import { OrderStatus, GameType } from "@be-yours/convex-schema";
 
 // Order lifecycle
 OrderStatus.PENDING      // Customer placed order
@@ -137,7 +137,7 @@ GameType.SCRATCH_CARD
 ```typescript
 // convex/orders.ts
 import { mutation } from "./_generated/server";
-import { ordersTable } from "@be-in-digital/convex-schema/tables";
+import { ordersTable } from "@be-yours/convex-schema/tables";
 
 export const create = mutation({
   args: {

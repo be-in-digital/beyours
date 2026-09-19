@@ -394,7 +394,7 @@ export const createDelivery = action({
     }
 
     const config = await requireUberConfig(ctx);
-    const { uberDirect } = await import("@be-in-digital/integrations");
+    const { uberDirect } = await import("@be-yours/integrations");
 
     let body: string;
     try {

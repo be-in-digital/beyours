@@ -65,7 +65,7 @@ declared `"cache": false`.
 Per-workspace, when you want one suite and its own output:
 
 ```bash
-pnpm --filter @be-in-digital/core test
+pnpm --filter @be-yours/core test
 cd packages/core && npx vitest run gpt-translation      # one file, by name substring
 cd apps/reference && npx vitest list --filesOnly        # what would be collected
 ```
@@ -319,7 +319,7 @@ figure and nothing enforced it.
 
 ```bash
 pnpm test:coverage                                    # every workspace
-pnpm --filter @be-in-digital/core test:coverage       # one
+pnpm --filter @be-yours/core test:coverage       # one
 open packages/core/coverage/index.html
 ```
 

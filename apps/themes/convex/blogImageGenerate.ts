@@ -14,7 +14,7 @@ import { action } from "./_generated/server"
 import { internal } from "./_generated/api"
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"
 import type { Id } from "./_generated/dataModel"
-import { buildMediaUrl } from "@be-in-digital/core/aws/media-url"
+import { buildMediaUrl } from "@be-yours/core/aws/media-url"
 
 // ============================================================================
 // S3 Helpers (same pattern as blogAutoGenerate.ts / cmsMediaProcess.ts)
@@ -32,7 +32,7 @@ function createS3Client() {
 
 /**
  * The bucket is private: a key becomes either a CDN URL or a path on this
- * app's own `/api/files` proxy. One policy, in `@be-in-digital/core`.
+ * app's own `/api/files` proxy. One policy, in `@be-yours/core`.
  */
 function buildPublicUrl(key: string): string {
   return buildMediaUrl(key, process.env.AWS_S3_PUBLIC_BASE_URL)

@@ -483,11 +483,11 @@ jobs:
         # Nothing here builds the other app or the commercial site.
         #
         # Before the Convex deploy, not after. `convex deploy` bundles
-        # apps/${{ matrix.app }}/convex, which imports @be-in-digital/cms and friends,
+        # apps/${{ matrix.app }}/convex, which imports @be-yours/cms and friends,
         # and those are workspace packages consumed from `dist` — which does not
         # exist until this step builds them. A fresh runner has never built
         # them, so deploying first fails with "Could not resolve
-        # @be-in-digital/cms ... ./dist/index.mjs was not found". Every local
+        # @be-yours/cms ... ./dist/index.mjs was not found". Every local
         # run had a dist lying around from an earlier build and never saw it.
         run: pnpm build --filter=@beyours/${{ matrix.app }}...
 

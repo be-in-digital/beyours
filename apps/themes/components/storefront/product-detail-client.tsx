@@ -3,16 +3,16 @@
 import { useCallback, useId, useRef, useState } from "react"
 import { Check, Heart, Minus, Plus, ShoppingBag, Clock } from "lucide-react"
 import Link from "next/link"
-import { Badge, Separator, Label, AllergenBadge, SpiceLevelIndicator } from "@be-in-digital/ui"
-import { resolveAllergens } from "@be-in-digital/core/allergens"
+import { Badge, Separator, Label, AllergenBadge, SpiceLevelIndicator } from "@be-yours/ui"
+import { resolveAllergens } from "@be-yours/core/allergens"
 import {
   useCartStore,
   formatPrice,
   calculateProductPrice,
   isProductAvailable,
   useLocalizedDocument,
-} from "@be-in-digital/restaurant"
-import type { ProductDoc, CartSelectedOption } from "@be-in-digital/restaurant"
+} from "@be-yours/restaurant"
+import type { ProductDoc, CartSelectedOption } from "@be-yours/restaurant"
 import { useFavorites } from "@/lib/hooks/use-favorites"
 import { useStoreStatus } from "@/lib/hooks/use-store-status"
 import { toast } from "sonner"
@@ -29,7 +29,7 @@ export function ProductDetailClient({
   // Localised here rather than at each call site: the name this component
   // renders is also the name it writes into the cart, and the two must agree.
   const product = useLocalizedDocument(sourceProduct)
-  const addItem = useCartStore((s: { addItem: (item: import("@be-in-digital/restaurant").NewCartItem) => void }) => s.addItem)
+  const addItem = useCartStore((s: { addItem: (item: import("@be-yours/restaurant").NewCartItem) => void }) => s.addItem)
   const cartStoreId = useCartStore((s: { storeId: string | null }) => s.storeId)
   const { isFavorite, toggleFavorite } = useFavorites()
   const { isOpen, timeZone } = useStoreStatus(storeId)

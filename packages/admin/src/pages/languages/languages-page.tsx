@@ -35,7 +35,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 import { LoadingState } from "../../components/loading-state"
 import { convexErrorMessage } from "../../lib/convex-error"
 
@@ -341,7 +341,7 @@ export function LanguagesPage({ uiOverrides }: LanguagesPageProps) {
                   `dir` attribute on the <html> element, so Arabic and Hebrew
                   render left-to-right. The helper that would supply the value
                   already exists and has no caller — `getLocaleDirection` in
-                  @be-in-digital/core/i18n. Wiring this up takes two changes:
+                  @be-yours/core/i18n. Wiring this up takes two changes:
                   pass its result to `dir` in both apps' `app/layout.tsx`, and
                   convert the storefront's physical spacing utilities
                   (`ml-`/`mr-`/`pl-`/`pr-`, ~156 of them under `components/`) to

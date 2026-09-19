@@ -41,7 +41,7 @@ export const verify = internalAction({
       isValidSigningCertUrl,
       mayConfirmSubscription,
       topicPolicy,
-    } = await import("@be-in-digital/convex-functions/snsSignature");
+    } = await import("@be-yours/convex-functions/snsSignature");
 
     let message: Record<string, unknown>;
     try {

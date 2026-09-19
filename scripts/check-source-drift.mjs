@@ -57,7 +57,7 @@
  * subpath in its `exports` while its PUBLISHED version does not carry that
  * subpath is a different animal: the mirror refuses to sync at all until a
  * release lands, so every unrelated change queues behind it. That deadlock has
- * now happened five times — most recently `@be-in-digital/ui`'s `./contrast`
+ * now happened five times — most recently `@be-yours/ui`'s `./contrast`
  * and `./contrast-scan` — and each time it was found AFTER the merge, by the
  * sync failing, because the only thing checking subpaths was
  * `publish-mirror.mjs` and that runs on `main`.

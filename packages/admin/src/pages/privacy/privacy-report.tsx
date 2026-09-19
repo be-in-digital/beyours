@@ -1,6 +1,6 @@
 "use client"
 
-import { Badge } from "@be-in-digital/ui"
+import { Badge } from "@be-yours/ui"
 
 /**
  * What a request did, and — line by line — everything it did not.

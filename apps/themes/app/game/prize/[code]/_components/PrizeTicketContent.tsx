@@ -1,7 +1,7 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { PrizeTicket } from "@be-in-digital/admin/game"
+import { PrizeTicket } from "@be-yours/admin/game"
 import { api } from "@/convex/_generated/api"
 
 /**

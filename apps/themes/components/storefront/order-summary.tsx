@@ -10,9 +10,9 @@ import {
   X,
   Loader2,
 } from "lucide-react"
-import { Input, Separator } from "@be-in-digital/ui"
-import { useCartStore, formatPrice } from "@be-in-digital/restaurant"
-import { computeOrderTotals } from "@be-in-digital/convex-functions/orderTotals"
+import { Input, Separator } from "@be-yours/ui"
+import { useCartStore, formatPrice } from "@be-yours/restaurant"
+import { computeOrderTotals } from "@be-yours/convex-functions/orderTotals"
 
 interface AppliedPromo {
   id: string

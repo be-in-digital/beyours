@@ -6,16 +6,16 @@
  */
 
 import type { OrderStatus, CartItem } from '../types'
-import { ORDER_STATUS_VOCABULARY } from '@be-in-digital/core/status-labels'
+import { ORDER_STATUS_VOCABULARY } from '@be-yours/core/status-labels'
 import {
   canTransitionOrderStatus,
   getNextOrderStatuses,
-} from '@be-in-digital/convex-schema'
+} from '@be-yours/convex-schema'
 
 /**
  * Get valid next statuses from current status
  *
- * Delegates to the status machine in `@be-in-digital/convex-schema`. This file
+ * Delegates to the status machine in `@be-yours/convex-schema`. This file
  * used to carry its own copy of the table, which had drifted from the one the
  * admin UI applies — `ready` could not be sent out for delivery here while the
  * UI offered exactly that button.
@@ -83,7 +83,7 @@ export const getOrderStatusColor = (status: OrderStatus): string => {
 /**
  * The source-language word for an order status.
  *
- * Delegates to `@be-in-digital/core/status-labels`, for the same reason the
+ * Delegates to `@be-yours/core/status-labels`, for the same reason the
  * transition table above delegates to the schema package: this file used to
  * carry its own map, in English, one package away from the badge that carried
  * a second English map of the same eight words. A caller that reaches for this

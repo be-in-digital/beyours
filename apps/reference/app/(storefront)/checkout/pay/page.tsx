@@ -16,7 +16,7 @@ import { Suspense, useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { AlertTriangle, Loader2 } from "lucide-react"
-import { Button } from "@be-in-digital/ui"
+import { Button } from "@be-yours/ui"
 
 const SUMUP_SDK_URL = "https://gateway.sumup.com/gateway/ecom/card/v2/sdk.js"
 

@@ -4,7 +4,7 @@
  * `packages/mcp-server/src/registry.ts` is the answer a contractor gets when they
  * ask what the engine exports. It was hand-maintained with no test and no
  * generator, and 23 of its 148 claims named symbols or subpaths that do not
- * exist — `uploadToS3`, `sendEmail`, `@be-in-digital/admin/pages`,
+ * exist — `uploadToS3`, `sendEmail`, `@be-yours/admin/pages`,
  * `uberEats.client`. Nothing could catch it: to `tsc` the registry is a list of
  * strings, and the owning package's `test` script was `--passWithNoTests` over
  * zero files.

@@ -1,14 +1,14 @@
 "use client"
 
 import { Globe } from "lucide-react"
-import { useLanguageStore } from "@be-in-digital/restaurant"
+import { useLanguageStore } from "@be-yours/restaurant"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Button,
-} from "@be-in-digital/ui"
+} from "@be-yours/ui"
 
 /**
  * Language Switcher — globe icon + dropdown with available languages.

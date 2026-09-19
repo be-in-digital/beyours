@@ -1,12 +1,12 @@
 /**
- * Every `@be-in-digital/*` import the engine's documentation tells a reader to
+ * Every `@be-yours/*` import the engine's documentation tells a reader to
  * write has to compile.
  *
  * The registry was not the only place describing an API nobody wrote. The same
  * fiction ran through `apps/docs`, the package READMEs and the `@example` blocks
  * in the sources themselves: `uploadToS3`, `translateWithGPT`, `checkPermission`,
- * `createStripePayment`, `import { sanitizeSvg } from "@be-in-digital/cms"`,
- * `@be-in-digital/themes` (a package that was deleted). Prose cannot be
+ * `createStripePayment`, `import { sanitizeSvg } from "@be-yours/cms"`,
+ * `@be-yours/themes` (a package that was deleted). Prose cannot be
  * type-checked, so none of it ever failed anything.
  *
  * Code fences are parsed with the TypeScript parser rather than matched with a
@@ -30,7 +30,7 @@ const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const repoRoot = resolve(appRoot, "..", "..")
 const probePath = join(appRoot, "engine-doc-probe.ts")
 
-const ENGINE_SCOPE = "@be-in-digital/"
+const ENGINE_SCOPE = "@be-yours/"
 
 /**
  * `_project/` is an explicitly superseded architecture archive and `tasks/` is

@@ -37,7 +37,7 @@ import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import schema from "../../convex/schema"
 
-import { GAME_CONSENT_NOTICE_VERSIONS } from "@be-in-digital/convex-functions/gamePlay"
+import { GAME_CONSENT_NOTICE_VERSIONS } from "@be-yours/convex-functions/gamePlay"
 
 const modules = import.meta.glob("../../convex/**/*.ts")
 

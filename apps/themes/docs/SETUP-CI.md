@@ -10,7 +10,7 @@ cleanly (jobs skipped with a notice) but do not do their job.
 
 | Secret | Contents | Used by |
 | --- | --- | --- |
-| `GH_PACKAGES_TOKEN` | `read:packages` PAT scoped to `@be-in-digital/*` | `ci.yml` (install) |
+| `GH_PACKAGES_TOKEN` | `read:packages` PAT scoped to `@be-yours/*` | `ci.yml` (install) |
 
 > `ENGINE_SYNC_KEY` / `ENGINE_SYNC_TOKEN` are no longer needed. They fed
 > `sync-engine.yml`, which pulled the engine from a separate repository.

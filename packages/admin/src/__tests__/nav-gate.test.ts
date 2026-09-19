@@ -9,8 +9,8 @@
  */
 
 import { describe, it, expect } from "vitest"
-import { Role, hasPermission, type Permission } from "@be-in-digital/core"
-import { profileAllowsPermission } from "@be-in-digital/convex-functions/teamAccess"
+import { Role, hasPermission, type Permission } from "@be-yours/core"
+import { profileAllowsPermission } from "@be-yours/convex-functions/teamAccess"
 
 import {
   navGroups,

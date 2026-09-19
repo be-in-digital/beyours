@@ -10,7 +10,7 @@
  * take cards and cannot; it cannot infer the owner who simply does not.
  *
  * The rule itself is pinned server-side in
- * `@be-in-digital/convex-functions` (`cardPaymentAvailability.test.ts`) and the
+ * `@be-yours/convex-functions` (`cardPaymentAvailability.test.ts`) and the
  * storefront's reading of it in the two apps' checkout suites. This is the
  * admin half: the screen has a control for it, and the control is wired to the
  * value the server reads.

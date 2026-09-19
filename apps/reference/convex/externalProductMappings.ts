@@ -1,5 +1,5 @@
 import { internalQuery, internalMutation } from "./_generated/server";
-import * as defs from "@be-in-digital/convex-functions/externalProductMappings";
+import * as defs from "@be-yours/convex-functions/externalProductMappings";
 import { storeMutation } from "./lib/storeFunctions";
 
 // Mapping between our products and their ids on Uber Eats / Deliveroo. This is

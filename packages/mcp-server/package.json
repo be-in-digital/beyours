@@ -1,13 +1,13 @@
 {
-  "name": "@be-in-digital/mcp-server",
-  "version": "1.1.14",
-  "description": "MCP server for @be-in-digital package ecosystem",
+  "name": "@be-yours/mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for @be-yours package ecosystem",
   "publishConfig": {
     "access": "restricted"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/be-in-digital/beyours.git",
+    "url": "https://github.com/be-yours/beyours.git",
     "directory": "packages/mcp-server"
   },
   "files": [

@@ -1,4 +1,4 @@
-import { StoreDetailPage } from "@be-in-digital/admin"
+import { StoreDetailPage } from "@be-yours/admin"
 
 export default function Page({
   params,

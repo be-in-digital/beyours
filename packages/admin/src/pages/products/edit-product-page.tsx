@@ -11,7 +11,7 @@ import { eurosToCents, centsToEuros } from "../../lib/formatters"
 import { adminRoutes } from "../../config/admin-routes"
 import { ProductForm } from "./product-form"
 import { PropagationModal } from "./propagation-modal"
-import { Button } from "@be-in-digital/ui"
+import { Button } from "@be-yours/ui"
 import { ResolvingStore } from "../../components/resolving-store"
 
 interface EditProductPageProps {

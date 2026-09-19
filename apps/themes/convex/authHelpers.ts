@@ -7,12 +7,12 @@
 
 import { internalQuery, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { requireStorePermission, getAuthUser } from "@be-in-digital/convex-functions/auth";
-import { hasPermission, type Permission } from "@be-in-digital/core/auth/rbac";
+import { requireStorePermission, getAuthUser } from "@be-yours/convex-functions/auth";
+import { hasPermission, type Permission } from "@be-yours/core/auth/rbac";
 import {
   releaseImageToProductQuota as releaseImageToProductQuota_,
   reserveImageToProductQuota as reserveImageToProductQuota_,
-} from "@be-in-digital/convex-functions/blogAutoGuards";
+} from "@be-yours/convex-functions/blogAutoGuards";
 
 /**
  * Verify the current user has a specific permission on a store.
