@@ -63,6 +63,21 @@
 #             Allowed here precisely because a coupon id has no prefix to
 #             satisfy — the runbook says so in §5.
 #
+# ON `applies_to`, WHICH IS WRITE-ONLY. Stripe accepts and validates it on
+# create — a wrong sub-key answers `Received unknown parameter:
+# applies_to[…]`, a scalar answers `Invalid object` — and then never returns
+# the field on the Coupon object. Measured against a live test account on
+# 2026-09-19 under five API versions (2026-07-29.dahlia, 2025-04-30.basil,
+# 2024-06-20, 2023-10-16, 2022-11-15): absent in all five, while the
+# Dashboard showed the restriction correctly under "Applicable Products".
+#
+# So the restriction cannot be confirmed over the API, and this script says
+# so instead of guessing. An earlier version read the field back and FAILED
+# the run when it was missing — which is always — and two correctly
+# restricted coupons were deleted and rebuilt on its word before the
+# Dashboard settled it. A check that cannot tell "unrestricted" from
+# "unreadable" must report, not accuse.
+#
 # ON BASH 3.2: no associative arrays, no namerefs. macOS still ships bash
 # 3.2 (2007, the last GPLv2 release), which is where this runs; `declare -A`
 # is a bash 4 feature and fails there with "invalid option".
@@ -122,6 +137,13 @@ case "$STRIPE_SECRET_KEY" in
   sk_test_*) MODE="TEST"  ;;
   rk_*)      MODE="RESTRICTED" ;;
   *) echo "STRIPE_SECRET_KEY does not look like a Stripe secret key." >&2; exit 2 ;;
+esac
+
+# The Dashboard puts test-mode objects under /test/. Used only to print a
+# link a human can follow, since `applies_to` is not readable over the API.
+case "$MODE" in
+  TEST) DASH_PATH="test/" ;;
+  *)    DASH_PATH="" ;;
 esac
 
 command -v curl >/dev/null || { echo "curl is required." >&2; exit 2; }
@@ -323,13 +345,27 @@ ensure_price() { # $1 = lookup_key, $2 = product id, $3 = cents, $4 = interval
   LAST_ID="$id"
 }
 
-assert_coupon_restriction() { # $1 = the creation product the coupon must name
-  # Read the coupon BACK and check it carries the restriction. A POST that
-  # returns 200 proves Stripe accepted the request, not that it understood
-  # the parameter: a misencoded `applies_to` is dropped silently and the
-  # coupon is created unrestricted. This is the one property no later check
-  # catches, because an unrestricted 100% coupon still produces the right
-  # TOTAL — it just spreads the discount across every line.
+report_coupon_restriction() { # $1 = the creation product the coupon should name
+  # `applies_to` is WRITE-ONLY on the Coupon object. Stripe accepts and
+  # validates `applies_to[products][…]` on create — send a wrong sub-key and
+  # it answers `Received unknown parameter: applies_to[ceci_nexiste_pas]`,
+  # send a scalar and it answers `Invalid object` — but the created coupon
+  # comes back with NO `applies_to` field at all. Measured against a live
+  # test account on 2026-09-19 under five API versions (2026-07-29.dahlia,
+  # 2025-04-30.basil, 2024-06-20, 2023-10-16, 2022-11-15): absent in every
+  # one. The Dashboard shows it under "Applicable Products"; the API does
+  # not hand it back.
+  #
+  # So this function REPORTS and never refuses on absence. An earlier
+  # version failed the run whenever the field was missing, which is always,
+  # and it cost two correctly-restricted coupons that were deleted and
+  # rebuilt on its word. A check that cannot distinguish "unrestricted" from
+  # "unreadable" must not accuse: saying "I could not verify this, here is
+  # where you can" is worth something, and a false accusation is worth less
+  # than nothing.
+  #
+  # It still refuses on a restriction that is present and WRONG, because
+  # that reading is unambiguous.
   local product="$1" got
   api GET "coupons/$COUPON_ID"
   die_on_error "reading back coupon '$COUPON_ID'"
@@ -337,22 +373,25 @@ assert_coupon_restriction() { # $1 = the creation product the coupon must name
 import json,sys
 try: d=json.load(open(sys.argv[1],encoding="utf-8"))
 except Exception: print(""); sys.exit(0)
-print(",".join((d.get("applies_to") or {}).get("products") or []))' "$RESP")"
+a=d.get("applies_to")
+print("MISSING" if a is None else ",".join(a.get("products") or []))' "$RESP")"
 
-  if [ "$got" != "$product" ]; then
-    echo "  ✗ coupon '$COUPON_ID' is NOT restricted to $product." >&2
-    if [ -z "$got" ]; then
-      echo "    It carries NO product restriction: a 100% coupon that applies to" >&2
-      echo "    EVERY line of the session, maintenance included." >&2
-    else
-      echo "    It is restricted to: $got" >&2
-    fi
+  if [ "$got" = "MISSING" ]; then
+    echo "    applies_to: not returned by the API — Stripe accepts it on create"
+    echo "    and never reads it back. Confirm the restriction by eye, once:"
+    echo "      https://dashboard.stripe.com/${DASH_PATH}coupons/$COUPON_ID"
+    echo "    under \"Applicable Products\" it must name the CREATION product,"
+    echo "    $product — and no other."
+  elif [ "$got" != "$product" ]; then
+    echo "  ✗ coupon '$COUPON_ID' is restricted to the WRONG product: $got" >&2
+    echo "    expected the creation product $product." >&2
     echo "    applies_to cannot be changed on an existing coupon. Delete it and" >&2
     echo "    re-run this script:" >&2
     echo "      curl -sS -X DELETE https://api.stripe.com/v1/coupons/$COUPON_ID -u \"\$STRIPE_SECRET_KEY:\"" >&2
     exit 1
+  else
+    echo "    verified: applies_to = $got"
   fi
-  echo "    verified: applies_to = $got"
 }
 
 ensure_coupon() { # $1 = creation product id
@@ -373,7 +412,7 @@ ensure_coupon() { # $1 = creation product id
     # An existing coupon gets the same check as a new one. Without this, a
     # re-run over a coupon created unrestricted says "already exists" and
     # moves on, which is how the defect would have reached the live account.
-    assert_coupon_restriction "$product"
+    report_coupon_restriction "$product"
   elif [ "$APPLY" -eq 0 ]; then
     echo "  + would create coupon '$COUPON_ID'  percent_off=100  max_redemptions=10"
     echo "    applies_to = $product   duration=once   redeem_by unset"
@@ -400,7 +439,7 @@ ensure_coupon() { # $1 = creation product id
     id="$(field id)"
     [ -n "$id" ] || { echo "  ✗ Stripe returned no coupon id." >&2; exit 1; }
     echo "  + created coupon: $id"
-    assert_coupon_restriction "$product"
+    report_coupon_restriction "$product"
   fi
   LAST_ID="$id"
 }
