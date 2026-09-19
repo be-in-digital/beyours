@@ -38,16 +38,34 @@
 # environment, never from a flag (a flag lands in shell history), and is
 # never echoed — not in the dry run, not in an error, not in `set -x`.
 #
-# ON RE-RUNNING: every object is addressed by a stable identifier, so a
-# second run finds what the first created instead of duplicating it. That is
-# not a nicety. A duplicated coupon is a SECOND set of ten free builds, and
-# duplicated Prices are a renewal billed twice at the wrong id with no guard
-# anywhere in the repo to notice — §4 says so outright: "No code asserts that
-# the recurring Price matches planPrices."
+# ON RE-RUNNING: every object is found before it is created, so a second run
+# finds what the first made instead of duplicating it. That is not a nicety.
+# A duplicated coupon is a SECOND set of ten free builds, and duplicated
+# Prices are a renewal billed at an id no guard in this repo compares to
+# anything — §4 says as much: "No code asserts that the recurring Price
+# matches planPrices."
 #
-#   Products  metadata[beyours_role], looked up via /v1/products/search
-#   Prices    lookup_key, which Stripe enforces as unique per account
-#   Coupon    a caller-chosen `id`, so a re-create collides by construction
+# HOW each object is found matters as much as that it is, and the obvious
+# choice is the wrong one:
+#
+#   Products  listed via /v1/products and matched on metadata[beyours_role].
+#             NOT /v1/products/search — Stripe's search index is EVENTUALLY
+#             CONSISTENT ("up to a minute" for new objects), so two --apply
+#             runs in quick succession would search, miss what the first run
+#             had just made, and create it again. A list endpoint is read
+#             from the live table and has no such window.
+#             Nor a caller-chosen product id, which would be immediately
+#             consistent but would not start with `prod_` — and
+#             `apps/site/lib/env.ts:136` refuses a
+#             STRIPE_PRODUCT_CREATION_* that does not.
+#   Prices    lookup_key, filtered on /v1/prices, which is also a list.
+#   Coupon    a caller-chosen `id`, so a re-create collides by construction.
+#             Allowed here precisely because a coupon id has no prefix to
+#             satisfy — the runbook says so in §5.
+#
+# ON BASH 3.2: no associative arrays, no namerefs. macOS still ships bash
+# 3.2 (2007, the last GPLv2 release), which is where this runs; `declare -A`
+# is a bash 4 feature and fails there with "invalid option".
 #
 # WHAT NO SCRIPT CAN CHECK, and this one does not pretend to: that a real
 # checkout shows the creation line at 0,00 €. A wrong `applies_to` produces
@@ -80,7 +98,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --apply) APPLY=1; shift ;;
     --coupon-id) COUPON_ID="${2:?--coupon-id needs a value}"; shift 2 ;;
-    -h|--help) sed -n '2,70p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    -h|--help) sed -n '2,86p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -140,61 +158,116 @@ PRE_YEARLY="$(read_cents premium maintenanceYearly)"
 #
 # `-u "$KEY:"` keeps the key out of the argv a process list would show.
 
-api() { # $1 = METHOD, $2 = path, rest = --data pairs
-  local method="$1" path="$2" out rc; shift 2
+# The response body goes to a FILE, not to a command substitution, and that
+# is deliberate. `exit 1` inside `$(...)` kills only the subshell, so a
+# transport failure was surviving as an empty body and the run carried on to
+# report success — the exact "green over a section it never looked at" this
+# script's header condemns. Whether `set -e` propagates out of nested
+# substitutions is also one of the things that differs between bash 3.2 (the
+# macOS target) and bash 5. Calling curl as a plain command removes the
+# question rather than betting on the answer.
+RESP="${TMPDIR:-/tmp}/beyours-stripe.$$.json"
+ERRF="${TMPDIR:-/tmp}/beyours-stripe.$$.err"
+trap 'rm -f "$RESP" "$ERRF"' EXIT INT TERM
+
+api() { # $1 = METHOD, $2 = path, rest = curl args. Body lands in $RESP.
+  local method="$1" rc path="$2"; shift 2
   set +e
-  out="$(curl -sS -X "$method" "https://api.stripe.com/v1/$path" \
-    -u "$STRIPE_SECRET_KEY:" \
-    -H "Stripe-Version: 2024-06-20" \
-    "$@" 2>&1)"
+  if [ "$method" = "GET" ]; then
+    # -G moves --data-urlencode into the query string. Without it curl sends
+    # a GET carrying a body, which is not what the list endpoints read.
+    curl -sS -G "https://api.stripe.com/v1/$path" \
+      -u "$STRIPE_SECRET_KEY:" -H "Stripe-Version: 2024-06-20" \
+      "$@" -o "$RESP" 2>"$ERRF"
+  else
+    curl -sS -X "$method" "https://api.stripe.com/v1/$path" \
+      -u "$STRIPE_SECRET_KEY:" -H "Stripe-Version: 2024-06-20" \
+      "$@" -o "$RESP" 2>"$ERRF"
+  fi
   rc=$?
   set -e
   if [ $rc -ne 0 ]; then
-    # This is the dangerous failure, so it stops the run rather than
-    # returning empty: a GET that fails at the transport layer yields no
-    # `data[0].id`, which is indistinguishable from "the object does not
-    # exist" — and the caller's next move on that reading is to CREATE it.
-    # A duplicated coupon is a second set of ten free builds.
+    # A GET that fails at the transport layer yields no id, which is
+    # indistinguishable from "the object does not exist" — and the caller's
+    # next move on that reading is to CREATE it. A duplicated coupon is a
+    # second set of ten free builds, so this stops the run.
     echo "  ✗ could not reach api.stripe.com (curl exit $rc)." >&2
-    printf '    %s\n' "$out" >&2
+    [ -s "$ERRF" ] && sed 's/^/    /' "$ERRF" >&2
     echo "    Nothing was created. Run this where Stripe is reachable and retry;" >&2
-    echo "    it is safe to re-run — every object is addressed by a stable id." >&2
+    echo "    it is safe to re-run — every object is found before it is created." >&2
     exit 1
   fi
-  printf '%s' "$out"
 }
 
-json() { # $1 = key path, reads stdin
+field() { # $1 = dotted key path, read out of $RESP
+  # Tolerates a non-JSON or empty body: an unreadable response must surface
+  # as "absent", never as a traceback the caller then ignores.
   python3 -c '
 import json,sys
-d=json.load(sys.stdin)
+try: d=json.load(open(sys.argv[2],encoding="utf-8"))
+except Exception: print(""); sys.exit(0)
 for k in sys.argv[1].split("."):
     if d is None: break
-    d = d[int(k)] if k.isdigit() else d.get(k)
-print(d if d is not None else "")' "$1"
+    try: d = d[int(k)] if k.isdigit() else d.get(k)
+    except Exception: d = None
+print("" if d is None else (str(d).lower() if isinstance(d,bool) else d))' "$1" "$RESP"
 }
 
-die_on_error() { # $1 = response body, $2 = what we were doing
+die_on_error() { # $1 = what we were doing. Reads $RESP.
   local msg
-  msg="$(printf '%s' "$1" | python3 -c '
+  msg="$(python3 -c '
 import json,sys
-try: print(json.load(sys.stdin).get("error",{}).get("message",""))
-except Exception: print("")')"
+try: print(json.load(open(sys.argv[1],encoding="utf-8")).get("error",{}).get("message",""))
+except Exception: print("")' "$RESP")"
   if [ -n "$msg" ]; then
-    echo "  ✗ $2: $msg" >&2
+    echo "  ✗ $1: $msg" >&2
     exit 1
   fi
 }
 
 # --- The nine objects -----------------------------------------------------
+#
+# bash 3.2 has no associative arrays and no namerefs, so each helper leaves
+# its result in LAST_ID and the caller copies it into a named variable.
 
-declare -A RESULT
+LAST_ID=""
+FOUND_ID=""
+
+find_product_by_role() { # $1 = role -> sets FOUND_ID ("" when absent)
+  local role="$1" after="" more last
+  FOUND_ID=""
+  while : ; do
+    if [ -n "$after" ]; then
+      api GET products --data-urlencode "limit=100" --data-urlencode "starting_after=$after"
+    else
+      api GET products --data-urlencode "limit=100"
+    fi
+    die_on_error "listing products"
+    FOUND_ID="$(python3 -c '
+import json,sys
+try: d=json.load(open(sys.argv[2],encoding="utf-8"))
+except Exception: print(""); sys.exit(0)
+role=sys.argv[1]
+for p in d.get("data",[]):
+    if (p.get("metadata") or {}).get("beyours_role")==role:
+        print(p["id"]); break' "$role" "$RESP")"
+    [ -n "$FOUND_ID" ] && return 0
+    more="$(field has_more)"
+    [ "$more" = "true" ] || return 0
+    last="$(python3 -c '
+import json,sys
+try: d=json.load(open(sys.argv[1],encoding="utf-8")).get("data",[])
+except Exception: d=[]
+print(d[-1]["id"] if d else "")' "$RESP")"
+    [ -n "$last" ] || return 0
+    after="$last"
+  done
+}
 
 ensure_product() { # $1 = role, $2 = customer-facing name, $3 = description
-  local role="$1" name="$2" desc="$3" body id
-  body="$(api GET "products/search" --data-urlencode "query=metadata['beyours_role']:'$role'")"
-  die_on_error "$body" "searching for product '$role'"
-  id="$(printf '%s' "$body" | json 'data.0.id')"
+  local role="$1" name="$2" desc="$3" id
+  find_product_by_role "$role"
+  id="$FOUND_ID"
 
   if [ -n "$id" ]; then
     echo "  = $role already exists: $id"
@@ -202,28 +275,28 @@ ensure_product() { # $1 = role, $2 = customer-facing name, $3 = description
     echo "  + would create product '$name'  (metadata.beyours_role=$role)"
     id="prod_DRYRUN_$role"
   else
-    body="$(api POST products \
+    api POST products \
       --data-urlencode "name=$name" \
       --data-urlencode "description=$desc" \
-      --data-urlencode "metadata[beyours_role]=$role")"
-    die_on_error "$body" "creating product '$role'"
-    id="$(printf '%s' "$body" | json id)"
+      --data-urlencode "metadata[beyours_role]=$role"
+    die_on_error "creating product '$role'"
+    id="$(field id)"
+    [ -n "$id" ] || { echo "  ✗ Stripe returned no product id for '$role'." >&2; exit 1; }
     echo "  + created $role: $id"
   fi
-  RESULT["$role"]="$id"
+  LAST_ID="$id"
 }
 
 ensure_price() { # $1 = lookup_key, $2 = product id, $3 = cents, $4 = interval
-  local key="$1" product="$2" cents="$3" interval="$4" body id
-  body="$(api GET "prices?lookup_keys[]=$key&limit=1")"
-  die_on_error "$body" "searching for price '$key'"
-  id="$(printf '%s' "$body" | json 'data.0.id')"
+  local key="$1" product="$2" cents="$3" interval="$4" id got
+  api GET prices --data-urlencode "lookup_keys[]=$key" --data-urlencode "limit=1"
+  die_on_error "listing price '$key'"
+  id="$(field 'data.0.id')"
 
   if [ -n "$id" ]; then
-    local got
-    got="$(printf '%s' "$body" | json 'data.0.unit_amount')"
+    got="$(field 'data.0.unit_amount')"
     if [ "$got" != "$cents" ]; then
-      # Prices are immutable in Stripe, so this cannot be repaired in place.
+      # A Stripe Price is immutable, so this cannot be repaired in place.
       # Saying it plainly beats a green run over a wrong renewal amount.
       echo "  ! $key exists at $got cents, planPrices says $cents." >&2
       echo "    A Stripe Price is immutable. Archive it in the Dashboard and" >&2
@@ -235,32 +308,36 @@ ensure_price() { # $1 = lookup_key, $2 = product id, $3 = cents, $4 = interval
     echo "  + would create price $key  $cents cents / $interval  exclusive  eur"
     id="price_DRYRUN_$key"
   else
-    body="$(api POST prices \
+    api POST prices \
       --data-urlencode "product=$product" \
       --data-urlencode "unit_amount=$cents" \
       --data-urlencode "currency=eur" \
       --data-urlencode "recurring[interval]=$interval" \
       --data-urlencode "tax_behavior=exclusive" \
-      --data-urlencode "lookup_key=$key")"
-    die_on_error "$body" "creating price '$key'"
-    id="$(printf '%s' "$body" | json id)"
+      --data-urlencode "lookup_key=$key"
+    die_on_error "creating price '$key'"
+    id="$(field id)"
+    [ -n "$id" ] || { echo "  ✗ Stripe returned no price id for '$key'." >&2; exit 1; }
     echo "  + created $key: $id"
   fi
-  RESULT["$key"]="$id"
+  LAST_ID="$id"
 }
 
 ensure_coupon() { # $1 = creation product id
-  local product="$1" body id
-  body="$(api GET "coupons/$COUPON_ID")"
-  id="$(printf '%s' "$body" | json id)"
+  local product="$1" id redeemed max
+  # A 404 here is the expected "not created yet" answer, so this one GET is
+  # deliberately not passed through die_on_error.
+  api GET "coupons/$COUPON_ID"
+  id="$(field id)"
 
   if [ -n "$id" ]; then
-    local redeemed max
-    redeemed="$(printf '%s' "$body" | json times_redeemed)"
-    max="$(printf '%s' "$body" | json max_redemptions)"
+    redeemed="$(field times_redeemed)"
+    max="$(field max_redemptions)"
     echo "  = coupon already exists: $id  ($redeemed/$max redeemed)"
     # §6b: a non-zero count before the first sale means seats are already gone.
-    [ "$redeemed" != "0" ] && echo "  ! times_redeemed is $redeemed, not 0 — only $((max - redeemed)) seats remain." >&2
+    if [ -n "$redeemed" ] && [ "$redeemed" != "0" ]; then
+      echo "  ! times_redeemed is $redeemed, not 0 — only $((max - redeemed)) seats remain." >&2
+    fi
   elif [ "$APPLY" -eq 0 ]; then
     echo "  + would create coupon '$COUPON_ID'  percent_off=100  max_redemptions=10"
     echo "    applies_to = $product   duration=once   redeem_by unset"
@@ -272,25 +349,29 @@ ensure_coupon() { # $1 = creation product id
     # max_redemptions 10 mirrors foundersOffer.totalSlots.
     # redeem_by is deliberately unset: "It ends when the slots run out,
     # never on a date."
-    body="$(api POST coupons \
+    api POST coupons \
       --data-urlencode "id=$COUPON_ID" \
       --data-urlencode "percent_off=100" \
       --data-urlencode "duration=once" \
       --data-urlencode "max_redemptions=10" \
-      --data-urlencode "applies_to[products][]=$product")"
-    die_on_error "$body" "creating coupon '$COUPON_ID'"
-    id="$(printf '%s' "$body" | json id)"
+      --data-urlencode "applies_to[products][]=$product"
+    die_on_error "creating coupon '$COUPON_ID'"
+    id="$(field id)"
+    [ -n "$id" ] || { echo "  ✗ Stripe returned no coupon id." >&2; exit 1; }
     echo "  + created coupon: $id"
   fi
-  RESULT[coupon]="$id"
+  LAST_ID="$id"
 }
 
 # --- Run ------------------------------------------------------------------
 
 echo
 echo "Stripe account mode: $MODE"
-[ "$APPLY" -eq 0 ] && echo "DRY RUN — nothing will be written. Add --apply to create." \
-                   || echo "APPLY — objects will be created in the $MODE account."
+if [ "$APPLY" -eq 0 ]; then
+  echo "DRY RUN — nothing will be written. Add --apply to create."
+else
+  echo "APPLY — objects will be created in the $MODE account."
+fi
 echo "Amounts read from apps/site/convex/planPrices.ts"
 echo
 
@@ -298,9 +379,11 @@ echo "§2  Creation products"
 ensure_product creation_essentielle \
   "BeYours — Essentielle — Création" \
   "Création du site BeYours, offre Essentielle."
+PROD_CREATION_ESSENTIELLE="$LAST_ID"
 ensure_product creation_premium \
   "BeYours — Premium — Création" \
   "Création du site BeYours, offre Premium."
+PROD_CREATION_PREMIUM="$LAST_ID"
 
 echo
 echo "§4  Maintenance products — separate from the creation ones, so the"
@@ -308,20 +391,27 @@ echo "    founders coupon's applies_to cannot zero a renewal"
 ensure_product maintenance_essentielle \
   "BeYours — Essentielle — Maintenance" \
   "Maintenance annuelle du site BeYours, offre Essentielle."
+PROD_MAINTENANCE_ESSENTIELLE="$LAST_ID"
 ensure_product maintenance_premium \
   "BeYours — Premium — Maintenance" \
   "Maintenance annuelle du site BeYours, offre Premium."
+PROD_MAINTENANCE_PREMIUM="$LAST_ID"
 
 echo
 echo "§4  Maintenance prices"
-ensure_price beyours_maintenance_essentielle_monthly "${RESULT[maintenance_essentielle]}" "$ESS_MONTHLY" month
-ensure_price beyours_maintenance_essentielle_yearly  "${RESULT[maintenance_essentielle]}" "$ESS_YEARLY"  year
-ensure_price beyours_maintenance_premium_monthly     "${RESULT[maintenance_premium]}"     "$PRE_MONTHLY" month
-ensure_price beyours_maintenance_premium_yearly      "${RESULT[maintenance_premium]}"     "$PRE_YEARLY"  year
+ensure_price beyours_maintenance_essentielle_monthly "$PROD_MAINTENANCE_ESSENTIELLE" "$ESS_MONTHLY" month
+PRICE_ESS_MONTHLY="$LAST_ID"
+ensure_price beyours_maintenance_essentielle_yearly  "$PROD_MAINTENANCE_ESSENTIELLE" "$ESS_YEARLY"  year
+PRICE_ESS_YEARLY="$LAST_ID"
+ensure_price beyours_maintenance_premium_monthly     "$PROD_MAINTENANCE_PREMIUM"     "$PRE_MONTHLY" month
+PRICE_PRE_MONTHLY="$LAST_ID"
+ensure_price beyours_maintenance_premium_yearly      "$PROD_MAINTENANCE_PREMIUM"     "$PRE_YEARLY"  year
+PRICE_PRE_YEARLY="$LAST_ID"
 
 echo
 echo "§3  Founders coupon"
-ensure_coupon "${RESULT[creation_essentielle]}"
+ensure_coupon "$PROD_CREATION_ESSENTIELLE"
+COUPON="$LAST_ID"
 
 # --- Hand-off -------------------------------------------------------------
 
@@ -331,13 +421,17 @@ cat <<EOF
 §5  Set these on the deployment that SELLS — famous-wildcat-229, not the
     retired fearless-poodle-133, which still answers 200. From apps/site:
 
-pnpx convex env set STRIPE_PRODUCT_CREATION_ESSENTIELLE "${RESULT[creation_essentielle]}" --prod
-pnpx convex env set STRIPE_PRODUCT_CREATION_PREMIUM     "${RESULT[creation_premium]}" --prod
-pnpx convex env set STRIPE_FOUNDERS_COUPON_ID           "${RESULT[coupon]}" --prod
-pnpx convex env set STRIPE_PRICE_ESSENTIELLE_MONTHLY    "${RESULT[beyours_maintenance_essentielle_monthly]}" --prod
-pnpx convex env set STRIPE_PRICE_ESSENTIELLE_YEARLY     "${RESULT[beyours_maintenance_essentielle_yearly]}" --prod
-pnpx convex env set STRIPE_PRICE_PREMIUM_MONTHLY        "${RESULT[beyours_maintenance_premium_monthly]}" --prod
-pnpx convex env set STRIPE_PRICE_PREMIUM_YEARLY         "${RESULT[beyours_maintenance_premium_yearly]}" --prod
+pnpx convex env set STRIPE_PRODUCT_CREATION_ESSENTIELLE "$PROD_CREATION_ESSENTIELLE" --prod
+pnpx convex env set STRIPE_PRODUCT_CREATION_PREMIUM     "$PROD_CREATION_PREMIUM" --prod
+pnpx convex env set STRIPE_FOUNDERS_COUPON_ID           "$COUPON" --prod
+pnpx convex env set STRIPE_PRICE_ESSENTIELLE_MONTHLY    "$PRICE_ESS_MONTHLY" --prod
+pnpx convex env set STRIPE_PRICE_ESSENTIELLE_YEARLY     "$PRICE_ESS_YEARLY" --prod
+pnpx convex env set STRIPE_PRICE_PREMIUM_MONTHLY        "$PRICE_PRE_MONTHLY" --prod
+pnpx convex env set STRIPE_PRICE_PREMIUM_YEARLY         "$PRICE_PRE_YEARLY" --prod
+
+    And the eighth, which no id above carries — §0's prerequisite:
+
+pnpx convex env set STRIPE_TAX_ENABLED "true" --prod
 
 §6  Then verify, and let the gate confirm it rather than this script:
 
@@ -355,5 +449,7 @@ cd apps/site && pnpx convex run stripeAudit:run --prod
 ───────────────────────────────────────────────────────────────────────────
 EOF
 
-[ "$APPLY" -eq 0 ] && echo "(dry run — nothing above was created; ids shown as prod_DRYRUN_* / price_DRYRUN_*)"
+if [ "$APPLY" -eq 0 ]; then
+  echo "(dry run — nothing above was created; ids shown as prod_DRYRUN_* / price_DRYRUN_*)"
+fi
 exit 0
