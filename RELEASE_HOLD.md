@@ -60,24 +60,30 @@ Each of these is a thing to go and check, not a thing this branch could do.
 
 ## Lifting the hold
 
+One changeset is waiting, so the release is cut before it is let go:
+
 ```bash
+pnpm version-packages                              # consumes the changeset
+pnpm --filter @be-yours/mcp-server sync:versions   # its version index is source
 git rm RELEASE_HOLD.md
-git commit -m "Release the engine under @be-yours at 1.0.0"
+git commit -am "Release the engine under @be-yours"
 ```
 
-Open a pull request, merge it. The next push to `main` publishes all ten
-packages at `1.0.0`. Nothing else has to change — no workflow edit, no version
-bump, no changeset.
+Open a pull request, merge it. The next push to `main` publishes. No workflow
+edit and no hand-written version.
 
-To publish something other than `1.0.0` — a `0.1.0`, or a `1.0.0-beta.0` that
-npm will not install without an explicit `@beta` tag — set the versions **before**
-removing this file:
+**Eight packages go out at `1.0.0` and two at `1.0.1`** — `@be-yours/core` and
+`@be-yours/convex-functions`, which carry the regex fixes for the three
+denial-of-service findings CodeQL raised. That is not an inconsistency to
+tidy away: `check:source-drift` refuses a merge where a package's `src/` moved
+after its version was set and nothing will carry the change, and it is right to.
+If all ten at `1.0.0` matters more than that, the alternative is to fold the
+fixes into the initial cut before any of this is merged — a decision about this
+branch's history, not something to paper over at release time.
 
-```bash
-pnpm changeset            # describe the change
-pnpm version-packages     # apply it to the ten manifests
-pnpm --filter @be-yours/mcp-server sync:versions
-```
+To publish something else entirely — a `0.1.0`, or a `1.0.0-beta.0` that npm
+will not install without an explicit `@beta` tag — set the versions by hand
+after `version-packages` and before removing this file.
 
 ## Migrating a deployed client site
 

@@ -126,8 +126,9 @@ needs a `read:packages` PAT in `NODE_AUTH_TOKEN`; without one, use
 the hold: while that file exists, `release.yml` verifies everything and
 publishes nothing, the mirror stands down instead of pinning versions that do
 not exist yet, and `pnpm release` refuses on a laptop. `pnpm check:release-hold`
-answers it. Deleting the file and merging is the release — nothing else has to
-change.
+answers it. `pnpm version-packages`, then deleting the file and merging, is the
+release; `RELEASE_HOLD.md` carries the order and says which two packages go out
+at `1.0.1` rather than `1.0.0`, and why.
 
 > **BeYours is the product sold to restaurant owners. BeInDigital is the agency.**
 > Two brands, two businesses — read the Naming section of `README.md` before any
