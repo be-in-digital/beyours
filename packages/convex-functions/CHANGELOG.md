@@ -1,5 +1,33 @@
 # Changelog
 
+## 7.7.0
+
+### Minor Changes
+
+- 957f8f4: Tell the owner when a transactional notice did not reach the diner (#530).
+
+  `readyEmailAt` and `confirmationEmailAt` are given back when a send fails, so a
+  later legitimate transition can still write — but nobody was told, and an outage
+  looked exactly like a delivered mail from the admin. The order now records WHY
+  the last dispatch gave up, and the order detail screen says so.
+
+  `reason` is a closed set of two, both decided at the call site rather than
+  inferred from the exception: `no_sender_address` is a configuration gap the
+  owner can close, `transport` is the provider failing. Nothing classifies an
+  error to choose between them. The send path deliberately does not sort failures
+  into transient and permanent, and a field that exists to be displayed must not
+  reintroduce that.
+
+  Only the sites where something actually failed record one. A claim released
+  because the order was cancelled or deleted between the claim and the send passes
+  nothing: reporting a failed notice on an order that no longer exists would be
+  worse than silence.
+
+### Patch Changes
+
+- Updated dependencies [957f8f4]
+  - @be-in-digital/convex-schema@6.9.0
+
 ## 7.6.1
 
 ### Patch Changes
@@ -301,7 +329,6 @@ storefront page content, no auth by design`. That annotation was wrong about the
   would not match what the owner wrote.
 
   Three server-side changes came with it:
-
   - **`inactiveAfterDays` is accepted by `create` and `update`.** It was on the
     table and read by the win-back sweep, and on neither mutation — so no caller,
     UI or API, could ever set it, and every win-back automation in existence was
@@ -329,7 +356,6 @@ storefront page content, no auth by design`. That annotation was wrong about the
   before anyone built it.
 
   What was missing, and is here now:
-
   - **`menus.listActive`** — the filtered public query `menus.list`'s own comment
     asked for. It resolves `pick_category` sections server-side, leaves out a
     formule whose mandatory dish has been switched off (rather than offering it and
@@ -352,7 +378,6 @@ storefront page content, no auth by design`. That annotation was wrong about the
 
   **The two money decisions, stated because they were the reason this was its own
   change:**
-
   1. **VAT across a mixed-rate bundle** is split **pro rata on à-la-carte value**,
      the standard treatment of an _offre composite à prix global_. A 15 € dish at
      10 % and a 5 € glass of wine at 20 % sold at 20 € owes 1,36 € + 0,83 €. Split
@@ -415,7 +440,6 @@ storefront page content, no auth by design`. That annotation was wrong about the
   `apps/site` listed five figures. Two existed as today-only cards. Three did not
   exist in any form — `grep -riE 'plats populaires|topProduct|peakHour|returnRate'`
   over `apps/themes` and `packages` returned nothing at all:
-
   - **Plats populaires** — there was no product-level aggregation anywhere.
   - **Heures de pointe** — there was no time-of-day bucketing.
   - **Taux de retour** — there was no notion of a returning customer until #364
@@ -439,7 +463,6 @@ storefront page content, no auth by design`. That annotation was wrong about the
   e-mail address, which belong to neither side.
 
   Two things the issue also asked for:
-
   - **The period is now a choice** — 7, 14 or 30 days. Every window on this screen
     was a literal while the site sold « analyse des tendances et des performances
     par période ». The breakdown pies follow the picker too; they used to sit on
@@ -556,7 +579,6 @@ storefront page content, no auth by design`. That annotation was wrong about the
   leaving them out of every total.
 
   Also in this change, because the book has to agree with the orders behind it:
-
   - `customerEmailKey` is stamped on the order at the confirmation transition
     rather than only at creation, so an order inserted by any other path still
     has the key the detail view looks it up by.
@@ -639,7 +661,6 @@ storefront page content, no auth by design`. That annotation was wrong about the
 ### Patch Changes
 
 - b8c6f3e: Stop three deletes leaving a reference behind.
-
   - `categories.remove` left `stores.stationMapping[].categoryId` — a required
     `v.id("categories")` inside an array — naming a row that no longer exists.
     Inert only because `orders.ts` compares strings rather than dereferencing,
@@ -700,7 +721,6 @@ storefront page content, no auth by design`. That annotation was wrong about the
   it, so nothing suppressed a dead address, nothing recorded a spam report, and
   `delivered` read 0 for ever. The first symptom available to anybody was the
   sending domain being throttled.
-
   - `convex-functions` gains `./resendSignature`: the Svix scheme's testable
     half — which headers carry the signature, exactly which bytes are signed,
     how old a message may be, and which Resend event maps onto which of ours.
@@ -839,7 +859,6 @@ storefront page content, no auth by design`. That annotation was wrong about the
   the engine's: what the handler needs to act on a notification that arrives
   without those headers, which is every notification any client provisioned before
   today will send.
-
   - `emailSubscribers` gains `.index("by_email", ["email"])` — the address alone,
     no store.
   - `emailSubscribers.listByEmail` reads it, capped at 32 rows.
@@ -1180,7 +1199,6 @@ storefront page content, no auth by design`. That annotation was wrong about the
   kept the whole admin suite green.)
 
   **And five more removes were still leaving rows pointing at nothing.**
-
   - **A subscriber's rows go with them.** `emailSubscribers.remove` was a bare
     delete over TWO non-optional foreign keys — `emailEvents.subscriberId` and
     `emailAutomationRuns.subscriberId` — behind a live button. `privacy.ts` has
@@ -2519,7 +2537,6 @@ Server Error`. `SettlementRejectedError` joins the family, so the sentence that
   **The decision is per referencing table, and it splits on authorship**, which is
   the reasoning `categories.remove` already established: a cascade destroys an
   afternoon's work on a click meant to tidy up.
-
   - **Refused** while they point at the dish — `menus`, `promotions`, `prizes`.
     Each is a selling decision the owner made, and each has a screen to unmake it
     on. The refusal names them: _Ce produit est utilisé dans 1 formule : "Formule
@@ -2666,7 +2683,6 @@ Server Error`. `SettlementRejectedError` joins the family, so the sentence that
 
   The chain was broken at every link, and each surface had drifted because each
   carried its own idea of what an allergen was:
-
   - the printed kitchen ticket rendered `{allergens.join(", ")}` — whatever text
     was in the array is what a cook read before plating;
   - the admin product form had **no allergen control at all**, only a zod field
@@ -2850,7 +2866,6 @@ VÉRIFIER :` rather than folded into the allergen line, because a cook has to
   permanent on every deployment ever cloned.
 
   Three surfaces now exist, and one form:
-
   - **The paid order says it.** New `orderInvoiceSurface` computes the invoice
     number or the refusal fresh on every read — never persisted, so completing
     the identity clears it by itself — and `orders.getById` in both apps
@@ -3307,7 +3322,6 @@ element/`), so it has been rewritten to assert the corrected message.
   empty. Every mutation in the stores module now appends an entry naming the
   actor, the establishment, the operation, the timestamp and the before/after of
   the fields the edit moved.
-
   - `systemAuditLog` gains `store_created` / `store_updated` / `store_deleted`,
     an optional `targetStoreId`, and an index to read one establishment's history.
   - The printer API key is redacted on both sides of a `printConfig` diff, and
@@ -3356,7 +3370,6 @@ element/`), so it has been rewritten to assert the corrected message.
 ### Patch Changes
 
 - 7f0122b: Republished from main. Fixes two problems with the 2.0.1 tarballs that broke consumers:
-
   - `@be-in-digital/core`: the `./auth/rbac` subpath pointed at `src/auth/rbac.ts` while the tarball only ships `dist/` → broken import for consumers (`convex-functions/auth` included). `files` now includes `src`.
   - The type fixes that were on main but never published (promotion-form/email-config in admin, Uber Eats signatures in integrations/convex-functions) go out with this patch — they had been committed without a changeset.
 
@@ -3370,7 +3383,6 @@ element/`), so it has been rewritten to assert the corrected message.
 ### Patch Changes
 
 - 321adad: Production-readiness audit fixes for delivery integrations:
-
   - **integrations**: the Uber Eats order mapper now keeps money in integer **cents**
     instead of dividing by 100. Previously Uber order totals were stored 100× too
     small while Deliveroo and website orders used cents. `UnifiedOrder` money fields
@@ -3406,7 +3418,6 @@ element/`), so it has been rewritten to assert the corrected message.
 - 7c3d4da: Configure private npm publishing for all @beindigital-engine packages
 
   ### What changed
-
   - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
   - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
   - Added `"files"` field to control published contents.
@@ -3436,7 +3447,6 @@ element/`), so it has been rewritten to assert the corrected message.
 - ad4d8d2: Configure private npm publishing for all @beindigital-engine packages
 
   ### What changed
-
   - Packages are now publishable to npm as private (restricted) packages under the `@beindigital-engine` scope.
   - Removed `"private": true` flag from all packages and replaced with `"publishConfig": { "access": "restricted" }`.
   - Added `"files"` field to control published contents.
