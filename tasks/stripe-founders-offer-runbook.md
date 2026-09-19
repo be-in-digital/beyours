@@ -86,6 +86,19 @@ writes your live Stripe ids into a dev backend without complaining.
 
 ---
 
+> **Sections 2 to 4 have an executable half.**
+> `scripts/wizards/stripe-founders-create.sh` creates all nine objects, reading
+> the amounts out of `planPrices.ts` rather than restating them. A dry run is
+> the default; `--apply` writes. It is safe to re-run — products are found by
+> `metadata[beyours_role]`, prices by `lookup_key`, and the coupon by a
+> caller-chosen `id`, so a second run finds what the first made instead of
+> creating a second set of ten free builds.
+>
+> Read these sections anyway. The script performs the steps; it does not
+> explain why `percent_off` beats `amount_off`, why the maintenance Prices must
+> hang off a different Product, or what `max_redemptions` does not cap. And it
+> cannot check §6c at all.
+
 ## 2. The creation Products
 
 Two persistent Products. They exist so the founders coupon can be restricted to
