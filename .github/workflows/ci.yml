@@ -186,6 +186,18 @@ jobs:
       - name: Check CLAUDE.md's commands and documents
         run: pnpm check:claude-md
 
+      # README § Naming is a page of identifiers registered with AWS SES, Uber
+      # Eats, Unsplash and the app stores, or living in diners' browsers, under
+      # the heading "Never run a global find-and-replace" — and nothing
+      # enforced a line of it. Two sweeps in one week proved the gap: the scope
+      # move was first written against the wrong half of the new name, and the
+      # hand-run correction then hyphenated the frozen domain in 27 places, one
+      # of them the `mentions legales` address of apps/site. Every other suite
+      # was green over both, because none of them knows which domain we own or
+      # which organisation registered which identifier.
+      - name: Check the frozen names and the two-scope split
+        run: pnpm check:naming
+
       # The one check that looks at what a CLIENT builds rather than at what
       # this repository builds. `apps/themes` is published verbatim to
       # `beyours-boilerplate`, where it is the repository root, and a stylesheet

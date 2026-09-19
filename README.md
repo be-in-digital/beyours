@@ -473,6 +473,22 @@ survive, and a careless sweep takes them with it:
 | `com.beindigital.<slug>` | Bundle identifier — frozen once the app is published to the stores |
 | `beindigital.fr` | The domain does belong to the agency |
 
+`pnpm check:naming` enforces this table rather than leaving it as advice, and
+runs in the required `Lint` job. It fails when one of these identifiers has
+disappeared from the code — README does not count as evidence, or the table
+would be guarding itself — when a spelling that is never correct appears, and
+when a manifest lands on the wrong side of the two-scope split. Today the only
+never-correct spelling is `be-yours.fr`: the hyphen belongs to the owner, not
+to the domain, and a hand-run correction pass put it in twenty-seven places
+once, one of them the `mentions légales` address.
+
+Its limit is stated rather than left to be discovered: the frozen-name half
+asks only that each identifier still occur **somewhere**, so it catches the
+global find-and-replace this section names and not a hand edit that renames two
+of three call sites. Pinning a count would catch that too and would go stale on
+every ordinary edit. The rules, and the reason for each, are in
+[`scripts/lib/naming.mjs`](scripts/lib/naming.mjs).
+
 And **`apps/site` is out of scope**: "Be in Digital" is the trade name that
 affiliate contracts are **already signed** against, and clause 5.2 forbids
 altering it. Everything flows from
