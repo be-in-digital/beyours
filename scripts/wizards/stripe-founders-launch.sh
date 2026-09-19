@@ -308,6 +308,11 @@ EXPLAIN
 # ===========================================================================
 # 3 · The objects those ids point at
 # ===========================================================================
+# Set by section_objects from the audit's answer: "CHECKED b w u", "UNCHECKED"
+# (variable unset on the deployment) or "ABSENT" (deployment predates the
+# coupon audit). Empty when the audit did not run at all.
+COUPON_STATE=""
+
 section_objects() {
   heading "3 · Reading the Stripe objects back"
 
@@ -337,6 +342,18 @@ EXPLAIN
   # may sit behind Convex's own log lines. A parse failure is its own state —
   # reporting "no findings" because the JSON was unreadable is the exact
   # failure this script is shaped to avoid.
+  #
+  # `r.coupon` is read as well as `r.findings`, and that is the whole point of
+  # this block now. The audit gained a coupon half (convex/stripeCouponAudit.ts)
+  # while this parser still read only the Price findings — so on a machine with
+  # no Stripe CLI the section below announced the coupon "NOT read back" and
+  # listed three fields to check by hand, while the answer to all of them sat
+  # unread in the JSON this very function had just parsed. An audit whose result
+  # is discarded is worth no more than one that was never run.
+  #
+  # An OLDER deployment answers without `r.coupon`. That is not a parse failure
+  # and must not be reported as one: the field is absent, the Stripe-CLI path
+  # below still applies, and the two cases are told apart by COUPON_STATE.
   local parsed
   parsed="$(printf '%s' "$out" | node -e '
     let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
@@ -347,6 +364,16 @@ EXPLAIN
         if (!Array.isArray(r.findings)) { console.log("UNPARSEABLE"); return; }
         console.log(String(r.findings.length));
         console.log(r.summary || "");
+        const c = r.coupon;
+        // Line 3 is the coupon verdict, or ABSENT on a deployment predating it.
+        if (!c || typeof c !== "object") console.log("ABSENT");
+        else if (!c.checked) console.log("UNCHECKED");
+        else console.log(`CHECKED ${c.blocking || 0} ${c.warnings || 0} ${c.unverifiable || 0}`);
+        // Line 4+ of the coupon block, then the Price findings, kept apart by
+        // a sentinel so neither list can be read as the other.
+        for (const f of (c && Array.isArray(c.findings) ? c.findings : []))
+          console.log(`COUPON ${f.severity} [${f.field}] ${f.message}`);
+        console.log("--PRICES--");
         for (const f of r.findings) console.log(`${f.envName} [${f.field}] ${f.message}`);
       } catch { console.log("UNPARSEABLE"); }
     });
@@ -361,27 +388,77 @@ EXPLAIN
   local count summary
   count="$(printf '%s\n' "$parsed" | sed -n '1p')"
   summary="$(printf '%s\n' "$parsed" | sed -n '2p')"
+  COUPON_STATE="$(printf '%s\n' "$parsed" | sed -n '3p')"
 
   if [[ "$count" == "0" ]]; then
     ok "${summary:-The four Prices match planPrices.}"
   else
     bad "$count discrepancy/ies between Stripe and planPrices:"
-    printf '%s\n' "$parsed" | tail -n +3 | sed 's/^/      /'
+    # From the sentinel onward — the Price findings, never the coupon ones.
+    printf '%s\n' "$parsed" | sed -n '/^--PRICES--$/,$p' | tail -n +2 | sed 's/^/      /'
     note "Fix them in the Stripe Dashboard; do not edit planPrices to match."
   fi
 
-  # ── The coupon. Not covered by the audit, and it is the expensive one. ──
+  # ── The coupon, which the audit now covers too ──
+  #
+  # This section used to open "Not covered by the audit, and it is the
+  # expensive one", and reach straight for the Stripe CLI. Both halves of that
+  # are now wrong: convex/stripeCouponAudit.ts checks percent_off, amount_off
+  # against planPrices, max_redemptions against foundersOffer.totalSlots,
+  # duration, redeem_by, valid and livemode — and it needs no CLI, because the
+  # deployment holds the key. The CLI path stays for what the audit cannot see
+  # and for a deployment that predates it.
   echo
+  if [[ "$COUPON_STATE" == CHECKED* ]]; then
+    local cblocking cwarn cunver
+    read -r _ cblocking cwarn cunver <<<"$COUPON_STATE"
+    if [[ "$cblocking" == "0" ]]; then
+      ok "Founders coupon audited against foundersOffer and planPrices — nothing blocking."
+    else
+      bad "$cblocking blocking problem(s) on the founders coupon:"
+      printf '%s\n' "$parsed" | sed -n '/^--PRICES--$/q;/^COUPON blocking /p' \
+        | sed 's/^COUPON blocking /      /'
+      note "A Stripe coupon is immutable: fixing one is delete-then-recreate."
+      note "Read the remedy lines in the audit's own output before doing that —"
+      note "recreating resets times_redeemed, which can hand back spent seats."
+    fi
+    if [[ "$cwarn" != "0" ]]; then
+      note "$cwarn warning(s) — see the audit output."
+    fi
+    # An unverifiable finding is NOT a pass and NOT a failure: Stripe never
+    # returns applies_to, so section 4 is what settles it. Saying so here keeps
+    # a green line above from being read as "the restriction is proven".
+    if [[ "$cunver" != "0" ]]; then
+      unknown "$cunver check(s) the API cannot answer — see section 4."
+    fi
+    # `return 0`, never a bare `return`. This script runs under `set -euo
+    # pipefail`, where a bare `return` propagates the status of the LAST
+    # command — and a `[[ … ]] && cmd` guard whose condition is false is
+    # status 1. That killed the whole wizard here, silently, before section 4
+    # and before the final summary, whenever the counts above were zero. The
+    # `if` blocks fix the cause; this fixes the shape that made it lethal.
+    return 0
+  fi
+
+  if [[ "$COUPON_STATE" == "UNCHECKED" ]]; then
+    unknown "STRIPE_FOUNDERS_COUPON_ID is not set on the deployment — coupon NOT audited."
+    note "That variable's absence also makes resolveFoundersPricing refuse every"
+    note "Essentielle sale while founders seats remain. Set it (runbook §5)."
+    return
+  fi
+
+  # COUPON_STATE is ABSENT: a deployment older than the coupon audit. Fall back.
   if [[ -z "$COUPON_ID" ]]; then
     unknown "No coupon id known from section 2 — coupon not read back."
     return
   fi
 
   if ! command -v stripe >/dev/null 2>&1; then
-    unknown "The Stripe CLI is not installed — coupon $COUPON_ID NOT read back."
-    note "Three fields decide whether the offer is capped and lands on the right"
-    note "line. Check them by hand, in the Dashboard or with:"
+    unknown "Deployment predates the coupon audit and no Stripe CLI here — coupon $COUPON_ID NOT read back."
+    note "Push the current convex/ to that deployment and re-run: the audit then"
+    note "reads the coupon itself, no CLI needed. Otherwise, by hand:"
     note "  stripe coupons retrieve $COUPON_ID --live"
+    note "  percent_off      must be 100  (the creation is offered outright)"
     note "  max_redemptions  must be 10   (foundersOffer.totalSlots)"
     note "  times_redeemed   must be 0    before the first sale"
     note "  applies_to       must list ${ESSENTIELLE_PRODUCT_ID:-the Essentielle creation product}"

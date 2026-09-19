@@ -649,6 +649,9 @@ The founders hold window is **30 minutes** (`foundersOffer.ts:43`,
 once, and wrong in the direction that makes a test checkout look 48× more
 expensive than it is. `stripeAudit:run` does not audit the coupon but the wizard
 does (`:392-427`), which the runbook's §7 denied while its own §6 head asserted.
+*(Superseded 2026-09-19: `stripeAudit:run` audits the coupon too, and the
+wizard now reads that answer instead of reaching for the Stripe CLI. The
+sentence above is kept as the record of what was true on 2026-09-09.)*
 And LAUNCH-02's instruction to strip six `STRIPE_BID_PRICE_*` variables "that no
 code reads" was inverted — all six are read through
 `packages/convex-functions/src/bidSubscription.ts:36-51`; acting on it would have
