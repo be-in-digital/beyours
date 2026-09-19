@@ -99,7 +99,11 @@ function loadTokens(): Map<string, Map<string, Rgb>> {
   const blocks = new Map<string, Map<string, Rgb>>()
   for (const selector of [":root", ".admin-scope"]) {
     const tokens = new Map<string, Rgb>()
-    const pattern = selector.replace(/[.]/g, "\\$&")
+    // Every metacharacter, not just the dot: escaping `.` alone leaves a
+    // backslash in the input free to escape whatever follows it. The selector
+    // list above is two literals today, so this is a latent defect rather than
+    // a live one, and closing it costs one character class.
+    const pattern = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
     const head = new RegExp(String.raw`(?:^|[}{;])\s*${pattern}\s*\{`, "g")
     let match: RegExpExecArray | null
     while ((match = head.exec(css))) {
