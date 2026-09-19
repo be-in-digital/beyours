@@ -7,6 +7,7 @@ import {
   EXPECTED_FOUNDERS_COUPON,
   auditFoundersCoupon,
   replacementMaxRedemptions,
+  resolveAuditVerdict,
   summariseCouponFindings,
   type CouponFinding,
   type StripeCouponFacts,
@@ -158,6 +159,25 @@ describe("the cap", () => {
     expect(finding.severity).toBe("warning");
     expect(finding.message).toContain("il en reste 6");
   });
+
+  it("subtracts from the REAL cap, not the expected one", () => {
+    expect(
+      find(audit({ maxRedemptions: 25, timesRedeemed: 4 }), "times_redeemed")
+        .message,
+    ).toContain("il en reste 21");
+  });
+
+  /* An uncapped coupon has no cap to subtract from. Substituting the expected
+     one would quote a remaining-seat figure for an offer Stripe is not
+     limiting at all — the opposite of what the operator must act on. */
+  it("invents no seat count when the coupon is uncapped", () => {
+    const finding = find(
+      audit({ maxRedemptions: null, timesRedeemed: 4 }),
+      "times_redeemed",
+    );
+    expect(finding.message).not.toMatch(/il en reste/);
+    expect(finding.message).toContain("aucun plafond");
+  });
 });
 
 /* ── The trap this module exists to keep an operator out of ──
@@ -266,6 +286,69 @@ describe("applies_to, which the API does not hand back", () => {
     const finding = find(findings, "coverage");
     expect(finding.severity).toBe("unverifiable");
     expect(finding.message).toContain("pas un succès");
+  });
+});
+
+/* ── The gate has to be able to open ──
+   Its first form counted an unverifiable finding as not-ok. Stripe never
+   returns applies_to, so that made `ok` false on every correctly configured
+   account, whatever an operator fixed — a gate that never opens is read once
+   and then ignored, the same failure as one that never closes, reached from
+   the other side. */
+describe("resolveAuditVerdict", () => {
+  const unreadableAppliesTo = audit({ appliesToProducts: null });
+
+  it("opens on a correct account even though applies_to is never readable", () => {
+    const verdict = resolveAuditVerdict({
+      priceFindingCount: 0,
+      couponChecked: true,
+      couponFindings: unreadableAppliesTo,
+    });
+    expect(verdict.ok).toBe(true);
+    /* …and says, in the same breath, what it could not check. */
+    expect(verdict.unverified).toEqual(["applies_to"]);
+  });
+
+  it("stays shut on a blocking coupon finding", () => {
+    expect(
+      resolveAuditVerdict({
+        priceFindingCount: 0,
+        couponChecked: true,
+        couponFindings: audit({ percentOff: 50 }),
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("stays shut on a Price finding, whatever the coupon says", () => {
+    expect(
+      resolveAuditVerdict({
+        priceFindingCount: 1,
+        couponChecked: true,
+        couponFindings: [],
+      }).ok,
+    ).toBe(false);
+  });
+
+  /* An unset STRIPE_FOUNDERS_COUPON_ID is not a pass: it is the variable whose
+     absence makes resolveFoundersPricing refuse every Essentielle sale. */
+  it("stays shut when the coupon was never checked at all", () => {
+    expect(
+      resolveAuditVerdict({
+        priceFindingCount: 0,
+        couponChecked: false,
+        couponFindings: [],
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("does not let a warning hold the gate shut", () => {
+    const verdict = resolveAuditVerdict({
+      priceFindingCount: 0,
+      couponChecked: true,
+      couponFindings: audit({ timesRedeemed: 4 }),
+    });
+    expect(verdict.ok).toBe(true);
+    expect(verdict.unverified).toEqual([]);
   });
 });
 

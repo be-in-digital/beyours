@@ -40,6 +40,7 @@ import {
   FOUNDERS_COUPON_ENV,
   FOUNDERS_CREATION_PRODUCT_ENV,
   auditFoundersCoupon,
+  resolveAuditVerdict,
   summariseCouponFindings,
   type CouponFinding,
   type StripeCouponFacts,
@@ -210,7 +211,9 @@ export const run = internalAction({
     };
 
     if (!couponId) {
-      skipped.push(FOUNDERS_COUPON_ENV);
+      /* NOT pushed onto `skipped`, which is the four Price variables and is
+         read as such by the runbook. `coupon.checked: false` is where this
+         says so, in the object that is about the coupon. */
       coupon = {
         checked: false,
         id: null,
@@ -244,15 +247,39 @@ export const run = internalAction({
       };
     }
 
-    /* `ok` is the gate, and it counts an unverifiable finding as NOT ok — the
-       browser check of §6c is still owed, and a run that returned `ok: true`
-       over an applies_to nobody has ever looked at would be the « green over a
-       section it never looked at » the wizards were written to stop. */
-    const ok =
-      findings.length === 0 &&
-      coupon.checked &&
-      coupon.blocking === 0 &&
-      coupon.unverifiable === 0;
+    /* ── `ok`, and the thing it deliberately does NOT promise ──
+
+       `ok` is « nothing this run could check is wrong ». It is not « the
+       billing configuration is proven », and the two must not be collapsed
+       either way round.
+
+       This counted an unverifiable finding as not-ok in its first form, so
+       that a run could not go green over an applies_to nobody had looked at.
+       That was the wrong lever, and measurably so: Stripe NEVER returns
+       applies_to, so the unverifiable count is at least one on every correctly
+       configured account, and `ok` could not become true no matter what an
+       operator fixed. A gate that never opens is read once and then ignored —
+       the same failure as a gate that is always open, arrived at from the
+       other side.
+
+       So the machine verdict and the human debt are two fields, not one.
+       `ok` gates on what a machine can decide; `unverified` names what it
+       could not, and `summary` repeats it in words, so `ok: true` can never
+       be read as « everything was checked ». §6c is still owed and still
+       says so — it is simply no longer expressed as a boolean that has no
+       way of knowing whether anybody looked. */
+    const { ok, unverified } = resolveAuditVerdict({
+      priceFindingCount: findings.length,
+      couponChecked: coupon.checked,
+      couponFindings: coupon.findings,
+    });
+
+    const owed =
+      unverified.length > 0
+        ? ` Non vérifiable ici : ${unverified.join(", ")} — ` +
+          `${ok ? "aucun écart détecté, mais ce n'est pas une preuve" : "à lire en plus des écarts ci-dessus"}. ` +
+          `Le §6c du runbook (ligne création à 0,00 € sur un vrai checkout) reste dû.`
+        : "";
 
     return {
       ok,
@@ -261,7 +288,8 @@ export const run = internalAction({
       findings,
       priceSummary,
       coupon,
-      summary: `${priceSummary} ${coupon.summary}`,
+      unverified,
+      summary: `${priceSummary} ${coupon.summary}${owed}`,
     };
   },
 });

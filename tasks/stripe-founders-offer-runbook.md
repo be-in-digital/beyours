@@ -301,10 +301,16 @@ at 50 % passed every check here while invoicing the founder 1 750 € excl. tax
 for a build this page gives away.
 
 Two things it still cannot do. It cannot read `applies_to` back — Stripe does
-not return the field, so that finding comes out as `unverifiable` rather than as
-a pass, and `ok` is false until §6c has been done by eye. And it cannot repair
-anything: a Stripe coupon is immutable but for `name` and `metadata`, so every
-fix is delete-then-recreate, which is §6e.
+not return the field — so that comes out in `unverified` rather than as a pass,
+and the run says so in words alongside the verdict. **`ok: true` means nothing
+this run could check is wrong; it does not mean the configuration is proven.**
+Those are two fields because they cannot be one: `applies_to` is unreadable on
+every correctly configured account, so a verdict that counted it as a failure
+would be false for ever and get ignored, which is how a gate stops being read
+at all. §6c is what closes that gap, and no command closes it for you.
+
+And it cannot repair anything: a Stripe coupon is immutable but for `name` and
+`metadata`, so every fix is delete-then-recreate, which is §6e.
 
 **6c — the guards no longer fire.** This is the only step that proves the thing
 the card is about. Open a real Essentielle checkout on beyours.fr and stop at
@@ -428,6 +434,7 @@ as coverage:
 - [ ] Seven variables set on `famous-wildcat-229`, confirmed by §6a
 - [ ] Each id read back from Stripe and checked field by field (§6b)
 - [ ] `stripeAudit:run` returns `ok: true` — four Prices AND the coupon, `percent_off` included
+- [ ] Whatever that run lists under `unverified` has been read, not just its `ok`
 - [ ] `times_redeemed` is `0`
 - [ ] A live checkout opens and shows the creation line at 0,00 € (§6c)
 - [ ] Renewal billing **not** signed off — pending the first real order (§6d)

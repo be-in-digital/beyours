@@ -349,14 +349,26 @@ export function auditFoundersCoupon(
   /* Not a fault — the state of the offer, which the runbook's §6b reads by
      hand before a go-live and which decides what a replacement may carry. */
   if (facts.timesRedeemed > 0) {
-    const cap = facts.maxRedemptions ?? EXPECTED_FOUNDERS_COUPON.maxRedemptions;
+    /* « Il en reste N » needs a cap to subtract from, and an UNCAPPED coupon
+       has none — substituting the expected one would quote a remaining-seat
+       figure for an offer that Stripe is not limiting at all, which is the
+       opposite of what the operator has to act on. The uncapped case is
+       already a blocking finding of its own; here it just declines to invent
+       a number. */
+    const remaining =
+      facts.maxRedemptions === null
+        ? null
+        : Math.max(0, facts.maxRedemptions - facts.timesRedeemed);
     add({
       field: "times_redeemed",
       expected: "0 avant la première vente",
       actual: String(facts.timesRedeemed),
       message:
-        `${facts.timesRedeemed} place(s) fondateurs déjà consommée(s) : il en reste ` +
-        `${Math.max(0, cap - facts.timesRedeemed)}. Avant un go-live ce compteur doit ` +
+        `${facts.timesRedeemed} place(s) fondateurs déjà consommée(s)` +
+        (remaining === null
+          ? ` — et le coupon n'ayant aucun plafond, Stripe n'en décompte aucune.`
+          : ` : il en reste ${remaining}.`) +
+        ` Avant un go-live ce compteur doit ` +
         `être à 0 ; après, c'est simplement l'état de l'offre.`,
       remedy:
         `Rien à faire si des ventes ont eu lieu. En revanche, ne JAMAIS recréer ce ` +
@@ -501,6 +513,43 @@ export function auditFoundersCoupon(
   }
 
   return findings;
+}
+
+/**
+ * The run's verdict: what a machine could decide, and what it could not.
+ *
+ * Two fields on purpose. `ok` gates on findings a machine can be sure about;
+ * `unverified` names the checks that did not execute, so a green `ok` can
+ * never be read as « the configuration is proven ».
+ *
+ * The first version of this folded the second into the first — an unverifiable
+ * finding made `ok` false — and that could not work: Stripe never returns
+ * `applies_to`, so there is at least one unverifiable finding on every
+ * correctly configured account and `ok` could not become true whatever an
+ * operator fixed. A gate that never opens gets ignored exactly like one that
+ * never closes.
+ *
+ * Pure, and here rather than inline in the action, so both halves of that
+ * distinction are unit-tested.
+ */
+export function resolveAuditVerdict(input: {
+  /** Findings from the four maintenance Prices. */
+  priceFindingCount: number;
+  /** False when STRIPE_FOUNDERS_COUPON_ID is unset — never a pass. */
+  couponChecked: boolean;
+  couponFindings: CouponFinding[];
+}): { ok: boolean; unverified: string[] } {
+  const blocking = input.couponFindings.filter(
+    (finding) => finding.severity === "blocking",
+  ).length;
+
+  return {
+    ok:
+      input.priceFindingCount === 0 && input.couponChecked && blocking === 0,
+    unverified: input.couponFindings
+      .filter((finding) => finding.severity === "unverifiable")
+      .map((finding) => finding.field),
+  };
 }
 
 /** Splits findings by severity, so a caller can gate on the blocking ones. */
